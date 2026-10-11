@@ -1,0 +1,40 @@
+# .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+TestResults/
+artifacts/
+*.nupkg
+*.snupkg
+
+# Local editor / agent state
+.idea/
+.codex/
+.agents/
+.aws/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+
+# Local scan history (may contain private paths)
+AppData/
+scan-data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.log
+*.tmp
+Thumbs.db
+Desktop.ini
