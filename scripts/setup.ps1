@@ -78,6 +78,7 @@ try {
     $env:DOTNET_ROOT = $taskSdkRoot
     $env:PATH = "$taskSdkRoot;$taskOldPath"
     Invoke-SetupDotnet @('--version')
+    Invoke-SetupDotnet @('tool', 'restore')
     & (Join-Path $PSScriptRoot 'setup-vscode.ps1')
     if (!$SkipExtensions) {
         $taskRecommendations = Get-Content (Join-Path $taskRepoRoot '.vscode/extensions.json') -Raw -Encoding utf8 | ConvertFrom-Json
@@ -87,6 +88,7 @@ try {
         }
     }
     Invoke-SetupDotnet @('restore', 'Something.slnx', '--locked-mode')
+    Invoke-SetupDotnet @('csharpier', 'check', '.', '--ignore-path', '.csharpierignore')
     Invoke-SetupDotnet @('build', 'Something.slnx', '--no-restore')
     if ($WithPublicCorpus) {
         & (Join-Path $PSScriptRoot 'test-public-corpus.ps1') -Download

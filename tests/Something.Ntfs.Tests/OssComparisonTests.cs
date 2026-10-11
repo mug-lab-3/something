@@ -6,7 +6,9 @@ namespace Something.Ntfs.Tests;
 public sealed class OssComparisonTests
 {
     [Theory]
-    [InlineData(512)] [InlineData(1024)] [InlineData(4096)]
+    [InlineData(512)]
+    [InlineData(1024)]
+    [InlineData(4096)]
     public void ValidSyntheticRecords_AgreeWithEricZimmermanMftOnIdentityAndDataSizes(int size)
     {
         byte[] raw = RecordFixture.Record(size: size);
@@ -24,7 +26,8 @@ public sealed class OssComparisonTests
     [Fact]
     public void TornRecord_OurStrictApiRejectsWhatOracleMarksWithFixupFlag()
     {
-        byte[] raw = RecordFixture.Record(); raw[510] ^= 1;
+        byte[] raw = RecordFixture.Record();
+        raw[510] ^= 1;
         Assert.Throws<NtfsParseException>(() => new MftRecordParser().Parse(raw, 42));
         Assert.False(new MFT.FileRecord((byte[])raw.Clone(), 0, false).FixupOk);
     }

@@ -54,7 +54,7 @@ WindowsでGitとVS Code（`code`コマンド）を用意し、リポジトリを
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
 ```
 
-SDKの取得・ハッシュ確認、推奨拡張のインストール、ワークスペース生成、依存復元、ビルド、単体テストまで行います。公開テストデータも取得する場合は`-WithPublicCorpus`を追加してください。
+SDKの取得・ハッシュ確認、推奨拡張のインストール、ワークスペース生成、依存・フォーマッタ復元、整形検査、ビルド、単体テストまで行います。公開テストデータも取得する場合は`-WithPublicCorpus`を追加してください。
 
 UIから独立したMFT解析ライブラリ、オフライン検査CLI、xUnit.net v3 / Microsoft.Testing.Platformによるテストを追加しています。.NET 10 / C# 14を使用します。
 

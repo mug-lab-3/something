@@ -11,6 +11,7 @@ $taskWorkspaceFile = Join-Path $taskRepoRoot '.tools/Something.code-workspace'
 $taskWorkspaceSettings = @{
     folders = @(@{ path = $taskRepoRoot })
     settings = @{
+        'dotnet.dotnetPath' = $taskDotnetExe
         'dotnetAcquisitionExtension.existingDotnetPath' = @(
             @{ extensionId = 'ms-dotnettools.csharp'; path = $taskDotnetExe },
             @{ extensionId = 'ms-dotnettools.csdevkit'; path = $taskDotnetExe }

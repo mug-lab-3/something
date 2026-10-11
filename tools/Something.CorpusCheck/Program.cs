@@ -21,7 +21,11 @@ if (args.Length != 2)
 }
 
 using var cancellation = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cancellation.Cancel();
+};
 var token = cancellation.Token;
 try
 {
@@ -32,7 +36,13 @@ try
     string imagePath = Path.Combine(output, "image.dd");
     await using (var input = File.OpenRead(source))
     await using (var imageOutput = new FileStream(imagePath, FileMode.CreateNew, FileAccess.Write))
-    using (var decompressor = BZip2Stream.Create(input, CompressionMode.Decompress, decompressConcatenated: true))
+    using (
+        var decompressor = BZip2Stream.Create(
+            input,
+            CompressionMode.Decompress,
+            decompressConcatenated: true
+        )
+    )
     {
         byte[] buffer = new byte[1024 * 1024];
         long total = 0;
@@ -65,21 +75,38 @@ try
     await using (var raw = new FileStream(mftPath, FileMode.CreateNew, FileAccess.Write))
         await mft.CopyToAsync(raw, token);
 
-    long active = 0, inactive = 0, empty = 0, invalid = 0;
+    long active = 0,
+        inactive = 0,
+        empty = 0,
+        invalid = 0;
     var errors = new List<object>();
     await using var records = File.OpenRead(mftPath);
-    await foreach (var result in new MftRecordReader(recordSize).ReadAsync(records, cancellationToken: token))
+    await foreach (
+        var result in new MftRecordReader(recordSize).ReadAsync(records, cancellationToken: token)
+    )
     {
         switch (result.Status)
         {
-            case MftRecordReadStatus.Uninitialized: empty++; break;
+            case MftRecordReadStatus.Uninitialized:
+                empty++;
+                break;
             case MftRecordReadStatus.Invalid:
                 invalid++;
                 if (errors.Count < 20)
-                    errors.Add(new { result.RecordIndex, result.Error!.Offset, result.Error.Message });
+                    errors.Add(
+                        new
+                        {
+                            result.RecordIndex,
+                            result.Error!.Offset,
+                            result.Error.Message,
+                        }
+                    );
                 break;
             case MftRecordReadStatus.Parsed:
-                if (result.Record!.IsInUse) active++; else inactive++;
+                if (result.Record!.IsInUse)
+                    active++;
+                else
+                    inactive++;
                 break;
         }
     }
@@ -95,17 +122,34 @@ try
         ImageSha256 = await HashAsync(imagePath),
         MftSha256 = await HashAsync(mftPath),
         PartitionStartSector = partition.FirstSector,
-        BytesPerCluster = bytesPerCluster, RecordSize = recordSize,
-        Active = active, Inactive = inactive, Uninitialized = empty,
-        Invalid = invalid, Errors = errors
+        BytesPerCluster = bytesPerCluster,
+        RecordSize = recordSize,
+        Active = active,
+        Inactive = inactive,
+        Uninitialized = empty,
+        Invalid = invalid,
+        Errors = errors,
     };
-    string json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+    string json = JsonSerializer.Serialize(
+        report,
+        new JsonSerializerOptions { WriteIndented = true }
+    );
     await File.WriteAllTextAsync(Path.Combine(output, "report.json"), json, token);
     Console.WriteLine(json);
     return invalid == 0 ? 0 : 1;
 }
-catch (OperationCanceledException) { Console.Error.WriteLine("Cancelled; use a fresh output directory to retry."); return 130; }
-catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+catch (OperationCanceledException)
+{
+    Console.Error.WriteLine("Cancelled; use a fresh output directory to retry.");
+    return 130;
+}
+catch (Exception e)
+    when (e
+            is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException
+    )
 {
     Console.Error.WriteLine(e.Message);
     return 2;

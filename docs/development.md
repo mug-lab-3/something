@@ -13,9 +13,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
 このコマンドが行うこと:
 
 1. `global.json`の.NET SDK 10.0.401を`.tools/dotnet`へ配置。`scripts/sdk-downloads.json`に固定したMicrosoft公式URLとSHA-512で取得内容を検証。
+   `.config/dotnet-tools.json`でバージョン固定したCSharpierも`dotnet tool restore`で復元。
 2. ローカルSDKの実パスを含む`.tools/Something.code-workspace`を生成。
 3. `.vscode/extensions.json`の推奨拡張をインストール。拡張のバージョンは固定していません。既存の拡張を強制更新しません。
 4. NuGet依存を各プロジェクトの`packages.lock.json`に従って`--locked-mode`で復元。
+   CSharpierで整形済みかを検査し、整形漏れがあればファイルを書き換えずに停止。
 5. ソリューションのビルドと単体テストを実行し、成功時にワークスペースを開く。
 
 同じコマンドを繰り返し実行できます。SDKと拡張が準備済みなら再利用します。旧SDKを置き換える場合は`.tools/dotnet-backup-*`へ保存し、自動削除しません。ダウンロード・展開の中断物も勝手に削除しません。グローバルPATHやPowerShellの実行ポリシーは変更せず、`Bypass`は起動したプロセスだけに適用します。SDK用アーカイブは再試行用に`.tools`へ保持します。
@@ -54,6 +56,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 test 
 ```
 
 VS Codeでは `Ctrl+Shift+B` でbuild、`Tasks: Run Task` でtest／test with coverageを実行できます。F5はオフラインのraw $MFTダンプを検査するCLIをデバッグします。ダンプのパスとレコード長を入力してください。ファイル名や内容は標準出力には出しません。
+
+## フォーマットとコード品質
+
+整形は[CSharpier](https://csharpier.com/docs/Installation) 1.3.0をローカル.NETツールとして固定しています。CLI、VS Codeの保存時、CIが同じバージョンを使用します。CSharpierの標準的な整形を採用し、`.editorconfig`でスペース4つ、折り返し目安100文字、LFを共有します。C#以外の対応XML（csproj、props、slnxなど）はスペース2つです。`.tools`や生成物は`.csharpierignore`で対象外にしています。独自の整形ルールやもう一つの整形エンジンを重ねません。
+
+```powershell
+# 一括整形
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 csharpier format . --no-cache --ignore-path .csharpierignore
+# 書き換えずに検査（整形漏れは終了コード1）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dotnet.ps1 csharpier check . --ignore-path .csharpierignore
+```
+
+VS CodeではC#の保存時に整形されます。`Tasks: Run Task`の`format` / `format check`でも実行できます。`setup.ps1`が拡張とツールを復元し、検査まで実行します。生成された`.tools/Something.code-workspace`には、CSharpier拡張が参照する`dotnet.dotnetPath`も実パスで設定します。SDKがグローバルPATHにない環境では、このワークスペースを使ってください。VS Codeの画面上での保存時整形は未検証です。
+
+セットアップを実行するCIも整形漏れで失敗します。ビルドやCIが自動的にソースを変更する構成にはしていません。コード品質・安全性の診断は既存の.NET/Roslyn解析と警告のエラー扱いを継続します。[Microsoftのdotnet format](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format)もEditorConfigを使う公式の選択肢ですが、本リポジトリの空白・折り返しの整形はCSharpierに統一します。
 
 ## テスト方針
 

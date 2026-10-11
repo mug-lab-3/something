@@ -1,0 +1,5 @@
+.tools/
+artifacts/
+TestResults/
+**/bin/
+**/obj/

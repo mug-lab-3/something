@@ -21,13 +21,22 @@ public sealed class MftRecordParserTests
     }
 
     [Theory]
-    [InlineData(512)] [InlineData(1024)] [InlineData(4096)] [InlineData(65536)]
+    [InlineData(512)]
+    [InlineData(1024)]
+    [InlineData(4096)]
+    [InlineData(65536)]
     public void Parse_SupportedRecordSizes_RestoresEvery512ByteTail(int size)
     {
         byte[] value = Enumerable.Repeat((byte)0x71, size == 512 ? 100 : 600).ToArray();
-        byte[] bytes = RecordFixture.Record([RecordFixture.Resident(NtfsAttributeTypes.Data, 0, value)], size);
+        byte[] bytes = RecordFixture.Record(
+            [RecordFixture.Resident(NtfsAttributeTypes.Data, 0, value)],
+            size
+        );
         var record = parser.Parse(bytes, 42);
-        Assert.Equal(value, Assert.IsType<ResidentAttribute>(Assert.Single(record.Attributes)).Value);
+        Assert.Equal(
+            value,
+            Assert.IsType<ResidentAttribute>(Assert.Single(record.Attributes)).Value
+        );
     }
 
     [Fact]
@@ -38,19 +47,38 @@ public sealed class MftRecordParserTests
         var record = parser.Parse(bytes, 42);
         Assert.Equal(original, bytes);
         Array.Clear(bytes);
-        for (int i = 0; i < 20; i++) parser.Parse(RecordFixture.Record(), 50);
-        Assert.Equal("hello.txt", AttributeValueParser.ParseFileName(((ResidentAttribute)record.Attributes[0]).Value.AsSpan()).Name);
+        for (int i = 0; i < 20; i++)
+            parser.Parse(RecordFixture.Record(), 50);
+        Assert.Equal(
+            "hello.txt",
+            AttributeValueParser
+                .ParseFileName(((ResidentAttribute)record.Attributes[0]).Value.AsSpan())
+                .Name
+        );
     }
 
     [Fact]
     public void Parse_PreservesHardLinksDosAliasesAndNamedStreams()
     {
         byte[] bytes = RecordFixture.Record([
-            RecordFixture.Resident(NtfsAttributeTypes.FileName, 0, RecordFixture.FileName("long-name.txt")),
-            RecordFixture.Resident(NtfsAttributeTypes.FileName, 1, RecordFixture.FileName("LONG-N~1.TXT", FileNameNamespace.Dos)),
-            RecordFixture.Resident(NtfsAttributeTypes.FileName, 2, RecordFixture.FileName("other-link.txt", parent: 99)),
+            RecordFixture.Resident(
+                NtfsAttributeTypes.FileName,
+                0,
+                RecordFixture.FileName("long-name.txt")
+            ),
+            RecordFixture.Resident(
+                NtfsAttributeTypes.FileName,
+                1,
+                RecordFixture.FileName("LONG-N~1.TXT", FileNameNamespace.Dos)
+            ),
+            RecordFixture.Resident(
+                NtfsAttributeTypes.FileName,
+                2,
+                RecordFixture.FileName("other-link.txt", parent: 99)
+            ),
             RecordFixture.Resident(NtfsAttributeTypes.Data, 3, [1, 2, 3]),
-            RecordFixture.Resident(NtfsAttributeTypes.Data, 4, [4, 5], "Zone.Identifier")]);
+            RecordFixture.Resident(NtfsAttributeTypes.Data, 4, [4, 5], "Zone.Identifier"),
+        ]);
         var file = new MftFileAssembler(4096).Assemble(parser.Parse(bytes, 42), []);
         Assert.Equal(3, file.Names.Length);
         Assert.Equal(2, file.DataStreams.Length);
@@ -61,7 +89,10 @@ public sealed class MftRecordParserTests
     [Fact]
     public void Parse_UnknownAttribute_PreservesValueWithoutAssumingItsMeaning()
     {
-        var record = parser.Parse(RecordFixture.Record([RecordFixture.Resident(0x1234, 0, [1, 2, 3])]), 42);
+        var record = parser.Parse(
+            RecordFixture.Record([RecordFixture.Resident(0x1234, 0, [1, 2, 3])]),
+            42
+        );
         var attribute = Assert.IsType<ResidentAttribute>(Assert.Single(record.Attributes));
         Assert.Equal(0x1234u, attribute.Type);
         Assert.Equal(new byte[] { 1, 2, 3 }, attribute.Value);
@@ -80,7 +111,9 @@ public sealed class MftRecordParserTests
     [Theory]
     [InlineData((MftRecordFlags)0)]
     [InlineData(MftRecordFlags.Directory)]
-    public void Parse_UnusedRecordWithMismatchedFixup_StillReportsStructuralFailure(MftRecordFlags flags)
+    public void Parse_UnusedRecordWithMismatchedFixup_StillReportsStructuralFailure(
+        MftRecordFlags flags
+    )
     {
         byte[] bytes = RecordFixture.Record(flags: flags);
         bytes[510] ^= 1;
@@ -106,12 +139,17 @@ public sealed class MftRecordParserTests
     }
 
     [Theory]
-    [InlineData(0)] [InlineData(48)] [InlineData(513)] [InlineData(768)] [InlineData(131072)]
-    public void Parse_InvalidRecordLength_ReportsStructuredError(int size)
-        => Assert.Throws<NtfsParseException>(() => parser.Parse(new byte[size], 42));
+    [InlineData(0)]
+    [InlineData(48)]
+    [InlineData(513)]
+    [InlineData(768)]
+    [InlineData(131072)]
+    public void Parse_InvalidRecordLength_ReportsStructuredError(int size) =>
+        Assert.Throws<NtfsParseException>(() => parser.Parse(new byte[size], 42));
 
     [Theory]
-    [InlineData(510)] [InlineData(1022)]
+    [InlineData(510)]
+    [InlineData(1022)]
     public void Parse_TornSector_ReportsExactOffset(int tail)
     {
         byte[] bytes = RecordFixture.Record();
@@ -121,9 +159,15 @@ public sealed class MftRecordParserTests
     }
 
     [Theory]
-    [InlineData(4, 40)] [InlineData(4, 49)] [InlineData(4, 510)]
-    [InlineData(6, 0)] [InlineData(6, 2)] [InlineData(6, 65535)]
-    [InlineData(20, 48)] [InlineData(20, 57)] [InlineData(20, 65528)]
+    [InlineData(4, 40)]
+    [InlineData(4, 49)]
+    [InlineData(4, 510)]
+    [InlineData(6, 0)]
+    [InlineData(6, 2)]
+    [InlineData(6, 65535)]
+    [InlineData(20, 48)]
+    [InlineData(20, 57)]
+    [InlineData(20, 65528)]
     public void Parse_InvalidHeaderOffsetsOrCounts_RejectsRecord(int offset, ushort value)
     {
         byte[] bytes = RecordFixture.Record();
@@ -132,9 +176,15 @@ public sealed class MftRecordParserTests
     }
 
     [Theory]
-    [InlineData(24, 0u)] [InlineData(24, 1025u)] [InlineData(24, uint.MaxValue)]
-    [InlineData(28, 512u)] [InlineData(28, uint.MaxValue)]
-    [InlineData(60, 0u)] [InlineData(60, 8u)] [InlineData(60, 25u)] [InlineData(60, uint.MaxValue)]
+    [InlineData(24, 0u)]
+    [InlineData(24, 1025u)]
+    [InlineData(24, uint.MaxValue)]
+    [InlineData(28, 512u)]
+    [InlineData(28, uint.MaxValue)]
+    [InlineData(60, 0u)]
+    [InlineData(60, 8u)]
+    [InlineData(60, 25u)]
+    [InlineData(60, uint.MaxValue)]
     public void Parse_InvalidLengthFields_RejectsRecord(int offset, uint value)
     {
         byte[] bytes = RecordFixture.Record();
@@ -153,68 +203,102 @@ public sealed class MftRecordParserTests
     [Fact]
     public void Parse_DuplicateInstanceIds_RejectsRecord()
     {
-        byte[] bytes = RecordFixture.Record([RecordFixture.Resident(0x1234, 1, []), RecordFixture.Resident(0x1235, 1, [])]);
+        byte[] bytes = RecordFixture.Record([
+            RecordFixture.Resident(0x1234, 1, []),
+            RecordFixture.Resident(0x1235, 1, []),
+        ]);
         Assert.Throws<NtfsParseException>(() => parser.Parse(bytes, 42));
     }
 
     [Theory]
-    [InlineData(8, 2)] [InlineData(9, 255)] [InlineData(20, 0)]
+    [InlineData(8, 2)]
+    [InlineData(9, 255)]
+    [InlineData(20, 0)]
     public void Parse_InvalidResidentFields_RejectsRecord(int field, byte value)
     {
         byte[] attribute = RecordFixture.Resident(NtfsAttributeTypes.Data, 0, [1]);
         attribute[field] = value;
-        Assert.Throws<NtfsParseException>(() => parser.Parse(RecordFixture.Record([attribute]), 42));
+        Assert.Throws<NtfsParseException>(() =>
+            parser.Parse(RecordFixture.Record([attribute]), 42)
+        );
     }
 
     [Fact]
     public void Parse_ContinuationExtent_DoesNotUseUndefinedSizeFields()
     {
-        byte[] attribute = RecordFixture.NonResident(lowestVcn: 2, highestVcn: 3, logical: -1, allocated: -1);
-        var parsed = Assert.IsType<NonResidentAttribute>(Assert.Single(parser.Parse(RecordFixture.Record([attribute]), 42).Attributes));
+        byte[] attribute = RecordFixture.NonResident(
+            lowestVcn: 2,
+            highestVcn: 3,
+            logical: -1,
+            allocated: -1
+        );
+        var parsed = Assert.IsType<NonResidentAttribute>(
+            Assert.Single(parser.Parse(RecordFixture.Record([attribute]), 42).Attributes)
+        );
         Assert.Null(parsed.Sizes);
         Assert.Equal(2, parsed.Runs[0].StartVcn);
     }
 
     [Theory]
-    [InlineData(NtfsAttributeFlags.Sparse)] [InlineData(NtfsAttributeFlags.Compressed)]
+    [InlineData(NtfsAttributeFlags.Sparse)]
+    [InlineData(NtfsAttributeFlags.Compressed)]
     public void Parse_CompressedOrSparseContinuation_Accepts64ByteHeader(NtfsAttributeFlags flags)
     {
         byte[] attribute = RecordFixture.NonResident(lowestVcn: 2, highestVcn: 3, flags: flags);
-        var parsed = Assert.IsType<NonResidentAttribute>(Assert.Single(parser.Parse(RecordFixture.Record([attribute]), 42).Attributes));
+        var parsed = Assert.IsType<NonResidentAttribute>(
+            Assert.Single(parser.Parse(RecordFixture.Record([attribute]), 42).Attributes)
+        );
         Assert.Null(parsed.Sizes);
         Assert.Equal(2, parsed.Runs[0].StartVcn);
     }
 
     [Theory]
-    [InlineData(NtfsAttributeFlags.Sparse)] [InlineData(NtfsAttributeFlags.Compressed)]
+    [InlineData(NtfsAttributeFlags.Sparse)]
+    [InlineData(NtfsAttributeFlags.Compressed)]
     public void Parse_SparseOrCompressed_UsesPhysicalAllocationField(NtfsAttributeFlags flags)
     {
-        byte[] attribute = RecordFixture.NonResident(flags: flags, physical: 4096, runs: [0x11, 1, 100, 0x01, 1, 0]);
-        var file = new MftFileAssembler(4096).Assemble(parser.Parse(RecordFixture.Record([attribute]), 42), []);
+        byte[] attribute = RecordFixture.NonResident(
+            flags: flags,
+            physical: 4096,
+            runs: [0x11, 1, 100, 0x01, 1, 0]
+        );
+        var file = new MftFileAssembler(4096).Assemble(
+            parser.Parse(RecordFixture.Record([attribute]), 42),
+            []
+        );
         Assert.Equal(4096, Assert.Single(file.DataStreams).AllocatedBytes);
     }
 
     [Theory]
-    [InlineData(40, -1)] [InlineData(48, -1)] [InlineData(56, -1)] [InlineData(56, 999999)]
+    [InlineData(40, -1)]
+    [InlineData(48, -1)]
+    [InlineData(56, -1)]
+    [InlineData(56, 999999)]
     public void Parse_InvalidNonResidentSizes_RejectsRecord(int field, long value)
     {
         byte[] attribute = RecordFixture.NonResident();
         RecordFixture.I64(attribute, field, value);
-        Assert.Throws<NtfsParseException>(() => parser.Parse(RecordFixture.Record([attribute]), 42));
+        Assert.Throws<NtfsParseException>(() =>
+            parser.Parse(RecordFixture.Record([attribute]), 42)
+        );
     }
 
     [Fact]
     public void TryParse_ReturnsEitherOwnedResultOrStructuredError()
     {
         Assert.True(parser.TryParse(RecordFixture.Record(), 42, out var parsed, out var error));
-        Assert.NotNull(parsed); Assert.Null(error);
+        Assert.NotNull(parsed);
+        Assert.Null(error);
         Assert.False(parser.TryParse(new byte[1024], 42, out parsed, out error));
-        Assert.Null(parsed); Assert.NotNull(error);
+        Assert.Null(parsed);
+        Assert.NotNull(error);
     }
 
     [Fact]
-    public void Parse_IdentityOutside48BitRange_IsCallerError()
-        => Assert.Throws<ArgumentOutOfRangeException>(() => parser.Parse(RecordFixture.Record(), FileReference.MaximumRecordIndex + 1));
+    public void Parse_IdentityOutside48BitRange_IsCallerError() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            parser.Parse(RecordFixture.Record(), FileReference.MaximumRecordIndex + 1)
+        );
 
     [Fact]
     public void TryParse_DeterministicMutations_NeverLeaksBoundsOrOverflowExceptions()
@@ -224,11 +308,13 @@ public sealed class MftRecordParserTests
         for (int i = 0; i < 5000; i++)
         {
             byte[] bytes = (byte[])valid.Clone();
-            for (int j = 0; j < 1 + i % 8; j++) bytes[random.Next(bytes.Length)] = (byte)random.Next(256);
+            for (int j = 0; j < 1 + i % 8; j++)
+                bytes[random.Next(bytes.Length)] = (byte)random.Next(256);
             bool success = parser.TryParse(bytes, 42, out var record, out var error);
             Assert.Equal(success, record is not null);
             Assert.Equal(!success, error is not null);
-            if (error is not null) Assert.InRange(error.Offset, 0, bytes.Length);
+            if (error is not null)
+                Assert.InRange(error.Offset, 0, bytes.Length);
         }
     }
 }

@@ -22,22 +22,41 @@ public sealed class PublicCorpusTests
         var token = TestContext.Current.CancellationToken;
         string manifestPath = Path.Combine(AppContext.BaseDirectory, "nist-corpus.json");
         using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath, token));
-        var expected = manifest.RootElement.GetProperty("Cases").EnumerateArray()
+        var expected = manifest
+            .RootElement.GetProperty("Cases")
+            .EnumerateArray()
             .Single(c => c.GetProperty("Id").GetString() == id);
         await using var stream = File.OpenRead(Path.Combine(root, id, "mft.raw"));
         string hash = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, token));
         Assert.Equal(expected.GetProperty("MftSha256").GetString(), hash);
         stream.Position = 0;
         var records = new List<MftRecord>();
-        long active = 0, inactive = 0, empty = 0;
-        await foreach (var result in new MftRecordReader(expected.GetProperty("RecordSize").GetInt32())
-            .ReadAsync(stream, cancellationToken: token))
+        long active = 0,
+            inactive = 0,
+            empty = 0;
+        await foreach (
+            var result in new MftRecordReader(
+                expected.GetProperty("RecordSize").GetInt32()
+            ).ReadAsync(stream, cancellationToken: token)
+        )
         {
-            Assert.True(result.Status != MftRecordReadStatus.Invalid,
-                $"{id}, record {result.RecordIndex}: {result.Error?.Message}");
-            if (result.Status == MftRecordReadStatus.Uninitialized) { empty++; continue; }
+            Assert.True(
+                result.Status != MftRecordReadStatus.Invalid,
+                $"{id}, record {result.RecordIndex}: {result.Error?.Message}"
+            );
+            if (result.Status == MftRecordReadStatus.Uninitialized)
+            {
+                empty++;
+                continue;
+            }
             var record = Assert.IsType<MftRecord>(result.Record);
-            if (record.IsInUse) { active++; records.Add(record); } else inactive++;
+            if (record.IsInUse)
+            {
+                active++;
+                records.Add(record);
+            }
+            else
+                inactive++;
         }
         Assert.Equal(expected.GetProperty("Active").GetInt64(), active);
         Assert.Equal(expected.GetProperty("Inactive").GetInt64(), inactive);
@@ -49,18 +68,31 @@ public sealed class PublicCorpusTests
         foreach (var record in records.Where(r => !r.IsExtension && r.Reference.RecordIndex >= 16))
         {
             // These selected corpora must not require external ATTRIBUTE_LIST payloads.
-            Assert.DoesNotContain(record.Attributes,
-                a => a is NonResidentAttribute && a.Type == NtfsAttributeTypes.AttributeList);
+            Assert.DoesNotContain(
+                record.Attributes,
+                a => a is NonResidentAttribute && a.Type == NtfsAttributeTypes.AttributeList
+            );
             NtfsFile file;
-            try { file = assembler.Assemble(record, records.Where(r => r.IsExtension && r.BaseReference == record.Reference)); }
+            try
+            {
+                file = assembler.Assemble(
+                    record,
+                    records.Where(r => r.IsExtension && r.BaseReference == record.Reference)
+                );
+            }
             catch (NtfsAssemblyException e)
             {
-                Assert.Fail($"{id}, record {record.Reference.RecordIndex}: {e.Message}; " +
-                    JsonSerializer.Serialize(record.Attributes.OfType<NonResidentAttribute>()));
+                Assert.Fail(
+                    $"{id}, record {record.Reference.RecordIndex}: {e.Message}; "
+                        + JsonSerializer.Serialize(record.Attributes.OfType<NonResidentAttribute>())
+                );
                 throw;
             }
             Assert.Equal(record.Reference, file.Reference);
-            Assert.All(file.DataStreams, data => Assert.True(data.LogicalBytes >= 0 && data.AllocatedBytes >= 0));
+            Assert.All(
+                file.DataStreams,
+                data => Assert.True(data.LogicalBytes >= 0 && data.AllocatedBytes >= 0)
+            );
         }
     }
 }
