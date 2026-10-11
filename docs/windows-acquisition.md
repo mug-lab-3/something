@@ -28,6 +28,8 @@ WriteFile、修復、ロック、マウント解除、USN Journalの作成・削
 ボリューム入力はドライブ文字（例: C:）に限定し、PhysicalDriveやUNCは拒否する。
 ファイル照合用ハンドルはアクセス権0のメタデータ専用。内容は読まず、
 GetFileInformationByHandleでサイズ・参照・更新時刻等を観測する。
+--fileの独立照合では同じハンドルでGetFileInformationByHandleExのFileStandardInfo (1)と
+FileCompressionInfo (8)を照会する。属性変更APIは使用しない。
 CLIは名前・パス・rawデータを出力せず、DBや履歴を作成しない。
 ファイルAPIの統合テストは自身で作成した一時ファイルだけを使用・削除する。
 
@@ -136,7 +138,19 @@ dotnet run --project tools/Something.LiveInspect --no-build -- C: --file "$PWD\R
 ```
 
 --fileは同じハンドルの観測前後の参照・サイズ・更新時刻等も比較する。
-比較対象は無名DATAの論理サイズで、名前付きストリームは含めない。
+比較対象は無名DATAの論理サイズと割り当て容量で、名前付きストリームは含めない。
+Windows側の割り当て容量は、通常ファイルにはFileStandardInfo.AllocationSizeを使い、
+Compressed / Sparse属性または非ゼロの圧縮形式が観測された場合はFileCompressionInfo.CompressedFileSizeを使う。
+allocation-sourceで使用したAPI情報種別も出力する。両APIの値を混同せず個別に保持する。
+MS-FSAのFileCompressionInformationの定義だけから通常ファイルのWin32 API返却を
+一律に物理割り当て容量と扱った初期実装は、実機で論理サイズと同値が返るケースを見落としていた。
+GetCompressedFileSizeのWin32説明も、非圧縮・非SparseではGetFileSizeと同値になると区別する。
+解析前後でWindowsStorageInfo（標準情報・圧縮情報・属性）も比較し、変化があれば未解決とする。
+標準情報の論理サイズと別取得の論理サイズが異なる場合や削除待ちも未解決として扱う。
+API失敗を0バイトや一致へ置き換えない。圧縮形式とshift値はそのまま保持し、shift演算は行わない。
+論理サイズと容量の一致はlogical-match / allocated-matchで別々に表示し、両方一致したときだけ
+match=Trueとする。常駐DATAの解析側割り当て容量は従来どおり0であり、MFT等の管理領域を含めない。
+この追加API照会は--fileだけで使用し、--scanの取得回数・途中出力は増やさない。
 割り当て容量は解析値を表示するだけでWindows APIとの照合済みとは扱わない。
 フォルダや異なるボリュームへのリンクは比較を拒否する。
 不一致は解析バグと断定せず、観測間の変更の可能性も残す。
@@ -151,7 +165,7 @@ dotnet run --project tools/Something.LiveInspect --no-build -- C: --file "$PWD\R
 resident DATAのAllocatedBytes=0は追加DATAクラスタの割り当てが0という意味で、
 MFT等を含むファイルの総占有量ではない。
 
-終了コード: 0は範囲の処理完了または論理サイズ一致、1は未解決または不一致、
+終了コード: 0は範囲の処理完了または論理サイズ・割り当て容量の両方一致、1は未解決または不一致、
 2は入力・権限・I/Oエラー、130はキャンセル。範囲検査のMissingは報告するが、
 それだけでは異常終了しない。0もボリューム全体の正確さの証明ではない。
 
@@ -201,6 +215,11 @@ raw取得・内容照合・参照元再検証・ファイル結合の経路が�
 - [FSCTL_GET_NTFS_FILE_RECORD](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_ntfs_file_record)
 - [NTFS_FILE_RECORD_OUTPUT_BUFFER](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-ntfs_file_record_output_buffer)
 - [GetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle)
+- [GetFileInformationByHandleEx](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex)
+- [FILE_COMPRESSION_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_compression_info)
+- [FILE_STANDARD_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_standard_info)
+- [GetCompressedFileSizeW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getcompressedfilesizew)
+- [MS-FSA: FileCompressionInformation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fsa/484bc722-6440-49a0-982a-9ba27cddf513)
 - [MFTの予約管理レコード](https://learn.microsoft.com/en-us/windows/win32/devnotes/master-file-table)
 - [ReadFile](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfile)
 - [SetFilePointerEx](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfilepointerex)

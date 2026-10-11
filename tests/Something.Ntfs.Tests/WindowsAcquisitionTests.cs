@@ -6,6 +6,47 @@ namespace Something.Ntfs.Tests;
 
 public sealed class WindowsAcquisitionTests
 {
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(4294967338L)]
+    [InlineData(long.MaxValue)]
+    public void StorageInfo_ValidResponse_Preserves64BitAllocationAndUninterpretedFields(long size)
+    {
+        byte[] bytes = new byte[16];
+        RecordFixture.I64(bytes, 0, size);
+        RecordFixture.U16(bytes, 8, ushort.MaxValue);
+        bytes[10] = 255;
+        bytes[11] = 254;
+        bytes[12] = 253;
+        bytes[13] = 252; // reserved bytes must not become shifts or sizes
+
+        var info = WindowsCompressionInfo.Decode(bytes);
+
+        Assert.Equal(size, info.ReportedBytes);
+        Assert.Equal(ushort.MaxValue, info.CompressionFormat);
+        Assert.Equal(255, info.CompressionUnitShift);
+        Assert.Equal(254, info.ChunkShift);
+        Assert.Equal(253, info.ClusterShift);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(15)]
+    [InlineData(17)]
+    public void StorageInfo_InvalidLength_Rejects(int length) =>
+        Assert.Throws<InvalidDataException>(() => WindowsCompressionInfo.Decode(new byte[length]));
+
+    [Theory]
+    [InlineData(-1L)]
+    [InlineData(long.MinValue)]
+    public void StorageInfo_NegativeAllocation_Rejects(long size)
+    {
+        byte[] bytes = new byte[16];
+        RecordFixture.I64(bytes, 0, size);
+
+        Assert.Throws<InvalidDataException>(() => WindowsCompressionInfo.Decode(bytes));
+    }
+
     [Fact]
     public void FileInfo_ValidMetadata_PreservesUnsignedIdentityAnd64BitSize()
     {
@@ -72,11 +113,95 @@ public sealed class WindowsAcquisitionTests
             Assert.Equal(12345, first.LogicalBytes);
             Assert.False(first.IsDirectory);
             Assert.Equal(first, second);
+            var storage = file.ObserveStorage(TestContext.Current.CancellationToken);
+            if (!storage.UsesCompressionInfo)
+                Assert.True(storage.AllocatedBytes > first.LogicalBytes);
+            Assert.Equal(first.LogicalBytes, storage.Standard.LogicalBytes);
+            Assert.False(storage.Standard.IsDirectory);
+            Assert.Equal(storage, file.ObserveStorage(TestContext.Current.CancellationToken));
+            using var cancelled = new CancellationTokenSource();
+            cancelled.Cancel();
+            Assert.ThrowsAny<OperationCanceledException>(() =>
+            {
+                if (OperatingSystem.IsWindows())
+                    file.ObserveStorage(cancelled.Token);
+            });
+            file.Dispose();
+            Assert.Throws<ObjectDisposedException>(() =>
+            {
+                if (OperatingSystem.IsWindows())
+                    file.ObserveStorage(TestContext.Current.CancellationToken);
+            });
         }
         finally
         {
             File.Delete(path);
         }
+    }
+
+    [Theory]
+    [InlineData(0u, 0, 8192L)]
+    [InlineData(0x80u, 0, 8192L)]
+    [InlineData(0x200u, 0, 5115L)]
+    [InlineData(0x800u, 2, 5115L)]
+    [InlineData(0u, 2, 5115L)]
+    public void StorageSelection_OrdinaryAllocationIsDistinctFromCompressionReportedSize(
+        uint attributes,
+        ushort format,
+        long expected
+    )
+    {
+        var observation = new WindowsStorageInfo(
+            new(8192, 5115, 1, false, false),
+            new(5115, format, 0, 0, 0),
+            attributes
+        );
+
+        Assert.Equal(expected, observation.AllocatedBytes);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(23)]
+    [InlineData(25)]
+    public void StandardInfo_InvalidLength_Rejects(int length) =>
+        Assert.Throws<InvalidDataException>(() => WindowsStandardInfo.Decode(new byte[length]));
+
+    [Theory]
+    [InlineData(0, -1L)]
+    [InlineData(8, long.MinValue)]
+    public void StandardInfo_NegativeSizes_Rejects(int offset, long value)
+    {
+        byte[] bytes = new byte[24];
+        RecordFixture.I64(bytes, offset, value);
+        Assert.Throws<InvalidDataException>(() => WindowsStandardInfo.Decode(bytes));
+    }
+
+    [Theory]
+    [InlineData(20)]
+    [InlineData(21)]
+    public void StandardInfo_InvalidBoolean_Rejects(int offset)
+    {
+        byte[] bytes = new byte[24];
+        bytes[offset] = 2;
+        Assert.Throws<InvalidDataException>(() => WindowsStandardInfo.Decode(bytes));
+    }
+
+    [Fact]
+    public void StandardInfo_ValidFields_PreservesAllocationAndDeletionState()
+    {
+        byte[] bytes = new byte[24];
+        RecordFixture.I64(bytes, 0, 4294967296L);
+        RecordFixture.I64(bytes, 8, 5115);
+        RecordFixture.U32(bytes, 16, 2);
+        bytes[20] = 1;
+        bytes[21] = 1;
+        bytes[22] = 255; // trailing padding is not a BOOLEAN field
+
+        Assert.Equal(
+            new WindowsStandardInfo(4294967296L, 5115, 2, true, true),
+            WindowsStandardInfo.Decode(bytes)
+        );
     }
 
     [Fact]

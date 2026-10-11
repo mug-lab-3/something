@@ -48,6 +48,7 @@ try
         var before = file.Observe(cancellation.Token);
         if (before.IsDirectory)
             throw new ArgumentException("File comparison requires a regular file.");
+        var storageBefore = file.ObserveStorage(cancellation.Token);
         using var volume = WindowsMftRecordSource.Open(args[0]);
         if (before.VolumeSerialNumber != (uint)(volume.Volume.SerialNumber & uint.MaxValue))
             throw new InvalidDataException("File and selected volume identifiers differ.");
@@ -67,8 +68,20 @@ try
             return 1;
         }
         var assembled = result.File;
+        var storageAfter = file.ObserveStorage(cancellation.Token);
         var after = file.Observe(cancellation.Token);
-        if (before != after)
+        if (
+            before != after
+            || storageBefore != storageAfter
+            || storageBefore.Standard.LogicalBytes != before.LogicalBytes
+            || storageAfter.Standard.LogicalBytes != after.LogicalBytes
+            || storageBefore.FileAttributes != before.FileAttributes
+            || storageAfter.FileAttributes != after.FileAttributes
+            || storageBefore.Standard.DeletePending
+            || storageAfter.Standard.DeletePending
+            || storageBefore.Standard.IsDirectory
+            || storageAfter.Standard.IsDirectory
+        )
         {
             Console.WriteLine("File comparison unresolved: metadata changed during observation.");
             return 1;
@@ -79,9 +92,11 @@ try
             Console.WriteLine("File comparison unresolved: unnamed DATA stream was not resolved.");
             return 1;
         }
-        bool match = stream.LogicalBytes == after.LogicalBytes;
+        bool logicalMatch = stream.LogicalBytes == after.LogicalBytes;
+        bool allocatedMatch = stream.AllocatedBytes == storageAfter.AllocatedBytes;
+        bool match = logicalMatch && allocatedMatch;
         Console.WriteLine(
-            $"Record {before.Reference.RecordIndex}: NTFS-logical={stream.LogicalBytes}; Windows-logical={after.LogicalBytes}; DATA-allocated={stream.AllocatedBytes}; match={match}"
+            $"Record {before.Reference.RecordIndex}: NTFS-logical={stream.LogicalBytes}; Windows-logical={after.LogicalBytes}; logical-match={logicalMatch}; DATA-allocated={stream.AllocatedBytes}; Windows-allocated={storageAfter.AllocatedBytes}; allocation-source={(storageAfter.UsesCompressionInfo ? "FileCompressionInfo" : "FileStandardInfo")}; allocated-match={allocatedMatch}; match={match}"
         );
         Console.WriteLine("Optimistic size comparison; a mismatch may reflect concurrent changes.");
         return match ? 0 : 1;
