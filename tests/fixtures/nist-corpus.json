@@ -20,6 +20,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 9,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "01",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-01-ntfs.dd.bz2"
                   },
@@ -38,6 +41,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 10,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "02",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-02-ntfs.dd.bz2"
                   },
@@ -56,6 +62,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 12,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "03",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-03-ntfs.dd.bz2"
                   },
@@ -74,6 +83,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 19,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "04",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-04-ntfs.dd.bz2"
                   },
@@ -92,6 +104,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 13,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "11-mft",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-11-mft-ntfs.dd.bz2"
                   },
@@ -110,6 +125,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 13,
+                      "CompressedStreams": 6,
+                      "SparseStreams": 0,
                       "Id":  "11-compress",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-11-compress-ntfs.dd.bz2"
                   },
@@ -128,6 +146,9 @@
                       "Errors":  [
 
                                  ],
+                      "IndependentStreams": 52,
+                      "CompressedStreams": 0,
+                      "SparseStreams": 0,
                       "Id":  "17",
                       "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-17-ntfs.dd.bz2"
                   }

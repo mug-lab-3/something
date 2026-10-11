@@ -2,6 +2,15 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "DiscUtils.Ntfs": {
+        "type": "Direct",
+        "requested": "[0.16.13, )",
+        "resolved": "0.16.13",
+        "contentHash": "K7e2KJ7TjDI566SXBnLBfmRPWDqMjb/0T6UMdY+BzyWfiQJVpBQ0BMO89kuvknbz17zTSi1TDLiT9GOOJEpUCg==",
+        "dependencies": {
+          "DiscUtils.Core": "0.16.13"
+        }
+      },
       "MFT": {
         "type": "Direct",
         "requested": "[2026.5.1, )",
@@ -32,6 +41,19 @@
           "xunit.v3.assert": "[4.0.2]",
           "xunit.v3.core.mtp-v2": "[4.0.2]"
         }
+      },
+      "DiscUtils.Core": {
+        "type": "Transitive",
+        "resolved": "0.16.13",
+        "contentHash": "TU/Ns5RMa3060K7AsSDqG94/H7eaWaz1XoYuCUur40Mg+t0/ubtKqxCffkoiB1e/cFMGvHL0evFoY6uDL9Ocmw==",
+        "dependencies": {
+          "DiscUtils.Streams": "0.16.13"
+        }
+      },
+      "DiscUtils.Streams": {
+        "type": "Transitive",
+        "resolved": "0.16.13",
+        "contentHash": "BSrywAX2mmvt6j00u6VQYQLtxc6jDniK2aP4p0q20bbTGXImtW4N26eUZYKfkW9aj6XLaqISFgtWfssKURixeA=="
       },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
