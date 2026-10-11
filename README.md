@@ -1,5 +1,7 @@
 # Something
 
+容量履歴の保存にはSQLite + Microsoft.Data.Sqliteを採用します。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存層はまだ実装していません。
+
 Everythingをもじった、Windows向けのディスク使用量・フォルダ肥大化分析アプリです。
 
 現在の大容量フォルダだけでなく、徐々に容量が増えているフォルダを見つけることを重視します。
