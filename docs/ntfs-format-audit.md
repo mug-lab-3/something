@@ -23,19 +23,19 @@
 | mapping pairsを属性ごとに初期化して解読する | 公開仕様: ATTRIBUTE_RECORD_HEADERの解読手順、実装知見 | 維持。signed LCN差分、hole表現、終端、範囲を検証する |
 | FSCTLで返された番号を起点に降順列挙する | 公開仕様: FSCTL_GET_NTFS_FILE_RECORD | 維持。空き範囲を歴史的削除と推定しない |
 | Windows返却をrawディスク画像と同じUSA保存値基準で検査しない | 公開仕様の書き込み／復元手順からの推論と実機観測 | WindowsDecodedの取得契約として分離。APIの全条件での挙動保証やディスク整合性の証明とは扱わない |
-| 全DATA extentのflagsが同じでなければ結合を拒否する | 保守的な実装方針 | 一律のNTFS仕様条件である根拠は確認できていない。extentごとの情報とストリーム全体の設定の分離が必要 |
-| 先頭が圧縮／Sparseかつ圧縮単位4、継続が0なら許可する | 先頭extentから設定を取得するOSS実装と実機観測 | 限定的な互換処理。4だけを特別扱いする一般規則が公開仕様から導けたわけではない。モデルを見直す対象 |
+| 全DATA extentのflagsが同じでなければ結合を拒否する | 保守的な実装方針 | 一律のNTFS仕様条件という根拠は未確立。安定した観測でもUnsupportedを返し、破損とは断定しない |
+| 圧縮単位をoffset 34の1 byteとして読み、予約5 byteを別に保持する | NTFS3 v6.12、ntfs-3g 2022.10.3の構造定義 | U16読み取りを撤去。予約byteが非ゼロでも圧縮単位へ混ぜず、入力を変更しない |
+| ストリームの圧縮単位は先頭extentだけから取得する | NTFS3 v6.12 attr_is_frame_compressedの明示的な有効範囲、ntfs-3g属性初期化 | 4→0の個別例外と継続値の一致要求を撤去。継続値は元の属性として保持する |
 | 全物理runのクラスタ数を合計し、先頭の容量欄と照合する | 実装知見、容量検証方針 | 一致は必要な検証だが、flagsや容量欄の解釈が正しいことの独立証明ではない |
 | 最大レコード長64 KiB、リスト1 MiB、ファイル128レコード等 | 実装方針: 資源上限 | NTFS仕様上の上限ではない。超過は容量不明として明示する |
 
 ## 監査で見つかった追加の確認点
 
-1. MicrosoftのATTRIBUTE_RECORD_HEADERはoffset 34からの6 byteをReservedとして公開しており、
-   圧縮単位の詳細をこの公開構造だけから確定できない。ntfs-3gのlayoutはoffset 34を1 byteの
-   compression_unit、その後を5 byteの予約領域としている。現パーサーはU16で読んでおり、
-   予約領域の1 byteを圧縮単位へ混ぜる可能性がある。フィールド幅と予約領域の扱いを見直す対象。
-2. flagsのextent間差をすべて破損相当として扱う根拠は未確立。現在のInvalidAssemblyは
-   当実装が結合できなかったことを示すが、形式未対応と確定的な構造不正をより明確に分ける必要がある。
+1. Microsoftの公開構造ではoffset 34以降はReserved。幅と有効範囲は下記の固定版OSSを
+   根拠に修正した。Microsoftの公開仕様から圧縮形式全体が確定したとは扱わない。
+2. flagsのextent間差の意味はまだ未確定。NtfsAssemblyException.Kindとライブ取得の
+   Unsupportedで構造不正と区別する。VCN不連続・容量不一致は引き続きInvalidAssembly。
+   どちらの失敗でも容量を返さず、変更の可能性を再取得で検査してから分類する。
 3. 合計が一致しても、個々のDATAの物理LCNが実ボリュームの範囲内にある証明にはならない。
    ATTRIBUTE_LISTのraw取得ではボリューム境界を検証するが、純粋なDATA結合器は
    bytesPerClusterしか受け取らない。ボリューム境界を確認する責務を取得・容量検証層へ明示する必要がある。
@@ -54,13 +54,35 @@
 独立照合を組み合わせ、どこまでが確認済みかを各規則に対応づける。
 本番ボリュームへの書き込み・修復・強制flushは行わない。
 
+## 2026-10-12の実装照合
+
+参照版はLinux v6.12とntfs-3g 2022.10.3。可変のmasterではなく以下のタグ付き資料を基準とする。
+
+| 対象 | 参照箇所 | 確認した事実と採用範囲 |
+|---|---|---|
+| フィールド幅 | NTFS3 ntfs.h: ATTR_NONRESIDENT、ntfs-3g layout.h: ATTR_RECORD | 両者ともoffset 34は1 byte、35..39は予約5 byte。パーサーは別々の所有する値として保持 |
+| 圧縮単位の有効範囲 | NTFS3 attrib.c: attr_is_frame_compressed（1434..1457）、attr_load_runs_vcn（1229..1267） | 圧縮単位はprimary segmentだけが有効。継続のmappingはVCNとmapping pairsから取得。結合後のStorageには先頭値を設定 |
+| 初期化 | ntfs-3g attrib.c: ntfs_attr_open、ntfs_attr_init | 最初の属性からサイズと圧縮設定を初期化。圧縮形式の対応制限は実装固有であり、すべてをパーサーの構造制約へ転用しない |
+
+容量解析は圧縮単位を使ったshiftや解凍を行わない。パーサーはbyteの全範囲を保持し、
+値を保持できることを、その圧縮形式の解凍対応や構造全体の妥当性保証とは扱わない。
+結合器は全extentの物理run合計・論理容量・VCN連続性を検証する。
+Storageと元の各NonResidentAttributeを分離し、継続値を先頭値で上書きしない。
+
+テストは予約領域非ゼロ、byte境界、継続値の省略／相違、VCN欠落、容量不整合、
+フラグ差の未対応分類、分類前の変更検出を含む。
+既存のSHA-256固定NIST公開データ7ケースも再検証する。
+このコーパス検証はWindowsの実ボリュームでの割り当て容量照合を代替しない。
+
 ## 一次資料
 
 - [Microsoft: MULTI_SECTOR_HEADER](https://learn.microsoft.com/en-us/windows/win32/devnotes/multi-sector-header)
 - [Microsoft: ATTRIBUTE_RECORD_HEADER](https://learn.microsoft.com/en-us/windows/win32/devnotes/attribute-record-header)
 - [Microsoft: FSCTL_GET_NTFS_FILE_RECORD](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_ntfs_file_record)
-- [ntfs-3g: layout.h](https://github.com/tuxera/ntfs-3g/blob/master/include/ntfs-3g/layout.h)
-- [ntfs-3g: attrib.c](https://github.com/tuxera/ntfs-3g/blob/master/libntfs-3g/attrib.c)
+- [Linux NTFS3 v6.12: ntfs.h](https://github.com/torvalds/linux/blob/v6.12/fs/ntfs3/ntfs.h)
+- [Linux NTFS3 v6.12: attrib.c](https://github.com/torvalds/linux/blob/v6.12/fs/ntfs3/attrib.c)
+- [ntfs-3g 2022.10.3: layout.h](https://github.com/tuxera/ntfs-3g/blob/2022.10.3/include/ntfs-3g/layout.h)
+- [ntfs-3g 2022.10.3: attrib.c](https://github.com/tuxera/ntfs-3g/blob/2022.10.3/libntfs-3g/attrib.c)
 
 ## OSS実装の参照方針
 

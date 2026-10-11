@@ -6,6 +6,31 @@ public sealed class MftRecordParserTests
 {
     private readonly MftRecordParser parser = new();
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    [InlineData(16)]
+    [InlineData(255)]
+    public void Parse_CompressionUnitAndReservedBytes_AreSeparateOwnedFields(byte unit)
+    {
+        byte[] attribute = RecordFixture.NonResident();
+        attribute[34] = unit;
+        byte[] reserved = [0xFF, 0x91, 0x52, 0x33, 0x14];
+        reserved.CopyTo(attribute, 35);
+        byte[] bytes = RecordFixture.Record([attribute]);
+        byte[] original = bytes.ToArray();
+
+        var parsed = Assert.IsType<NonResidentAttribute>(
+            Assert.Single(parser.Parse(bytes, 42).Attributes)
+        );
+
+        Assert.Equal(unit, parsed.CompressionUnit);
+        Assert.Equal(reserved, parsed.ReservedHeaderBytes);
+        Assert.Equal(original, bytes);
+        Array.Clear(bytes);
+        Assert.Equal(reserved, parsed.ReservedHeaderBytes);
+    }
+
     [Fact]
     public void Parse_ValidRecord_PreservesIdentityAndCurrentDataSizes()
     {

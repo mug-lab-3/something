@@ -245,6 +245,7 @@ public sealed class LiveMftFileReader
 
             NtfsFile? file = null;
             string? assemblyError = null;
+            var assemblyStatus = LiveFileReadStatus.InvalidAssembly;
             try
             {
                 file = assembler.Assemble(
@@ -256,6 +257,8 @@ public sealed class LiveMftFileReader
             catch (Exception error) when (error is NtfsAssemblyException or NtfsParseException)
             {
                 assemblyError = error.Message;
+                if (error is NtfsAssemblyException { Kind: NtfsAssemblyFailureKind.Unsupported })
+                    assemblyStatus = LiveFileReadStatus.Unsupported;
             }
             // Even an assembly error may be caused by mixing observations of a changing file.
             // Validate its inputs before classifying the structure as unresolved/invalid.
@@ -316,13 +319,7 @@ public sealed class LiveMftFileReader
             cancellationToken.ThrowIfCancellationRequested();
             return assemblyError is null
                 ? new(LiveFileReadStatus.ObservedUnchanged, file, attempt)
-                : new(
-                    LiveFileReadStatus.InvalidAssembly,
-                    null,
-                    attempt,
-                    recordIndex,
-                    Error: assemblyError
-                );
+                : new(assemblyStatus, null, attempt, recordIndex, Error: assemblyError);
         }
         return new(LiveFileReadStatus.ChangedDuringRead, null, maximumAttempts, changedIndex);
     }

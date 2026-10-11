@@ -213,9 +213,9 @@ public sealed class MftRecordParser
         long lowest = view.I64(16),
             highest = view.I64(24);
         int pairsOffset = view.U16(32);
-        ushort compressionUnit = view.U16(34);
-        if (compressionUnit > 16)
-            throw view.Error("Invalid compression unit", 34);
+        // NTFS3 v6.12 and ntfs-3g 2022.10.3 describe a byte followed by five reserved bytes.
+        // Preserve the value; capacity accounting does not decompress or shift by this field.
+        byte compressionUnit = view.U8(34);
         if (pairsOffset < headerEnd)
             throw view.Error("Mapping pairs overlap attribute header/name", 32);
         view.Require(pairsOffset, 1);
@@ -253,7 +253,10 @@ public sealed class MftRecordParser
             compressionUnit,
             sizes,
             runs
-        );
+        )
+        {
+            ReservedHeaderBytes = ImmutableArray.Create(view.Slice(35, 5).ToArray()),
+        };
     }
 
     private static void ValidateKnownValue(uint type, ReadOnlySpan<byte> value, int origin)

@@ -2,7 +2,22 @@ using System.Collections.Immutable;
 
 namespace Something.Ntfs;
 
-public sealed class NtfsAssemblyException(string message) : Exception(message);
+public enum NtfsAssemblyFailureKind
+{
+    InvalidStructure,
+    Unsupported,
+}
+
+public sealed class NtfsAssemblyException(
+    string message,
+    NtfsAssemblyFailureKind kind = NtfsAssemblyFailureKind.InvalidStructure
+) : Exception(message)
+{
+    public NtfsAssemblyFailureKind Kind { get; } = kind;
+}
+
+/// <summary>Settings reported by the first nonresident extent, not continuation header values.</summary>
+public sealed record NtfsStreamStorage(NtfsAttributeFlags Flags, byte CompressionUnit);
 
 /// <summary>Reported stream sizes, not the total space consumed by NTFS metadata.</summary>
 public sealed record NtfsDataStream(
@@ -11,7 +26,10 @@ public sealed record NtfsDataStream(
     long LogicalBytes,
     long AllocatedBytes,
     ImmutableArray<DataRun> Runs
-);
+)
+{
+    public NtfsStreamStorage? Storage { get; init; }
+}
 
 public sealed record NtfsFile(
     FileReference Reference,
@@ -192,15 +210,11 @@ public sealed class MftFileAssembler(int bytesPerCluster)
                 );
             if (extent.Flags != extents[0].Flags)
                 throw new NtfsAssemblyException(
-                    $"DATA extent flags mismatch: first={extents[0].Flags}; observed={extent.Flags}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}."
+                    $"DATA extent flags mismatch is not supported: first={extents[0].Flags}; observed={extent.Flags}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}.",
+                    NtfsAssemblyFailureKind.Unsupported
                 );
-            if (
-                extent.CompressionUnit != extents[0].CompressionUnit
-                && !IsOmittedContinuationCompressionUnit(extents[0], extent)
-            )
-                throw new NtfsAssemblyException(
-                    $"DATA extent compression unit mismatch: first={extents[0].CompressionUnit}; observed={extent.CompressionUnit}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}."
-                );
+            // NTFS3 v6.12 attr_is_frame_compressed uses only the primary segment's unit.
+            // Continuation units are preserved as observations, not stream settings.
             nextVcn = checked(extent.HighestVcn + 1);
             runs.AddRange(extent.Runs);
         }
@@ -233,16 +247,9 @@ public sealed class MftFileAssembler(int bytesPerCluster)
             sizes.LogicalBytes,
             sizes.PhysicalAllocatedBytes ?? sizes.AllocatedBytes,
             runs.ToImmutable()
-        );
+        )
+        {
+            Storage = new(extents[0].Flags, extents[0].CompressionUnit),
+        };
     }
-
-    // Observed Windows compatibility case, not a complete NTFS extent specification.
-    // Its field scope and generalization remain under review in docs/ntfs-format-audit.md.
-    private static bool IsOmittedContinuationCompressionUnit(
-        NonResidentAttribute first,
-        NonResidentAttribute continuation
-    ) =>
-        continuation is { LowestVcn: > 0, CompressionUnit: 0 }
-        && first.CompressionUnit == 4
-        && (first.Flags & (NtfsAttributeFlags.Compressed | NtfsAttributeFlags.Sparse)) != 0;
 }

@@ -36,6 +36,7 @@ public sealed class CompressedExtentAssemblyTests
         Assert.Equal(65536, stream.AllocatedBytes);
         Assert.Equal(4, stream.Runs.Length);
         Assert.Equal(named ? "synthetic-stream" : "", stream.Name);
+        Assert.Equal(new NtfsStreamStorage(flags, 4), stream.Storage);
         var extents = result.File.Attributes.OfType<NonResidentAttribute>().ToArray();
         Assert.Equal(4, extents[0].CompressionUnit);
         Assert.Equal(0, extents[1].CompressionUnit);
@@ -57,45 +58,16 @@ public sealed class CompressedExtentAssemblyTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
     [InlineData(6)]
     [InlineData(7)]
     [InlineData(8)]
     public async Task ReadAsync_OmittedUnit_DoesNotHideOtherConflictsOrMissingExtents(int scenario)
     {
-        var flags = scenario == 4 ? (NtfsAttributeFlags)0 : NtfsAttributeFlags.Compressed;
         var (baseBytes, extensionBytes) = Fixture(
-            flags,
-            firstUnit: scenario == 2 ? (ushort)0
-                : scenario == 3 ? (ushort)8
-                : (ushort)4,
-            nextUnit: scenario == 0 ? (ushort)3
-                : scenario == 1 ? (ushort)5
-                : scenario == 2 ? (ushort)4
-                : (ushort)0,
+            NtfsAttributeFlags.Compressed,
             physical: scenario == 6 ? 65537 : 65536,
             logical: scenario == 7 ? 200000 : 100000
         );
-        if (scenario == 5)
-        {
-            // Continuation flags remain part of the stream's compatibility contract.
-            var parser = new MftRecordParser();
-            var baseRecord = parser.Parse(baseBytes, 42);
-            var extension = parser.Parse(extensionBytes, 43);
-            var attribute = Assert.IsType<NonResidentAttribute>(
-                Assert.Single(extension.Attributes)
-            );
-            extension = extension with { Attributes = [attribute with { Flags = 0 }] };
-            Assert.Throws<NtfsAssemblyException>(() =>
-                new MftFileAssembler(4096).Assemble(baseRecord, [extension])
-            );
-            return;
-        }
         var source = new Source(baseBytes, scenario == 8 ? null : extensionBytes);
 
         var result = await new LiveMftFileReader(4096).ReadAsync(
@@ -109,6 +81,74 @@ public sealed class CompressedExtentAssemblyTests
             result.Status
         );
         Assert.Null(result.File);
+    }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(3, 255)]
+    [InlineData(4, 3)]
+    [InlineData(8, 5)]
+    [InlineData(16, 0)]
+    public async Task ReadAsync_ContinuationUnitIsNotAStreamSetting(byte firstUnit, byte nextUnit)
+    {
+        var (baseBytes, extensionBytes) = Fixture(
+            NtfsAttributeFlags.Compressed,
+            firstUnit: firstUnit,
+            nextUnit: nextUnit
+        );
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            new Source(baseBytes, extensionBytes),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        var file = Assert.IsType<NtfsFile>(result.File);
+        var stream = Assert.Single(file.DataStreams);
+        Assert.Equal(firstUnit, stream.Storage!.CompressionUnit);
+        Assert.Equal(65536, stream.AllocatedBytes);
+        Assert.Equal(
+            nextUnit,
+            file.Attributes.OfType<NonResidentAttribute>().Last().CompressionUnit
+        );
+    }
+
+    [Fact]
+    public async Task ReadAsync_StableFlagsDifference_ReturnsUnsupportedWithoutCapacity()
+    {
+        var (baseBytes, extensionBytes) = Fixture(NtfsAttributeFlags.Compressed);
+        // Raw flags are different, but this alone does not prove an invalid NTFS file.
+        RecordFixture.U16(extensionBytes, 56 + 12, 0);
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            new Source(baseBytes, extensionBytes),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.Unsupported, result.Status);
+        Assert.Contains("flags mismatch", result.Error);
+        Assert.Null(result.File);
+    }
+
+    [Fact]
+    public async Task ReadAsync_FlagsChangeDuringRevalidation_RetriesBeforeReportingUnsupported()
+    {
+        var (baseBytes, validExtension) = Fixture(NtfsAttributeFlags.Compressed);
+        byte[] earlierExtension = validExtension.ToArray();
+        RecordFixture.U16(earlierExtension, 56 + 12, 0);
+        var source = new ChangingSource(baseBytes, earlierExtension, validExtension);
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        Assert.Equal(2, result.Attempts);
+        Assert.Equal(65536, Assert.Single(result.File!.DataStreams).AllocatedBytes);
     }
 
     [Theory]
@@ -175,10 +215,30 @@ public sealed class CompressedExtentAssemblyTests
             CancellationToken cancellationToken
         )
         {
+            cancellationToken.ThrowIfCancellationRequested();
             byte[]? bytes = recordIndex == 42 ? baseBytes : extensionBytes;
             return ValueTask.FromResult(
                 bytes is null ? (ReadOnlyMemory<byte>?)null : bytes.AsMemory()
             );
+        }
+    }
+
+    private sealed class ChangingSource(byte[] baseBytes, byte[] earlier, byte[] current)
+        : IRawMftRecordSource
+    {
+        private int extensionReads;
+
+        public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(
+            ulong recordIndex,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            byte[] bytes =
+                recordIndex == 42 ? baseBytes
+                : ++extensionReads <= 2 ? earlier
+                : current;
+            return ValueTask.FromResult<ReadOnlyMemory<byte>?>(bytes);
         }
     }
 }

@@ -76,10 +76,14 @@ public sealed record NonResidentAttribute(
     NtfsAttributeFlags Flags,
     long LowestVcn,
     long HighestVcn,
-    ushort CompressionUnit,
+    byte CompressionUnit,
     StreamSizes? Sizes,
     ImmutableArray<DataRun> Runs
-) : NtfsAttribute(Type, Id, Name, Flags);
+) : NtfsAttribute(Type, Id, Name, Flags)
+{
+    /// <summary>Uninterpreted bytes at offsets 35..39; never part of CompressionUnit.</summary>
+    public ImmutableArray<byte> ReservedHeaderBytes { get; init; } = [];
+}
 
 /// <summary>Preserves every name, including DOS aliases and distinct hard links.</summary>
 public sealed record NtfsFileName(

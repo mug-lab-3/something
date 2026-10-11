@@ -112,37 +112,22 @@ public sealed class MftFileAssemblerTests
         Assert.Contains($"observed-lowest={lowest}", error.Message);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Assemble_InconsistentFlagsOrCompressionUnit_ReportsSpecificCause(bool compression)
+    [Fact]
+    public void Assemble_InconsistentFlags_ReportsUnsupportedRatherThanProvenCorruption()
     {
         var (baseRecord, extension) = ExtendedFile();
         var attribute = Assert.IsType<NonResidentAttribute>(Assert.Single(extension.Attributes));
         extension = extension with
         {
-            Attributes =
-            [
-                compression
-                    ? attribute with
-                    {
-                        CompressionUnit = 4,
-                    }
-                    : attribute with
-                    {
-                        Flags = NtfsAttributeFlags.Compressed,
-                    },
-            ],
+            Attributes = [attribute with { Flags = NtfsAttributeFlags.Compressed }],
         };
 
         var error = Assert.Throws<NtfsAssemblyException>(() =>
             assembler.Assemble(baseRecord, [extension])
         );
 
-        Assert.Contains(
-            compression ? "compression unit mismatch" : "flags mismatch",
-            error.Message
-        );
+        Assert.Equal(NtfsAssemblyFailureKind.Unsupported, error.Kind);
+        Assert.Contains("flags mismatch", error.Message);
         Assert.Contains("lowest-vcn=2", error.Message);
         Assert.Contains("highest-vcn=3", error.Message);
     }
