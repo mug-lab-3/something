@@ -1,16 +1,32 @@
 namespace Something.Ntfs;
 
 /// <summary>
-/// Supplies one raw, protected record by index, or null if it no longer exists.
+/// Describes whether sector-tail fixups are still protected or already restored.
+/// </summary>
+public enum MftRecordEncoding
+{
+    RawProtected,
+    FixupsRestored,
+}
+
+/// <summary>
+/// Supplies one record in the declared encoding by exact index, or null if unavailable.
 /// Returned memory must remain unchanged until the next ReadAsync call. Implementations own volume I/O,
 /// alignment, retries for device errors, and their lifetime; operational I/O failures must throw.
 /// </summary>
-public interface IRawMftRecordSource
+public interface IMftRecordSource
 {
+    MftRecordEncoding Encoding { get; }
     ValueTask<ReadOnlyMemory<byte>?> ReadAsync(
         ulong recordIndex,
         CancellationToken cancellationToken
     );
+}
+
+/// <summary>A source of raw, fixup-protected records.</summary>
+public interface IRawMftRecordSource : IMftRecordSource
+{
+    MftRecordEncoding IMftRecordSource.Encoding => MftRecordEncoding.RawProtected;
 }
 
 public enum LiveRecordReadStatus
@@ -49,7 +65,7 @@ public sealed class LiveMftRecordReader
     }
 
     public async ValueTask<LiveRecordReadResult> ReadAsync(
-        IRawMftRecordSource source,
+        IMftRecordSource source,
         ulong recordIndex,
         FileReference? expectedReference = null,
         CancellationToken cancellationToken = default
@@ -83,7 +99,9 @@ public sealed class LiveMftRecordReader
                     new("Record exceeds supported size", 0)
                 );
             byte[] owned = observed.Value.ToArray();
-            if (!parser.TryParse(owned, recordIndex, out var record, out lastError))
+            if (
+                !parser.TryParse(owned, recordIndex, out var record, out lastError, source.Encoding)
+            )
                 continue;
             if (expectedReference is { } identity && record!.Reference != identity)
                 return new(LiveRecordReadStatus.Replaced, null, attempt, null);

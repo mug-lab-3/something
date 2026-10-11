@@ -17,5 +17,6 @@
     <PackageReference Include="MFT" Version="2026.5.1" />
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/Something.Ntfs/Something.Ntfs.csproj" />
+    <ProjectReference Include="../../src/Something.Windows/Something.Windows.csproj" />
   </ItemGroup>
 </Project>

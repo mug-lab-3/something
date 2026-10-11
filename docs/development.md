@@ -76,7 +76,9 @@ VS CodeではC#の保存時に整形されます。`Tasks: Run Task`の`format` 
 ## 現在の構成
 
 - `src/Something.Ntfs`: WindowsやUIに依存しない解析／レコード結合／読み取り検証層。
+- `src/Something.Windows`: 読み取り専用NTFS取得層とファイル情報API。実機の通常ファイル1件で論理サイズ一致を確認。
 - `tests/Something.Ntfs.Tests`: 単体・変異・OSS比較テスト。
 - `tools/Something.MftInspect`: オフラインraw MFTストリームの検査CLI。
+- `tools/Something.LiveInspect`: 少数のライブレコードとファイル論理サイズの検証CLI。
 
-ライブボリュームの読み取り、MFT領域の取得、USN追跡、VSS、容量履歴、GUIはまだ実装していません。
+Windows取得層の実装範囲・検証手順は [windows-acquisition.md](windows-acquisition.md) を参照してください。高速全件取得、USN追跡、VSS、容量履歴、GUIはまだ実装していません。

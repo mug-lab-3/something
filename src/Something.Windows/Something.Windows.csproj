@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Something.Ntfs/Something.Ntfs.csproj" />
+    <InternalsVisibleTo Include="Something.Ntfs.Tests" />
+  </ItemGroup>
+</Project>

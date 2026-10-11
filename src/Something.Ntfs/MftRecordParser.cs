@@ -5,15 +5,21 @@ namespace Something.Ntfs;
 
 /// <summary>
 /// Parses raw, fixup-protected NTFS 3.x FILE records. No I/O, platform calls, or input mutation.
-/// Already-fixed records returned by some Windows APIs must not be passed to this parser.
+/// Kernel-restored records require an explicit encoding; they cannot prove on-disk fixup integrity.
 /// </summary>
 public sealed class MftRecordParser
 {
     public const int FixupStride = 512;
     public const int MaximumRecordSize = 64 * 1024;
 
-    public MftRecord Parse(ReadOnlySpan<byte> rawRecord, ulong recordIndex)
+    public MftRecord Parse(
+        ReadOnlySpan<byte> rawRecord,
+        ulong recordIndex,
+        MftRecordEncoding encoding = MftRecordEncoding.RawProtected
+    )
     {
+        if (encoding is not (MftRecordEncoding.RawProtected or MftRecordEncoding.FixupsRestored))
+            throw new ArgumentOutOfRangeException(nameof(encoding));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(
             recordIndex,
             FileReference.MaximumRecordIndex
@@ -33,7 +39,7 @@ public sealed class MftRecordParser
         {
             Span<byte> record = rented.AsSpan(0, rawRecord.Length);
             rawRecord.CopyTo(record);
-            RestoreFixups(record);
+            RestoreFixups(record, encoding);
             return ParseRestored(record, recordIndex);
         }
         finally
@@ -46,12 +52,13 @@ public sealed class MftRecordParser
         ReadOnlySpan<byte> rawRecord,
         ulong recordIndex,
         out MftRecord? record,
-        out NtfsParseException? error
+        out NtfsParseException? error,
+        MftRecordEncoding encoding = MftRecordEncoding.RawProtected
     )
     {
         try
         {
-            record = Parse(rawRecord, recordIndex);
+            record = Parse(rawRecord, recordIndex, encoding);
             error = null;
             return true;
         }
@@ -63,7 +70,7 @@ public sealed class MftRecordParser
         }
     }
 
-    private static void RestoreFixups(Span<byte> record)
+    private static void RestoreFixups(Span<byte> record, MftRecordEncoding encoding)
     {
         var view = new BinaryView(record);
         if (!view.Slice(0, 4).SequenceEqual("FILE"u8))
@@ -79,13 +86,19 @@ public sealed class MftRecordParser
         ushort sequence = view.U16(offset);
         // Validate all tails before restoring any: never accept a partially torn record.
         for (int i = 1; i < words; i++)
-            if (view.U16(i * FixupStride - 2) != sequence)
+            if (
+                view.U16(i * FixupStride - 2)
+                != (
+                    encoding == MftRecordEncoding.RawProtected ? sequence : view.U16(offset + i * 2)
+                )
+            )
                 throw view.Error(
-                    "Update sequence mismatch (torn or already-fixed record)",
+                    "Update sequence mismatch for the specified record encoding",
                     i * FixupStride - 2
                 );
-        for (int i = 1; i < words; i++)
-            view.Slice(offset + i * 2, 2).CopyTo(record.Slice(i * FixupStride - 2, 2));
+        if (encoding == MftRecordEncoding.RawProtected)
+            for (int i = 1; i < words; i++)
+                view.Slice(offset + i * 2, 2).CopyTo(record.Slice(i * FixupStride - 2, 2));
     }
 
     private static MftRecord ParseRestored(ReadOnlySpan<byte> record, ulong recordIndex)

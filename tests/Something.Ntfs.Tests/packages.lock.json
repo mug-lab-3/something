@@ -158,6 +158,12 @@
       },
       "something.ntfs": {
         "type": "Project"
+      },
+      "something.windows": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Ntfs": "[1.0.0, )"
+        }
       }
     }
   }
