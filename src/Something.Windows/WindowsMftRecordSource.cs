@@ -9,6 +9,8 @@ internal interface INtfsVolumeIo : IDisposable
 {
     byte[] ReadVolumeData();
     byte[] ReadFileRecord(ulong recordIndex, int recordSize);
+    byte[] ReadVolumeBytes(long offset, int count, int logicalSectorSize) =>
+        throw new NotSupportedException("Raw volume reads are unavailable.");
 }
 
 /// <summary>
@@ -16,7 +18,11 @@ internal interface INtfsVolumeIo : IDisposable
 /// Run on a worker thread. Cancellation is checked around each native call, not during it.
 /// No snapshot guarantee; an earlier in-use record is reported as Missing for an exact-index request.
 /// </summary>
-public sealed class WindowsMftRecordSource : IMftRecordSource, IDisposable
+public sealed class WindowsMftRecordSource
+    : IMftRecordSource,
+        IAttributeListValueSource,
+        IVolumeClusterSource,
+        IDisposable
 {
     private readonly INtfsVolumeIo io;
     private readonly object gate = new();
@@ -96,6 +102,48 @@ public sealed class WindowsMftRecordSource : IMftRecordSource, IDisposable
         if (returned != requestedIndex)
             return null;
         return output.Slice(12, recordSize).ToArray();
+    }
+
+    public ValueTask<ReadOnlyMemory<byte>> ReadAttributeListAsync(
+        NonResidentAttribute attribute,
+        CancellationToken cancellationToken
+    ) =>
+        new AttributeListValueReader(Volume.BytesPerCluster, Volume.TotalClusters).ReadAsync(
+            this,
+            attribute,
+            cancellationToken
+        );
+
+    public ValueTask<ReadOnlyMemory<byte>> ReadClustersAsync(
+        long startLcn,
+        int clusterCount,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (
+            startLcn < 0
+            || startLcn >= Volume.TotalClusters
+            || clusterCount <= 0
+            || clusterCount > Volume.TotalClusters - startLcn
+            || clusterCount > Math.Max(1, 65536 / Volume.BytesPerCluster)
+        )
+            throw new ArgumentOutOfRangeException(
+                nameof(clusterCount),
+                "Cluster read is outside the volume or acquisition limit."
+            );
+        long offset = checked(startLcn * Volume.BytesPerCluster);
+        int count = checked(clusterCount * Volume.BytesPerCluster);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            cancellationToken.ThrowIfCancellationRequested();
+            byte[] bytes = io.ReadVolumeBytes(offset, count, Volume.BytesPerSector);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (bytes.Length != count)
+                throw new IOException("Partial raw volume read.");
+            return ValueTask.FromResult<ReadOnlyMemory<byte>>(bytes.AsMemory());
+        }
     }
 
     public void Dispose()

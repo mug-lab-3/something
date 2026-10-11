@@ -20,7 +20,9 @@
 
 `LiveMftRecordReader` は入力形式を明示する `IMftRecordSource` に対し最大3回（設定可能）の読み取りを試みます。`IRawMftRecordSource` はRawProtectedを指定するインターフェースとして維持します。1回の試行で取得したレコードを自分のバッファへコピーして解析し、もう一度取得してバイト列を比較します。共有バッファを返す取得層にも対応します。
 
-`LiveMftFileReader` はresident ATTRIBUTE_LISTの参照先を取得して結合し、結合後にbaseと全拡張レコードの観測バイト列を再照合します。ファイル全体の再試行は既定3回、取得はbaseを含め既定128レコードまでに制限します。非residentリストや拡張レコード内のリストは未対応として返し、容量を部分的に返しません。Missing・Replaced・ChangedDuringRead・InvalidRecord・InvalidAssembly・Unsupported・LimitExceededを区別します。取得層のI/Oエラーとキャンセルは例外として伝達します。
+`LiveMftFileReader` はATTRIBUTE_LISTの参照先を取得して結合し、結合後にbaseと全拡張レコードの観測バイト列を再照合します。非residentリストには `IAttributeListValueSource` が必要です。リスト自体も結合前後に照合し、その取得直後にbaseの記述を再確認します。ファイル全体の再試行は既定3回、取得はbaseを含め既定128レコードまでに制限します。拡張レコード内のリストは未対応として返し、容量を部分的に返しません。Missing・Replaced・ChangedDuringRead・InvalidRecord・InvalidAssembly・Unsupported・LimitExceededを区別します。取得層のI/Oエラーとキャンセルは例外として伝達します。
+
+`AttributeListValueReader` は `IVolumeClusterSource` に対する純粋な取得計画・検証を担当します。base内で完結する無名・非圧縮・非スパースのmapping pairsだけを扱い、全範囲の連続性・重複・ボリューム境界・サイズ一致をI/O前に検証します。最大1 MiBの値を分割取得し、短い読み取りを補完せず、所有するバッファへコピーします。Windows API、バッファ整列、ハンドル管理はWindows取得層に残します。対応範囲と実機検証状況は [windows-acquisition.md](windows-acquisition.md) に記載します。
 
 | 状態 | 意味／扱い |
 |---|---|

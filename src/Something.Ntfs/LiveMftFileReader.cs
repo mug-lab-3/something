@@ -25,9 +25,9 @@ public sealed record LiveFileReadResult(
 
 /// <summary>
 /// Acquires resident ATTRIBUTE_LIST references, assembles, then revalidates every acquired record.
-/// Nonresident lists and lists in extension records are unsupported, never partial capacity.
+/// Single-extent nonresident lists require IAttributeListValueSource; extension lists are unsupported.
 /// Retries and record count are bounded. I/O errors and cancellation propagate to the caller.
-/// No volume writes, raw extent reads, or point-in-time snapshot guarantees.
+/// No volume writes or point-in-time snapshot guarantees.
 /// </summary>
 public sealed class LiveMftFileReader
 {
@@ -68,6 +68,7 @@ public sealed class LiveMftFileReader
         ulong changedIndex = recordIndex;
         for (int attempt = 1; attempt <= maximumAttempts; attempt++)
         {
+            changedIndex = recordIndex;
             cancellationToken.ThrowIfCancellationRequested();
             var first = await recordReader
                 .ReadAsync(source, recordIndex, identity, cancellationToken)
@@ -110,25 +111,84 @@ public sealed class LiveMftFileReader
                     recordIndex,
                     Error: "Invalid ATTRIBUTE_LIST declaration."
                 );
-            if (lists is [NonResidentAttribute])
-                return new(
-                    LiveFileReadStatus.Unsupported,
-                    null,
-                    attempt,
-                    recordIndex,
-                    Error: "Nonresident ATTRIBUTE_LIST acquisition is not implemented."
-                );
+            NonResidentAttribute? externalList = lists is [NonResidentAttribute nonresident]
+                ? nonresident
+                : null;
+            ReadOnlyMemory<byte>? suppliedList = null;
+            if (externalList is not null)
+            {
+                if (source is not IAttributeListValueSource listSource)
+                    return new(
+                        LiveFileReadStatus.Unsupported,
+                        null,
+                        attempt,
+                        recordIndex,
+                        Error: "The record source cannot acquire nonresident ATTRIBUTE_LIST values."
+                    );
+                try
+                {
+                    suppliedList = await ReadListOwnedAsync(
+                            listSource,
+                            externalList,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    var second = await ReadListOwnedAsync(
+                            listSource,
+                            externalList,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    if (!suppliedList.Value.Span.SequenceEqual(second.Span))
+                    {
+                        changedIndex = recordIndex;
+                        continue;
+                    }
+                    var anchor = await recordReader
+                        .ReadAsync(source, recordIndex, baseRecord.Reference, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (anchor.Status == LiveRecordReadStatus.ChangedDuringRead)
+                        continue;
+                    if (anchor.Status != LiveRecordReadStatus.ObservedUnchanged)
+                        return Failure(anchor, recordIndex, attempt);
+                    if (!first.ObservedBytes.AsSpan().SequenceEqual(anchor.ObservedBytes.AsSpan()))
+                        continue;
+                }
+                catch (AttributeListReadException error)
+                {
+                    return ListFailure(error, recordIndex, attempt);
+                }
+            }
 
             FileReference[] references = [];
-            if (lists is [ResidentAttribute list])
+            ReadOnlyMemory<byte>? listValue =
+                suppliedList
+                ?? (
+                    lists is [ResidentAttribute list]
+                        ? list.Value.AsMemory()
+                        : (ReadOnlyMemory<byte>?)null
+                );
+            if (listValue is { } value)
             {
-                // The record parser already validated this immutable resident value.
-                references = AttributeValueParser
-                    .ParseAttributeList(list.Value.AsSpan())
-                    .Select(e => e.Record)
-                    .Distinct()
-                    .OrderBy(r => r.RecordIndex)
-                    .ToArray();
+                try
+                {
+                    references = AttributeValueParser
+                        .ParseAttributeList(value.Span)
+                        .Select(e => e.Record)
+                        .Distinct()
+                        .OrderBy(r => r.RecordIndex)
+                        .ToArray();
+                }
+                catch (NtfsParseException error)
+                {
+                    return new(
+                        LiveFileReadStatus.InvalidAssembly,
+                        null,
+                        attempt,
+                        recordIndex,
+                        Error: error.Message
+                    );
+                }
                 if (
                     references.GroupBy(r => r.RecordIndex).Any(g => g.Count() != 1)
                     || references.Any(r =>
@@ -187,7 +247,11 @@ public sealed class LiveMftFileReader
             string? assemblyError = null;
             try
             {
-                file = assembler.Assemble(baseRecord, observations.Skip(1).Select(o => o.Record!));
+                file = assembler.Assemble(
+                    baseRecord,
+                    observations.Skip(1).Select(o => o.Record!),
+                    suppliedList
+                );
             }
             catch (Exception error) when (error is NtfsAssemblyException or NtfsParseException)
             {
@@ -218,6 +282,37 @@ public sealed class LiveMftFileReader
             }
             if (changed)
                 continue;
+            if (externalList is not null)
+            {
+                try
+                {
+                    var finalList = await ReadListOwnedAsync(
+                            (IAttributeListValueSource)source,
+                            externalList,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    if (!suppliedList!.Value.Span.SequenceEqual(finalList.Span))
+                    {
+                        changedIndex = recordIndex;
+                        continue;
+                    }
+                    // Recheck the descriptor after the final physical read; freed clusters may be reused.
+                    var anchor = await recordReader
+                        .ReadAsync(source, recordIndex, baseRecord.Reference, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (anchor.Status == LiveRecordReadStatus.ChangedDuringRead)
+                        continue;
+                    if (anchor.Status != LiveRecordReadStatus.ObservedUnchanged)
+                        return Failure(anchor, recordIndex, attempt);
+                    if (!first.ObservedBytes.AsSpan().SequenceEqual(anchor.ObservedBytes.AsSpan()))
+                        continue;
+                }
+                catch (AttributeListReadException error)
+                {
+                    return ListFailure(error, recordIndex, attempt);
+                }
+            }
             cancellationToken.ThrowIfCancellationRequested();
             return assemblyError is null
                 ? new(LiveFileReadStatus.ObservedUnchanged, file, attempt)
@@ -251,5 +346,53 @@ public sealed class LiveMftFileReader
             index,
             result.Status,
             result.Error?.Message
+        );
+
+    private static async ValueTask<ReadOnlyMemory<byte>> ReadListOwnedAsync(
+        IAttributeListValueSource source,
+        NonResidentAttribute attribute,
+        CancellationToken token
+    )
+    {
+        if (
+            attribute.Sizes is not { } sizes
+            || sizes.LogicalBytes <= 0
+            || sizes.InitializedBytes != sizes.LogicalBytes
+        )
+            throw new AttributeListReadException(
+                AttributeListReadFailure.Invalid,
+                "Invalid ATTRIBUTE_LIST logical or initialized length."
+            );
+        if (sizes.LogicalBytes > AttributeListValueReader.MaximumValueBytes)
+            throw new AttributeListReadException(
+                AttributeListReadFailure.LimitExceeded,
+                "ATTRIBUTE_LIST value exceeds the acquisition limit."
+            );
+        var bytes = await source.ReadAttributeListAsync(attribute, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        if (bytes.Length != sizes.LogicalBytes)
+            throw new AttributeListReadException(
+                AttributeListReadFailure.Invalid,
+                "ATTRIBUTE_LIST response length does not match its descriptor."
+            );
+        return bytes.ToArray();
+    }
+
+    private static LiveFileReadResult ListFailure(
+        AttributeListReadException error,
+        ulong index,
+        int attempt
+    ) =>
+        new(
+            error.Failure switch
+            {
+                AttributeListReadFailure.Unsupported => LiveFileReadStatus.Unsupported,
+                AttributeListReadFailure.LimitExceeded => LiveFileReadStatus.LimitExceeded,
+                _ => LiveFileReadStatus.InvalidAssembly,
+            },
+            null,
+            attempt,
+            index,
+            Error: error.Message
         );
 }

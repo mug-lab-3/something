@@ -4,17 +4,25 @@
 
 `Something.Windows` はボリューム情報と指定番号のMFTレコード取得を担当する。
 取得・解析・結合・統計・保存・UIは分離する。`Something.LiveInspect` は少数レコードと
-resident ATTRIBUTE_LISTで参照を追跡できるファイルの診断用で、高速な全件走査や完成した容量集計ではない。
+residentまたは対応範囲内の非resident ATTRIBUTE_LISTで参照を追跡できるファイルの診断用で、
+高速な全件走査や完成した容量集計ではない。
 
 ボリュームはGENERIC_READのみ、OPEN_EXISTINGで開く。GENERIC_WRITEは要求しない。
 共有モードREAD / WRITE / DELETEは他プロセスの操作を許す設定であり、
 Something自身の書き込み権限を付与するものではない。
-内部のDeviceIoControlは次の2命令のみを許可し、汎用制御コードAPIは公開しない。
+内部のDeviceIoControlは次の3命令のみを許可し、汎用制御コードAPIは公開しない。
 
 | 制御命令 | 値 | 用途 |
 |---|---|---|
 | FSCTL_GET_NTFS_VOLUME_DATA | 0x00090064 | ジオメトリとMFT長 |
 | FSCTL_GET_NTFS_FILE_RECORD | 0x00090068 | FILEレコード |
+| IOCTL_STORAGE_QUERY_PROPERTY | 0x002D1400 | StorageAccessAlignmentPropertyの照会のみ |
+
+非resident ATTRIBUTE_LISTの取得に限り、検証済みmapping pairsに対してSetFilePointerExとReadFileを使う。
+シークは読み取り位置を移動するだけで、書き込みは行わない。シークと読み取りは同じロック内で行う。
+論理セクタ単位のオフセット・長さと、照会した物理セクタ境界に整列したバッファを使う。
+物理セクタサイズは最大64 KiBまでとし、照会失敗・不整合時に推測値で続行しない。
+バッファはMarshalで確保し、finallyでクリア・解放する。unsafeコードは使わない。
 
 WriteFile、修復、ロック、マウント解除、USN Journalの作成・削除、属性変更は呼ばない。
 ボリューム入力はドライブ文字（例: C:）に限定し、PhysicalDriveやUNCは拒否する。
@@ -48,6 +56,17 @@ LiveMftFileReaderがresident ATTRIBUTE_LISTの参照を取得し、結合後にb
 既定でbaseを含め128レコードまで（設定上限256）とし、上限超過を明示して取得を打ち切る。
 各レコードの読み取りも最大3回なので、ネイティブ呼び出し数と保持メモリは有限。
 全件の高速走査とは別の検証経路として使う。
+
+非residentリストはIAttributeListValueSourceから取得する。Windows取得層は
+AttributeListValueReaderで全mapping pairsを先に検証し、VCNの連続性、物理範囲の重複、
+ボリューム境界、論理・初期化・割り当てサイズの一致を確認する。
+baseレコード内で全範囲を記述できる、無名・非圧縮・非スパースのリストに限定する。
+リスト内容と対応するmapping pairsは最大1 MiB分まで（大きなクラスタでは1クラスタの余白を許す）。
+読み取りは最大64 KiB、クラスタがそれ以上の場合は1クラスタ（最大2 MiB）単位に分割する。
+短い読み取り・I/O失敗を0バイトへ補完しない。クラスタの余白はリストの解析に含めない。
+リストを2回取得して照合し、参照元baseを再確認する。結合・全レコード照合の後にもリストとbaseを再確認する。
+各リストの結果をすぐ所有するコピーへ移すため、取得層の共有バッファを保持しない。
+一致してもABAや最後の確認後の変更を防げず、時点スナップショットではない。
 取得とDisposeは同じロックで直列化し、I/O中にハンドルを閉じない。
 ネイティブAPIは同期呼び出しで、ValueTaskが非同期I/Oを意味するわけではない。
 将来のUIではワーカースレッドから使う。キャンセルは呼び出し前後で確認するが、
@@ -82,7 +101,8 @@ dotnet run --project tools/Something.LiveInspect --no-build -- C: --file "$PWD\R
 フォルダや異なるボリュームへのリンクは比較を拒否する。
 不一致は解析バグと断定せず、観測間の変更の可能性も残す。
 
-非resident ATTRIBUTE_LIST、拡張レコード内のATTRIBUTE_LISTはUnsupportedとして報告する。
+対応範囲外の非resident ATTRIBUTE_LIST、拡張レコード内のATTRIBUTE_LISTは未解決として報告する。
+拡張レコードにもリストのmapping pairsが続く形式の取得には、まだ対応していない。
 予約レコード8のルート配下のWin32名$BadClusと非resident $Badストリームが一致した場合も、
 専用の容量集計が未実装のためUnsupportedとして返す。参照番号だけや名前だけで識別しない。
 通常ファイルの割り当て容量検証は緩めず、管理ファイルの容量も0に置き換えない。
@@ -118,8 +138,16 @@ residentリストからの拡張取得・結合後の再検証は合成テスト
 識別条件が一致した場合に専用容量集計の未対応を報告するよう変更した。変更後の実機確認は残る。
 スロット数は使用中のファイル数ではない。resident DATAの追加割り当て0も総占有量0を意味しない。
 範囲診断だけから複数レコードの結合が実機で成功したとは判断できず、その経路は実機未検証。
-次は未解決の理由を確認し、非residentリストの取得方式を設計してから、
-全件走査の速度測定、集計・保存へ進む。
+非residentリストの取得・照合を追加し、断片化、取得量の上限、範囲外・重複・欠損、短い読み取り、
+バッファ所有権、参照元やリストの変更・削除・再利用、キャンセルを合成テストで検証した。
+このraw読み取り経路は実機未検証。管理者ターミナルで次を実行して確認する。
+
+```powershell
+dotnet run --project tools/Something.LiveInspect -- C: 9 1
+```
+
+実機の形式が対応範囲外なら、未解決理由を確認して対応を拡張する。
+その後、全件走査の速度測定、集計・保存へ進む。
 
 ## 参考資料
 
@@ -129,4 +157,8 @@ residentリストからの拡張取得・結合後の再検証は合成テスト
 - [NTFS_FILE_RECORD_OUTPUT_BUFFER](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-ntfs_file_record_output_buffer)
 - [GetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle)
 - [MFTの予約管理レコード](https://learn.microsoft.com/en-us/windows/win32/devnotes/master-file-table)
+- [ReadFile](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfile)
+- [SetFilePointerEx](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfilepointerex)
+- [File bufferingとセクタ整列](https://learn.microsoft.com/en-us/windows/win32/fileio/file-buffering)
+- [STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-storage_access_alignment_descriptor)
 - [libfsntfsのNTFS解析資料](https://github.com/libyal/libfsntfs/blob/main/documentation/New%20Technologies%20File%20System%20%28NTFS%29.asciidoc)（$BadClus:$Badの特異なmapping pairsの観測。通常DATAの規則を緩める根拠とはしない）
