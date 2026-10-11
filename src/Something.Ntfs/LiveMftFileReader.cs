@@ -90,6 +90,15 @@ public sealed class LiveMftFileReader
                     Error: "Expected a base file record."
                 );
 
+            if (NtfsMetadataClassifier.Classify(baseRecord) == NtfsMetadataKind.BadClusters)
+                return new(
+                    LiveFileReadStatus.Unsupported,
+                    null,
+                    attempt,
+                    recordIndex,
+                    Error: "Dedicated capacity accounting for NTFS $BadClus metadata is not implemented."
+                );
+
             var lists = baseRecord
                 .Attributes.Where(a => a.Type == NtfsAttributeTypes.AttributeList)
                 .ToArray();

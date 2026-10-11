@@ -49,6 +49,8 @@ try
             Console.WriteLine(
                 $"File comparison unresolved: {result.Status}; record={result.UnresolvedRecordIndex}; attempts={result.Attempts}."
             );
+            if (result.Error is { } reason)
+                Console.WriteLine($"  Reason: {reason}");
             return 1;
         }
         var assembled = result.File;
@@ -93,6 +95,8 @@ try
         if (result.Record is not { } record)
         {
             Console.WriteLine($"Record {index}: {result.Status}; attempts={result.Attempts}");
+            if (result.Error is { } error)
+                Console.WriteLine($"  Reason: {error.Message}");
             if (result.Status != LiveRecordReadStatus.Missing)
                 unresolved++;
             continue;
@@ -121,6 +125,8 @@ try
                 Console.WriteLine(
                     $"  DATA capacity unresolved: {fileResult.Status}; record={fileResult.UnresolvedRecordIndex}; attempts={fileResult.Attempts}."
                 );
+                if (fileResult.Error is { } reason)
+                    Console.WriteLine($"  Reason: {reason}");
                 unresolved++;
             }
         }

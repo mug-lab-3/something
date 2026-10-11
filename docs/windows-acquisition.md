@@ -83,6 +83,10 @@ dotnet run --project tools/Something.LiveInspect --no-build -- C: --file "$PWD\R
 不一致は解析バグと断定せず、観測間の変更の可能性も残す。
 
 非resident ATTRIBUTE_LIST、拡張レコード内のATTRIBUTE_LISTはUnsupportedとして報告する。
+予約レコード8のルート配下のWin32名$BadClusと非resident $Badストリームが一致した場合も、
+専用の容量集計が未実装のためUnsupportedとして返す。参照番号だけや名前だけで識別しない。
+通常ファイルの割り当て容量検証は緩めず、管理ファイルの容量も0に置き換えない。
+これは破損していないことの保証ではなく、集計対象を識別したうえでの未対応報告。
 参照の不足・再利用・不正構造・取得上限超過も未解決とし、部分的な容量を返さない。
 resident DATAのAllocatedBytes=0は追加DATAクラスタの割り当てが0という意味で、
 MFT等を含むファイルの総占有量ではない。
@@ -106,7 +110,15 @@ MFT等を含むファイルの総占有量ではない。
 合成テストやこの1件の成功をライブ対応全体の証明にしない。
 residentリストからの拡張取得・結合後の再検証は合成テストで検証済み。複数リンク名、DOS名、
 名前付きストリーム、欠損、再利用、結合後の変更、変更継続、共有バッファ、キャンセル、取得上限を検証した。
-この拡張経路は実機未検証。次は少数レコードで診断し、非residentリストの取得方式を設計してから、
+ユーザーの実機でレコード0〜31の診断も実行した。ジオメトリ取得、使用中レコードの解析、
+未取得スロットのMissing表示、複数DATA・名前付きDATA・resident DATAの容量表示が動作した。
+管理レコード8でInvalidAssembly、9でUnsupportedを報告した。理由表示を追加した再診断では、
+8はDATAのサイズとmapping pairsの不一致、9は非resident ATTRIBUTE_LIST取得の未実装だった。
+8は$BadClus管理データの特殊表現が原因と考えられるが、実バイト列を取得していないため断定しない。
+識別条件が一致した場合に専用容量集計の未対応を報告するよう変更した。変更後の実機確認は残る。
+スロット数は使用中のファイル数ではない。resident DATAの追加割り当て0も総占有量0を意味しない。
+範囲診断だけから複数レコードの結合が実機で成功したとは判断できず、その経路は実機未検証。
+次は未解決の理由を確認し、非residentリストの取得方式を設計してから、
 全件走査の速度測定、集計・保存へ進む。
 
 ## 参考資料
@@ -116,3 +128,5 @@ residentリストからの拡張取得・結合後の再検証は合成テスト
 - [FSCTL_GET_NTFS_FILE_RECORD](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_ntfs_file_record)
 - [NTFS_FILE_RECORD_OUTPUT_BUFFER](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-ntfs_file_record_output_buffer)
 - [GetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle)
+- [MFTの予約管理レコード](https://learn.microsoft.com/en-us/windows/win32/devnotes/master-file-table)
+- [libfsntfsのNTFS解析資料](https://github.com/libyal/libfsntfs/blob/main/documentation/New%20Technologies%20File%20System%20%28NTFS%29.asciidoc)（$BadClus:$Badの特異なmapping pairsの観測。通常DATAの規則を緩める根拠とはしない）
