@@ -276,6 +276,31 @@ public sealed class WindowsAcquisitionTests
     }
 
     [Fact]
+    public async Task Source_DecodedCachedValue_DeclaresWindowsContractAndPreservesCurrentBytes()
+    {
+        byte[] record = RecordFixture.Record([
+            RecordFixture.Resident(0x80, 0, Enumerable.Repeat((byte)0x11, 600).ToArray()),
+        ]);
+        for (int n = 1; n <= 2; n++)
+            record.AsSpan(48 + n * 2, 2).CopyTo(record.AsSpan(n * 512 - 2, 2));
+        record[510] = 0x22;
+        var io = new FakeIo { RecordBytes = record };
+        using var source = new WindowsMftRecordSource(io);
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(MftRecordEncoding.WindowsDecoded, source.Encoding);
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        var attribute = Assert.IsType<ResidentAttribute>(Assert.Single(result.File!.Attributes));
+        Assert.Equal(0x22, attribute.Value[430]);
+        Assert.Equal(4, io.RecordCalls);
+    }
+
+    [Fact]
     public async Task Source_CancelledBeforeRead_DoesNotAcquireRecord()
     {
         var io = new FakeIo();
@@ -448,6 +473,7 @@ public sealed class WindowsAcquisitionTests
     private sealed class FakeIo : INtfsVolumeIo
     {
         public byte[] VolumeBytes { get; init; } = VolumeResponse();
+        public byte[] RecordBytes { get; init; } = RestoredRecord();
         public int RecordCalls { get; private set; }
         public int Disposals { get; private set; }
         public Action? OnRead { get; init; }
@@ -461,7 +487,7 @@ public sealed class WindowsAcquisitionTests
             OnRead?.Invoke();
             if (ReadError is { } error)
                 throw error;
-            return RecordResponse(RestoredRecord(), recordIndex);
+            return RecordResponse(RecordBytes, recordIndex);
         }
 
         public void Dispose() => Disposals++;

@@ -106,7 +106,45 @@ public sealed class MftFileAssemblerTests
             ]),
             42
         );
-        Assert.Throws<NtfsAssemblyException>(() => assembler.Assemble(record, []));
+        var error = Assert.Throws<NtfsAssemblyException>(() => assembler.Assemble(record, []));
+        Assert.Contains("VCN discontinuity", error.Message);
+        Assert.Contains("expected-lowest=2", error.Message);
+        Assert.Contains($"observed-lowest={lowest}", error.Message);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Assemble_InconsistentFlagsOrCompressionUnit_ReportsSpecificCause(bool compression)
+    {
+        var (baseRecord, extension) = ExtendedFile();
+        var attribute = Assert.IsType<NonResidentAttribute>(Assert.Single(extension.Attributes));
+        extension = extension with
+        {
+            Attributes =
+            [
+                compression
+                    ? attribute with
+                    {
+                        CompressionUnit = 4,
+                    }
+                    : attribute with
+                    {
+                        Flags = NtfsAttributeFlags.Compressed,
+                    },
+            ],
+        };
+
+        var error = Assert.Throws<NtfsAssemblyException>(() =>
+            assembler.Assemble(baseRecord, [extension])
+        );
+
+        Assert.Contains(
+            compression ? "compression unit mismatch" : "flags mismatch",
+            error.Message
+        );
+        Assert.Contains("lowest-vcn=2", error.Message);
+        Assert.Contains("highest-vcn=3", error.Message);
     }
 
     [Fact]

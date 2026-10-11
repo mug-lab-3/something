@@ -10,15 +10,17 @@ if (!OperatingSystem.IsWindows())
 }
 if (
     args.Length is < 1 or > 3
-    || (args.Length > 1 && args[1] != "--file" && !ulong.TryParse(args[1], out _))
+    || (args.Length > 1 && args[1] is not ("--file" or "--scan") && !ulong.TryParse(args[1], out _))
     || (args.Length > 1 && args[1] == "--file" && args.Length != 3)
-    || (args.Length > 2 && args[1] != "--file" && !int.TryParse(args[2], out _))
+    || (args.Length > 2 && args[1] is not ("--file" or "--scan") && !int.TryParse(args[2], out _))
+    || (args.Length > 2 && args[1] == "--scan" && !ulong.TryParse(args[2], out _))
 )
 {
     Console.Error.WriteLine(
         "Usage: Something.LiveInspect <drive, e.g. C:> [start-index=0] [count=16, max=4096]"
     );
     Console.Error.WriteLine("   or: Something.LiveInspect <drive> --file <absolute-file-path>");
+    Console.Error.WriteLine("   or: Something.LiveInspect <drive> --scan [max-slots]");
     return 2;
 }
 using var cancellation = new CancellationTokenSource();
@@ -29,6 +31,17 @@ Console.CancelKeyPress += (_, e) =>
 };
 try
 {
+    if (args.Length >= 2 && args[1] == "--scan")
+    {
+        using var volume = WindowsMftRecordSource.Open(args[0]);
+        ulong slotLimit =
+            args.Length == 3 ? ulong.Parse(args[2]) : volume.Volume.ObservedRecordCount;
+        if (slotLimit == 0 || slotLimit > volume.Volume.ObservedRecordCount)
+            throw new ArgumentException(
+                "Scan limit must be between 1 and the observed slot count."
+            );
+        return await ScanBenchmark.RunAsync(volume, new(0, slotLimit), cancellation.Token);
+    }
     if (args.Length == 3 && args[1] == "--file")
     {
         using var file = WindowsFileMetadata.Open(args[0], args[2]);
@@ -97,6 +110,8 @@ try
             Console.WriteLine($"Record {index}: {result.Status}; attempts={result.Attempts}");
             if (result.Error is { } error)
                 Console.WriteLine($"  Reason: {error.Message}");
+            if (result.Status == LiveRecordReadStatus.Invalid)
+                await RecordDiagnostics.PrintAsync(source, index, cancellation.Token);
             if (result.Status != LiveRecordReadStatus.Missing)
                 unresolved++;
             continue;
@@ -127,6 +142,16 @@ try
                 );
                 if (fileResult.Error is { } reason)
                     Console.WriteLine($"  Reason: {reason}");
+                if (
+                    fileResult.Status
+                    is LiveFileReadStatus.InvalidRecord
+                        or LiveFileReadStatus.InvalidAssembly
+                )
+                    await RecordDiagnostics.PrintAsync(
+                        source,
+                        fileResult.UnresolvedRecordIndex ?? index,
+                        cancellation.Token
+                    );
                 unresolved++;
             }
         }

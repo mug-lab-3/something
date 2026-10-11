@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using Something.Ntfs;
 
@@ -19,7 +21,7 @@ internal interface INtfsVolumeIo : IDisposable
 /// No snapshot guarantee; an earlier in-use record is reported as Missing for an exact-index request.
 /// </summary>
 public sealed class WindowsMftRecordSource
-    : IMftRecordSource,
+    : IMftScanSource,
         IAttributeListValueSource,
         IVolumeClusterSource,
         IDisposable
@@ -27,9 +29,21 @@ public sealed class WindowsMftRecordSource
     private readonly INtfsVolumeIo io;
     private readonly object gate = new();
     private bool disposed;
+    private long recordRequests;
+    private long rawReads;
+    private long acquisitionTicks;
+
+    public VolumeReadMetrics Metrics =>
+        new(
+            Interlocked.Read(ref recordRequests),
+            Interlocked.Read(ref rawReads),
+            TimeSpan.FromSeconds(
+                (double)Interlocked.Read(ref acquisitionTicks) / Stopwatch.Frequency
+            )
+        );
 
     public NtfsVolumeInfo Volume { get; }
-    public MftRecordEncoding Encoding => MftRecordEncoding.FixupsRestored;
+    public MftRecordEncoding Encoding => MftRecordEncoding.WindowsDecoded;
 
     internal WindowsMftRecordSource(INtfsVolumeIo io)
     {
@@ -70,13 +84,80 @@ public sealed class WindowsMftRecordSource
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] output = io.ReadFileRecord(recordIndex, Volume.BytesPerRecord);
+            byte[] output = ReadNativeRecord(recordIndex);
             cancellationToken.ThrowIfCancellationRequested();
             return ValueTask.FromResult(DecodeRecord(output, recordIndex, Volume.BytesPerRecord));
         }
     }
 
+    public async IAsyncEnumerable<MftRecordCandidate> EnumerateAsync(
+        MftScanRange range,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        if (range.RecordCount == 0 || range.EndExclusive > Volume.ObservedRecordCount)
+            throw new ArgumentOutOfRangeException(nameof(range));
+        ulong cursor = range.EndExclusive - 1;
+        while (true)
+        {
+            var candidate = await ReadCandidateAsync(cursor, cancellationToken)
+                .ConfigureAwait(false);
+            if (candidate.RecordIndex < range.StartIndex)
+                yield break;
+            yield return candidate;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (candidate.RecordIndex == range.StartIndex)
+                yield break;
+            // FSCTL returns the nearest in-use record at or below the cursor: skip the observed gap.
+            cursor = candidate.RecordIndex - 1;
+        }
+    }
+
+    private ValueTask<MftRecordCandidate> ReadCandidateAsync(ulong cursor, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            token.ThrowIfCancellationRequested();
+            byte[] output = ReadNativeRecord(cursor);
+            token.ThrowIfCancellationRequested();
+            // Validate against the requested cursor before using the returned identity.
+            ulong index = ValidateRecordResponse(output, cursor, Volume.BytesPerRecord);
+            return ValueTask.FromResult(
+                new MftRecordCandidate(index, output.AsSpan(12, Volume.BytesPerRecord).ToArray())
+            );
+        }
+    }
+
+    private byte[] ReadNativeRecord(ulong index)
+    {
+        Interlocked.Increment(ref recordRequests);
+        long start = Stopwatch.GetTimestamp();
+        try
+        {
+            return io.ReadFileRecord(index, Volume.BytesPerRecord);
+        }
+        finally
+        {
+            Interlocked.Add(ref acquisitionTicks, Stopwatch.GetTimestamp() - start);
+        }
+    }
+
     internal static ReadOnlyMemory<byte>? DecodeRecord(
+        ReadOnlySpan<byte> output,
+        ulong requestedIndex,
+        int recordSize
+    )
+    {
+        ulong returned = ValidateRecordResponse(output, requestedIndex, recordSize);
+        // Do not substitute the previous active file when the requested slot disappeared.
+        if (returned != requestedIndex)
+            return null;
+        return output.Slice(12, recordSize).ToArray();
+    }
+
+    private static ulong ValidateRecordResponse(
         ReadOnlySpan<byte> output,
         ulong requestedIndex,
         int recordSize
@@ -98,10 +179,7 @@ public sealed class WindowsMftRecordSource
         uint length = BinaryPrimitives.ReadUInt32LittleEndian(output[8..]);
         if (returned > requestedIndex || length != recordSize || output.Length < 12 + recordSize)
             throw new InvalidDataException("Inconsistent NTFS record response.");
-        // Do not substitute the previous active file when the requested slot disappeared.
-        if (returned != requestedIndex)
-            return null;
-        return output.Slice(12, recordSize).ToArray();
+        return returned;
     }
 
     public ValueTask<ReadOnlyMemory<byte>> ReadAttributeListAsync(
@@ -138,7 +216,17 @@ public sealed class WindowsMftRecordSource
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] bytes = io.ReadVolumeBytes(offset, count, Volume.BytesPerSector);
+            Interlocked.Increment(ref rawReads);
+            long start = Stopwatch.GetTimestamp();
+            byte[] bytes;
+            try
+            {
+                bytes = io.ReadVolumeBytes(offset, count, Volume.BytesPerSector);
+            }
+            finally
+            {
+                Interlocked.Add(ref acquisitionTicks, Stopwatch.GetTimestamp() - start);
+            }
             cancellationToken.ThrowIfCancellationRequested();
             if (bytes.Length != count)
                 throw new IOException("Partial raw volume read.");
@@ -157,3 +245,10 @@ public sealed class WindowsMftRecordSource
         }
     }
 }
+
+/// <summary>Native read timing only; excludes open/geometry, parsing, locking, and output.</summary>
+public sealed record VolumeReadMetrics(
+    long RecordRequests,
+    long RawReads,
+    TimeSpan AcquisitionTime
+);

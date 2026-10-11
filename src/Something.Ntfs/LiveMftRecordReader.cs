@@ -3,12 +3,18 @@ using System.Collections.Immutable;
 namespace Something.Ntfs;
 
 /// <summary>
-/// Describes whether sector-tail fixups are still protected or already restored.
+/// Declares the acquisition contract. Never infer this from sector-tail values.
 /// </summary>
 public enum MftRecordEncoding
 {
     RawProtected,
     FixupsRestored,
+
+    /// <summary>
+    /// Windows FILE-record API output: bytes are already decoded by the filesystem.
+    /// Saved USA words need not reflect later in-memory updates. Not for raw disk buffers.
+    /// </summary>
+    WindowsDecoded,
 }
 
 /// <summary>

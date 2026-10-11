@@ -62,6 +62,6 @@ UIから独立したMFT解析ライブラリ、オフライン検査CLI、xUnit.
 
 VS Code / CLIでの開発手順は [docs/development.md](docs/development.md)、解析の境界・ライブ変更への対応設計・制限は [docs/ntfs-design.md](docs/ntfs-design.md) を参照してください。
 
-読み取り専用Windows取得層と検証CLIを追加しています。実機の通常ファイル1件でMFTとWindows APIの論理サイズ一致を確認しました。範囲と手順は [docs/windows-acquisition.md](docs/windows-acquisition.md) を参照してください。高速全件取得、USN追跡、統計履歴、GUIは今後の実装です。
+読み取り専用Windows取得層と検証CLIを追加しています。実機の通常ファイル1件でMFTとWindows APIの論理サイズ一致を確認しました。範囲と手順は [docs/windows-acquisition.md](docs/windows-acquisition.md) を参照してください。全件走査の基準測定用CLIも追加しました。途中経過は5秒ごとに絞り、最後にまとめて表示します。手順と制限は [docs/scan-benchmark.md](docs/scan-benchmark.md) を参照してください。MFT一括取得による高速化、USN追跡、統計履歴、GUIは今後の実装です。
 
 NISTの公開NTFSイメージ7件を使った追加検証を用意しています。利用条件、取得元、検査結果、再実行方法は [docs/public-corpus.md](docs/public-corpus.md) を参照してください。ダンプはGitへ含めません。

@@ -1,0 +1,151 @@
+using System.Diagnostics;
+using Something.Ntfs;
+using Something.Windows;
+
+internal static class ScanBenchmark
+{
+    public static async Task<int> RunAsync(
+        WindowsMftRecordSource source,
+        MftScanRange range,
+        CancellationToken token
+    )
+    {
+        var state = new State(range);
+        var clock = Stopwatch.StartNew();
+        using var heartbeatCancellation = new CancellationTokenSource();
+        Console.Error.WriteLine(
+            $"Scanning {range.RecordCount} observed slots; progress every 5s; Ctrl+C cancels."
+        );
+        Task heartbeat = HeartbeatAsync(state, clock, heartbeatCancellation.Token);
+        bool completed = false;
+        try
+        {
+            // Native acquisition is synchronous. Keep the heartbeat responsive during a native call.
+            await Task.Run(
+                async () =>
+                {
+                    await foreach (
+                        var entry in new LiveMftScanner(source.Volume.BytesPerCluster).ScanAsync(
+                            source,
+                            range,
+                            token
+                        )
+                    )
+                        state.Add(entry);
+                },
+                token
+            );
+            completed = true;
+        }
+        finally
+        {
+            clock.Stop();
+            heartbeatCancellation.Cancel();
+            await heartbeat;
+            state.Print(clock.Elapsed, source.Metrics, completed);
+        }
+        return state.Unresolved == 0 ? 0 : 1;
+    }
+
+    private static async Task HeartbeatAsync(State state, Stopwatch clock, CancellationToken token)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            while (await timer.WaitForNextTickAsync(token))
+                state.PrintProgress(clock.Elapsed);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    private sealed class State(MftScanRange range)
+    {
+        private readonly object gate = new();
+        private readonly Dictionary<LiveFileReadStatus, ulong> outcomes = [];
+        private readonly Dictionary<
+            LiveFileReadStatus,
+            (ulong Index, string? Error)
+        > firstFailures = [];
+        private ulong candidates;
+        private ulong files;
+        private ulong directories;
+        private ulong extensions;
+        private ulong? lastIndex;
+        private UInt128 logical;
+        private UInt128 allocated;
+        public ulong Unresolved { get; private set; }
+
+        public void Add(MftScanEntry entry)
+        {
+            lock (gate)
+            {
+                candidates++;
+                lastIndex = entry.RecordIndex;
+                outcomes[entry.Status] = outcomes.GetValueOrDefault(entry.Status) + 1;
+                if (entry.Kind == MftScanEntryKind.ExtensionRecord)
+                    extensions++;
+                else if (entry.File is { } file)
+                {
+                    if (file.IsDirectory)
+                        directories++;
+                    else
+                        files++;
+                    foreach (var stream in file.DataStreams)
+                    {
+                        logical = checked(logical + (UInt128)stream.LogicalBytes);
+                        allocated = checked(allocated + (UInt128)stream.AllocatedBytes);
+                    }
+                }
+                else
+                {
+                    Unresolved++;
+                    firstFailures.TryAdd(entry.Status, (entry.RecordIndex, entry.Error));
+                }
+            }
+        }
+
+        public void PrintProgress(TimeSpan elapsed)
+        {
+            string message;
+            lock (gate)
+            {
+                ulong traversed = lastIndex is { } index ? range.EndExclusive - index : 0;
+                message =
+                    $"Elapsed={elapsed.TotalSeconds:F0}s; traversed={traversed}/{range.RecordCount}; candidates={candidates}; unresolved={Unresolved}; last-completed-record={lastIndex?.ToString() ?? "none"}";
+            }
+            Console.Error.WriteLine(message);
+        }
+
+        public void Print(TimeSpan elapsed, VolumeReadMetrics metrics, bool completed)
+        {
+            // Worker and heartbeat have both stopped. Final output is outside the measured interval.
+            ulong traversed =
+                completed ? range.RecordCount
+                : lastIndex is { } index ? range.EndExclusive - index
+                : 0;
+            Console.WriteLine(
+                $"Scan completed={completed}; observed-slots={range.RecordCount}; traversed-slots={traversed}; candidates={candidates}; slots-not-returned={traversed - candidates}"
+            );
+            Console.WriteLine(
+                $"Resolved-files={files}; resolved-directories={directories}; extension-records={extensions}; unresolved={Unresolved}"
+            );
+            Console.WriteLine(
+                $"Elapsed={elapsed.TotalSeconds:F3}s; candidates-per-second={(elapsed.TotalSeconds > 0 ? candidates / elapsed.TotalSeconds : 0):F1}; native-read-time={metrics.AcquisitionTime.TotalSeconds:F3}s; record-requests={metrics.RecordRequests}; raw-reads={metrics.RawReads}"
+            );
+            foreach (var (status, count) in outcomes.OrderBy(p => p.Key))
+            {
+                Console.WriteLine($"  {status}={count}");
+                if (firstFailures.TryGetValue(status, out var first))
+                    Console.WriteLine(
+                        $"    First unresolved record={first.Index}; reason={first.Error ?? "not available"}"
+                    );
+            }
+            Console.WriteLine(
+                $"Resolved-DATA-only: logical-bytes={logical}; allocated-bytes={allocated}"
+            );
+            Console.WriteLine(
+                "Optimistic observations; gaps are not confirmed deletions. DATA totals exclude unresolved files and metadata overhead; they are not disk usage. No scan data is saved."
+            );
+        }
+    }
+}

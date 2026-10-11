@@ -186,13 +186,20 @@ public sealed class MftFileAssembler(int bytesPerCluster)
         var runs = ImmutableArray.CreateBuilder<DataRun>();
         foreach (var extent in extents)
         {
+            if (extent.LowestVcn != nextVcn)
+                throw new NtfsAssemblyException(
+                    $"DATA extent VCN discontinuity: expected-lowest={nextVcn}; observed-lowest={extent.LowestVcn}; observed-highest={extent.HighestVcn}."
+                );
+            if (extent.Flags != extents[0].Flags)
+                throw new NtfsAssemblyException(
+                    $"DATA extent flags mismatch: first={extents[0].Flags}; observed={extent.Flags}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}."
+                );
             if (
-                extent.LowestVcn != nextVcn
-                || extent.Flags != extents[0].Flags
-                || extent.CompressionUnit != extents[0].CompressionUnit
+                extent.CompressionUnit != extents[0].CompressionUnit
+                && !IsOmittedContinuationCompressionUnit(extents[0], extent)
             )
                 throw new NtfsAssemblyException(
-                    "DATA extents overlap, have gaps, or have incompatible flags."
+                    $"DATA extent compression unit mismatch: first={extents[0].CompressionUnit}; observed={extent.CompressionUnit}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}."
                 );
             nextVcn = checked(extent.HighestVcn + 1);
             runs.AddRange(extent.Runs);
@@ -228,4 +235,14 @@ public sealed class MftFileAssembler(int bytesPerCluster)
             runs.ToImmutable()
         );
     }
+
+    // Observed Windows compatibility case, not a complete NTFS extent specification.
+    // Its field scope and generalization remain under review in docs/ntfs-format-audit.md.
+    private static bool IsOmittedContinuationCompressionUnit(
+        NonResidentAttribute first,
+        NonResidentAttribute continuation
+    ) =>
+        continuation is { LowestVcn: > 0, CompressionUnit: 0 }
+        && first.CompressionUnit == 4
+        && (first.Flags & (NtfsAttributeFlags.Compressed | NtfsAttributeFlags.Sparse)) != 0;
 }

@@ -4,8 +4,8 @@ using System.Collections.Immutable;
 namespace Something.Ntfs;
 
 /// <summary>
-/// Parses raw, fixup-protected NTFS 3.x FILE records. No I/O, platform calls, or input mutation.
-/// Kernel-restored records require an explicit encoding; they cannot prove on-disk fixup integrity.
+/// Parses NTFS 3.x FILE records in an explicit raw or decoded encoding. No I/O or input mutation.
+/// Windows-decoded records cannot prove on-disk fixup integrity.
 /// </summary>
 public sealed class MftRecordParser
 {
@@ -18,7 +18,14 @@ public sealed class MftRecordParser
         MftRecordEncoding encoding = MftRecordEncoding.RawProtected
     )
     {
-        if (encoding is not (MftRecordEncoding.RawProtected or MftRecordEncoding.FixupsRestored))
+        if (
+            encoding
+            is not (
+                MftRecordEncoding.RawProtected
+                or MftRecordEncoding.FixupsRestored
+                or MftRecordEncoding.WindowsDecoded
+            )
+        )
             throw new ArgumentOutOfRangeException(nameof(encoding));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(
             recordIndex,
@@ -83,6 +90,11 @@ public sealed class MftRecordParser
         if (offset < 42 || offset % 2 != 0 || offset + words * 2 > FixupStride - 2)
             throw view.Error("Invalid update sequence array location", 4);
         view.Require(offset, words * 2);
+        // The Windows API returns filesystem-decoded bytes, not a protected disk image.
+        // Keep USA bounds checks but do not restore old saved words over current resident data.
+        // This contract conveys no on-disk integrity proof; raw acquisition must use RawProtected.
+        if (encoding == MftRecordEncoding.WindowsDecoded)
+            return;
         ushort sequence = view.U16(offset);
         // Validate all tails before restoring any: never accept a partially torn record.
         for (int i = 1; i < words; i++)
