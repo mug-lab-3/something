@@ -38,54 +38,38 @@ try
         using var volume = WindowsMftRecordSource.Open(args[0]);
         if (before.VolumeSerialNumber != (uint)(volume.Volume.SerialNumber & uint.MaxValue))
             throw new InvalidDataException("File and selected volume identifiers differ.");
-        var result = await new LiveMftRecordReader().ReadAsync(
+        var result = await new LiveMftFileReader(volume.Volume.BytesPerCluster).ReadAsync(
             volume,
             before.Reference.RecordIndex,
             before.Reference,
             cancellation.Token
         );
-        if (result.Status != LiveRecordReadStatus.ObservedUnchanged || result.Record is null)
+        if (result.Status != LiveFileReadStatus.ObservedUnchanged || result.File is null)
         {
-            Console.WriteLine($"File comparison unresolved: {result.Status}.");
+            Console.WriteLine(
+                $"File comparison unresolved: {result.Status}; record={result.UnresolvedRecordIndex}; attempts={result.Attempts}."
+            );
             return 1;
         }
-        try
+        var assembled = result.File;
+        var after = file.Observe(cancellation.Token);
+        if (before != after)
         {
-            // Extensions and nonresident attribute lists intentionally remain unresolved here.
-            var assembled = new MftFileAssembler(volume.Volume.BytesPerCluster).Assemble(
-                result.Record,
-                []
-            );
-            var after = file.Observe(cancellation.Token);
-            if (before != after)
-            {
-                Console.WriteLine(
-                    "File comparison unresolved: metadata changed during observation."
-                );
-                return 1;
-            }
-            var stream = assembled.DataStreams.SingleOrDefault(s => s.Name.Length == 0);
-            if (stream is null)
-            {
-                Console.WriteLine(
-                    "File comparison unresolved: unnamed DATA stream was not resolved."
-                );
-                return 1;
-            }
-            bool match = stream.LogicalBytes == after.LogicalBytes;
-            Console.WriteLine(
-                $"Record {before.Reference.RecordIndex}: NTFS-logical={stream.LogicalBytes}; Windows-logical={after.LogicalBytes}; DATA-allocated={stream.AllocatedBytes}; match={match}"
-            );
-            Console.WriteLine(
-                "Optimistic size comparison; a mismatch may reflect concurrent changes."
-            );
-            return match ? 0 : 1;
-        }
-        catch (NtfsAssemblyException)
-        {
-            Console.WriteLine("File comparison unresolved: complete file assembly is unavailable.");
+            Console.WriteLine("File comparison unresolved: metadata changed during observation.");
             return 1;
         }
+        var stream = assembled.DataStreams.SingleOrDefault(s => s.Name.Length == 0);
+        if (stream is null)
+        {
+            Console.WriteLine("File comparison unresolved: unnamed DATA stream was not resolved.");
+            return 1;
+        }
+        bool match = stream.LogicalBytes == after.LogicalBytes;
+        Console.WriteLine(
+            $"Record {before.Reference.RecordIndex}: NTFS-logical={stream.LogicalBytes}; Windows-logical={after.LogicalBytes}; DATA-allocated={stream.AllocatedBytes}; match={match}"
+        );
+        Console.WriteLine("Optimistic size comparison; a mismatch may reflect concurrent changes.");
+        return match ? 0 : 1;
     }
     ulong start = args.Length > 1 ? ulong.Parse(args[1]) : 0;
     int count = args.Length > 2 ? int.Parse(args[2]) : 16;
@@ -100,6 +84,7 @@ try
         $"Sector={source.Volume.BytesPerSector}; cluster={source.Volume.BytesPerCluster}; record={source.Volume.BytesPerRecord}; observed-slots={source.Volume.ObservedRecordCount}"
     );
     var reader = new LiveMftRecordReader();
+    var fileReader = new LiveMftFileReader(source.Volume.BytesPerCluster);
     int unresolved = 0;
     for (int n = 0; n < count; n++)
     {
@@ -118,18 +103,23 @@ try
         );
         if (record.IsInUse && !record.IsExtension)
         {
-            try
+            var fileResult = await fileReader.ReadAsync(
+                source,
+                index,
+                record.Reference,
+                cancellation.Token
+            );
+            if (fileResult.File is { } file)
             {
-                var file = new MftFileAssembler(source.Volume.BytesPerCluster).Assemble(record, []);
                 foreach (var stream in file.DataStreams)
                     Console.WriteLine(
                         $"  DATA: named={stream.Name.Length != 0}; logical={stream.LogicalBytes}; allocated={stream.AllocatedBytes}"
                     );
             }
-            catch (NtfsAssemblyException)
+            else
             {
                 Console.WriteLine(
-                    "  DATA capacity unresolved: complete file assembly is unavailable."
+                    $"  DATA capacity unresolved: {fileResult.Status}; record={fileResult.UnresolvedRecordIndex}; attempts={fileResult.Attempts}."
                 );
                 unresolved++;
             }

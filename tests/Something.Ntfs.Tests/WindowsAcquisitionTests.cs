@@ -261,6 +261,21 @@ public sealed class WindowsAcquisitionTests
     }
 
     [Fact]
+    public async Task Source_RestoredRecord_FileAssemblyRevalidatesInDeclaredEncoding()
+    {
+        var io = new FakeIo();
+        using var source = new WindowsMftRecordSource(io);
+        var result = await new LiveMftFileReader(source.Volume.BytesPerCluster).ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        Assert.Equal(5000, Assert.Single(result.File!.DataStreams).LogicalBytes);
+        Assert.Equal(4, io.RecordCalls);
+    }
+
+    [Fact]
     public async Task Source_CancelledBeforeRead_DoesNotAcquireRecord()
     {
         var io = new FakeIo();

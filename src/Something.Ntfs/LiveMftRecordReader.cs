@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Something.Ntfs;
 
 /// <summary>
@@ -43,7 +45,8 @@ public sealed record LiveRecordReadResult(
     LiveRecordReadStatus Status,
     MftRecord? Record,
     int Attempts,
-    NtfsParseException? Error
+    NtfsParseException? Error,
+    ImmutableArray<byte> ObservedBytes = default
 );
 
 /// <summary>
@@ -121,7 +124,8 @@ public sealed class LiveMftRecordReader
                     : LiveRecordReadStatus.NotInUse,
                 record,
                 attempt,
-                null
+                null,
+                ImmutableArray.CreateRange(owned)
             );
         }
         return new(

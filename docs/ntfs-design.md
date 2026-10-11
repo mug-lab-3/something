@@ -20,6 +20,8 @@
 
 `LiveMftRecordReader` は入力形式を明示する `IMftRecordSource` に対し最大3回（設定可能）の読み取りを試みます。`IRawMftRecordSource` はRawProtectedを指定するインターフェースとして維持します。1回の試行で取得したレコードを自分のバッファへコピーして解析し、もう一度取得してバイト列を比較します。共有バッファを返す取得層にも対応します。
 
+`LiveMftFileReader` はresident ATTRIBUTE_LISTの参照先を取得して結合し、結合後にbaseと全拡張レコードの観測バイト列を再照合します。ファイル全体の再試行は既定3回、取得はbaseを含め既定128レコードまでに制限します。非residentリストや拡張レコード内のリストは未対応として返し、容量を部分的に返しません。Missing・Replaced・ChangedDuringRead・InvalidRecord・InvalidAssembly・Unsupported・LimitExceededを区別します。取得層のI/Oエラーとキャンセルは例外として伝達します。
+
 | 状態 | 意味／扱い |
 |---|---|
 | ObservedUnchanged | 2回の観測が一致。時点スナップショットの保証ではない |
