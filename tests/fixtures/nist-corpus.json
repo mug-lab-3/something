@@ -1,0 +1,135 @@
+{
+    "Source":  "NIST CFReDS DFR",
+    "RetrievedOn":  "2026-10-11",
+    "SourcePage":  "https://cfreds-archive.nist.gov/dfr-test-images.html",
+    "Terms":  "https://www.nist.gov/copyrights-disclaimers",
+    "HashProvenance":  "Locally calculated SHA-256; not publisher-signed checksums.",
+    "Cases":  [
+                  {
+                      "Source":  "dfr-01-ntfs.dd.bz2",
+                      "CompressedSha256":  "9625d8946bc7712953d0ca7e73e4eaeff26381006951d3f7603d1797b50d19e0",
+                      "ImageSha256":  "c863ccad01804b840a6dfa623a94996ca876e15ded41c6c0d8ae148620eb6493",
+                      "MftSha256":  "e4d619c2238da505cb87edca668e544f89039349c7a7502df22dab278a1228a4",
+                      "PartitionStartSector":  61,
+                      "BytesPerCluster":  4096,
+                      "RecordSize":  1024,
+                      "Active":  29,
+                      "Inactive":  38,
+                      "Uninitialized":  0,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "01",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-01-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-02-ntfs.dd.bz2",
+                      "CompressedSha256":  "18ff23026ad7ed8fe6d93eca00200b0ede031c6ee4e760f52e62aee397d87844",
+                      "ImageSha256":  "57e6f37d3312ee4a113a6534a1ffcbd45ad3e0325a509442ac54ae632762d1ef",
+                      "MftSha256":  "aacc5b24788b240d057262f800f2601687ccc2a71f1bae2389fdb9e902012219",
+                      "PartitionStartSector":  61,
+                      "BytesPerCluster":  4096,
+                      "RecordSize":  1024,
+                      "Active":  30,
+                      "Inactive":  9,
+                      "Uninitialized":  25,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "02",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-02-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-03-ntfs.dd.bz2",
+                      "CompressedSha256":  "1f836037afa45e97992f6c1e983b0f0b89de1db859ff962d43bb628813bd992e",
+                      "ImageSha256":  "466db91345fc6f5b47527f4b2cb109305bdabf2caa0883eb60516c26e625b03a",
+                      "MftSha256":  "4d48e4f34a8d612f4190e31c68bc567cfff0dc0d31447effb3efd9c8139bba3b",
+                      "PartitionStartSector":  128,
+                      "BytesPerCluster":  512,
+                      "RecordSize":  1024,
+                      "Active":  32,
+                      "Inactive":  1,
+                      "Uninitialized":  37,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "03",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-03-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-04-ntfs.dd.bz2",
+                      "CompressedSha256":  "ea057626bfbd419f52b743763ad52c82c4b16bfaecc53b12dc9f0219cedae931",
+                      "ImageSha256":  "a590613b3e54e2963e9d95e95c201e4c8d4bcffd19281c4d8c64388f1ab2d8e1",
+                      "MftSha256":  "16386c430f34686b5ce1c4909c1b41a0fbd3398207953a182e4ea30ca88a1487",
+                      "PartitionStartSector":  128,
+                      "BytesPerCluster":  512,
+                      "RecordSize":  1024,
+                      "Active":  39,
+                      "Inactive":  12,
+                      "Uninitialized":  37,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "04",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-04-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-11-mft-ntfs.dd.bz2",
+                      "CompressedSha256":  "0645da1fcf0c8b03e16c86a67cad8c41bfbe8ee1713aaba941642b92dc88e046",
+                      "ImageSha256":  "5c19686c2569ae0343c0616439c4b1b1b9fd368ad64b8995f2bae4dce0a7aeb8",
+                      "MftSha256":  "ad329a6df64a4137f8b1fdfc701d8d9167a456abaf557c7ccca5cea0bf5d2458",
+                      "PartitionStartSector":  128,
+                      "BytesPerCluster":  8192,
+                      "RecordSize":  1024,
+                      "Active":  35,
+                      "Inactive":  4,
+                      "Uninitialized":  25,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "11-mft",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-11-mft-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-11-compress-ntfs.dd.bz2",
+                      "CompressedSha256":  "7f796dec9dccbc7d05c0a1d4e1415dbe2b49eb533a8e667ace68e66fab8b58b9",
+                      "ImageSha256":  "fd38b6eeb1ad1b80d303faf2dbfd905c6368c77febdaf2f2ab11e4dbb4e78942",
+                      "MftSha256":  "2561ea45627e599ae6815f7bc8786bd300c23ef5ae5b57d429f37580b7959cde",
+                      "PartitionStartSector":  128,
+                      "BytesPerCluster":  1024,
+                      "RecordSize":  1024,
+                      "Active":  37,
+                      "Inactive":  4,
+                      "Uninitialized":  23,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "11-compress",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-11-compress-ntfs.dd.bz2"
+                  },
+                  {
+                      "Source":  "dfr-17-ntfs.dd.bz2",
+                      "CompressedSha256":  "bc3ed47c055f4cb6d474c76f489e45e281dbcb8349d8e3c3ccbd9a803a377666",
+                      "ImageSha256":  "5a0293e2ae4aa9954c7e14f9322c321591ad3ba768daaf7ba49255048863a232",
+                      "MftSha256":  "9d42474a778c6c5c817c8b0ec59607df637eff24917e6266602d78fbd97b95f6",
+                      "PartitionStartSector":  128,
+                      "BytesPerCluster":  512,
+                      "RecordSize":  1024,
+                      "Active":  117,
+                      "Inactive":  0,
+                      "Uninitialized":  37,
+                      "Invalid":  0,
+                      "Errors":  [
+
+                                 ],
+                      "Id":  "17",
+                      "Url":  "https://cfreds-archive.nist.gov/dfr-images/dfr-17-ntfs.dd.bz2"
+                  }
+              ]
+}

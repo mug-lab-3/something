@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../tests/fixtures/nist-corpus.json" Link="nist-corpus.json" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.11.2" />
+    <PackageReference Include="MFT" Version="2026.5.1" />
+    <Using Include="Xunit" />
+    <ProjectReference Include="../../src/Something.Ntfs/Something.Ntfs.csproj" />
+  </ItemGroup>
+</Project>

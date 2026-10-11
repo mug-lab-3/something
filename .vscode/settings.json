@@ -1,0 +1,11 @@
+{
+  "dotnet.defaultSolution": "Something.slnx",
+  "terminal.integrated.env.windows": {
+    "DOTNET_ROOT": "${workspaceFolder}\\.tools\\dotnet",
+    "PATH": "${workspaceFolder}\\.tools\\dotnet;${env:PATH}"
+  },
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  }
+}

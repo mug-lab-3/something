@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DiscUtils.Ntfs" Version="0.16.13" />
+    <PackageReference Include="SharpCompress" Version="0.50.5" />
+    <ProjectReference Include="../../src/Something.Ntfs/Something.Ntfs.csproj" />
+  </ItemGroup>
+</Project>

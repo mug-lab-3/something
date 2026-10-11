@@ -48,4 +48,18 @@ USNジャーナルによる差分更新は、その後の拡張として検討�
 
 ## 開発状況
 
-リポジトリの準備段階です。アプリのソースコードとビルド環境はまだ追加していません。
+WindowsでGitとVS Code（`code`コマンド）を用意し、リポジトリを取得したら以下の一コマンドで開発環境を準備できます。Visual Studioや事前の.NETインストール、管理者権限は不要です。初回はインターネット接続が必要です。
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
+```
+
+SDKの取得・ハッシュ確認、推奨拡張のインストール、ワークスペース生成、依存復元、ビルド、単体テストまで行います。公開テストデータも取得する場合は`-WithPublicCorpus`を追加してください。
+
+UIから独立したMFT解析ライブラリ、オフライン検査CLI、xUnit.net v3 / Microsoft.Testing.Platformによるテストを追加しています。.NET 10 / C# 14を使用します。
+
+VS Code / CLIでの開発手順は [docs/development.md](docs/development.md)、解析の境界・ライブ変更への対応設計・制限は [docs/ntfs-design.md](docs/ntfs-design.md) を参照してください。
+
+ライブボリュームの取得、USN追跡、統計履歴、GUIは今後の実装です。
+
+NISTの公開NTFSイメージ7件を使った追加検証を用意しています。利用条件、取得元、検査結果、再実行方法は [docs/public-corpus.md](docs/public-corpus.md) を参照してください。ダンプはGitへ含めません。
