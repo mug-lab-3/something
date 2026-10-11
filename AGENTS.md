@@ -12,4 +12,4 @@
 - Use xUnit.net v3 and Microsoft.Testing.Platform. Use AAA and FIRST principles; measure line/branch coverage (targets 95%/90% for the parser) without treating the percentage as proof of correctness. Pass the xUnit test cancellation token to asynchronous work.
 - Treat concurrent delete, change, and file-reference reuse as normal scan outcomes. Bound retries, preserve uncertainty, and never infer zero capacity or historical deletion from an unresolved read. Distinguish optimistic observations from point-in-time snapshots.
 - Document supported formats, incomplete-file handling, and limitations. Do not claim live-volume support from synthetic tests alone.
-- Use `scripts/dotnet.ps1` for local CLI work when the SDK is installed under `.tools/dotnet`. Do not commit SDKs, scan dumps, private file paths, or generated history.
+- Use the installed system SDK through the .NET CLI; keep SDK selection pinned by `global.json`. Do not commit SDKs, scan dumps, private file paths, or generated history.

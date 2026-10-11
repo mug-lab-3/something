@@ -3,8 +3,7 @@ $ErrorActionPreference = 'Stop'
 $taskRepoRoot = Split-Path -Parent $PSScriptRoot
 $taskRoot = Join-Path $taskRepoRoot '.tools/corpus/nist'
 $taskManifest = Get-Content (Join-Path $taskRepoRoot 'tests/fixtures/nist-corpus.json') -Raw -Encoding utf8 | ConvertFrom-Json
-$taskDotnet = Join-Path $taskRepoRoot '.tools/dotnet/dotnet.exe'
-if (!(Test-Path -LiteralPath $taskDotnet)) { $taskDotnet = (Get-Command dotnet -ErrorAction Stop).Source }
+$taskDotnet = (Get-Command dotnet -ErrorAction Stop).Source
 
 function Assert-CorpusHash([string] $Path, [string] $Expected) {
     if (!(Test-Path -LiteralPath $Path)) { throw "Missing corpus file: $Path" }

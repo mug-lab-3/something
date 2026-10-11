@@ -9,8 +9,7 @@
       "program": "${workspaceFolder}/tools/Something.MftInspect/bin/Debug/net10.0/Something.MftInspect.dll",
       "args": ["${input:mftDumpPath}", "${input:recordSize}"],
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "env": { "DOTNET_ROOT": "${workspaceFolder}/.tools/dotnet" }
+      "console": "integratedTerminal"
     }
   ],
   "inputs": [
