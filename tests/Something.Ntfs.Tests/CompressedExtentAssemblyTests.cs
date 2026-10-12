@@ -133,17 +133,24 @@ public sealed class CompressedExtentAssemblyTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
+    [InlineData(false, false, 4096, 1024)]
+    [InlineData(false, true, 4096, 1024)]
+    [InlineData(true, false, 4096, 1024)]
+    [InlineData(true, true, 4096, 1024)]
+    [InlineData(false, false, 512, 512)]
+    [InlineData(true, true, 512, 512)]
+    [InlineData(false, true, 65536, 4096)]
+    [InlineData(true, false, 2097152, 65536)]
     public async Task ReadAsync_SparseBitDiffersBetweenExtents_PreservesPrimarySettingsAndRawFlags(
         bool firstSparse,
-        bool named
+        bool named,
+        int bytesPerCluster,
+        int bytesPerRecord
     )
     {
         NtfsAttributeFlags firstFlags = firstSparse ? NtfsAttributeFlags.Sparse : 0;
         NtfsAttributeFlags nextFlags = firstSparse ? 0 : NtfsAttributeFlags.Sparse;
+        long logical = Math.Min(5000, bytesPerCluster * 2 - 1);
         string name = named ? "synthetic-stream" : "";
         byte[] list =
         [
@@ -153,8 +160,9 @@ public sealed class CompressedExtentAssemblyTests
         byte[] first = RecordFixture.NonResident(
             name: name,
             flags: firstFlags,
-            allocated: 16384,
-            physical: firstSparse ? 12288 : null,
+            logical: logical,
+            allocated: 4 * bytesPerCluster,
+            physical: firstSparse ? 3 * bytesPerCluster : null,
             runs: firstSparse ? [0x11, 1, 100, 0x01, 1, 0] : [0x11, 2, 100, 0]
         );
         byte[] next = RecordFixture.NonResident(
@@ -165,12 +173,20 @@ public sealed class CompressedExtentAssemblyTests
             flags: nextFlags,
             runs: [0x11, 2, 110, 0]
         );
-        byte[] baseBytes = RecordFixture.Record([RecordFixture.Resident(0x20, 0, list), first]);
-        byte[] extensionBytes = RecordFixture.Record([next], baseReference: Base.Value, index: 43);
+        byte[] baseBytes = RecordFixture.Record(
+            [RecordFixture.Resident(0x20, 0, list), first],
+            size: bytesPerRecord
+        );
+        byte[] extensionBytes = RecordFixture.Record(
+            [next],
+            size: bytesPerRecord,
+            baseReference: Base.Value,
+            index: 43
+        );
         byte[] baseCopy = baseBytes.ToArray();
         byte[] extensionCopy = extensionBytes.ToArray();
 
-        var result = await new LiveMftFileReader(4096, totalClusters: 1024).ReadAsync(
+        var result = await new LiveMftFileReader(bytesPerCluster, totalClusters: 1024).ReadAsync(
             new Source(baseBytes, extensionBytes),
             42,
             cancellationToken: TestContext.Current.CancellationToken
@@ -178,8 +194,8 @@ public sealed class CompressedExtentAssemblyTests
 
         Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
         var stream = Assert.Single(result.File!.DataStreams);
-        Assert.Equal(firstSparse ? 12288 : 16384, stream.AllocatedBytes);
-        Assert.Equal(5000, stream.LogicalBytes);
+        Assert.Equal((firstSparse ? 3 : 4) * bytesPerCluster, stream.AllocatedBytes);
+        Assert.Equal(logical, stream.LogicalBytes);
         Assert.Equal(firstFlags, stream.Storage!.Flags);
         Assert.Equal(name, stream.Name);
         var extents = result.File.Attributes.OfType<NonResidentAttribute>().ToArray();

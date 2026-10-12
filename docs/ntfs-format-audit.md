@@ -149,7 +149,27 @@ Storageと元の各NonResidentAttributeを分離し、継続値を先頭値で�
 既存のSHA-256固定NIST公開データ7ケースも再検証する。
 このコーパス検証はWindowsの実ボリュームでの割り当て容量照合を代替しない。
 
-## 一次資料
+## 圧縮ビット差の追加監査
+
+2026-10-12、Linux NTFS3 v6.12のattr_is_frame_compressed、attr_load_runs_vcnと、
+ntfs-3g 2022.10.3のntfs_attr_open、ntfs_attr_map_whole_runlistを再確認した。
+前者は先頭extentの圧縮状態を参照し、継続のmapping pairsは別経路で取得する。
+後者は先頭でストリーム設定を初期化し、VCN順にmapping pairsを結合する。
+これらの読み取り経路には、全extentのflagsを同値とする検査は見当たらない。
+ただし、検査がないことと、すべてのflags差が有効な形式であることを同一視しない。
+
+NTFS3のattr_set_compress（2468..2530）は先頭の圧縮設定を変更するが、
+非residentで論理サイズが非ゼロのファイルを拒否する。この関数だけを根拠に、
+非空の複数extentに見られたCompressed→0の差が状態更新で生じるとは説明できない。
+ntfs-3gの圧縮ストリーム初期化でも、空ストリームに限定した状態更新と形式チェックがある。
+Sparseの場合に確認した先頭だけでのビット更新と、同じ根拠として扱わない。
+
+従って圧縮ビット差は引き続きUnsupportedで容量を返さない。
+次の判断には、差を含む画像の独立容量照合、または対応する実機ファイルの
+Windows API照合と、適用条件を裏付ける追加資料が必要。
+一次資料の処理を転記せず、観測・確認した事実・そこからの推論を分けて記録する。
+
+## 一次資料（リンク）
 
 - [Microsoft: MULTI_SECTOR_HEADER](https://learn.microsoft.com/en-us/windows/win32/devnotes/multi-sector-header)
 - [Microsoft: ATTRIBUTE_RECORD_HEADER](https://learn.microsoft.com/en-us/windows/win32/devnotes/attribute-record-header)
