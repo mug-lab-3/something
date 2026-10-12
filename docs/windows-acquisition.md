@@ -313,7 +313,14 @@ WindowsのNTFS上の専用一時ファイルで参照からのopen・rename後�
 Windowsは圧縮あり・Sparseなし・compression-format=2を報告し、論理サイズ4,517,414バイト、
 割り当て容量1,245,184バイトを返した。この時点ではNTFSの結合がUnsupportedであり、
 Windows側の観測だけが得られた。NTFS flagsの形式番号1とWindows APIの形式番号2は別の表現で、
-同値比較しない。継続の圧縮ビット省略への対応後の、両容量の独立一致確認はまだ残る。
+同値比較しない。
+
+2026-10-12、継続の圧縮ビット省略への対応後、同じ実ファイルで再実行した。
+NTFS-logicalとWindows-logicalはともに4,517,414バイト、DATA-allocatedとWindows-allocatedは
+ともに1,245,184バイトで、logical-match=True・allocated-match=True・match=Trueを確認した。
+圧縮省略を伴う複数extentの無名DATAについて、この1件の独立容量照合が成功した。
+他の圧縮条件・Sparseや変更後の全件走査まで確認したものではなく、観測前後の一致も
+時点スナップショットを保証しない。
 
 ## 参考資料（リンク）
 
