@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Something.Ntfs;
 using Something.Statistics;
 
@@ -11,6 +12,7 @@ public sealed class BufferedScan
     private readonly HashSet<ulong> indices = [];
     private readonly StoredScan validation;
     private FolderAggregationResult? aggregation;
+    private ImmutableArray<UnattributedSummary> diagnostics;
 
     public BufferedScan(ScanDescriptor descriptor)
     {
@@ -25,6 +27,10 @@ public sealed class BufferedScan
     public FolderAggregationResult Aggregation =>
         aggregation
         ?? throw new InvalidOperationException("Buffered enumeration has not completed.");
+    public ImmutableArray<UnattributedSummary> Diagnostics =>
+        aggregation is not null
+            ? diagnostics
+            : throw new InvalidOperationException("Buffered enumeration has not completed.");
 
     public void Add(MftScanEntry entry, CancellationToken cancellationToken = default) =>
         Add(StagedObservation.FromEntry(entry, cancellationToken), cancellationToken);
@@ -62,6 +68,7 @@ public sealed class BufferedScan
             ?? throw new InvalidDataException("A complete root observation is required.");
         var graph = FolderGraph.Build(root.Reference, folders, cancellationToken);
         var resolver = new ScanDomainResolver(graph);
+        var collector = new UnattributedDiagnostics(graph);
         CapacityAmount observed = default;
         var result = new FolderAggregator(graph).Aggregate(
             observations
@@ -77,7 +84,8 @@ public sealed class BufferedScan
                         );
                     return resolver.Resolve(file, cancellationToken);
                 }),
-            cancellationToken
+            cancellationToken,
+            collector.Add
         );
         if (!result.Folders.TryGetValue(root.Reference, out var rootSample))
             throw new InvalidDataException("A valid root hierarchy is required for publication.");
@@ -87,6 +95,24 @@ public sealed class BufferedScan
         )
             throw new InvalidDataException("Buffered aggregation did not conserve observed DATA.");
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostics = collector.Snapshot();
+        CapacityAmount diagnosticCapacity = default;
+        ulong diagnosticResolved = 0,
+            diagnosticUnresolved = 0;
+        foreach (var group in diagnostics)
+        {
+            diagnosticCapacity += group.KnownData;
+            diagnosticResolved = checked(diagnosticResolved + group.ResolvedCount);
+            diagnosticUnresolved = checked(diagnosticUnresolved + group.UnresolvedCount);
+        }
+        if (
+            diagnosticCapacity != result.Unattributed.KnownData
+            || diagnosticResolved != result.Unattributed.ResolvedCount
+            || diagnosticUnresolved != result.Unattributed.UnresolvedCount
+        )
+            throw new InvalidDataException(
+                "Unattributed diagnostics do not match the capacity bucket."
+            );
         aggregation = result with
         {
             HasUnknownAttribution =

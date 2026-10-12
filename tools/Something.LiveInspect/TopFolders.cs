@@ -143,6 +143,16 @@ internal static class TopFolders
                     Console.WriteLine(
                         $"Outside-folder-totals: metadata-known-allocated-bytes={result.Metadata.KnownData.AllocatedBytes}; unattributed-known-allocated-bytes={result.Unattributed.KnownData.AllocatedBytes}; unattributed-resolved={result.Unattributed.ResolvedCount}"
                     );
+                    foreach (var group in buffer.Diagnostics)
+                    {
+                        Console.WriteLine(
+                            $"Unattributed: reason={group.Reason}; resolved={group.ResolvedCount}; unresolved={group.UnresolvedCount}; logical-bytes={group.KnownData.LogicalBytes}; allocated-bytes={group.KnownData.AllocatedBytes}"
+                        );
+                        foreach (var sample in group.Samples)
+                            Console.WriteLine(
+                                $"  Sample: record={sample.Reference.RecordIndex}; sequence={sample.Reference.SequenceNumber}; directory={sample.IsDirectory}; allocated-bytes={sample.Capacity?.AllocatedBytes.ToString() ?? "unknown"}; observed-name-count={sample.ObservedNameCount}; names={sample.Names}; visible-names={sample.VisibleNames}; dos-names={sample.DosNames}; first-parent={sample.FirstParent?.RecordIndex}; parent-sequence={sample.FirstParent?.SequenceNumber}; problem-parent={sample.ProblemParent?.RecordIndex}; problem-parent-sequence={sample.ProblemParent?.SequenceNumber}; hierarchy-issue={sample.HierarchyIssue}"
+                            );
+                    }
                     Console.WriteLine(
                         "Optimistic DATA observations only; nested rows overlap, metadata overhead is excluded, and unresolved capacity can change ranking. No history is retained."
                     );

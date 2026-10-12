@@ -123,6 +123,15 @@ dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchma
 公開履歴DBを使わず、正常終了・例外・Ctrl+C時には所有する一時DBを片付けます。
 性能変更の測定結果は[storage-design.md](storage-design.md)に記録しています。
 
+容量差の調査用に、最終出力の`Unattributed`で所属不明の理由別件数・既知容量を表示します。
+`Sample`は各理由で割り当て容量が大きい最大2件の参照番号・シーケンス番号・名前数・親参照です。
+ファイル名・パスは診断サンプルへ出さず、スキャン中の行単位出力もしません。
+名前集合の不完全、親参照の欠落・再利用、無効な階層、管理領域と通常領域をまたぐリンクなどを区別します。
+名前集合の不完全は、ヘッダーとの名前数不一致・重複名・対応するWin32名のないDOS名も分けます。
+`problem-parent`は原因となった親参照です。欠落やシーケンス不一致は、削除や容量ゼロの確定ではありません。
+各理由の件数と容量の合計がUnattributed区分と一致することも検証します。
+診断は帰属方針を変更せず、容量の取得失敗を0へ変換しません。
+
 EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
 
 ```powershell

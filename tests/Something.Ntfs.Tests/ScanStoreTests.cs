@@ -897,6 +897,44 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void BufferedDiagnostics_AccountForEveryUnattributedFileWithoutChangingSavedFacts()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        var incomplete = File(100, 71, Root) with
+        {
+            Names =
+            [
+                new(Root, "long", FileNameNamespace.Win32, 0),
+                new(Root, "DOS~1", FileNameNamespace.Dos, 0),
+            ],
+            ObservedHardLinkCount = 1,
+            LinkSetComplete = false,
+        };
+        Assert.Throws<InvalidOperationException>(() => buffer.Diagnostics);
+        buffer.Add(Stage(Directory(5, Root)), token);
+        buffer.Add(Stage(incomplete), token);
+        buffer.Add(Stage(File(101, 23, Ref(999))), token);
+        var result = buffer.Complete(token);
+        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        Assert.Equal(new CapacityAmount(94, 94), result.Unattributed.KnownData);
+        Assert.Equal(default, result.Folders[Root].SubtreeData);
+        Assert.Equal(2, buffer.Diagnostics.Length);
+        Assert.Equal(UnattributedReason.NameCountMismatch, buffer.Diagnostics[0].Reason);
+        Assert.Equal(new CapacityAmount(71, 71), buffer.Diagnostics[0].KnownData);
+        Assert.Equal(UnattributedReason.MissingParent, buffer.Diagnostics[1].Reason);
+        Assert.Equal(Ref(999), buffer.Diagnostics[1].Samples[0].ProblemParent);
+        Assert.Equal(result.Unattributed, fixture.Store.ReadAggregation(id, token).Unattributed);
+        var stored = fixture
+            .Store.ReadFiles(id, token)
+            .Single(f => f.Reference == incomplete.Reference);
+        Assert.Equal(incomplete.Names.ToArray(), stored.Names.ToArray());
+        Assert.Equal(incomplete.Streams.ToArray(), stored.Streams.ToArray());
+        Assert.False(stored.LinkSetComplete);
+    }
+
+    [Fact]
     public void InitialMigration_MatchesModelAndSurvivesReopen()
     {
         using var fixture = new DatabaseFixture();

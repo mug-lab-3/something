@@ -38,7 +38,8 @@ public sealed class FolderAggregator(FolderGraph graph)
 
     public FolderAggregationResult Aggregate(
         IEnumerable<FileCapacityObservation> observations,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        Action<FileCapacityObservation, FileAttribution>? onUnattributed = null
     )
     {
         ArgumentNullException.ThrowIfNull(observations);
@@ -89,6 +90,7 @@ public sealed class FolderAggregator(FolderGraph graph)
             }
             if (attribution.Folder is not { } owner)
             {
+                onUnattributed?.Invoke(observation, attribution);
                 unattributed = Add(unattributed, attribution.Capacity);
                 unknownAttribution = true;
                 continue;
