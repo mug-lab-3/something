@@ -209,13 +209,16 @@ public sealed class LiveMftFileReader
                     );
             }
             var extensions = references.Where(r => r != baseRecord.Reference).ToArray();
-            if (extensions.Length >= maximumRecords)
+            // The base record counts even when ATTRIBUTE_LIST does not reference it.
+            // Multiple attributes in one extension consume only one record acquisition slot.
+            int requiredRecords = checked(extensions.Length + 1);
+            if (requiredRecords > maximumRecords)
                 return new(
                     LiveFileReadStatus.LimitExceeded,
                     null,
                     attempt,
                     recordIndex,
-                    Error: "File record acquisition limit exceeded."
+                    Error: $"File record acquisition limit exceeded: required-records={requiredRecords}; maximum-records={maximumRecords}; extension-records={extensions.Length}."
                 );
 
             List<LiveRecordReadResult> observations = [first];

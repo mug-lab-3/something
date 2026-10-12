@@ -227,6 +227,76 @@ public sealed class LiveMftFileReaderTests
         Assert.Equal(4, source.TotalCalls);
     }
 
+    [Theory]
+    [InlineData(128, false)]
+    [InlineData(169, true)]
+    [InlineData(256, true)]
+    public async Task ReadAsync_FileWith169Segments_RespectsSelectedBudgetAndRevalidatesAll(
+        int limit,
+        bool resolves
+    )
+    {
+        const int segmentCount = 169;
+        byte[] list = Enumerable
+            .Range(0, segmentCount)
+            .SelectMany(i =>
+                RecordFixture.ListEntry(0x80, 1, FileReference.Create((ulong)(42 + i), 3), i)
+            )
+            .ToArray();
+        byte[] baseBytes = RecordFixture.Record(
+            [
+                RecordFixture.Resident(0x20, 0, list),
+                RecordFixture.NonResident(
+                    highestVcn: 0,
+                    runs: [0x11, 1, 100, 0],
+                    logical: segmentCount * 4096,
+                    allocated: segmentCount * 4096
+                ),
+            ],
+            size: 8192
+        );
+        var source = new Source(
+            (index, _) =>
+                index == 42
+                    ? baseBytes
+                    : RecordFixture.Record(
+                        [
+                            RecordFixture.NonResident(
+                                lowestVcn: (long)index - 42,
+                                highestVcn: (long)index - 42,
+                                runs: [0x21, 1, (byte)index, 1, 0]
+                            ),
+                        ],
+                        baseReference: BaseReference.Value,
+                        index: (uint)index
+                    )
+        );
+
+        var result = await new LiveMftFileReader(
+            4096,
+            maximumRecords: limit,
+            totalClusters: 1024
+        ).ReadAsync(source, 42, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            resolves ? LiveFileReadStatus.ObservedUnchanged : LiveFileReadStatus.LimitExceeded,
+            result.Status
+        );
+        if (resolves)
+        {
+            var stream = Assert.Single(result.File!.DataStreams);
+            Assert.Equal(segmentCount * 4096, stream.AllocatedBytes);
+            Assert.Equal(segmentCount, stream.Runs.Length);
+            Assert.Equal(segmentCount, source.Calls.Count);
+            Assert.All(source.Calls.Values, calls => Assert.Equal(4, calls));
+        }
+        else
+        {
+            Assert.Null(result.File);
+            Assert.Equal(2, source.TotalCalls);
+        }
+    }
+
     [Fact]
     public async Task ReadAsync_ExtendedFile_ResolvesAndRevalidatesAllRecords()
     {
@@ -439,6 +509,51 @@ public sealed class LiveMftFileReaderTests
         Assert.Equal(LiveFileReadStatus.LimitExceeded, result.Status);
         Assert.Equal(2, source.TotalCalls);
         Assert.Null(result.File);
+        Assert.Equal(
+            "File record acquisition limit exceeded: required-records=2; maximum-records=1; extension-records=1.",
+            result.Error
+        );
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ReadAsync_RecordLimit_CountsDistinctExtensionsAndBase(
+        bool includesBase,
+        bool multipleAttributesPerExtension
+    )
+    {
+        byte[] list =
+        [
+            .. includesBase ? RecordFixture.ListEntry(0x80, 1, BaseReference) : [],
+            .. RecordFixture.ListEntry(0x80, 2, ExtensionReference, 2),
+            .. RecordFixture.ListEntry(0x80, 3, FileReference.Create(44, 3), 4),
+            .. multipleAttributesPerExtension
+                ? RecordFixture.ListEntry(0x30, 4, ExtensionReference)
+                : [],
+        ];
+        byte[] bytes = RecordFixture.Record([
+            RecordFixture.Resident(0x20, 0, list),
+            RecordFixture.NonResident(),
+        ]);
+        var source = new Source((_, _) => bytes);
+
+        var result = await new LiveMftFileReader(4096, maximumRecords: 2).ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.LimitExceeded, result.Status);
+        Assert.Null(result.File);
+        Assert.Equal(2, source.TotalCalls);
+        Assert.Equal([42uL], source.Calls.Keys);
+        Assert.Equal(
+            "File record acquisition limit exceeded: required-records=3; maximum-records=2; extension-records=2.",
+            result.Error
+        );
     }
 
     [Fact]

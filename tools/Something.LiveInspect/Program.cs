@@ -8,8 +8,21 @@ if (!OperatingSystem.IsWindows())
     Console.Error.WriteLine("This diagnostic requires Windows and a local NTFS volume.");
     return 2;
 }
+
+// Diagnostic overrides are explicit and trailing; scanning keeps its fixed work budget.
+int maximumRecords = 128;
+bool invalidRecordLimit = false;
+if (args.Length >= 3 && args[^2] == "--max-records")
+{
+    invalidRecordLimit =
+        !int.TryParse(args[^1], out maximumRecords)
+        || maximumRecords is < 1 or > 256
+        || args[1] == "--scan";
+    args = args[..^2];
+}
 if (
-    args.Length is < 1 or > 3
+    invalidRecordLimit
+    || args.Length is < 1 or > 3
     || (args.Length > 1 && args[1] is not ("--file" or "--scan") && !ulong.TryParse(args[1], out _))
     || (args.Length > 1 && args[1] == "--file" && args.Length != 3)
     || (args.Length > 2 && args[1] is not ("--file" or "--scan") && !int.TryParse(args[2], out _))
@@ -17,10 +30,15 @@ if (
 )
 {
     Console.Error.WriteLine(
-        "Usage: Something.LiveInspect <drive, e.g. C:> [start-index=0] [count=16, max=4096]"
+        "Usage: Something.LiveInspect <drive, e.g. C:> [start-index=0] [count=16, max=4096] [--max-records <1..256>]"
     );
-    Console.Error.WriteLine("   or: Something.LiveInspect <drive> --file <absolute-file-path>");
+    Console.Error.WriteLine(
+        "   or: Something.LiveInspect <drive> --file <absolute-file-path> [--max-records <1..256>]"
+    );
     Console.Error.WriteLine("   or: Something.LiveInspect <drive> --scan [max-slots]");
+    Console.Error.WriteLine(
+        "Per-file record limit defaults to 128; --max-records is unavailable for --scan."
+    );
     return 2;
 }
 using var cancellation = new CancellationTokenSource();
@@ -54,6 +72,7 @@ try
             throw new InvalidDataException("File and selected volume identifiers differ.");
         var result = await new LiveMftFileReader(
             volume.Volume.BytesPerCluster,
+            maximumRecords: maximumRecords,
             totalClusters: volume.Volume.TotalClusters
         ).ReadAsync(volume, before.Reference.RecordIndex, before.Reference, cancellation.Token);
         if (result.Status != LiveFileReadStatus.ObservedUnchanged || result.File is null)
@@ -109,11 +128,12 @@ try
         throw new ArgumentException("Requested range is invalid or exceeds the diagnostic limit.");
     using var source = WindowsMftRecordSource.Open(args[0]);
     Console.WriteLine(
-        $"Sector={source.Volume.BytesPerSector}; cluster={source.Volume.BytesPerCluster}; record={source.Volume.BytesPerRecord}; observed-slots={source.Volume.ObservedRecordCount}"
+        $"Sector={source.Volume.BytesPerSector}; cluster={source.Volume.BytesPerCluster}; record={source.Volume.BytesPerRecord}; observed-slots={source.Volume.ObservedRecordCount}; maximum-records={maximumRecords}"
     );
     var reader = new LiveMftRecordReader();
     var fileReader = new LiveMftFileReader(
         source.Volume.BytesPerCluster,
+        maximumRecords: maximumRecords,
         totalClusters: source.Volume.TotalClusters
     );
     int unresolved = 0;
