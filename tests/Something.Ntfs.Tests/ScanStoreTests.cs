@@ -675,6 +675,53 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void SparsePages_PreserveNamesAndStreamsAcrossRecordGapsAndBatchBoundaries()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var id = fixture.Store.BeginScan(Descriptor(range: new(0, 30_000)), token);
+        var files = Enumerable
+            .Range(1, 1005)
+            .Select(i =>
+                File((ulong)i * 20 + 16, i, Root) with
+                {
+                    Names =
+                    [
+                        new(Root, $"long-{i}", FileNameNamespace.Win32, 0),
+                        new(Root, $"DOS-{i}", FileNameNamespace.Dos, uint.MaxValue),
+                    ],
+                    Streams = [new("", i, (long)i * 4096), new($"named-{i}", i + 1, 0)],
+                    ObservedHardLinkCount = 2,
+                }
+            )
+            .ToArray();
+        foreach (
+            var batch in files
+                .Select(Stage)
+                .Prepend(Stage(Directory(5, Root)))
+                .Chunk(ScanStore.MaximumBatchSize)
+        )
+            fixture.Store.StageBatch(id, batch, token);
+
+        fixture.Reopen();
+        var loaded = fixture.Store.ReadFiles(id, token).Where(f => !f.IsDirectory).ToArray();
+        var result = fixture.Store.CompleteScan(id, Started.AddSeconds(1), token);
+
+        Assert.Equal(files.Length, loaded.Length);
+        for (int i = 0; i < files.Length; i++)
+        {
+            Assert.Equal(files[i].Reference, loaded[i].Reference);
+            Assert.Equal(files[i].Names.ToArray(), loaded[i].Names.ToArray());
+            Assert.Equal(files[i].Streams.ToArray(), loaded[i].Streams.ToArray());
+        }
+        Assert.Equal(
+            new CapacityAmount(1_012_035, 505_515UL * 4096),
+            result.Folders[Root].SubtreeData
+        );
+        Assert.Equal(default, result.Unattributed.KnownData);
+    }
+
+    [Fact]
     public void InitialMigration_MatchesModelAndSurvivesReopen()
     {
         using var fixture = new DatabaseFixture();

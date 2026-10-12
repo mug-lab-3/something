@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Something.Storage;
 
 // Raw commands are limited to SQLite identity, schema introspection and connection PRAGMAs.
-// Application data is handled by the EF model and LINQ in ScanStore.
+// Application queries and updates use EF; prepared append inserts also derive from its model.
 internal static class SqliteDatabaseBootstrap
 {
     internal const int ApplicationId = 0x534F4D45;

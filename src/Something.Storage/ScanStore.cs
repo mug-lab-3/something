@@ -113,6 +113,9 @@ public sealed partial class ScanStore : IDisposable
             {
                 var scan = RequireRunning(scanId);
                 var indices = new HashSet<ulong>();
+                using var rows = new ModelInsert<ObservationEntity>(context);
+                using var names = new ModelInsert<FileNameEntity>(context);
+                using var streams = new ModelInsert<StreamEntity>(context);
                 foreach (var item in observations)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -121,7 +124,12 @@ public sealed partial class ScanStore : IDisposable
                         throw new InvalidDataException(
                             "Batch contains a duplicate record identity."
                         );
-                    context.Observations.Add(ToEntity(scanId, item));
+                    var entity = ToEntity(scanId, item);
+                    rows.Add(entity, cancellationToken);
+                    foreach (var name in entity.Names)
+                        names.Add(name, cancellationToken);
+                    foreach (var stream in entity.Streams)
+                        streams.Add(stream, cancellationToken);
                 }
             },
             cancellationToken
@@ -260,12 +268,21 @@ public sealed partial class ScanStore : IDisposable
                 .Where(o => o.ScanId == scanId && o.Sequence != null && o.RecordIndex > after)
                 .OrderBy(o => o.RecordIndex)
                 .Take(MaximumBatchSize)
-                .Include(o => o.Names)
-                .Include(o => o.Streams)
-                .AsSplitQuery()
                 .ToArray();
             if (page.Length == 0)
                 yield break;
+            long end = page[^1].RecordIndex;
+            var names = context
+                .Names.AsNoTracking()
+                .Where(n => n.ScanId == scanId && n.RecordIndex > after && n.RecordIndex <= end)
+                .AsEnumerable()
+                .ToLookup(n => n.RecordIndex);
+            cancellationToken.ThrowIfCancellationRequested();
+            var streams = context
+                .Streams.AsNoTracking()
+                .Where(s => s.ScanId == scanId && s.RecordIndex > after && s.RecordIndex <= end)
+                .AsEnumerable()
+                .ToLookup(s => s.RecordIndex);
             foreach (var row in page)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -276,7 +293,10 @@ public sealed partial class ScanStore : IDisposable
                     || !Enum.IsDefined(resolution)
                     || row.IsDirectory is not { } directory
                     || row.LinksComplete is not { } complete
-                    || (resolution == CapacityResolution.Unresolved && row.Streams.Count != 0)
+                    || (
+                        resolution == CapacityResolution.Unresolved
+                        && streams[row.RecordIndex].Any()
+                    )
                 )
                     throw new InvalidDataException("Stored file state or capacity is invalid.");
                 yield return new(
@@ -284,10 +304,10 @@ public sealed partial class ScanStore : IDisposable
                     directory,
                     domain,
                     resolution,
-                    [.. row.Names.OrderBy(n => n.Ordinal).Select(ToName)],
+                    [.. names[row.RecordIndex].OrderBy(n => n.Ordinal).Select(ToName)],
                     [
-                        .. row
-                            .Streams.OrderBy(s => s.Ordinal)
+                        .. streams[row.RecordIndex]
+                            .OrderBy(s => s.Ordinal)
                             .Select(s => new StreamCapacity(s.Name, s.Logical, s.Allocated)),
                     ],
                     complete
@@ -315,15 +335,24 @@ public sealed partial class ScanStore : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         RequireRunning(scanId);
-        var folders = ReadFiles(scanId, cancellationToken)
-            .Where(f => f.IsDirectory && f.LinkSetComplete)
-            .Select(f => new FolderObservation(
-                f.Reference,
-                f.Names.Where(n => n.Namespace != FileNameNamespace.Dos)
-                    .Select(n => n.Parent)
-                    .Distinct()
-                    .ToImmutableArray()
-            ))
+        var folders = context
+            .Observations.AsNoTracking()
+            .Where(f => f.ScanId == scanId && f.IsDirectory == true && f.LinksComplete == true)
+            .Include(f => f.Names)
+            .AsEnumerable()
+            .Select(f =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return new FolderObservation(
+                    FileReference.Create(checked((ulong)f.RecordIndex), f.Sequence!.Value),
+                    f.Names.Where(n => n.Namespace != FileNameNamespace.Dos)
+                        .Select(n =>
+                            FileReference.Create(checked((ulong)n.ParentIndex), n.ParentSequence)
+                        )
+                        .Distinct()
+                        .ToImmutableArray()
+                );
+            })
             .ToArray();
         var root =
             folders.SingleOrDefault(f => f.Reference.RecordIndex == 5)

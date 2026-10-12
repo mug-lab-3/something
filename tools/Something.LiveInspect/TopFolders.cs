@@ -57,6 +57,15 @@ internal static class TopFolders
                     var id = store.BeginScan(descriptor, token);
                     var batch = new List<StagedObservation>(ScanStore.MaximumBatchSize);
                     CapacityAmount observed = default;
+                    TimeSpan stageTime = default;
+                    long scanStarted = Stopwatch.GetTimestamp();
+                    void Flush()
+                    {
+                        long started = Stopwatch.GetTimestamp();
+                        store.StageBatch(id, batch, token);
+                        stageTime += Stopwatch.GetElapsedTime(started);
+                        batch.Clear();
+                    }
                     await foreach (
                         var entry in new LiveMftScanner(
                             source.Volume.BytesPerCluster,
@@ -74,17 +83,19 @@ internal static class TopFolders
                         batch.Add(StagedObservation.FromEntry(entry, token));
                         Interlocked.Increment(ref candidates);
                         if (batch.Count == ScanStore.MaximumBatchSize)
-                        {
-                            store.StageBatch(id, batch, token);
-                            batch.Clear();
-                        }
+                            Flush();
                     }
                     if (batch.Count != 0)
-                        store.StageBatch(id, batch, token);
+                        Flush();
+                    var scanTime = Stopwatch.GetElapsedTime(scanStarted);
                     Volatile.Write(ref phase, "aggregate-and-publish");
+                    long completionStarted = Stopwatch.GetTimestamp();
                     var result = store.CompleteScan(id, DateTimeOffset.UtcNow, token);
+                    var completionTime = Stopwatch.GetElapsedTime(completionStarted);
                     Volatile.Write(ref phase, "rank-folders");
+                    long rankingStarted = Stopwatch.GetTimestamp();
                     var top = store.ReadLargestFolders(id, cancellationToken: token);
+                    var rankingTime = Stopwatch.GetElapsedTime(rankingStarted);
                     bool incomplete =
                         result.HasUnknownAttribution
                         || result.Unattributed.UnresolvedCount != 0
@@ -114,6 +125,9 @@ internal static class TopFolders
                     }
                     Console.WriteLine(
                         $"Elapsed={watch.Elapsed.TotalSeconds:F3}s; incomplete={incomplete}; metadata-unresolved={result.Metadata.UnresolvedCount}; unattributed-unresolved={result.Unattributed.UnresolvedCount}"
+                    );
+                    Console.WriteLine(
+                        $"Timing: scan-and-stage-seconds={scanTime.TotalSeconds:F3}; db-stage-seconds={stageTime.TotalSeconds:F3}; aggregate-publish-seconds={completionTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}"
                     );
                     var rootData = result
                         .Folders.Values.Single(f => f.Reference.RecordIndex == 5)

@@ -100,7 +100,20 @@ dotnet run --project tools/Something.LiveInspect -c Release -- C: --top5
 `Outside-folder-totals`の`unattributed-known-allocated-bytes`は容量既知でもフォルダへ帰属できなかった量で、
 `unattributed-unresolved`が0でも大きな値になる可能性があります。不一致の場合はエラーにします。
 2026-10-13の実機確認でDOS短縮名を持つ通常ファイルの誤分類を発見し、公開コーパスと
-取得から保存までの合成回帰テストで修正を確認しました。修正後の実機ランキングは再確認が必要です。
+取得から保存までの合成回帰テストで修正を確認しました。修正後の実機でも容量一致と大幅な不足の解消を確認しました。
+所属不明の既知容量は残っており、各フォルダの帰属が完全に検証されたわけではありません。
+
+`Timing`は`scan-and-stage-seconds`、その内数の`db-stage-seconds`、
+`aggregate-publish-seconds`、`ranking-seconds`を最終表示します。
+保存処理だけを合成データで測るには次を実行します。管理者権限・ボリューム取得は不要です。
+
+```powershell
+dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchmark 100000
+```
+
+一時DBを作成して、レコード生成・保存と集計・公開を別々に測り、既知の期待容量と照合します。
+公開履歴DBを使わず、正常終了・例外・Ctrl+C時には所有する一時DBを片付けます。
+性能変更の測定結果は[storage-design.md](storage-design.md)に記録しています。
 
 EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
 

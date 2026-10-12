@@ -30,6 +30,8 @@ public sealed partial class ScanStore
                     var existing = context
                         .Folders.Where(f => f.ScanId == scanId && indices.Contains(f.RecordIndex))
                         .ToDictionary(f => f.RecordIndex);
+                    using var samples = new ModelInsert<FolderSampleEntity>(context);
+                    using var folderNames = new ModelInsert<FolderNameEntity>(context);
                     foreach (var sample in batch)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -37,7 +39,7 @@ public sealed partial class ScanStore
                         if (existing.TryGetValue(entity.RecordIndex, out var old))
                             context.Entry(old).CurrentValues.SetValues(entity);
                         else
-                            context.Folders.Add(entity);
+                            samples.Add(entity, cancellationToken);
                     }
                     var savedNames = context
                         .FolderNames.AsNoTracking()
@@ -55,7 +57,7 @@ public sealed partial class ScanStore
                         cancellationToken.ThrowIfCancellationRequested();
                         if (savedNames.Contains((name.RecordIndex, name.Ordinal)))
                             continue;
-                        context.FolderNames.Add(
+                        folderNames.Add(
                             new()
                             {
                                 ScanId = scanId,
@@ -66,7 +68,8 @@ public sealed partial class ScanStore
                                 Name = name.Name,
                                 Namespace = name.Namespace,
                                 Attributes = name.Attributes,
-                            }
+                            },
+                            cancellationToken
                         );
                     }
                 },

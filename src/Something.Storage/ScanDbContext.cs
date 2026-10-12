@@ -10,6 +10,7 @@ internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : D
     internal DbSet<ScanEntity> Scans => Set<ScanEntity>();
     internal DbSet<ObservationEntity> Observations => Set<ObservationEntity>();
     internal DbSet<FileNameEntity> Names => Set<FileNameEntity>();
+    internal DbSet<StreamEntity> Streams => Set<StreamEntity>();
     internal DbSet<FolderNameEntity> FolderNames => Set<FolderNameEntity>();
     internal DbSet<FolderSampleEntity> Folders => Set<FolderSampleEntity>();
     internal DbSet<VolumeSampleEntity> Volumes => Set<VolumeSampleEntity>();
