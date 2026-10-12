@@ -9,15 +9,13 @@ if (!OperatingSystem.IsWindows())
     return 2;
 }
 
-// Diagnostic overrides are explicit and trailing; scanning keeps its fixed work budget.
+// Work-budget overrides are explicit, bounded, and trailing.
 int maximumRecords = 128;
 bool invalidRecordLimit = false;
 if (args.Length >= 3 && args[^2] == "--max-records")
 {
     invalidRecordLimit =
-        !int.TryParse(args[^1], out maximumRecords)
-        || maximumRecords is < 1 or > 256
-        || args[1] == "--scan";
+        !int.TryParse(args[^1], out maximumRecords) || maximumRecords is < 1 or > 256;
     args = args[..^2];
 }
 if (
@@ -35,10 +33,10 @@ if (
     Console.Error.WriteLine(
         "   or: Something.LiveInspect <drive> --file <absolute-file-path> [--max-records <1..256>]"
     );
-    Console.Error.WriteLine("   or: Something.LiveInspect <drive> --scan [max-slots]");
     Console.Error.WriteLine(
-        "Per-file record limit defaults to 128; --max-records is unavailable for --scan."
+        "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <1..256>]"
     );
+    Console.Error.WriteLine("Per-file record limit defaults to 128.");
     return 2;
 }
 using var cancellation = new CancellationTokenSource();
@@ -58,7 +56,12 @@ try
             throw new ArgumentException(
                 "Scan limit must be between 1 and the observed slot count."
             );
-        return await ScanBenchmark.RunAsync(volume, new(0, slotLimit), cancellation.Token);
+        return await ScanBenchmark.RunAsync(
+            volume,
+            new(0, slotLimit),
+            maximumRecords,
+            cancellation.Token
+        );
     }
     if (args.Length == 3 && args[1] == "--file")
     {

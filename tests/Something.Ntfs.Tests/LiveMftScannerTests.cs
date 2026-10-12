@@ -5,6 +5,73 @@ namespace Something.Ntfs.Tests;
 
 public sealed class LiveMftScannerTests
 {
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    [InlineData(256, true)]
+    public async Task ScanAsync_SelectedRecordBudget_ControlsCompleteAssembly(
+        int limit,
+        bool resolves
+    )
+    {
+        var reference = FileReference.Create(42, 3);
+        byte[] list =
+        [
+            .. RecordFixture.ListEntry(0x80, 1, reference),
+            .. RecordFixture.ListEntry(0x80, 1, FileReference.Create(43, 3), 2),
+        ];
+        byte[] baseBytes = RecordFixture.Record([
+            RecordFixture.Resident(0x20, 0, list),
+            RecordFixture.NonResident(allocated: 16384),
+        ]);
+        byte[] extension = RecordFixture.Record(
+            [RecordFixture.NonResident(lowestVcn: 2, highestVcn: 3)],
+            baseReference: reference.Value,
+            index: 43
+        );
+        var source = new Source([42])
+        {
+            Candidate = _ => baseBytes,
+            Read = (index, _) => index == 42 ? baseBytes : extension,
+        };
+        var entries = new List<MftScanEntry>();
+
+        await foreach (
+            var entry in new LiveMftScanner(4096, 1024, limit).ScanAsync(
+                source,
+                new(42, 1),
+                TestContext.Current.CancellationToken
+            )
+        )
+            entries.Add(entry);
+
+        var result = Assert.Single(entries);
+        Assert.Equal(
+            resolves ? MftScanEntryKind.ResolvedFile : MftScanEntryKind.Unresolved,
+            result.Kind
+        );
+        if (resolves)
+        {
+            Assert.Equal(16384, Assert.Single(result.File!.DataStreams).AllocatedBytes);
+            Assert.Equal(8, source.ReadCalls);
+        }
+        else
+        {
+            Assert.Equal(LiveFileReadStatus.LimitExceeded, result.Status);
+            Assert.Null(result.File);
+            Assert.Equal(2, source.ReadCalls);
+        }
+        Assert.Equal(1, source.EnumerationDisposals);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(257)]
+    public void Constructor_RecordBudgetOutsideBounds_Rejects(int limit) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new LiveMftScanner(4096, maximumRecords: limit)
+        );
+
     [Fact]
     public async Task ScanAsync_OutOfVolumeRun_YieldsUnresolvedWithoutCapacity()
     {

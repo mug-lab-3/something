@@ -132,6 +132,138 @@ public sealed class CompressedExtentAssemblyTests
         Assert.Null(result.File);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ReadAsync_SparseBitDiffersBetweenExtents_PreservesPrimarySettingsAndRawFlags(
+        bool firstSparse,
+        bool named
+    )
+    {
+        NtfsAttributeFlags firstFlags = firstSparse ? NtfsAttributeFlags.Sparse : 0;
+        NtfsAttributeFlags nextFlags = firstSparse ? 0 : NtfsAttributeFlags.Sparse;
+        string name = named ? "synthetic-stream" : "";
+        byte[] list =
+        [
+            .. RecordFixture.ListEntry(0x80, 1, Base, name: name),
+            .. RecordFixture.ListEntry(0x80, 7, Extension, 2, name),
+        ];
+        byte[] first = RecordFixture.NonResident(
+            name: name,
+            flags: firstFlags,
+            allocated: 16384,
+            physical: firstSparse ? 12288 : null,
+            runs: firstSparse ? [0x11, 1, 100, 0x01, 1, 0] : [0x11, 2, 100, 0]
+        );
+        byte[] next = RecordFixture.NonResident(
+            id: 7,
+            name: name,
+            lowestVcn: 2,
+            highestVcn: 3,
+            flags: nextFlags,
+            runs: [0x11, 2, 110, 0]
+        );
+        byte[] baseBytes = RecordFixture.Record([RecordFixture.Resident(0x20, 0, list), first]);
+        byte[] extensionBytes = RecordFixture.Record([next], baseReference: Base.Value, index: 43);
+        byte[] baseCopy = baseBytes.ToArray();
+        byte[] extensionCopy = extensionBytes.ToArray();
+
+        var result = await new LiveMftFileReader(4096, totalClusters: 1024).ReadAsync(
+            new Source(baseBytes, extensionBytes),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        var stream = Assert.Single(result.File!.DataStreams);
+        Assert.Equal(firstSparse ? 12288 : 16384, stream.AllocatedBytes);
+        Assert.Equal(5000, stream.LogicalBytes);
+        Assert.Equal(firstFlags, stream.Storage!.Flags);
+        Assert.Equal(name, stream.Name);
+        var extents = result.File.Attributes.OfType<NonResidentAttribute>().ToArray();
+        Assert.Equal(firstFlags, extents[0].Flags);
+        Assert.Equal(nextFlags, extents[1].Flags);
+        Assert.Equal(baseCopy, baseBytes);
+        Assert.Equal(extensionCopy, extensionBytes);
+    }
+
+    [Theory]
+    [InlineData(NtfsAttributeFlags.Compressed)]
+    [InlineData(NtfsAttributeFlags.Encrypted)]
+    [InlineData((NtfsAttributeFlags)2)]
+    [InlineData((NtfsAttributeFlags)0x1000)]
+    public async Task ReadAsync_SparseDifferenceWithOtherFlagChanges_RemainsUnsupported(
+        NtfsAttributeFlags additionalDifference
+    )
+    {
+        var (baseBytes, extensionBytes) = Fixture(NtfsAttributeFlags.Sparse);
+        RecordFixture.U16(extensionBytes, 56 + 12, (ushort)additionalDifference);
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            new Source(baseBytes, extensionBytes),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.Unsupported, result.Status);
+        Assert.Null(result.File);
+    }
+
+    [Fact]
+    public async Task ReadAsync_SparseBitChangesDuringRevalidation_StillRetries()
+    {
+        var (baseBytes, current) = Fixture(NtfsAttributeFlags.Compressed);
+        byte[] earlier = current.ToArray();
+        RecordFixture.U16(
+            earlier,
+            56 + 12,
+            (ushort)(NtfsAttributeFlags.Compressed | NtfsAttributeFlags.Sparse)
+        );
+
+        var result = await new LiveMftFileReader(4096).ReadAsync(
+            new ChangingSource(baseBytes, earlier, current),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        Assert.Equal(2, result.Attempts);
+    }
+
+    [Theory]
+    [InlineData(0, LiveFileReadStatus.InvalidAssembly)]
+    [InlineData(1, LiveFileReadStatus.InvalidAssembly)]
+    [InlineData(2, LiveFileReadStatus.Missing)]
+    [InlineData(3, LiveFileReadStatus.InvalidAssembly)]
+    [InlineData(4, LiveFileReadStatus.InvalidAssembly)]
+    public async Task ReadAsync_SparseBitDifference_DoesNotBypassCapacityOrMappingValidation(
+        int scenario,
+        LiveFileReadStatus expected
+    )
+    {
+        var (baseBytes, next) = Fixture(
+            NtfsAttributeFlags.Sparse,
+            physical: scenario == 0 ? 65537 : 65536,
+            logical: scenario == 1 ? 200000 : 100000,
+            nextVcn: scenario == 4 ? 17 : 16
+        );
+        RecordFixture.U16(next, 56 + 12, 0);
+
+        var result = await new LiveMftFileReader(
+            4096,
+            totalClusters: scenario == 3 ? 111 : 1024
+        ).ReadAsync(
+            new Source(baseBytes, scenario == 2 ? null : next),
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(expected, result.Status);
+        Assert.Null(result.File);
+    }
+
     [Fact]
     public async Task ReadAsync_FlagsChangeDuringRevalidation_RetriesBeforeReportingUnsupported()
     {

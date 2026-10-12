@@ -7,14 +7,16 @@ internal static class ScanBenchmark
     public static async Task<int> RunAsync(
         WindowsMftRecordSource source,
         MftScanRange range,
+        int maximumRecords,
         CancellationToken token
     )
     {
         var state = new State(range);
         var clock = Stopwatch.StartNew();
+        long allocatedAtStart = GC.GetTotalAllocatedBytes(precise: true);
         using var heartbeatCancellation = new CancellationTokenSource();
         Console.Error.WriteLine(
-            $"Scanning {range.RecordCount} observed slots; progress every 5s; Ctrl+C cancels."
+            $"Scanning {range.RecordCount} observed slots; maximum-records={maximumRecords}; progress every 5s; Ctrl+C cancels."
         );
         Task heartbeat = HeartbeatAsync(state, clock, heartbeatCancellation.Token);
         bool completed = false;
@@ -27,7 +29,8 @@ internal static class ScanBenchmark
                     await foreach (
                         var entry in new LiveMftScanner(
                             source.Volume.BytesPerCluster,
-                            source.Volume.TotalClusters
+                            source.Volume.TotalClusters,
+                            maximumRecords
                         ).ScanAsync(source, range, token)
                     )
                         state.Add(entry);
@@ -39,9 +42,14 @@ internal static class ScanBenchmark
         finally
         {
             clock.Stop();
+            long managedAllocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedAtStart;
             heartbeatCancellation.Cancel();
             await heartbeat;
             state.Print(clock.Elapsed, source.Metrics, completed);
+            using var process = Process.GetCurrentProcess();
+            Console.WriteLine(
+                $"Memory: managed-allocated-during-scan-bytes={managedAllocated}; process-lifetime-peak-working-set-bytes={process.PeakWorkingSet64}"
+            );
         }
         return state.Unresolved == 0 ? 0 : 1;
     }

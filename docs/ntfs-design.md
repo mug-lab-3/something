@@ -22,7 +22,7 @@
 
 `MftFileAssembler` には**実ボリュームのbytesPerCluster**を渡します。非常駐ATTRIBUTE_LISTの内容は取得層から別途渡す必要があります。取得できない場合や拡張レコードの不足を部分的な容量として返しません。レコードモデルはパーサーから得たものを渡してください。
 
-DATA結合ではVCN連続性と全extentの物理run合計・先頭の容量フィールドを照合します。圧縮単位は1 byte、後続5 byteは別の予約領域として保持します。ストリームのStorageは先頭extentの設定を使い、継続の圧縮単位との一致は要求しません。これはNTFS3のprimary segmentに関する有効範囲の説明に基づき、以前の4→0の個別例外を置き換えたものです。元の属性値は保持します。flags差は意味の確認が未完了なのでUnsupportedとして容量不明を返し、破損と断定しません。これは容量解析であり、圧縮データ本体の解凍は行いません。根拠・対応範囲は [ntfs-format-audit.md](ntfs-format-audit.md) に記載します。
+DATA結合ではVCN連続性と全extentの物理run合計・先頭の容量フィールドを照合します。圧縮単位は1 byte、後続5 byteは別の予約領域として保持します。ストリームのStorageは先頭extentの設定を使い、継続の圧縮単位との一致は要求しません。これはNTFS3のprimary segmentに関する有効範囲の説明に基づき、以前の4→0の個別例外を置き換えたものです。元の属性値は保持します。Sparseビットだけのflags差は、ntfs-3gの先頭extentだけでの状態更新を根拠に許容します。それ以外の差はUnsupportedとして容量不明を返し、破損と断定しません。これは容量解析であり、圧縮データ本体の解凍は行いません。根拠・対応範囲は [ntfs-format-audit.md](ntfs-format-audit.md) に記載します。
 
 ## 読み取り中の変更
 

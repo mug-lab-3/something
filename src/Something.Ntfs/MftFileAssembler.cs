@@ -218,7 +218,9 @@ public sealed class MftFileAssembler(int bytesPerCluster, long? totalClusters = 
                 throw new NtfsAssemblyException(
                     $"DATA extent VCN discontinuity: expected-lowest={nextVcn}; observed-lowest={extent.LowestVcn}; observed-highest={extent.HighestVcn}."
                 );
-            if (extent.Flags != extents[0].Flags)
+            // Sparse state can be updated on the primary extent without rewriting continuation flags.
+            // Other flag differences remain unsupported; preserve every raw header separately.
+            if (((extent.Flags ^ extents[0].Flags) & ~NtfsAttributeFlags.Sparse) != 0)
                 throw new NtfsAssemblyException(
                     $"DATA extent flags mismatch is not supported: first={extents[0].Flags}; observed={extent.Flags}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}.",
                     NtfsAssemblyFailureKind.Unsupported
