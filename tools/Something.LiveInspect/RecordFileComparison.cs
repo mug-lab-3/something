@@ -64,6 +64,17 @@ internal static class RecordFileComparison
             );
             return 1;
         }
+        Console.WriteLine(
+            $"Names: Windows-links={after.LinkCount}; Windows-standard-links={storageAfter.Standard.LinkCount}; initial-base-header-count={record.HardLinkCount}; assembled-base-header-count={result.Evidence?.HardLinkCount}; initial-base-FILE_NAME={record.Attributes.Count(a => a.Type == NtfsAttributeTypes.FileName)}; initial-base-ATTRIBUTE_LIST={record.Attributes.Count(a => a.Type == NtfsAttributeTypes.AttributeList)}; assembled-FILE_NAME={resolved.Attributes.Count(a => a.Type == NtfsAttributeTypes.FileName)}; names={resolved.Names.Length}; header-name-count-match={result.Evidence?.HardLinkCount == resolved.Names.Length}"
+        );
+        foreach (var group in resolved.Names.GroupBy(n => n.Namespace).OrderBy(g => g.Key))
+            Console.WriteLine($"  Namespace: {group.Key}; count={group.Count()}");
+        foreach (var name in resolved.Names.Take(8))
+            Console.WriteLine(
+                $"  Name reference: namespace={name.Namespace}; parent={name.Parent.RecordIndex}; parent-sequence={name.Parent.SequenceNumber}; name-length={name.Name.Length}"
+            );
+        if (resolved.Names.Length > 8)
+            Console.WriteLine($"  Additional name references omitted={resolved.Names.Length - 8}");
         var stream = resolved.DataStreams.SingleOrDefault(s => s.Name.Length == 0);
         if (stream is null)
         {

@@ -321,6 +321,74 @@ public sealed class LiveMftFileReaderTests
     }
 
     [Fact]
+    public async Task ReadAsync_NamesAcrossThreeSegments_PreservesHeaderCountAndAllParents()
+    {
+        var thirdReference = FileReference.Create(44, 3);
+        byte[] list =
+        [
+            .. RecordFixture.ListEntry(0x30, 0, BaseReference),
+            .. RecordFixture.ListEntry(0x30, 0, ExtensionReference),
+            .. RecordFixture.ListEntry(0x30, 0, thirdReference),
+            .. RecordFixture.ListEntry(0x80, 1, BaseReference),
+        ];
+        byte[] baseBytes = RecordFixture.Record([
+            RecordFixture.Resident(
+                0x30,
+                0,
+                RecordFixture.FileName("first", parent: FileReference.Create(5, 1).Value)
+            ),
+            RecordFixture.Resident(0x80, 1, [1, 2, 3]),
+            RecordFixture.Resident(0x20, 2, list),
+        ]);
+        RecordFixture.U16(baseBytes, 18, 3);
+        byte[] second = RecordFixture.Record(
+            [
+                RecordFixture.Resident(
+                    0x30,
+                    0,
+                    RecordFixture.FileName("second", parent: FileReference.Create(20, 2).Value)
+                ),
+            ],
+            baseReference: BaseReference.Value,
+            index: 43
+        );
+        byte[] third = RecordFixture.Record(
+            [
+                RecordFixture.Resident(
+                    0x30,
+                    0,
+                    RecordFixture.FileName("third", parent: FileReference.Create(21, 4).Value)
+                ),
+            ],
+            baseReference: BaseReference.Value,
+            index: 44
+        );
+        var source = new Source(
+            (index, _) =>
+                index switch
+                {
+                    42 => baseBytes,
+                    43 => second,
+                    44 => third,
+                    _ => null,
+                }
+        );
+
+        var result = await Read(source);
+
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        Assert.Equal(3, result.Evidence!.HardLinkCount);
+        var names = result.File!.Names;
+        Assert.Equal(["first", "second", "third"], names.Select(n => n.Name));
+        Assert.Equal(
+            [FileReference.Create(5, 1), FileReference.Create(20, 2), FileReference.Create(21, 4)],
+            names.Select(n => n.Parent)
+        );
+        Assert.Equal(3, result.File.Attributes.Count(a => a.Type == NtfsAttributeTypes.FileName));
+        Assert.Equal(3, Assert.Single(result.File.DataStreams).LogicalBytes);
+    }
+
+    [Fact]
     public async Task ReadAsync_ExtendedNamesAndNamedStream_PreservesAllValues()
     {
         byte[] list =
