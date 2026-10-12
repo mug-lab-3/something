@@ -722,6 +722,181 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void BufferedPublication_MatchesStagingAndPreservesHistoryFactsAndUnknownIssues()
+    {
+        using var staged = new DatabaseFixture();
+        using var buffered = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var descriptor = Descriptor();
+        var shared = File(100, 110, Ref(20), Ref(21)) with
+        {
+            Names =
+            [
+                new(Ref(20), "long-\uD800", FileNameNamespace.Win32, uint.MaxValue),
+                new(Ref(20), "DOS~1", FileNameNamespace.Dos, 0),
+                new(Ref(21), "another", FileNameNamespace.Win32, 0),
+            ],
+            Streams = [new("", 110, 8192), new("named-\uDFFF", 9, 0)],
+            ObservedHardLinkCount = 3,
+        };
+        var unknown = File(8, 0) with
+        {
+            Domain = CapacityDomain.NtfsMetadata,
+            Resolution = CapacityResolution.Unresolved,
+            Streams = [],
+            LinkSetComplete = false,
+        };
+        StagedObservation[] facts =
+        [
+            .. BasicFacts().Where(o => o.RecordIndex != 100),
+            Stage(shared),
+            Stage(unknown),
+            new(101, MftScanEntryKind.Unresolved, LiveFileReadStatus.InvalidRecord, null),
+            new(102, MftScanEntryKind.ExtensionRecord, LiveFileReadStatus.ObservedUnchanged, null),
+        ];
+        var stagedId = staged.Store.BeginScan(descriptor, token);
+        staged.Store.StageBatch(stagedId, facts, token);
+        var expected = staged.Store.CompleteScan(stagedId, Started.AddMinutes(1), token);
+        var buffer = new BufferedScan(descriptor);
+        foreach (var fact in facts.Reverse())
+            buffer.Add(fact, token);
+        Assert.Throws<InvalidOperationException>(() =>
+            buffered.Store.PublishBufferedScan(buffer, Started.AddMinutes(1), token)
+        );
+        var actual = buffer.Complete(token);
+        var bufferedId = buffered.Store.PublishBufferedScan(buffer, Started.AddMinutes(1), token);
+
+        Assert.Equal(facts.Length, buffer.Count);
+        Assert.Same(actual, buffer.Complete(token));
+        Assert.Equal(expected.Metadata, actual.Metadata);
+        Assert.Equal(expected.Unattributed, actual.Unattributed);
+        Assert.Equal(expected.HasUnknownAttribution, actual.HasUnknownAttribution);
+        foreach (var pair in expected.Folders)
+            Assert.Equal(pair.Value, actual.Folders[pair.Key]);
+        var stored = buffered.Store.ReadFiles(bufferedId, token).ToDictionary(f => f.Reference);
+        foreach (var file in staged.Store.ReadFiles(stagedId, token))
+        {
+            Assert.Equal(
+                file with
+                {
+                    Names = [],
+                    Streams = [],
+                },
+                stored[file.Reference] with
+                {
+                    Names = [],
+                    Streams = [],
+                }
+            );
+            Assert.Equal(file.Names.ToArray(), stored[file.Reference].Names.ToArray());
+            Assert.Equal(file.Streams.ToArray(), stored[file.Reference].Streams.ToArray());
+        }
+        Assert.Equal(
+            bufferedId,
+            buffered.Store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range)
+        );
+        Assert.Equal(Started.AddMinutes(1), buffered.Store.GetScan(bufferedId).EndedUtc);
+        using var inspection = new ScanDbContext(
+            new DbContextOptionsBuilder<ScanDbContext>()
+                .UseSqlite($"Data Source={buffered.DatabasePath};Pooling=False")
+                .Options
+        );
+        var issues = inspection
+            .Observations.AsNoTracking()
+            .Where(o => o.ScanId == bufferedId && o.Sequence == null)
+            .ToArray();
+        Assert.Contains(
+            issues,
+            o =>
+                o.RecordIndex == 101
+                && o.Kind == MftScanEntryKind.Unresolved
+                && o.Status == LiveFileReadStatus.InvalidRecord
+        );
+        Assert.Contains(
+            issues,
+            o => o.RecordIndex == 102 && o.Kind == MftScanEntryKind.ExtensionRecord
+        );
+        Assert.Throws<InvalidOperationException>(() => buffer.Add(facts[0], token));
+        foreach (var folder in expected.Folders.Keys)
+            Assert.Equal(
+                staged.Store.ReadHistoricalFolderNames(stagedId, folder, token).ToArray(),
+                buffered.Store.ReadHistoricalFolderNames(bufferedId, folder, token).ToArray()
+            );
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BufferedPublication_FailureOrCancellationLeavesNoNewGeneration(bool cancel)
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var descriptor = Descriptor();
+        var old = fixture.Store.BeginScan(descriptor, token);
+        fixture.Store.StageBatch(old, BasicFacts(), token);
+        fixture.Store.CompleteScan(old, Started.AddSeconds(1), token);
+        var buffer = new BufferedScan(descriptor);
+        foreach (var fact in BasicFacts(200))
+            buffer.Add(fact, token);
+        buffer.Complete(token);
+        if (cancel)
+        {
+            using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+            cancelled.Cancel();
+            Assert.Throws<OperationCanceledException>(() =>
+                fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), cancelled.Token)
+            );
+        }
+        else
+        {
+            using var connection = new SqliteConnection(
+                $"Data Source={fixture.DatabasePath};Pooling=False"
+            );
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "CREATE TRIGGER reject_test_file BEFORE INSERT ON file_name WHEN NEW.RecordIndex = 100 BEGIN SELECT RAISE(ABORT, 'test failure'); END;";
+            command.ExecuteNonQuery();
+            Assert.Throws<DbUpdateException>(() =>
+                fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), token)
+            );
+            command.CommandText = "DROP TRIGGER reject_test_file";
+            command.ExecuteNonQuery();
+        }
+        using var inspection = new ScanDbContext(
+            new DbContextOptionsBuilder<ScanDbContext>()
+                .UseSqlite($"Data Source={fixture.DatabasePath};Pooling=False")
+                .Options
+        );
+        Assert.Single(inspection.Scans.AsNoTracking());
+        Assert.Equal(old, fixture.Store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range));
+        Assert.Equal(4, inspection.Observations.Count());
+        var retry = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), token);
+        Assert.Equal(retry, fixture.Store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range));
+        Assert.Equal(
+            new CapacityAmount(200, 200),
+            fixture.Store.ReadAggregation(retry, token).Folders[Root].SubtreeData
+        );
+    }
+
+    [Fact]
+    public void BufferedScan_RejectsDuplicatesInvalidContractsAndIncompleteHierarchy()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        var file = Stage(File(100, 1, Root));
+        buffer.Add(file, token);
+        Assert.Throws<InvalidDataException>(() => buffer.Add(file, token));
+        Assert.Throws<InvalidDataException>(() => buffer.Complete(token));
+        Assert.Throws<ArgumentException>(() => buffer.Add(file with { RecordIndex = 1001 }, token));
+        buffer.Add(Stage(Directory(5, Root)), token);
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => buffer.Complete(cancelled.Token));
+        Assert.Equal(new CapacityAmount(1, 1), buffer.Complete(token).Folders[Root].SubtreeData);
+    }
+
+    [Fact]
     public void InitialMigration_MatchesModelAndSurvivesReopen()
     {
         using var fixture = new DatabaseFixture();

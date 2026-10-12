@@ -5,17 +5,20 @@ using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
 using Something.Windows;
 
-if (args.Length is 1 or 2 && args[0] == "--storage-benchmark")
+if (args.Length is >= 1 and <= 3 && args[0] == "--storage-benchmark")
 {
     int count = 100_000;
-    if (args.Length == 2 && (!int.TryParse(args[1], out count) || count is < 1 or > 2_000_000))
+    if (
+        (args.Length >= 2 && (!int.TryParse(args[1], out count) || count is < 1 or > 2_000_000))
+        || (args.Length == 3 && args[2] != "--buffered")
+    )
     {
         Console.Error.WriteLine("Storage benchmark count must be between 1 and 2000000.");
         return 2;
     }
     try
     {
-        return StorageBenchmark.Run(count);
+        return StorageBenchmark.Run(count, args.Length == 3);
     }
     catch (OperationCanceledException)
     {

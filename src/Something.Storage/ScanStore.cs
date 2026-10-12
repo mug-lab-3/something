@@ -29,10 +29,9 @@ public sealed partial class ScanStore : IDisposable
         CancellationToken cancellationToken = default
     ) => new(SqliteDatabaseBootstrap.Open(path, cancellationToken));
 
-    public Guid BeginScan(ScanDescriptor descriptor, CancellationToken cancellationToken = default)
+    internal static void ValidateDescriptor(ScanDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        cancellationToken.ThrowIfCancellationRequested();
         if (
             string.IsNullOrWhiteSpace(descriptor.VolumeKey)
             || descriptor.Epoch == Guid.Empty
@@ -43,7 +42,12 @@ public sealed partial class ScanStore : IDisposable
                 "Scan requires a volume identity, epoch, nonempty range and UTC start.",
                 nameof(descriptor)
             );
-        var scan = new ScanEntity
+    }
+
+    private static ScanEntity CreateScanEntity(ScanDescriptor descriptor)
+    {
+        ValidateDescriptor(descriptor);
+        return new ScanEntity
         {
             Id = Guid.NewGuid(),
             VolumeKey = descriptor.VolumeKey,
@@ -54,6 +58,12 @@ public sealed partial class ScanStore : IDisposable
             Started = descriptor.StartedUtc,
             State = StoredScanState.Running,
         };
+    }
+
+    public Guid BeginScan(ScanDescriptor descriptor, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var scan = CreateScanEntity(descriptor);
         Write(() => context.Scans.Add(scan), cancellationToken);
         return scan.Id;
     }
@@ -136,7 +146,7 @@ public sealed partial class ScanStore : IDisposable
         );
     }
 
-    private static void ValidateObservation(StagedObservation item, StoredScan scan)
+    internal static void ValidateObservation(StagedObservation item, StoredScan scan)
     {
         ArgumentNullException.ThrowIfNull(item);
         if (

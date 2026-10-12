@@ -16,7 +16,7 @@ internal static class TopFolders
     {
         var watch = Stopwatch.StartNew();
         long candidates = 0;
-        string phase = "scan-and-stage";
+        string phase = "scan-and-buffer";
         using var heartbeatCancellation = new CancellationTokenSource();
         Console.Error.WriteLine(
             "Scanning for top 5 folders; progress every 5s; Ctrl+C cancels. A temporary SQLite database is used."
@@ -43,8 +43,6 @@ internal static class TopFolders
             return await Task.Run(
                 async () =>
                 {
-                    using var temporary = TemporaryScanDatabase.Create(token);
-                    var store = temporary.Store;
                     Guid scope = Guid.NewGuid();
                     // Valid only for this single opened volume and disposable database. No cross-scan identity claim.
                     var descriptor = new ScanDescriptor(
@@ -54,18 +52,9 @@ internal static class TopFolders
                         new(0, source.Volume.ObservedRecordCount),
                         DateTimeOffset.UtcNow
                     );
-                    var id = store.BeginScan(descriptor, token);
-                    var batch = new List<StagedObservation>(ScanStore.MaximumBatchSize);
+                    var buffer = new BufferedScan(descriptor);
                     CapacityAmount observed = default;
-                    TimeSpan stageTime = default;
                     long scanStarted = Stopwatch.GetTimestamp();
-                    void Flush()
-                    {
-                        long started = Stopwatch.GetTimestamp();
-                        store.StageBatch(id, batch, token);
-                        stageTime += Stopwatch.GetElapsedTime(started);
-                        batch.Clear();
-                    }
                     await foreach (
                         var entry in new LiveMftScanner(
                             source.Volume.BytesPerCluster,
@@ -80,18 +69,21 @@ internal static class TopFolders
                                     checked((UInt128)stream.LogicalBytes),
                                     checked((UInt128)stream.AllocatedBytes)
                                 );
-                        batch.Add(StagedObservation.FromEntry(entry, token));
+                        buffer.Add(entry, token);
                         Interlocked.Increment(ref candidates);
-                        if (batch.Count == ScanStore.MaximumBatchSize)
-                            Flush();
                     }
-                    if (batch.Count != 0)
-                        Flush();
                     var scanTime = Stopwatch.GetElapsedTime(scanStarted);
-                    Volatile.Write(ref phase, "aggregate-and-publish");
+                    long bufferedManagedBytes = GC.GetTotalMemory(forceFullCollection: false);
+                    Volatile.Write(ref phase, "aggregate-buffer");
                     long completionStarted = Stopwatch.GetTimestamp();
-                    var result = store.CompleteScan(id, DateTimeOffset.UtcNow, token);
+                    var result = buffer.Complete(token);
                     var completionTime = Stopwatch.GetElapsedTime(completionStarted);
+                    Volatile.Write(ref phase, "persist-and-publish");
+                    long persistenceStarted = Stopwatch.GetTimestamp();
+                    using var temporary = TemporaryScanDatabase.Create(token);
+                    var store = temporary.Store;
+                    var id = store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
+                    var persistenceTime = Stopwatch.GetElapsedTime(persistenceStarted);
                     Volatile.Write(ref phase, "rank-folders");
                     long rankingStarted = Stopwatch.GetTimestamp();
                     var top = store.ReadLargestFolders(id, cancellationToken: token);
@@ -127,7 +119,11 @@ internal static class TopFolders
                         $"Elapsed={watch.Elapsed.TotalSeconds:F3}s; incomplete={incomplete}; metadata-unresolved={result.Metadata.UnresolvedCount}; unattributed-unresolved={result.Unattributed.UnresolvedCount}"
                     );
                     Console.WriteLine(
-                        $"Timing: scan-and-stage-seconds={scanTime.TotalSeconds:F3}; db-stage-seconds={stageTime.TotalSeconds:F3}; aggregate-publish-seconds={completionTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}"
+                        $"Timing: scan-and-buffer-seconds={scanTime.TotalSeconds:F3}; aggregate-buffer-seconds={completionTime.TotalSeconds:F3}; persist-publish-seconds={persistenceTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}"
+                    );
+                    using var process = Process.GetCurrentProcess();
+                    Console.WriteLine(
+                        $"Memory: managed-bytes-after-buffering={bufferedManagedBytes}; process-lifetime-peak-working-set-bytes={process.PeakWorkingSet64}"
                     );
                     var rootData = result
                         .Folders.Values.Single(f => f.Reference.RecordIndex == 5)

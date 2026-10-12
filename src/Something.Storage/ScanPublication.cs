@@ -89,25 +89,7 @@ public sealed partial class ScanStore
                 var entity = context.Scans.Single(s => s.Id == scanId);
                 entity.State = StoredScanState.Completed;
                 entity.Ended = endedUtc;
-                long start = checked((long)scan.Descriptor.Range.StartIndex),
-                    count = checked((long)scan.Descriptor.Range.RecordCount);
-                var published = context.Published.SingleOrDefault(p =>
-                    p.VolumeKey == scan.Descriptor.VolumeKey
-                    && p.RangeStart == start
-                    && p.RangeCount == count
-                );
-                if (published is null)
-                    context.Published.Add(
-                        new()
-                        {
-                            VolumeKey = scan.Descriptor.VolumeKey,
-                            RangeStart = start,
-                            RangeCount = count,
-                            ScanId = scanId,
-                        }
-                    );
-                else
-                    published.ScanId = scanId;
+                SetPublishedGeneration(scanId, scan.Descriptor);
             },
             cancellationToken
         );

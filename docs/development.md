@@ -103,12 +103,20 @@ dotnet run --project tools/Something.LiveInspect -c Release -- C: --top5
 取得から保存までの合成回帰テストで修正を確認しました。修正後の実機でも容量一致と大幅な不足の解消を確認しました。
 所属不明の既知容量は残っており、各フォルダの帰属が完全に検証されたわけではありません。
 
-`Timing`は`scan-and-stage-seconds`、その内数の`db-stage-seconds`、
-`aggregate-publish-seconds`、`ranking-seconds`を最終表示します。
+`--top5`はスキャン中の観測をメモリへ保持し、完了後にメモリ上で集計してから一括保存します。
+記録項目は従来と同じで、ファイル参照・名前・DOS名・ストリーム容量・取得状態を保持します。
+スキャン中はDBを開かず、完了後の保存と公開を1トランザクションで行います。
+`Timing`は`scan-and-buffer-seconds`、`aggregate-buffer-seconds`、
+`persist-publish-seconds`、`ranking-seconds`を最終表示します。
+`Memory`の`managed-bytes-after-buffering`はスキャン直後のmanagedメモリ推定値で、
+まだ回収されていないオブジェクトも含みます。ピークworking setも別表示します。
+メモリは件数と名前・ストリーム数に応じて増えます。メモリ不足時の自動DB退避は未実装です。
 保存処理だけを合成データで測るには次を実行します。管理者権限・ボリューム取得は不要です。
 
 ```powershell
 dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchmark 100000
+# 同じデータをメモリへ収集してから集計・一括保存する方式
+dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchmark 100000 --buffered
 ```
 
 一時DBを作成して、レコード生成・保存と集計・公開を別々に測り、既知の期待容量と照合します。
