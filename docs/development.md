@@ -13,7 +13,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
 このコマンドが行うこと:
 
 1. `global.json`の.NET SDK 10.0.401をWindowsの通常の場所へインストール。`scripts/sdk-downloads.json`に固定したMicrosoft公式インストーラURLとSHA-512で取得内容を検証。既に同じSDKがある場合は再利用。
-   `.config/dotnet-tools.json`でバージョン固定したCSharpierも`dotnet tool restore`で復元。
+   `.config/dotnet-tools.json`でバージョン固定したCSharpierとdotnet-efも`dotnet tool restore`で復元。
 2. `.vscode/extensions.json`の推奨拡張をインストール。拡張のバージョンは固定していません。既存の拡張を強制更新しません。
 3. NuGet依存を各プロジェクトの`packages.lock.json`に従って`--locked-mode`で復元。
    CSharpierで整形済みかを検査し、整形漏れがあればファイルを書き換えずに停止。
@@ -70,15 +70,30 @@ VS CodeではC#の保存時に整形されます。`Tasks: Run Task`の`format` 
 - 正常系、境界値、構造破損、符号／桁あふれ、途中読み取り、キャンセル、削除／変更／再利用を検証。
 - 乱数テストは固定seedで実行。5000回のレコード変異と5000回のmapping-pair入力を検査。これは網羅的なファジングの代替ではありません。
 - MFT 2026.5.1はテスト専用の比較対象。製品ライブラリは依存しません。合致は正しさの証明ではありません。
-- 行カバレッジと分岐カバレッジをSomething.NtfsとSomething.Statisticsについて別々に計測。パーサーの目安は行95%以上／分岐90%以上ですが、数字だけを満たすテストを追加せず、未検証の重要な振る舞いを優先します。
+- 行カバレッジと分岐カバレッジをSomething.Ntfs・Something.Statistics・Something.Storageについて別々に計測。パーサーの目安は行95%以上／分岐90%以上ですが、数字だけを満たすテストを追加せず、未検証の重要な振る舞いを優先します。
 - ライブボリューム取得の実装後は、Windows APIとのサイズ照合と作成・変更・移動・削除の統合テストを追加します。
 
 ## 現在の構成
 
 - `src/Something.Ntfs`: WindowsやUIに依存しない解析／レコード結合／読み取り検証層。
+- `src/Something.Statistics`: 親参照の階層検証・共有容量の帰属・フォルダ集計・型付き取得アダプター。
+- `src/Something.Storage`: SQLite＋EF Coreのステージ保存・集計保存・世代公開基盤。実機保存CLIは未接続。
 - `src/Something.Windows`: 読み取り専用NTFS取得層とファイル情報API。実機の通常ファイル1件で論理サイズ一致を確認。
 - `tests/Something.Ntfs.Tests`: 単体・変異・OSS比較テスト。
 - `tools/Something.MftInspect`: オフラインraw MFTストリームの検査CLI。
 - `tools/Something.LiveInspect`: 少数のライブレコードとファイル論理サイズの検証CLI。
 
-Windows取得層の実装範囲・検証手順は [windows-acquisition.md](windows-acquisition.md) を参照してください。高速全件取得、USN追跡、VSS、容量履歴、GUIはまだ実装していません。
+Windows取得層の実装範囲・検証手順は [windows-acquisition.md](windows-acquisition.md) を参照してください。USN追跡、VSS、履歴比較、GUIはまだ実装していません。
+
+## 保存モデルの変更
+
+EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
+
+```powershell
+dotnet ef migrations add ChangeName --project src/Something.Storage --output-dir Migrations
+dotnet csharpier format . --no-cache --ignore-path .csharpierignore
+```
+
+生成したマイグレーションとモデルスナップショットをレビューし、DB制約と既存データの更新を検証してコミットします。テストはモデルとスナップショットの一致も検査します。設計時ファクトリーはメモリDBの接続設定でモデルを構築し、ユーザーの履歴DBを開きません。アプリのDB識別バージョンや対応するマイグレーション履歴の受け入れ範囲を変える場合は、`SqliteDatabaseBootstrap`も見直してください。
+
+EF Core導入後も空の`.tools`から`setup.ps1 -SkipExtensions`を実行し、固定ツール復元・locked-mode復元・整形検査・ビルド・611テストの成功を確認しました（公開コーパス7件は通常セットアップではスキップ）。コーパスありの別実行では全618テストが成功しました。実ボリュームのデータを保存するCLIはまだ接続していません。

@@ -1,6 +1,6 @@
 # Something
 
-容量履歴の保存にはSQLite + Microsoft.Data.Sqliteを採用します。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存層はまだ実装していません。
+容量履歴の保存にはSQLite + EF Coreを採用し、保守性を優先してLINQと型付きモデルを使います。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存層は実装途中で、CLIからの保存はまだ接続していません。
 フォルダ容量・共有ファイル・管理領域・肥大化比較の設計は [docs/statistics-design.md](docs/statistics-design.md) を参照してください。ハードリンクの共有DATAは最も近い共通祖先へ一度だけ計上します。統計層の階層検証・容量帰属・集計の基礎を実装しました。ライブ取得との接続、種別分類、履歴比較は未実装です。
 
 Everythingをもじった、Windows向けのディスク使用量・フォルダ肥大化分析アプリです。

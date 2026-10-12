@@ -50,7 +50,8 @@ public sealed record MftScanEntry(
     MftScanEntryKind Kind,
     LiveFileReadStatus Status,
     NtfsFile? File = null,
-    string? Error = null
+    string? Error = null,
+    MftFileEvidence? Evidence = null
 );
 
 /// <summary>
@@ -142,7 +143,8 @@ public sealed class LiveMftScanner(
                 result.File is null ? MftScanEntryKind.Unresolved : MftScanEntryKind.ResolvedFile,
                 result.Status,
                 result.File,
-                result.Error
+                result.Error,
+                result.Evidence
             );
         }
         cancellationToken.ThrowIfCancellationRequested();

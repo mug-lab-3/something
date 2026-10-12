@@ -19,6 +19,7 @@
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/Something.Ntfs/Something.Ntfs.csproj" />
     <ProjectReference Include="../../src/Something.Statistics/Something.Statistics.csproj" />
+    <ProjectReference Include="../../src/Something.Storage/Something.Storage.csproj" />
     <ProjectReference Include="../../src/Something.Windows/Something.Windows.csproj" />
   </ItemGroup>
 </Project>

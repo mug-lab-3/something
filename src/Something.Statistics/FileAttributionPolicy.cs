@@ -69,7 +69,10 @@ public sealed record FileCapacityObservation(
     ImmutableArray<NtfsFileName> Names,
     ImmutableArray<StreamCapacity> Streams,
     bool LinkSetComplete
-);
+)
+{
+    public ushort? ObservedHardLinkCount { get; init; }
+}
 
 public sealed record FileAttribution(
     FileReference Reference,

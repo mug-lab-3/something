@@ -13,6 +13,14 @@ public enum LiveFileReadStatus
     LimitExceeded,
 }
 
+/// <summary>Typed facts from a validated base observation; does not imply complete names on an unresolved file.</summary>
+public sealed record MftFileEvidence(
+    FileReference Reference,
+    bool IsDirectory,
+    ushort HardLinkCount,
+    NtfsMetadataKind MetadataKind
+);
+
 /// <summary>Only ObservedUnchanged carries capacity; it remains an optimistic observation.</summary>
 public sealed record LiveFileReadResult(
     LiveFileReadStatus Status,
@@ -20,7 +28,8 @@ public sealed record LiveFileReadResult(
     int Attempts,
     ulong? UnresolvedRecordIndex = null,
     LiveRecordReadStatus? RecordStatus = null,
-    string? Error = null
+    string? Error = null,
+    MftFileEvidence? Evidence = null
 );
 
 /// <summary>
@@ -103,7 +112,8 @@ public sealed class LiveMftFileReader
                     null,
                     attempt,
                     recordIndex,
-                    Error: "Dedicated capacity accounting for NTFS $BadClus metadata is not implemented."
+                    Error: "Dedicated capacity accounting for NTFS $BadClus metadata is not implemented.",
+                    Evidence: Evidence(baseRecord)
                 );
 
             var lists = baseRecord
@@ -327,11 +337,31 @@ public sealed class LiveMftFileReader
             }
             cancellationToken.ThrowIfCancellationRequested();
             return assemblyError is null
-                ? new(LiveFileReadStatus.ObservedUnchanged, file, attempt)
-                : new(assemblyStatus, null, attempt, recordIndex, Error: assemblyError);
+                ? new(
+                    LiveFileReadStatus.ObservedUnchanged,
+                    file,
+                    attempt,
+                    Evidence: Evidence(baseRecord)
+                )
+                : new(
+                    assemblyStatus,
+                    null,
+                    attempt,
+                    recordIndex,
+                    Error: assemblyError,
+                    Evidence: Evidence(baseRecord)
+                );
         }
         return new(LiveFileReadStatus.ChangedDuringRead, null, maximumAttempts, changedIndex);
     }
+
+    private static MftFileEvidence Evidence(MftRecord record) =>
+        new(
+            record.Reference,
+            record.IsDirectory,
+            record.HardLinkCount,
+            NtfsMetadataClassifier.Classify(record)
+        );
 
     private static LiveFileReadResult Failure(
         LiveRecordReadResult result,
