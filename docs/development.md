@@ -87,6 +87,14 @@ Windows取得層の実装範囲・検証手順は [windows-acquisition.md](windo
 
 ## 保存モデルの変更
 
+フォルダ容量の上位5件は、管理者として開いたPowerShellで次を実行して確認できます。
+
+```powershell
+dotnet run --project tools/Something.LiveInspect -c Release -- C: --top5
+```
+
+全件取得を行い、ルートを除く各フォルダの配下の割り当てDATA容量順で、パスと論理・割り当てバイト数を最後に表示します。5秒ごとの進捗とCtrl+Cに対応します。ハードリンクは共通祖先へ一度だけ帰属し、NTFS管理領域は順位から除きます。親と子がともに上位に入ることがあるため、上位5件を合計してディスク使用量にはしません。未解決容量がある順位は暫定で、スキャン中の変化を含む楽観的な観測です。取得ボリュームは読み取り専用で、集計用の一時SQLite DBを使い、履歴は保存しません。DB保存・集計を含むので`--scan`の速度計測とは比較できません。上位表示は合成DBで検証済みですが、管理者権限のある実機の全件表示は未検証です。
+
 EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
 
 ```powershell

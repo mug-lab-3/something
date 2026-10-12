@@ -628,6 +628,158 @@ public sealed class ScanStoreTests
         Assert.Equal(StoredScanState.Running, fixture.Store.GetScan(id).State);
     }
 
+    [Fact]
+    public void LargestFolders_RanksSubtreesAndExcludesRootAndMetadata()
+    {
+        using var fixture = new DatabaseFixture();
+        var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
+        var facts = new List<StagedObservation>
+        {
+            Stage(Directory(5, Root)),
+            Stage(Directory(11, Root)),
+        };
+        foreach (ulong index in Enumerable.Range(20, 6).Select(i => (ulong)i))
+        {
+            facts.Add(
+                Stage(
+                    Directory(index, Root) with
+                    {
+                        Names = [new(Root, $"folder-{index}", FileNameNamespace.Win32, 0)],
+                    }
+                )
+            );
+            facts.Add(Stage(File(index + 100, checked((long)(26 - index) * 100), Ref(index))));
+        }
+        facts.Add(
+            Stage(
+                Directory(26, Ref(20)) with
+                {
+                    Names = [new(Ref(20), "nested", FileNameNamespace.Win32AndDos, 0)],
+                }
+            )
+        );
+        facts.Add(Stage(File(200, 50, Ref(26))));
+        facts.Add(Stage(File(201, 10000, Ref(11))));
+        fixture.Store.StageBatch(id, facts, TestContext.Current.CancellationToken);
+        fixture.Store.CompleteScan(
+            id,
+            Started.AddSeconds(1),
+            TestContext.Current.CancellationToken
+        );
+        var top = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        Assert.Equal(
+            new ulong[] { 20, 21, 22, 23, 24 },
+            top.Select(t => t.Sample.Reference.RecordIndex)
+        );
+        Assert.Equal("folder-20", top[0].RelativePath);
+        Assert.Equal(new CapacityAmount(650, 650), top[0].Sample.SubtreeData);
+        var all = fixture.Store.ReadLargestFolders(id, 100, TestContext.Current.CancellationToken);
+        Assert.Equal(
+            "folder-20\\nested",
+            all.Single(t => t.Sample.Reference.RecordIndex == 26).RelativePath
+        );
+        Assert.DoesNotContain(all, t => t.Sample.Reference.RecordIndex is 5 or 11);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            fixture.Store.ReadLargestFolders(id, 0, TestContext.Current.CancellationToken)
+        );
+    }
+
+    [Fact]
+    public void LargestFolders_SharedDataCountsOnceAtCommonAncestorAndReportsUnknown()
+    {
+        using var fixture = new DatabaseFixture();
+        var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
+        var unknown = File(202, 0, Ref(20)) with
+        {
+            Resolution = CapacityResolution.Unresolved,
+            Streams = [],
+        };
+        fixture.Store.StageBatch(
+            id,
+            [
+                Stage(Directory(5, Root)),
+                Stage(Directory(20, Root)),
+                Stage(Directory(21, Ref(20))),
+                Stage(Directory(22, Ref(20))),
+                Stage(File(200, 100, Ref(21), Ref(22))),
+                Stage(File(201, 10, Ref(21))),
+                Stage(unknown),
+            ],
+            TestContext.Current.CancellationToken
+        );
+        fixture.Store.CompleteScan(
+            id,
+            Started.AddSeconds(1),
+            TestContext.Current.CancellationToken
+        );
+        var top = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        Assert.Equal(3, top.Length);
+        Assert.Equal(Ref(20), top[0].Sample.Reference);
+        Assert.Equal(new CapacityAmount(100, 100), top[0].Sample.SharedData);
+        Assert.Equal(new CapacityAmount(110, 110), top[0].Sample.SubtreeData);
+        Assert.Equal(1UL, top[0].Sample.SubtreeUnresolvedCount);
+        Assert.Equal(
+            new CapacityAmount(10, 10),
+            top.Single(t => t.Sample.Reference == Ref(21)).Sample.SubtreeData
+        );
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Store.ReadLargestFolders(id, cancellationToken: cancel.Token)
+        );
+    }
+
+    [Fact]
+    public void TemporaryScan_DoesNotTouchHistoryAndCanPublishRankAndDispose()
+    {
+        using var history = new DatabaseFixture();
+        var saved = history.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
+        history.Store.StageBatch(saved, BasicFacts(), TestContext.Current.CancellationToken);
+        history.Store.CompleteScan(
+            saved,
+            Started.AddSeconds(1),
+            TestContext.Current.CancellationToken
+        );
+        using var temporary = TemporaryScanDatabase.Create(TestContext.Current.CancellationToken);
+        var transient = temporary.Store.BeginScan(
+            Descriptor(),
+            TestContext.Current.CancellationToken
+        );
+        temporary.Store.StageBatch(transient, BasicFacts(), TestContext.Current.CancellationToken);
+        Assert.Throws<InvalidOperationException>(() =>
+            temporary.Store.ReadLargestFolders(
+                transient,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        );
+        temporary.Store.CompleteScan(
+            transient,
+            Started.AddSeconds(1),
+            TestContext.Current.CancellationToken
+        );
+        Assert.Equal(
+            2,
+            temporary
+                .Store.ReadLargestFolders(
+                    transient,
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
+                .Length
+        );
+        temporary.Dispose();
+        temporary.Dispose();
+        Assert.Equal(
+            saved,
+            history.Store.GetPublishedScan(Descriptor().VolumeKey, Descriptor().Range)
+        );
+    }
+
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource
     {
         public MftRecordEncoding Encoding => MftRecordEncoding.RawProtected;

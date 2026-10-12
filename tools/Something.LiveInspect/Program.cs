@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Security.Principal;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
 using Something.Windows;
 
@@ -22,13 +24,13 @@ if (
     || args.Length is < 1 or > 3
     || (
         args.Length > 1
-        && args[1] is not ("--file" or "--scan" or "--record-file")
+        && args[1] is not ("--file" or "--scan" or "--record-file" or "--top5")
         && !ulong.TryParse(args[1], out _)
     )
     || (args.Length > 1 && args[1] is "--file" or "--record-file" && args.Length != 3)
     || (
         args.Length > 2
-        && args[1] is not ("--file" or "--scan" or "--record-file")
+        && args[1] is not ("--file" or "--scan" or "--record-file" or "--top5")
         && !int.TryParse(args[2], out _)
     )
     || (
@@ -40,6 +42,7 @@ if (
         )
     )
     || (args.Length > 2 && args[1] == "--scan" && !ulong.TryParse(args[2], out _))
+    || (args.Length > 2 && args[1] == "--top5")
 )
 {
     Console.Error.WriteLine(
@@ -50,6 +53,9 @@ if (
     );
     Console.Error.WriteLine(
         "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <positive-int>]"
+    );
+    Console.Error.WriteLine(
+        "   or: Something.LiveInspect <drive> --top5 [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
         $"Per-file record limit defaults to {LiveMftFileReader.DefaultMaximumRecords}."
@@ -67,6 +73,11 @@ Console.CancelKeyPress += (_, e) =>
 };
 try
 {
+    if (args.Length == 2 && args[1] == "--top5")
+    {
+        using var volume = WindowsMftRecordSource.Open(args[0]);
+        return await TopFolders.RunAsync(volume, args[0], maximumRecords, cancellation.Token);
+    }
     if (args.Length == 3 && args[1] == "--record-file")
         return await RecordFileComparison.RunAsync(
             args[0],
@@ -231,6 +242,13 @@ catch (OperationCanceledException)
 {
     Console.Error.WriteLine("Cancelled.");
     return 130;
+}
+catch (Exception error) when (error is DbUpdateException or SqliteException)
+{
+    Console.Error.WriteLine(
+        $"Diagnostic database operation failed: {error.InnerException?.Message ?? error.Message}"
+    );
+    return 2;
 }
 catch (Exception error)
     when (error is IOException or ArgumentException or UnauthorizedAccessException)

@@ -13,7 +13,7 @@ public enum StoredScanState
     Interrupted,
 }
 
-/// <summary>VolumeKey must come from validated volume identity, not a drive letter. Epoch continuity is caller evidence.</summary>
+/// <summary>Persistent VolumeKey requires validated volume identity, not a drive letter. A disposable single-volume diagnostic may use an invocation-scoped key. Epoch continuity is caller evidence.</summary>
 public sealed record ScanDescriptor(
     string VolumeKey,
     Guid Epoch,

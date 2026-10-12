@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Something.Windows/Something.Windows.csproj" />
+    <ProjectReference Include="../../src/Something.Storage/Something.Storage.csproj" />
   </ItemGroup>
 </Project>
