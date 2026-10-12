@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Something.Ntfs/Something.Ntfs.csproj" />
+    <Project Path="src/Something.Statistics/Something.Statistics.csproj" />
     <Project Path="src/Something.Windows/Something.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -18,6 +18,7 @@
     <PackageReference Include="DiscUtils.Ntfs" Version="0.16.13" />
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/Something.Ntfs/Something.Ntfs.csproj" />
+    <ProjectReference Include="../../src/Something.Statistics/Something.Statistics.csproj" />
     <ProjectReference Include="../../src/Something.Windows/Something.Windows.csproj" />
   </ItemGroup>
 </Project>

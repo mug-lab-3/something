@@ -181,6 +181,12 @@
       "something.ntfs": {
         "type": "Project"
       },
+      "something.statistics": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Ntfs": "[1.0.0, )"
+        }
+      },
       "something.windows": {
         "type": "Project",
         "dependencies": {

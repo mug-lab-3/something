@@ -8,6 +8,7 @@
             <ModulePaths>
               <Include>
                 <ModulePath>.*[\\/]Something\.Ntfs\.dll$</ModulePath>
+                <ModulePath>.*[\\/]Something\.Statistics\.dll$</ModulePath>
               </Include>
             </ModulePaths>
           </CodeCoverage>
