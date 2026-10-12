@@ -79,10 +79,13 @@ ObservedUnchangedのディレクトリとして解析できることをユーザ
 現在の値を変更せず扱えること、RawProtected / FixupsRestoredは拒否することを確認した。
 WindowsDecodedでも不正なUSA・レコード・属性構造、取得中の変更、参照再利用を検出する。
 
-結合エラーはVCNの不連続や容量不整合を構造不正、Sparse以外のflags差を未対応として報告する。
+結合エラーはVCNの不連続や容量不整合を構造不正、対応条件外のflags差を未対応として報告する。
 Sparseビットのみの差はntfs-3gの先頭extentだけでの状態更新を根拠に許容する。
 先頭のストリーム設定と各extentの元のflagsを保持し、容量・物理境界・再検証は省略しない。
 変更後のSparse差があった実ファイルの確認とWindows APIでの独立容量照合はまだ残る。
+容量解析では、先頭の圧縮形式が1の場合に、継続extentの圧縮ビット省略も許容する。
+OSSの読取構成とWindowsの圧縮状態観測からの推論であり、全flags差を許容するものではない。
+先頭の設定・容量欄と全runの検証は維持し、逆方向・別形式・暗号化・未知ビットの差は未対応。
 エラー文には必要なVCN・flags等だけを含め、ファイル名・ストリーム名は含めない。
 実機の別の代表ファイルでは、先頭DATA extentの圧縮単位4に対して継続extentが0だった。
 当初は4→0だけを許可する互換処理を追加し、該当ファイルの容量が解決されたことを実機で確認した。
@@ -280,7 +283,39 @@ managed累積割り当ては43,756,530,264バイト、プロセス起動後の�
 肥大化の履歴、上限変更だけの効果として確定しない。
 当該走査での未対応理由の表示と資源計測は確認できたが、解決済み容量全量の独立照合ではない。
 
-## 参考資料
+## 参照番号によるWindows容量診断
+
+`dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --record-file <record-index> --max-records 256`
+で、パスを入力せずに無名DATAのWindows側の容量を観測できる。
+まずMFT取得で完全な参照（番号＋シーケンス）を確定し、使用中の通常baseファイルに限定する。
+OpenFileByIdにはその64ビット参照をFileIdTypeで渡す。ディレクトリや拡張レコードを比較対象にしない。
+
+選択ドライブのルートをアクセス要求0、共有READ / WRITE / DELETE、OPEN_EXISTINGで開き、
+OpenFileByIdのvolume hintとして使う。対象ファイルもアクセス要求0で開く。
+BACKUP_SEMANTICSとOPEN_REPARSE_POINTを指定し、reparse先を追跡しない。
+ファイル本文の読み取り、属性変更、データ書き込み、flush、権限変更、名前の取得は行わない。
+Windows APIの契約は[OpenFileById](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-openfilebyid)、
+入力構造は[FILE_ID_DESCRIPTOR](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_descriptor)を参照。
+
+取得前後で参照・ボリュームシリアル・論理サイズ・更新時刻・リンク数・属性と、
+FileStandardInfo / FileCompressionInfoの観測値を確認する。
+削除待ち、識別不一致、観測値の不整合や変更は容量一致へ置き換えない。
+OpenFileByIdやメタデータ照会の失敗はI/Oエラーとして報告し、未取得の値は0へ補完しない。
+通常権限の一時ファイルテストではrawボリュームを開かないが、このCLIはMFT取得が必要なので管理者権限が必要。
+
+NTFSの結合がUnsupportedの場合も、安定したWindows側の論理・割り当て容量・圧縮状態を表示する。
+この場合はWindows観測のみで、NTFS容量の独立照合済みやmatch=Trueとは表示しない（終了コード1）。
+解決できた無名DATAのみ、NTFSとWindowsの論理・割り当てを両方比較する。
+名前付きDATAの独立比較、圧縮内容の解凍、時点スナップショットの保証は提供しない。
+純粋テストは参照再利用・異なるボリューム・状態変化・混在観測を検証する。
+WindowsのNTFS上の専用一時ファイルで参照からのopen・rename後の照会・古いシーケンスの拒否を検証する。
+圧縮ビット差があるユーザーの実ファイルで、この診断が参照番号からの取得に成功した。
+Windowsは圧縮あり・Sparseなし・compression-format=2を報告し、論理サイズ4,517,414バイト、
+割り当て容量1,245,184バイトを返した。この時点ではNTFSの結合がUnsupportedであり、
+Windows側の観測だけが得られた。NTFS flagsの形式番号1とWindows APIの形式番号2は別の表現で、
+同値比較しない。継続の圧縮ビット省略への対応後の、両容量の独立一致確認はまだ残る。
+
+## 参考資料（リンク）
 
 - [CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
 - [NTFS_VOLUME_DATA_BUFFER](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-ntfs_volume_data_buffer)

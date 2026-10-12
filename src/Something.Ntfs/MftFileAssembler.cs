@@ -212,6 +212,12 @@ public sealed class MftFileAssembler(int bytesPerCluster, long? totalClusters = 
             throw new NtfsAssemblyException("Missing first DATA extent.");
         long nextVcn = 0;
         var runs = ImmutableArray.CreateBuilder<DataRun>();
+        var allowedFlagDifferences = NtfsAttributeFlags.Sparse;
+        const NtfsAttributeFlags compressionMask = (NtfsAttributeFlags)0x00FF;
+        // Capacity uses the primary stream settings and all physical runs, not per-segment decompression.
+        // Only the known compression format may be omitted on continuations; other format bits stay checked.
+        if ((extents[0].Flags & compressionMask) == NtfsAttributeFlags.Compressed)
+            allowedFlagDifferences |= NtfsAttributeFlags.Compressed;
         foreach (var extent in extents)
         {
             if (extent.LowestVcn != nextVcn)
@@ -219,8 +225,8 @@ public sealed class MftFileAssembler(int bytesPerCluster, long? totalClusters = 
                     $"DATA extent VCN discontinuity: expected-lowest={nextVcn}; observed-lowest={extent.LowestVcn}; observed-highest={extent.HighestVcn}."
                 );
             // Sparse state can be updated on the primary extent without rewriting continuation flags.
-            // Other flag differences remain unsupported; preserve every raw header separately.
-            if (((extent.Flags ^ extents[0].Flags) & ~NtfsAttributeFlags.Sparse) != 0)
+            // Preserve every raw header separately, including omitted continuation settings.
+            if (((extent.Flags ^ extents[0].Flags) & ~allowedFlagDifferences) != 0)
                 throw new NtfsAssemblyException(
                     $"DATA extent flags mismatch is not supported: first={extents[0].Flags}; observed={extent.Flags}; lowest-vcn={extent.LowestVcn}; highest-vcn={extent.HighestVcn}.",
                     NtfsAssemblyFailureKind.Unsupported

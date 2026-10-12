@@ -21,9 +21,25 @@ if (args.Length >= 3 && args[^2] == "--max-records")
 if (
     invalidRecordLimit
     || args.Length is < 1 or > 3
-    || (args.Length > 1 && args[1] is not ("--file" or "--scan") && !ulong.TryParse(args[1], out _))
-    || (args.Length > 1 && args[1] == "--file" && args.Length != 3)
-    || (args.Length > 2 && args[1] is not ("--file" or "--scan") && !int.TryParse(args[2], out _))
+    || (
+        args.Length > 1
+        && args[1] is not ("--file" or "--scan" or "--record-file")
+        && !ulong.TryParse(args[1], out _)
+    )
+    || (args.Length > 1 && args[1] is "--file" or "--record-file" && args.Length != 3)
+    || (
+        args.Length > 2
+        && args[1] is not ("--file" or "--scan" or "--record-file")
+        && !int.TryParse(args[2], out _)
+    )
+    || (
+        args.Length > 2
+        && args[1] == "--record-file"
+        && (
+            !ulong.TryParse(args[2], out ulong recordIndex)
+            || recordIndex > FileReference.MaximumRecordIndex
+        )
+    )
     || (args.Length > 2 && args[1] == "--scan" && !ulong.TryParse(args[2], out _))
 )
 {
@@ -37,6 +53,9 @@ if (
         "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <1..256>]"
     );
     Console.Error.WriteLine("Per-file record limit defaults to 128.");
+    Console.Error.WriteLine(
+        "   or: Something.LiveInspect <drive> --record-file <record-index> [--max-records <1..256>]"
+    );
     return 2;
 }
 using var cancellation = new CancellationTokenSource();
@@ -47,6 +66,13 @@ Console.CancelKeyPress += (_, e) =>
 };
 try
 {
+    if (args.Length == 3 && args[1] == "--record-file")
+        return await RecordFileComparison.RunAsync(
+            args[0],
+            ulong.Parse(args[2]),
+            maximumRecords,
+            cancellation.Token
+        );
     if (args.Length >= 2 && args[1] == "--scan")
     {
         using var volume = WindowsMftRecordSource.Open(args[0]);

@@ -7,6 +7,40 @@ using Something.Ntfs;
 
 namespace Something.Windows;
 
+internal static class WindowsFileIdDescriptor
+{
+    // Two DWORDs followed by the 16-byte union in FILE_ID_DESCRIPTOR; FileIdType = 0.
+    internal static byte[] Encode(FileReference reference)
+    {
+        byte[] descriptor = new byte[24];
+        BinaryPrimitives.WriteUInt32LittleEndian(descriptor, (uint)descriptor.Length);
+        BinaryPrimitives.WriteUInt64LittleEndian(descriptor.AsSpan(8), reference.Value);
+        return descriptor;
+    }
+}
+
+/// <summary>Checks independently acquired handle observations without implying a point-in-time snapshot.</summary>
+public static class WindowsFileObservationConsistency
+{
+    public static bool IsStable(
+        FileReference expectedReference,
+        uint expectedVolumeSerial,
+        WindowsFileInfo before,
+        WindowsStorageInfo storageBefore,
+        WindowsFileInfo after,
+        WindowsStorageInfo storageAfter
+    ) =>
+        before.Reference == expectedReference
+        && before.VolumeSerialNumber == expectedVolumeSerial
+        && before == after
+        && storageBefore == storageAfter
+        && !before.IsDirectory
+        && !storageBefore.Standard.IsDirectory
+        && !storageBefore.Standard.DeletePending
+        && storageBefore.Standard.LogicalBytes == before.LogicalBytes
+        && storageBefore.FileAttributes == before.FileAttributes;
+}
+
 /// <summary>FILE_COMPRESSION_INFO for the open stream. Excludes filesystem metadata overhead.</summary>
 public sealed record WindowsCompressionInfo(
     long ReportedBytes,
@@ -128,6 +162,47 @@ public sealed class WindowsFileMetadata : IDisposable
 
     private WindowsFileMetadata(SafeFileHandle handle) => this.handle = handle;
 
+    /// <summary>Opens the exact NTFS reference, including its sequence, without following reparse points.</summary>
+    public static WindowsFileMetadata OpenByReference(
+        string drive,
+        FileReference reference,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // OpenFileById accepts a handle to any file on the selected volume. A root handle needs no raw-volume access.
+        using var hint = Open(drive, drive + @"\");
+        cancellationToken.ThrowIfCancellationRequested();
+        var handle = OpenFileById(
+            hint.handle,
+            WindowsFileIdDescriptor.Encode(reference),
+            0,
+            7,
+            IntPtr.Zero,
+            0x02200000 // BACKUP_SEMANTICS | OPEN_REPARSE_POINT; no write access.
+        );
+        if (handle.IsInvalid)
+        {
+            int code = Marshal.GetLastPInvokeError();
+            handle.Dispose();
+            throw Failure(code);
+        }
+        var file = new WindowsFileMetadata(handle);
+        try
+        {
+            if (file.Observe(cancellationToken).Reference != reference)
+                throw new InvalidDataException(
+                    "Opened file reference differs from the requested identity."
+                );
+            return file;
+        }
+        catch
+        {
+            file.Dispose();
+            throw;
+        }
+    }
+
     public static WindowsFileMetadata Open(string drive, string path)
     {
         WindowsMftRecordSource.DevicePath(drive);
@@ -220,6 +295,16 @@ public sealed class WindowsFileMetadata : IDisposable
         uint disposition,
         uint flags,
         IntPtr template
+    );
+
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    private static extern SafeFileHandle OpenFileById(
+        SafeFileHandle volumeHint,
+        [In] byte[] descriptor,
+        uint access,
+        uint share,
+        IntPtr security,
+        uint flags
     );
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]

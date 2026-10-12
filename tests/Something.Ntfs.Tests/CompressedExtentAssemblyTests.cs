@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Something.Ntfs;
 
 namespace Something.Ntfs.Tests;
@@ -114,12 +115,27 @@ public sealed class CompressedExtentAssemblyTests
         );
     }
 
-    [Fact]
-    public async Task ReadAsync_StableFlagsDifference_ReturnsUnsupportedWithoutCapacity()
+    [Theory]
+    [InlineData(false, 0, NtfsAttributeFlags.Compressed)]
+    [InlineData(true, 0, NtfsAttributeFlags.Compressed)]
+    [InlineData(false, 4, NtfsAttributeFlags.Compressed)]
+    [InlineData(true, 4, NtfsAttributeFlags.Compressed)]
+    [InlineData(false, 0, NtfsAttributeFlags.Compressed | NtfsAttributeFlags.Sparse)]
+    [InlineData(true, 4, NtfsAttributeFlags.Compressed | NtfsAttributeFlags.Sparse)]
+    public async Task ReadAsync_PrimaryCompressedContinuationOmitsFlag_UsesPrimarySettings(
+        bool named,
+        ushort nextUnit,
+        NtfsAttributeFlags primaryFlags
+    )
     {
-        var (baseBytes, extensionBytes) = Fixture(NtfsAttributeFlags.Compressed);
-        // Raw flags are different, but this alone does not prove an invalid NTFS file.
+        var (baseBytes, extensionBytes) = Fixture(
+            primaryFlags,
+            name: named ? "synthetic-stream" : "",
+            nextUnit: nextUnit
+        );
         RecordFixture.U16(extensionBytes, 56 + 12, 0);
+        byte[] baseCopy = baseBytes.ToArray();
+        byte[] extensionCopy = extensionBytes.ToArray();
 
         var result = await new LiveMftFileReader(4096).ReadAsync(
             new Source(baseBytes, extensionBytes),
@@ -127,9 +143,48 @@ public sealed class CompressedExtentAssemblyTests
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        Assert.Equal(LiveFileReadStatus.Unsupported, result.Status);
-        Assert.Contains("flags mismatch", result.Error);
-        Assert.Null(result.File);
+        Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+        var stream = Assert.Single(result.File!.DataStreams);
+        Assert.Equal(100000, stream.LogicalBytes);
+        Assert.Equal(65536, stream.AllocatedBytes);
+        Assert.Equal(new NtfsStreamStorage(primaryFlags, 4), stream.Storage);
+        var attributes = result.File.Attributes.OfType<NonResidentAttribute>().ToArray();
+        Assert.Equal((NtfsAttributeFlags)0, attributes[1].Flags);
+        Assert.Equal(nextUnit, attributes[1].CompressionUnit);
+        Assert.Equal(baseCopy, baseBytes);
+        Assert.Equal(extensionCopy, extensionBytes);
+    }
+
+    [Theory]
+    [InlineData(0, NtfsAttributeFlags.Compressed)]
+    [InlineData((NtfsAttributeFlags)2, 0)]
+    [InlineData(NtfsAttributeFlags.Compressed, (NtfsAttributeFlags)2)]
+    [InlineData(NtfsAttributeFlags.Compressed, NtfsAttributeFlags.Encrypted)]
+    [InlineData(NtfsAttributeFlags.Compressed, (NtfsAttributeFlags)0x1000)]
+    public void Assemble_UnsupportedCompressionDirectionFormatOrOtherBits_DoesNotReturnCapacity(
+        NtfsAttributeFlags first,
+        NtfsAttributeFlags next
+    )
+    {
+        // Use a primary header with a complete extended size field, then vary raw observations.
+        var (baseBytes, extensionBytes) = Fixture(NtfsAttributeFlags.Sparse);
+        var parsed = new MftRecordParser().Parse(baseBytes, 42);
+        var primary = Assert.Single(parsed.Attributes.OfType<NonResidentAttribute>());
+        parsed = parsed with
+        {
+            Attributes = parsed
+                .Attributes.Select(a => a == primary ? primary with { Flags = first } : a)
+                .ToImmutableArray(),
+        };
+        var extension = new MftRecordParser().Parse(extensionBytes, 43);
+        var continuation = Assert.Single(extension.Attributes.OfType<NonResidentAttribute>());
+        extension = extension with { Attributes = [continuation with { Flags = next }] };
+
+        var error = Assert.Throws<NtfsAssemblyException>(() =>
+            new MftFileAssembler(4096).Assemble(parsed, [extension])
+        );
+
+        Assert.Equal(NtfsAssemblyFailureKind.Unsupported, error.Kind);
     }
 
     [Theory]
@@ -249,18 +304,24 @@ public sealed class CompressedExtentAssemblyTests
     }
 
     [Theory]
-    [InlineData(0, LiveFileReadStatus.InvalidAssembly)]
-    [InlineData(1, LiveFileReadStatus.InvalidAssembly)]
-    [InlineData(2, LiveFileReadStatus.Missing)]
-    [InlineData(3, LiveFileReadStatus.InvalidAssembly)]
-    [InlineData(4, LiveFileReadStatus.InvalidAssembly)]
-    public async Task ReadAsync_SparseBitDifference_DoesNotBypassCapacityOrMappingValidation(
+    [InlineData(0, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Sparse)]
+    [InlineData(1, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Sparse)]
+    [InlineData(2, LiveFileReadStatus.Missing, NtfsAttributeFlags.Sparse)]
+    [InlineData(3, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Sparse)]
+    [InlineData(4, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Sparse)]
+    [InlineData(0, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Compressed)]
+    [InlineData(1, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Compressed)]
+    [InlineData(2, LiveFileReadStatus.Missing, NtfsAttributeFlags.Compressed)]
+    [InlineData(3, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Compressed)]
+    [InlineData(4, LiveFileReadStatus.InvalidAssembly, NtfsAttributeFlags.Compressed)]
+    public async Task ReadAsync_OmittedExtentSetting_DoesNotBypassCapacityOrMappingValidation(
         int scenario,
-        LiveFileReadStatus expected
+        LiveFileReadStatus expected,
+        NtfsAttributeFlags primaryFlags
     )
     {
         var (baseBytes, next) = Fixture(
-            NtfsAttributeFlags.Sparse,
+            primaryFlags,
             physical: scenario == 0 ? 65537 : 65536,
             logical: scenario == 1 ? 200000 : 100000,
             nextVcn: scenario == 4 ? 17 : 16
@@ -281,7 +342,7 @@ public sealed class CompressedExtentAssemblyTests
     }
 
     [Fact]
-    public async Task ReadAsync_FlagsChangeDuringRevalidation_RetriesBeforeReportingUnsupported()
+    public async Task ReadAsync_CompressionBitChangesDuringRevalidation_RetriesBeforeAccepting()
     {
         var (baseBytes, validExtension) = Fixture(NtfsAttributeFlags.Compressed);
         byte[] earlierExtension = validExtension.ToArray();
