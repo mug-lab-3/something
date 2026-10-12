@@ -176,7 +176,7 @@ match=Trueとする。常駐DATAの解析側割り当て容量は従来どおり
 ATTRIBUTE_LIST内の同一参照は重複計数せず、baseの参照がリストになくてもbase分の1件を含める。
 必要件数は取得したリストからの観測であり、全extensionを取得できた証明ではない。
 上限を自動で増やしたり、未取得extensionの容量を0として補完したりはしない。
-全件走査は従来どおり最初の未解決例だけを終了後に表示する。必要件数を個別に確認する場合は、
+全件走査は状態ごとに最大3件の未解決例を終了後に表示する。必要件数を個別に確認する場合は、
 その番号で`dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: <record-index> 1`を実行する。
 範囲診断・`--file`・`--scan`には末尾に`--max-records <1..256>`を指定できる（既定128、baseを含む）。
 例: `dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: <record-index> 1 --max-records 256`。

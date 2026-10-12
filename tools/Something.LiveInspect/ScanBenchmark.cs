@@ -69,10 +69,7 @@ internal static class ScanBenchmark
     {
         private readonly object gate = new();
         private readonly Dictionary<LiveFileReadStatus, ulong> outcomes = [];
-        private readonly Dictionary<
-            LiveFileReadStatus,
-            (ulong Index, string? Error)
-        > firstFailures = [];
+        private readonly MftScanIssueSampler issueSamples = new();
         private ulong candidates;
         private ulong files;
         private ulong directories;
@@ -106,7 +103,7 @@ internal static class ScanBenchmark
                 else
                 {
                     Unresolved++;
-                    firstFailures.TryAdd(entry.Status, (entry.RecordIndex, entry.Error));
+                    issueSamples.Add(entry);
                 }
             }
         }
@@ -142,9 +139,17 @@ internal static class ScanBenchmark
             foreach (var (status, count) in outcomes.OrderBy(p => p.Key))
             {
                 Console.WriteLine($"  {status}={count}");
-                if (firstFailures.TryGetValue(status, out var first))
+                var samples = issueSamples.GetSamples(status);
+                for (int i = 0; i < samples.Length; i++)
+                {
+                    var sample = samples[i];
                     Console.WriteLine(
-                        $"    First unresolved record={first.Index}; reason={first.Error ?? "not available"}"
+                        $"    {(i == 0 ? "First unresolved" : "Unresolved sample")} record={sample.RecordIndex}; reason={sample.Error ?? "not available"}"
+                    );
+                }
+                if (samples.Length != 0 && count > (ulong)samples.Length)
+                    Console.WriteLine(
+                        $"    Additional unresolved examples omitted={count - (ulong)samples.Length}"
                     );
             }
             Console.WriteLine(
