@@ -31,6 +31,8 @@ public sealed record LiveFileReadResult(
 /// </summary>
 public sealed class LiveMftFileReader
 {
+    public const int DefaultMaximumRecords = 1024;
+
     private readonly MftFileAssembler assembler;
     private readonly LiveMftRecordReader recordReader = new();
     private readonly int maximumAttempts;
@@ -39,14 +41,13 @@ public sealed class LiveMftFileReader
     public LiveMftFileReader(
         int bytesPerCluster,
         int maximumAttempts = 3,
-        int maximumRecords = 128,
+        int maximumRecords = DefaultMaximumRecords,
         long? totalClusters = null
     )
     {
         if (maximumAttempts is < 1 or > 10)
             throw new ArgumentOutOfRangeException(nameof(maximumAttempts));
-        if (maximumRecords is < 1 or > 256)
-            throw new ArgumentOutOfRangeException(nameof(maximumRecords));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumRecords);
         assembler = new(bytesPerCluster, totalClusters);
         this.maximumAttempts = maximumAttempts;
         this.maximumRecords = maximumRecords;

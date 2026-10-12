@@ -10,12 +10,11 @@ if (!OperatingSystem.IsWindows())
 }
 
 // Work-budget overrides are explicit, bounded, and trailing.
-int maximumRecords = 128;
+int maximumRecords = LiveMftFileReader.DefaultMaximumRecords;
 bool invalidRecordLimit = false;
 if (args.Length >= 3 && args[^2] == "--max-records")
 {
-    invalidRecordLimit =
-        !int.TryParse(args[^1], out maximumRecords) || maximumRecords is < 1 or > 256;
+    invalidRecordLimit = !int.TryParse(args[^1], out maximumRecords) || maximumRecords < 1;
     args = args[..^2];
 }
 if (
@@ -44,17 +43,19 @@ if (
 )
 {
     Console.Error.WriteLine(
-        "Usage: Something.LiveInspect <drive, e.g. C:> [start-index=0] [count=16, max=4096] [--max-records <1..256>]"
+        "Usage: Something.LiveInspect <drive, e.g. C:> [start-index=0] [count=16, max=4096] [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
-        "   or: Something.LiveInspect <drive> --file <absolute-file-path> [--max-records <1..256>]"
+        "   or: Something.LiveInspect <drive> --file <absolute-file-path> [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
-        "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <1..256>]"
+        "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <positive-int>]"
     );
-    Console.Error.WriteLine("Per-file record limit defaults to 128.");
     Console.Error.WriteLine(
-        "   or: Something.LiveInspect <drive> --record-file <record-index> [--max-records <1..256>]"
+        $"Per-file record limit defaults to {LiveMftFileReader.DefaultMaximumRecords}."
+    );
+    Console.Error.WriteLine(
+        "   or: Something.LiveInspect <drive> --record-file <record-index> [--max-records <positive-int>]"
     );
     return 2;
 }

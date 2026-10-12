@@ -9,6 +9,8 @@ public sealed class LiveMftScannerTests
     [InlineData(1, false)]
     [InlineData(2, true)]
     [InlineData(256, true)]
+    [InlineData(1024, true)]
+    [InlineData(2048, true)]
     public async Task ScanAsync_SelectedRecordBudget_ControlsCompleteAssembly(
         int limit,
         bool resolves
@@ -66,7 +68,7 @@ public sealed class LiveMftScannerTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(257)]
+    [InlineData(-1)]
     public void Constructor_RecordBudgetOutsideBounds_Rejects(int limit) =>
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new LiveMftScanner(4096, maximumRecords: limit)

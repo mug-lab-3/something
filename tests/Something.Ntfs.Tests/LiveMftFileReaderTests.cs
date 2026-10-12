@@ -228,15 +228,20 @@ public sealed class LiveMftFileReaderTests
     }
 
     [Theory]
-    [InlineData(128, false)]
-    [InlineData(169, true)]
-    [InlineData(256, true)]
-    public async Task ReadAsync_FileWith169Segments_RespectsSelectedBudgetAndRevalidatesAll(
-        int limit,
+    [InlineData(169, 128, false)]
+    [InlineData(169, 169, true)]
+    [InlineData(169, 256, true)]
+    [InlineData(289, null, true)]
+    [InlineData(317, null, true)]
+    [InlineData(1024, null, true)]
+    [InlineData(1025, null, false)]
+    [InlineData(1025, 2048, true)]
+    public async Task ReadAsync_ManySegments_RespectsDefaultOrSelectedBudgetAndRevalidatesAll(
+        int segmentCount,
+        int? limit,
         bool resolves
     )
     {
-        const int segmentCount = 169;
         byte[] list = Enumerable
             .Range(0, segmentCount)
             .SelectMany(i =>
@@ -253,7 +258,7 @@ public sealed class LiveMftFileReaderTests
                     allocated: segmentCount * 4096
                 ),
             ],
-            size: 8192
+            size: 65536
         );
         var source = new Source(
             (index, _) =>
@@ -264,7 +269,7 @@ public sealed class LiveMftFileReaderTests
                             RecordFixture.NonResident(
                                 lowestVcn: (long)index - 42,
                                 highestVcn: (long)index - 42,
-                                runs: [0x21, 1, (byte)index, 1, 0]
+                                runs: [0x21, 1, (byte)index, (byte)(index >> 8), 0]
                             ),
                         ],
                         baseReference: BaseReference.Value,
@@ -272,11 +277,14 @@ public sealed class LiveMftFileReaderTests
                     )
         );
 
-        var result = await new LiveMftFileReader(
-            4096,
-            maximumRecords: limit,
-            totalClusters: 1024
-        ).ReadAsync(source, 42, cancellationToken: TestContext.Current.CancellationToken);
+        var reader = limit is { } selected
+            ? new LiveMftFileReader(4096, maximumRecords: selected, totalClusters: 4096)
+            : new LiveMftFileReader(4096, totalClusters: 4096);
+        var result = await reader.ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(
             resolves ? LiveFileReadStatus.ObservedUnchanged : LiveFileReadStatus.LimitExceeded,
@@ -674,7 +682,7 @@ public sealed class LiveMftFileReaderTests
     [InlineData(0, 128)]
     [InlineData(11, 128)]
     [InlineData(3, 0)]
-    [InlineData(3, 257)]
+    [InlineData(3, -1)]
     public void Constructor_UnboundedOrInvalidWorkLimits_Rejects(int attempts, int records)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

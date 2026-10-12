@@ -107,7 +107,7 @@ LiveMftRecordReaderが再取得・照合し最大3回で打ち切る。変更・
 LiveMftFileReaderがresident ATTRIBUTE_LISTの参照を取得し、結合後にbaseと全拡張レコードを
 再取得して、所有する不変の観測バイト列と照合する。変化した場合はファイル全体を最大3回やり直す。
 参照番号だけでなくシーケンス番号も照合し、再試行中にbaseが再利用された場合は別ファイルへ切り替えない。
-既定でbaseを含め128レコードまで（設定上限256）とし、上限超過を明示して取得を打ち切る。
+既定でbaseを含め1024レコードまで（正のint値で設定可能）とし、上限超過を明示して取得を打ち切る。
 各レコードの読み取りも最大3回なので、ネイティブ呼び出し数と保持メモリは有限。
 全件の高速走査とは別の検証経路として使う。
 
@@ -174,24 +174,24 @@ match=Trueとする。常駐DATAの解析側割り当て容量は従来どおり
 通常ファイルの割り当て容量検証は緩めず、管理ファイルの容量も0に置き換えない。
 これは破損していないことの保証ではなく、集計対象を識別したうえでの未対応報告。
 参照の不足・再利用・不正構造・取得上限超過も未解決とし、部分的な容量を返さない。
-ファイルの取得レコード数上限は通常128（baseを含む）で、NTFS形式上の上限ではない。
+ファイルの取得レコード数上限は通常1024（baseを含む）で、NTFS形式上の上限ではない。
 上限超過のreasonにはrequired-records / maximum-records / extension-recordsを表示する。
 ATTRIBUTE_LIST内の同一参照は重複計数せず、baseの参照がリストになくてもbase分の1件を含める。
 必要件数は取得したリストからの観測であり、全extensionを取得できた証明ではない。
 上限を自動で増やしたり、未取得extensionの容量を0として補完したりはしない。
 全件走査は状態ごとに最大3件の未解決例を終了後に表示する。必要件数を個別に確認する場合は、
 その番号で`dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: <record-index> 1`を実行する。
-範囲診断・`--file`・`--scan`には末尾に`--max-records <1..256>`を指定できる（既定128、baseを含む）。
-例: `dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: <record-index> 1 --max-records 256`。
+範囲診断・`--file`・`--scan`・`--record-file`には末尾に`--max-records <positive-int>`を指定できる（既定1024、baseを含む）。
+例: `dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: <record-index> 1 --max-records 2048`。
 指定値以外への自動拡大は行わない。範囲診断のヘッダーにも選択した上限を表示する。
-不正値・256超過はボリュームを開く前に入力エラーとして拒否する。
+0・負数・int範囲外・不正値はボリュームを開く前に入力エラーとして拒否する。1024超過も明示指定でき、NTFS形式上の上限とは扱わない。
 これは取得量の上限だけを変更する。参照番号・シーケンス・extent・容量の検証と再取得は維持する。
-全件走査の比較例: `dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --scan --max-records 256`。
+全件走査の比較例: `dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --scan --max-records 2048`。
 開始表示に選択した上限を含める。5秒ごとの途中表示と、終了後の集約出力は維持する。
 終了時のMemory行は、走査区間のプロセス全体のmanaged累積割り当てバイト数と、
 プロセス起動後のピークworking setを表示する。累積割り当ては保持中メモリやピークではない。
 working setはネイティブ・ランタイムも含み、開始前のピークも含むため走査だけの最大使用量ではない。
-128と256を別プロセスで比較し、時間・取得回数・未解決数と併せて判断する。
+既定1024と明示指定した値を別プロセスで比較し、時間・取得回数・未解決数と併せて判断する。
 ライブデータやOSキャッシュ状態は同一ではないので、単一の測定差を上限変更の効果と断定しない。
 resident DATAのAllocatedBytes=0は追加DATAクラスタの割り当てが0という意味で、
 MFT等を含むファイルの総占有量ではない。

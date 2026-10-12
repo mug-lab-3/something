@@ -60,7 +60,7 @@ public sealed record MftScanEntry(
 public sealed class LiveMftScanner(
     int bytesPerCluster,
     long? totalClusters = null,
-    int maximumRecords = 128
+    int maximumRecords = LiveMftFileReader.DefaultMaximumRecords
 )
 {
     private readonly LiveMftFileReader fileReader = new(
