@@ -13,7 +13,7 @@ public sealed class MftObservationAdapterTests
         FileNameNamespace ns = FileNameNamespace.Win32
     ) => new(Ref(parent), name, ns, 0);
 
-    private static MftScanEntry Entry(ushort links = 1) =>
+    private static MftScanEntry Entry(ushort links = 2) =>
         new(
             42,
             MftScanEntryKind.ResolvedFile,
@@ -30,9 +30,10 @@ public sealed class MftObservationAdapterTests
 
     [Theory]
     [InlineData(0, false)]
-    [InlineData(1, true)]
-    [InlineData(2, false)]
-    public void LinkCount_RequiresCompleteNonDosNames(ushort links, bool complete)
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    public void OnDiskNameCount_IncludesDosAliasesForCompleteness(ushort links, bool complete)
     {
         var result = MftObservationAdapter.Convert(
             Entry(links),
@@ -42,6 +43,90 @@ public sealed class MftObservationAdapterTests
         Assert.Equal(links, result.ObservedHardLinkCount);
         Assert.Equal(2, result.Names.Length);
         Assert.Equal(new StreamCapacity("", 4, 0), Assert.Single(result.Streams));
+    }
+
+    [Fact]
+    public void MultipleRealLinksWithDosAliases_AreCompleteWithoutDoubleCounting()
+    {
+        var entry = Entry(4);
+        var observation = MftObservationAdapter.Convert(
+            entry with
+            {
+                File = entry.File! with
+                {
+                    Names =
+                    [
+                        Name(20, "long-a"),
+                        Name(20, "LONGA~1", FileNameNamespace.Dos),
+                        Name(21, "long-b"),
+                        Name(21, "LONGB~1", FileNameNamespace.Dos),
+                    ],
+                },
+            },
+            TestContext.Current.CancellationToken
+        )!;
+        var graph = FolderGraph.Build(
+            Ref(5),
+            [new(Ref(5), [Ref(5)]), new(Ref(20), [Ref(5)]), new(Ref(21), [Ref(5)])],
+            TestContext.Current.CancellationToken
+        );
+        var attribution = new FileAttributionPolicy(graph).Attribute(
+            observation,
+            TestContext.Current.CancellationToken
+        );
+        Assert.True(observation.LinkSetComplete);
+        Assert.Equal(AttributionKind.Shared, attribution.Kind);
+        Assert.Equal(Ref(5), attribution.Folder);
+        Assert.Equal(new CapacityAmount(4, 0), attribution.Capacity);
+    }
+
+    [Fact]
+    public void MissingLongNameOrDuplicateName_IsNotAcceptedAsComplete()
+    {
+        var entry = Entry(2);
+        Assert.False(
+            MftObservationAdapter
+                .Convert(
+                    entry with
+                    {
+                        File = entry.File! with
+                        {
+                            Names = [Name(5), Name(20, "ORPHAN~1", FileNameNamespace.Dos)],
+                        },
+                    },
+                    TestContext.Current.CancellationToken
+                )!
+                .LinkSetComplete
+        );
+        Assert.False(
+            MftObservationAdapter
+                .Convert(
+                    entry with
+                    {
+                        File = entry.File! with { Names = [Name(5), Name(5)] },
+                    },
+                    TestContext.Current.CancellationToken
+                )!
+                .LinkSetComplete
+        );
+        Assert.False(
+            MftObservationAdapter
+                .Convert(
+                    entry with
+                    {
+                        File = entry.File! with
+                        {
+                            Names =
+                            [
+                                Name(5, "ONLY~1", FileNameNamespace.Dos),
+                                Name(5, "OTHER~1", FileNameNamespace.Dos),
+                            ],
+                        },
+                    },
+                    TestContext.Current.CancellationToken
+                )!
+                .LinkSetComplete
+        );
     }
 
     [Fact]

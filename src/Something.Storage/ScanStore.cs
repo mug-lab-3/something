@@ -332,11 +332,27 @@ public sealed partial class ScanStore : IDisposable
             );
         var graph = FolderGraph.Build(root.Reference, folders, cancellationToken);
         var resolver = new ScanDomainResolver(graph);
+        CapacityAmount observed = default;
         var result = new FolderAggregator(graph).Aggregate(
             ReadFiles(scanId, cancellationToken)
-                .Select(f => resolver.Resolve(f, cancellationToken)),
+                .Select(f =>
+                {
+                    foreach (var stream in f.Streams)
+                        observed += new CapacityAmount(
+                            checked((UInt128)stream.LogicalBytes),
+                            checked((UInt128)stream.AllocatedBytes)
+                        );
+                    return resolver.Resolve(f, cancellationToken);
+                }),
             cancellationToken
         );
+        CapacityAmount accounted = result.Metadata.KnownData + result.Unattributed.KnownData;
+        if (result.Folders.TryGetValue(root.Reference, out var rootSample))
+            accounted += rootSample.SubtreeData;
+        if (accounted != observed)
+            throw new InvalidDataException(
+                "Folder aggregation did not conserve observed DATA capacity."
+            );
         cancellationToken.ThrowIfCancellationRequested();
         return result with
         {

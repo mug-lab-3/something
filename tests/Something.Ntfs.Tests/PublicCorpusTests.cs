@@ -4,6 +4,7 @@ using System.Text.Json;
 using DiscUtils.Ntfs;
 using DiscUtils.Partitions;
 using Something.Ntfs;
+using Something.Statistics;
 
 namespace Something.Ntfs.Tests;
 
@@ -93,6 +94,29 @@ public sealed class PublicCorpusTests
                 throw;
             }
             Assert.Equal(record.Reference, file.Reference);
+            if (!file.IsDirectory && file.Names.Any(n => n.Namespace == FileNameNamespace.Dos))
+            {
+                Assert.Equal(file.Names.Length, (int)record.HardLinkCount);
+                var observation = MftObservationAdapter.Convert(
+                    new(
+                        file.Reference.RecordIndex,
+                        MftScanEntryKind.ResolvedFile,
+                        LiveFileReadStatus.ObservedUnchanged,
+                        file,
+                        Evidence: new(
+                            file.Reference,
+                            false,
+                            record.HardLinkCount,
+                            NtfsMetadataKind.Unclassified
+                        )
+                    ),
+                    token
+                )!;
+                Assert.True(
+                    observation.LinkSetComplete,
+                    $"{id}, record {file.Reference.RecordIndex}: complete DOS alias file was treated as incomplete."
+                );
+            }
             Assert.All(
                 file.DataStreams,
                 data => Assert.True(data.LogicalBytes >= 0 && data.AllocatedBytes >= 0)

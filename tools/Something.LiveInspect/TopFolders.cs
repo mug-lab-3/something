@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Something.Ntfs;
+using Something.Statistics;
 using Something.Storage;
 using Something.Windows;
 
@@ -55,6 +56,7 @@ internal static class TopFolders
                     );
                     var id = store.BeginScan(descriptor, token);
                     var batch = new List<StagedObservation>(ScanStore.MaximumBatchSize);
+                    CapacityAmount observed = default;
                     await foreach (
                         var entry in new LiveMftScanner(
                             source.Volume.BytesPerCluster,
@@ -63,6 +65,12 @@ internal static class TopFolders
                         ).ScanAsync(source, descriptor.Range, token)
                     )
                     {
+                        if (entry.File is { } file)
+                            foreach (var stream in file.DataStreams)
+                                observed += new CapacityAmount(
+                                    checked((UInt128)stream.LogicalBytes),
+                                    checked((UInt128)stream.AllocatedBytes)
+                                );
                         batch.Add(StagedObservation.FromEntry(entry, token));
                         Interlocked.Increment(ref candidates);
                         if (batch.Count == ScanStore.MaximumBatchSize)
@@ -106,6 +114,24 @@ internal static class TopFolders
                     }
                     Console.WriteLine(
                         $"Elapsed={watch.Elapsed.TotalSeconds:F3}s; incomplete={incomplete}; metadata-unresolved={result.Metadata.UnresolvedCount}; unattributed-unresolved={result.Unattributed.UnresolvedCount}"
+                    );
+                    var rootData = result
+                        .Folders.Values.Single(f => f.Reference.RecordIndex == 5)
+                        .SubtreeData;
+                    var accounted =
+                        rootData + result.Metadata.KnownData + result.Unattributed.KnownData;
+                    if (observed != accounted)
+                        throw new InvalidDataException(
+                            "Staged aggregation differs from scanned DATA capacity."
+                        );
+                    Console.WriteLine(
+                        $"Capacity-accounting: observed-logical-bytes={observed.LogicalBytes}; observed-allocated-bytes={observed.AllocatedBytes}; conservation-match={observed == accounted}"
+                    );
+                    Console.WriteLine(
+                        $"Folder-root-DATA: logical-bytes={rootData.LogicalBytes}; allocated-bytes={rootData.AllocatedBytes}"
+                    );
+                    Console.WriteLine(
+                        $"Outside-folder-totals: metadata-known-allocated-bytes={result.Metadata.KnownData.AllocatedBytes}; unattributed-known-allocated-bytes={result.Unattributed.KnownData.AllocatedBytes}; unattributed-resolved={result.Unattributed.ResolvedCount}"
                     );
                     Console.WriteLine(
                         "Optimistic DATA observations only; nested rows overlap, metadata overhead is excluded, and unresolved capacity can change ranking. No history is retained."

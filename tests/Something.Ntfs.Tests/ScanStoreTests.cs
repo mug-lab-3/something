@@ -485,8 +485,12 @@ public sealed class ScanStoreTests
         );
     }
 
-    [Fact]
-    public async Task SyntheticLiveScan_AdapterStageAndAggregation_WorkWithoutVolumeAccess()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SyntheticLiveScan_AdapterStageAndAggregation_WorkWithoutVolumeAccess(
+        bool dosAlias
+    )
     {
         byte[] root = RecordFixture.Record(
             [
@@ -510,6 +514,26 @@ public sealed class ScanStoreTests
             ],
             index: 42
         );
+        if (dosAlias)
+        {
+            file = RecordFixture.Record(
+                [
+                    RecordFixture.Resident(
+                        NtfsAttributeTypes.FileName,
+                        0,
+                        RecordFixture.FileName("synthetic.bin", parent: Root.Value)
+                    ),
+                    RecordFixture.Resident(
+                        NtfsAttributeTypes.FileName,
+                        1,
+                        RecordFixture.FileName("SYNTHE~1.BIN", FileNameNamespace.Dos, Root.Value)
+                    ),
+                    RecordFixture.Resident(NtfsAttributeTypes.Data, 2, new byte[11]),
+                ],
+                index: 42
+            );
+            RecordFixture.U16(file, 18, 2);
+        }
         using var fixture = new DatabaseFixture();
         var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
         await foreach (
@@ -530,12 +554,46 @@ public sealed class ScanStoreTests
             TestContext.Current.CancellationToken
         );
         Assert.Equal(new CapacityAmount(11, 0), result.Folders[Root].SubtreeData);
+        Assert.Equal(default, result.Unattributed.KnownData);
+        Assert.False(result.HasUnknownAttribution);
         var stored = fixture
             .Store.ReadFiles(id, TestContext.Current.CancellationToken)
             .Single(f => f.Reference.RecordIndex == 42);
-        Assert.Equal("synthetic.bin", Assert.Single(stored.Names).Name);
-        Assert.Equal<ushort?>(1, stored.ObservedHardLinkCount);
+        Assert.Equal("synthetic.bin", stored.Names[0].Name);
+        Assert.Equal(dosAlias ? 2 : 1, stored.Names.Length);
+        Assert.Equal<ushort?>(dosAlias ? (ushort)2 : (ushort)1, stored.ObservedHardLinkCount);
         Assert.True(stored.LinkSetComplete);
+    }
+
+    [Fact]
+    public void Aggregation_ConservesKnownCapacityAcrossFoldersMetadataAndMissingNames()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var id = fixture.Store.BeginScan(Descriptor(), token);
+        var metadata = File(0, 17, Root) with { Domain = CapacityDomain.NtfsMetadata };
+        var missingName = File(101, 31, Root) with { LinkSetComplete = false };
+        fixture.Store.StageBatch(
+            id,
+            [.. BasicFacts(100), Stage(metadata), Stage(missingName)],
+            token
+        );
+
+        var result = fixture.Store.CompleteScan(id, Started.AddSeconds(1), token);
+        var restored = fixture.Store.ReadAggregation(id, token);
+
+        Assert.Equal(new CapacityAmount(100, 100), result.Folders[Root].SubtreeData);
+        Assert.Equal(new CapacityAmount(17, 17), restored.Metadata.KnownData);
+        Assert.Equal(new CapacityAmount(31, 31), restored.Unattributed.KnownData);
+        Assert.Equal(1UL, restored.Unattributed.ResolvedCount);
+        Assert.Equal(0UL, restored.Unattributed.UnresolvedCount);
+        Assert.True(restored.HasUnknownAttribution);
+        Assert.Equal(
+            new CapacityAmount(148, 148),
+            restored.Folders[Root].SubtreeData
+                + restored.Metadata.KnownData
+                + restored.Unattributed.KnownData
+        );
     }
 
     [Fact]

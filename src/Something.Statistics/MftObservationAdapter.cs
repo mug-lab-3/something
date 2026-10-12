@@ -44,7 +44,10 @@ public static class MftObservationAdapter
                 throw new InvalidDataException("Complete file and acquisition evidence disagree.");
             if (file.Names.IsDefault || file.DataStreams.IsDefault)
                 throw new InvalidDataException("Acquired arrays must be initialized.");
-            var names = new HashSet<(FileReference Parent, string Name)>();
+            var names =
+                new HashSet<(FileReference Parent, string Name, FileNameNamespace Namespace)>();
+            var longNameParents = new HashSet<FileReference>();
+            bool hasVisibleName = false;
             foreach (var name in file.Names)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -54,11 +57,23 @@ public static class MftObservationAdapter
                     || string.IsNullOrEmpty(name.Name)
                 )
                     throw new InvalidDataException("Invalid acquired file name.");
+                names.Add((name.Parent, name.Name, name.Namespace));
                 if (name.Namespace != FileNameNamespace.Dos)
-                    names.Add((name.Parent, name.Name));
+                    hasVisibleName = true;
+                if (name.Namespace == FileNameNamespace.Win32)
+                    longNameParents.Add(name.Parent);
             }
+            // The on-disk header counts FILE_NAME entries including separate DOS aliases.
+            // Capacity attribution later ignores aliases; completeness validation must include them.
             bool complete =
-                file.IsDirectory || (names.Count > 0 && names.Count == evidence.HardLinkCount);
+                file.IsDirectory
+                || (
+                    hasVisibleName
+                    && names.Count == file.Names.Length
+                    && file.Names.Length == evidence.HardLinkCount
+                    && file.Names.Where(n => n.Namespace == FileNameNamespace.Dos)
+                        .All(n => longNameParents.Contains(n.Parent))
+                );
             var streams = ImmutableArray.CreateBuilder<StreamCapacity>();
             foreach (var stream in file.DataStreams)
             {

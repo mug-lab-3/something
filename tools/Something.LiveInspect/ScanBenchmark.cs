@@ -45,7 +45,7 @@ internal static class ScanBenchmark
             long managedAllocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedAtStart;
             heartbeatCancellation.Cancel();
             await heartbeat;
-            state.Print(clock.Elapsed, source.Metrics, completed);
+            state.Print(clock.Elapsed, source.Metrics, source.Volume, completed);
             using var process = Process.GetCurrentProcess();
             Console.WriteLine(
                 $"Memory: managed-allocated-during-scan-bytes={managedAllocated}; process-lifetime-peak-working-set-bytes={process.PeakWorkingSet64}"
@@ -77,6 +77,8 @@ internal static class ScanBenchmark
         private ulong? lastIndex;
         private UInt128 logical;
         private UInt128 allocated;
+        private UInt128 fileLogical;
+        private UInt128 fileAllocated;
         public ulong Unresolved { get; private set; }
 
         public void Add(MftScanEntry entry)
@@ -98,6 +100,11 @@ internal static class ScanBenchmark
                     {
                         logical = checked(logical + (UInt128)stream.LogicalBytes);
                         allocated = checked(allocated + (UInt128)stream.AllocatedBytes);
+                        if (!file.IsDirectory)
+                        {
+                            fileLogical = checked(fileLogical + (UInt128)stream.LogicalBytes);
+                            fileAllocated = checked(fileAllocated + (UInt128)stream.AllocatedBytes);
+                        }
                     }
                 }
                 else
@@ -120,7 +127,12 @@ internal static class ScanBenchmark
             Console.Error.WriteLine(message);
         }
 
-        public void Print(TimeSpan elapsed, VolumeReadMetrics metrics, bool completed)
+        public void Print(
+            TimeSpan elapsed,
+            VolumeReadMetrics metrics,
+            NtfsVolumeInfo volume,
+            bool completed
+        )
         {
             // Worker and heartbeat have both stopped. Final output is outside the measured interval.
             ulong traversed =
@@ -154,6 +166,20 @@ internal static class ScanBenchmark
             }
             Console.WriteLine(
                 $"Resolved-DATA-only: logical-bytes={logical}; allocated-bytes={allocated}"
+            );
+            Console.WriteLine(
+                $"Resolved-regular-files-DATA: files={files}; logical-bytes={fileLogical}; allocated-bytes={fileAllocated}"
+            );
+            UInt128 volumeUsed = checked(
+                (UInt128)(volume.TotalClusters - volume.FreeClusters) * (uint)volume.BytesPerCluster
+            );
+            Console.WriteLine(
+                $"Volume-at-open: used-bytes={volumeUsed}; DATA-allocated-bytes={allocated}"
+            );
+            Console.WriteLine(
+                allocated <= volumeUsed
+                    ? $"Volume-used-minus-resolved-DATA-allocated-bytes={volumeUsed - allocated}"
+                    : $"Resolved-DATA-allocated-exceeds-volume-used-bytes={allocated - volumeUsed}"
             );
             Console.WriteLine(
                 "Optimistic observations; gaps are not confirmed deletions. DATA totals exclude unresolved files and metadata overhead; they are not disk usage. No scan data is saved."
