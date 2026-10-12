@@ -52,12 +52,10 @@ try
         using var volume = WindowsMftRecordSource.Open(args[0]);
         if (before.VolumeSerialNumber != (uint)(volume.Volume.SerialNumber & uint.MaxValue))
             throw new InvalidDataException("File and selected volume identifiers differ.");
-        var result = await new LiveMftFileReader(volume.Volume.BytesPerCluster).ReadAsync(
-            volume,
-            before.Reference.RecordIndex,
-            before.Reference,
-            cancellation.Token
-        );
+        var result = await new LiveMftFileReader(
+            volume.Volume.BytesPerCluster,
+            totalClusters: volume.Volume.TotalClusters
+        ).ReadAsync(volume, before.Reference.RecordIndex, before.Reference, cancellation.Token);
         if (result.Status != LiveFileReadStatus.ObservedUnchanged || result.File is null)
         {
             Console.WriteLine(
@@ -114,7 +112,10 @@ try
         $"Sector={source.Volume.BytesPerSector}; cluster={source.Volume.BytesPerCluster}; record={source.Volume.BytesPerRecord}; observed-slots={source.Volume.ObservedRecordCount}"
     );
     var reader = new LiveMftRecordReader();
-    var fileReader = new LiveMftFileReader(source.Volume.BytesPerCluster);
+    var fileReader = new LiveMftFileReader(
+        source.Volume.BytesPerCluster,
+        totalClusters: source.Volume.TotalClusters
+    );
     int unresolved = 0;
     for (int n = 0; n < count; n++)
     {

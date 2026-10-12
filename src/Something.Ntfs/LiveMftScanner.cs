@@ -57,9 +57,12 @@ public sealed record MftScanEntry(
 /// Streams complete optimistic file observations without retaining the volume's records.
 /// An enumeration identity is revalidated before assembly. No disk writes or snapshot guarantee.
 /// </summary>
-public sealed class LiveMftScanner(int bytesPerCluster)
+public sealed class LiveMftScanner(int bytesPerCluster, long? totalClusters = null)
 {
-    private readonly LiveMftFileReader fileReader = new(bytesPerCluster);
+    private readonly LiveMftFileReader fileReader = new(
+        bytesPerCluster,
+        totalClusters: totalClusters
+    );
     private readonly LiveMftRecordReader recordReader = new();
     private readonly MftRecordParser parser = new();
 

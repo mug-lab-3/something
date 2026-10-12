@@ -197,4 +197,120 @@ public sealed class MftFileAssemblerTests
         );
         Assert.Throws<NtfsAssemblyException>(() => assembler.Assemble(record, []));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(long.MaxValue)]
+    public void Constructor_InvalidVolumeClusterCount_Rejects(long count) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MftFileAssembler(4096, count));
+
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(100, 102)]
+    public void Assemble_PhysicalRunEndsAtVolumeBoundary_Accepts(byte lcn, long count)
+    {
+        var record = parser.Parse(
+            RecordFixture.Record([RecordFixture.NonResident(runs: [0x11, 2, lcn, 0])]),
+            42
+        );
+
+        var file = new MftFileAssembler(4096, count).Assemble(record, []);
+
+        Assert.Equal(8192, Assert.Single(file.DataStreams).AllocatedBytes);
+    }
+
+    [Theory]
+    [InlineData(100, 101)]
+    [InlineData(102, 102)]
+    [InlineData(103, 102)]
+    public void Assemble_PhysicalRunCrossesOrStartsBeyondVolumeBoundary_Rejects(
+        byte lcn,
+        long count
+    )
+    {
+        var record = parser.Parse(
+            RecordFixture.Record([RecordFixture.NonResident(runs: [0x11, 2, lcn, 0])]),
+            42
+        );
+
+        var error = Assert.Throws<NtfsAssemblyException>(() =>
+            new MftFileAssembler(4096, count).Assemble(record, [])
+        );
+
+        Assert.Equal(NtfsAssemblyFailureKind.InvalidStructure, error.Kind);
+        Assert.Contains("volume bounds", error.Message);
+    }
+
+    [Fact]
+    public void Assemble_SparseLogicalRangeExceedsVolume_ValidatesOnlyPhysicalClusters()
+    {
+        var record = parser.Parse(
+            RecordFixture.Record([
+                RecordFixture.NonResident(
+                    highestVcn: 9,
+                    flags: NtfsAttributeFlags.Sparse,
+                    runs: [0x11, 1, 0, 0x01, 9, 0],
+                    logical: 40960,
+                    allocated: 40960,
+                    physical: 4096
+                ),
+            ]),
+            42
+        );
+
+        var file = new MftFileAssembler(4096, 1).Assemble(record, []);
+
+        var stream = Assert.Single(file.DataStreams);
+        Assert.Equal(40960, stream.LogicalBytes);
+        Assert.Equal(4096, stream.AllocatedBytes);
+    }
+
+    [Fact]
+    public void Assemble_NamedDataOutsideVolume_RejectsWholeFile()
+    {
+        var record = parser.Parse(
+            RecordFixture.Record([
+                RecordFixture.Resident(0x80, 0, [1]),
+                RecordFixture.NonResident(name: "extra"),
+            ]),
+            42
+        );
+
+        Assert.Throws<NtfsAssemblyException>(() =>
+            new MftFileAssembler(4096, 101).Assemble(record, [])
+        );
+    }
+
+    [Fact]
+    public void Assemble_ContinuationOutsideVolume_RejectsWholeFile()
+    {
+        var (baseRecord, extension) = ExtendedFile();
+        var attribute = Assert.IsType<NonResidentAttribute>(Assert.Single(extension.Attributes));
+        extension = extension with { Attributes = [attribute with { Runs = [new(2, 2, 101)] }] };
+
+        Assert.Throws<NtfsAssemblyException>(() =>
+            new MftFileAssembler(4096, 102).Assemble(baseRecord, [extension])
+        );
+    }
+
+    [Fact]
+    public void Assemble_LargestSupportedVolume_UsesOverflowSafeEndCheck()
+    {
+        const long count = long.MaxValue / 4096;
+        var record = parser.Parse(RecordFixture.Record([RecordFixture.NonResident()]), 42);
+        var attribute = Assert.IsType<NonResidentAttribute>(Assert.Single(record.Attributes));
+        record = record with { Attributes = [attribute with { Runs = [new(0, 2, count - 2)] }] };
+        var boundedAssembler = new MftFileAssembler(4096, count);
+
+        Assert.Equal(
+            8192,
+            Assert.Single(boundedAssembler.Assemble(record, []).DataStreams).AllocatedBytes
+        );
+        record = record with
+        {
+            Attributes = [attribute with { Runs = [new(0, 2, long.MaxValue)] }],
+        };
+        Assert.Throws<NtfsAssemblyException>(() => boundedAssembler.Assemble(record, []));
+    }
 }

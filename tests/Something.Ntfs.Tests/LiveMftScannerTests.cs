@@ -5,6 +5,29 @@ namespace Something.Ntfs.Tests;
 
 public sealed class LiveMftScannerTests
 {
+    [Fact]
+    public async Task ScanAsync_OutOfVolumeRun_YieldsUnresolvedWithoutCapacity()
+    {
+        var source = new Source([42]);
+        var entries = new List<MftScanEntry>();
+
+        await foreach (
+            var entry in new LiveMftScanner(4096, 101).ScanAsync(
+                source,
+                new(42, 1),
+                TestContext.Current.CancellationToken
+            )
+        )
+            entries.Add(entry);
+
+        var unresolved = Assert.Single(entries);
+        Assert.Equal(MftScanEntryKind.Unresolved, unresolved.Kind);
+        Assert.Equal(LiveFileReadStatus.InvalidAssembly, unresolved.Status);
+        Assert.Null(unresolved.File);
+        Assert.Contains("volume bounds", unresolved.Error);
+        Assert.Equal(1, source.EnumerationDisposals);
+    }
+
     private static byte[] Record(ulong index, MftRecordFlags flags = MftRecordFlags.InUse) =>
         RecordFixture.Record(index: (uint)index, flags: flags);
 

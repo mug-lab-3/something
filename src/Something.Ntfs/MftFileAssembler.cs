@@ -42,10 +42,20 @@ public sealed record NtfsFile(
 /// <summary>
 /// Resolves a complete file from record segments. Nonresident ATTRIBUTE_LIST bytes must be supplied
 /// by acquisition; this class never follows disk addresses itself. Missing/stale references fail explicitly.
+/// Physical DATA ranges are checked against volume bounds when totalClusters is supplied.
+/// Omitting it supports isolated record analysis without claiming volume-range validation.
 /// </summary>
-public sealed class MftFileAssembler(int bytesPerCluster)
+public sealed class MftFileAssembler(int bytesPerCluster, long? totalClusters = null)
 {
     private readonly int clusterSize = ValidateClusterSize(bytesPerCluster);
+    private readonly long? volumeClusters = ValidateTotalClusters(bytesPerCluster, totalClusters);
+
+    private static long? ValidateTotalClusters(int clusterSize, long? count)
+    {
+        if (count is { } value && (value <= 0 || value > long.MaxValue / clusterSize))
+            throw new ArgumentOutOfRangeException(nameof(totalClusters));
+        return count;
+    }
 
     private static int ValidateClusterSize(int size)
     {
@@ -225,10 +235,19 @@ public sealed class MftFileAssembler(int bytesPerCluster)
             long mappedBytes = checked(nextVcn * clusterSize);
             long physicalBytes = 0;
             foreach (var run in runs)
-                if (run.StartLcn is not null)
+                if (run.StartLcn is { } lcn)
+                {
+                    if (
+                        volumeClusters is { } limit
+                        && (lcn < 0 || lcn >= limit || run.ClusterCount > limit - lcn)
+                    )
+                        throw new NtfsAssemblyException(
+                            "DATA physical cluster range exceeds the observed volume bounds."
+                        );
                     physicalBytes = checked(
                         physicalBytes + checked(run.ClusterCount * clusterSize)
                     );
+                }
             if (
                 sizes.LogicalBytes > mappedBytes
                 || physicalBytes != (sizes.PhysicalAllocatedBytes ?? sizes.AllocatedBytes)

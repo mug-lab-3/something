@@ -25,11 +25,10 @@ internal static class ScanBenchmark
                 async () =>
                 {
                     await foreach (
-                        var entry in new LiveMftScanner(source.Volume.BytesPerCluster).ScanAsync(
-                            source,
-                            range,
-                            token
-                        )
+                        var entry in new LiveMftScanner(
+                            source.Volume.BytesPerCluster,
+                            source.Volume.TotalClusters
+                        ).ScanAsync(source, range, token)
                     )
                         state.Add(entry);
                 },

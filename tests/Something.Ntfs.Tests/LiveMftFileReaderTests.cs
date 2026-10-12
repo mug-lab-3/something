@@ -8,6 +8,36 @@ public sealed class LiveMftFileReaderTests
     private static readonly FileReference ExtensionReference = FileReference.Create(43, 3);
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReadAsync_OutOfVolumeRun_RevalidatesBeforeReportingFailure(bool changes)
+    {
+        byte[] outside = RecordFixture.Record();
+        byte[] inside = RecordFixture.Record([RecordFixture.NonResident(runs: [0x11, 2, 99, 0])]);
+        var source = new Source((_, call) => changes && call > 2 ? inside : outside);
+
+        var result = await new LiveMftFileReader(4096, totalClusters: 101).ReadAsync(
+            source,
+            42,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        if (changes)
+        {
+            Assert.Equal(LiveFileReadStatus.ObservedUnchanged, result.Status);
+            Assert.Equal(2, result.Attempts);
+            Assert.Equal(8192, Assert.Single(result.File!.DataStreams).AllocatedBytes);
+        }
+        else
+        {
+            Assert.Equal(LiveFileReadStatus.InvalidAssembly, result.Status);
+            Assert.Null(result.File);
+            Assert.Contains("volume bounds", result.Error);
+            Assert.Equal(4, source.TotalCalls);
+        }
+    }
+
+    [Theory]
     [InlineData(LiveFileReadStatus.Missing)]
     [InlineData(LiveFileReadStatus.NotInUse)]
     [InlineData(LiveFileReadStatus.Replaced)]

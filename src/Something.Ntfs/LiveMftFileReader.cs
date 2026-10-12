@@ -36,13 +36,18 @@ public sealed class LiveMftFileReader
     private readonly int maximumAttempts;
     private readonly int maximumRecords;
 
-    public LiveMftFileReader(int bytesPerCluster, int maximumAttempts = 3, int maximumRecords = 128)
+    public LiveMftFileReader(
+        int bytesPerCluster,
+        int maximumAttempts = 3,
+        int maximumRecords = 128,
+        long? totalClusters = null
+    )
     {
         if (maximumAttempts is < 1 or > 10)
             throw new ArgumentOutOfRangeException(nameof(maximumAttempts));
         if (maximumRecords is < 1 or > 256)
             throw new ArgumentOutOfRangeException(nameof(maximumRecords));
-        assembler = new(bytesPerCluster);
+        assembler = new(bytesPerCluster, totalClusters);
         this.maximumAttempts = maximumAttempts;
         this.maximumRecords = maximumRecords;
     }
