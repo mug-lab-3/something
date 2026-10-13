@@ -80,7 +80,8 @@ public sealed class DriveScanner
     /// <summary>Owned synthetic observations for UI review; no drive, directory or file is inspected.</summary>
     public Task<ScanSession> CreateDemoAsync(
         IProgress<ScanProgress>? progress,
-        CancellationToken token
+        CancellationToken token,
+        string drive = "Demo"
     ) =>
         Task.Run(
             () =>
@@ -140,7 +141,7 @@ public sealed class DriveScanner
                     1_610_612_736
                 );
                 Add(103, "preview.png", false, FileReference.Create(20, 1), 12_581_034, 12_582_912);
-                return Publish(buffer, "Demo", true, 8, watch, progress, token);
+                return Publish(buffer, drive, true, 8, watch, progress, token);
             },
             token
         );

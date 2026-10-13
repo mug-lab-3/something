@@ -22,12 +22,19 @@ public sealed partial class MainWindow : Window
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
     private CancellationTokenSource? scanCancellation;
     private ScanSession? session;
+    private readonly Dictionary<string, ScanSession> sessions = new(
+        StringComparer.OrdinalIgnoreCase
+    );
+    private DriveCard[] cards = [];
+    private DriveCard? selectedCard;
+    private bool UseAllocated => SizeModeBox.SelectedIndex == 0;
     private FolderLocation? location;
     private int page;
     private int navigationVersion;
     private int rankingVersion;
     private bool busy;
     private bool closed;
+    private bool initialized;
 
     public MainWindow()
     {
@@ -50,9 +57,37 @@ public sealed partial class MainWindow : Window
                 )
             );
         };
-        DriveBox.ItemsSource = demo ? ["Demo（合成データ）"] : LocalDrives();
-        DriveBox.SelectedIndex = DriveBox.Items.Count > 0 ? 0 : -1;
-        ScanButton.IsEnabled = DriveBox.SelectedIndex >= 0;
+        var choices = demo
+            ? new DriveChoice[]
+            {
+                new("Demo", "合成データ", 10L << 30, 4L << 30, true),
+                new("Demo2", "別の合成データ", 20L << 30, 15L << 30, true),
+                new("Demo3", "アーカイブ（合成）", 100L << 30, 80L << 30, true),
+            }
+            : LocalDrives();
+        cards = choices.Select(choice => new DriveCard(choice)).ToArray();
+        foreach (var card in cards)
+        {
+            card.Invoked += async (_, _) => await SelectDriveAsync(card);
+            card.ScanRequested += async (_, _) =>
+            {
+                if (busy)
+                {
+                    scanCancellation?.Cancel();
+                    return;
+                }
+                await SelectDriveAsync(card);
+                if (selectedCard != card)
+                    return;
+                await StartScanAsync();
+            };
+            card.SetBusy(false, false);
+        }
+        selectedCard = cards.FirstOrDefault();
+        foreach (var card in cards)
+            DriveCards.Children.Add(card);
+        UpdateDriveCards();
+        initialized = true;
         Closed += OnClosed;
         if (demo)
         {
@@ -104,10 +139,40 @@ public sealed partial class MainWindow : Window
             await LoadRankingAsync();
             navigation.Clear();
             await LoadPageAsync(rootLocation, 0, false);
+            SizeModeBox.SelectedIndex = 1;
+            await LoadPageAsync(rootLocation, 0, false);
+            await LoadRankingAsync();
+            var note = Entries.Items.Cast<EntryRow>().Single(row => row.Entry.Name == "notes.md");
+            if (note.Size != DisplayText.Bytes(note.Entry.Data?.LogicalBytes))
+                throw new InvalidOperationException("Logical size mode did not apply.");
+            SizeModeBox.SelectedIndex = 0;
+            await LoadPageAsync(rootLocation, 0, false);
+            await LoadRankingAsync();
+            await SelectDriveAsync(cards[1]);
+            if (session is not null || Entries.Items.Count != 0)
+                throw new InvalidOperationException(
+                    "Unscanned drive retained another drive's list."
+                );
+            await SelectDriveAsync(cards[0]);
+            if (session is null || Entries.Items.Count != 3)
+                throw new InvalidOperationException("Completed drive result was not retained.");
+            projects = Folders
+                .RootNodes[0]
+                .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
             if (MessageBar.IsOpen)
                 throw new InvalidOperationException(MessageBar.Message);
             await Task.Delay(350, lifetime.Token);
             RootLayout.UpdateLayout();
+            if (DriveScroll.ScrollableWidth <= 0 || DriveScroll.ScrollableHeight > 0)
+                throw new InvalidOperationException(
+                    "Drive cards must scroll horizontally in one row."
+                );
+            DriveScroll.ChangeView(DriveScroll.ScrollableWidth, null, null, true);
+            await Task.Delay(100, lifetime.Token);
+            if (DriveScroll.HorizontalOffset <= 0)
+                throw new InvalidOperationException("Drive cards did not scroll.");
+            DriveScroll.ChangeView(0, null, null, true);
+            await Task.Delay(100, lifetime.Token);
             if (
                 FindContextFolder(Folders.ContainerFromNode(projects))?.Location.Path
                 != "Demo\\Projects"
@@ -149,9 +214,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private static string[] LocalDrives()
+    private static DriveChoice[] LocalDrives()
     {
-        var drives = new List<string>();
+        var drives = new List<DriveChoice>();
         foreach (var drive in DriveInfo.GetDrives())
         {
             try
@@ -161,21 +226,83 @@ public sealed partial class MainWindow : Window
                     && drive.IsReady
                     && drive.DriveFormat == "NTFS"
                 )
-                    drives.Add(drive.Name[..2]);
+                    drives.Add(
+                        new(
+                            drive.Name[..2],
+                            string.IsNullOrWhiteSpace(drive.VolumeLabel)
+                                ? "ローカルディスク"
+                                : drive.VolumeLabel,
+                            drive.TotalSize,
+                            drive.TotalFreeSpace
+                        )
+                    );
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
         return [.. drives];
     }
 
-    private async void OnScan(object sender, RoutedEventArgs e) => await StartScanAsync();
+    private void UpdateDriveCards()
+    {
+        foreach (var card in cards)
+            card.SetSelected(card == selectedCard);
+    }
 
-    private void OnCancel(object sender, RoutedEventArgs e) => scanCancellation?.Cancel();
+    private async Task SelectDriveAsync(DriveCard card)
+    {
+        if (busy || closed || card == selectedCard)
+            return;
+        selectedCard = card;
+        UpdateDriveCards();
+        card.StartBringIntoView();
+        navigation.Clear();
+        Folders.RootNodes.Clear();
+        Entries.ItemsSource = null;
+        Ranking.ItemsSource = null;
+        location = null;
+        session = sessions.GetValueOrDefault(card.Choice.Drive);
+        if (session is { } current)
+        {
+            await ShowSessionAsync(current);
+            if (selectedCard == card)
+                StatusText.Text =
+                    $"{current.Drive} の結果 · {current.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {current.MetadataUnresolved:N0} · 取得時点の観測";
+        }
+        else
+        {
+            PathText.Text = "未スキャン";
+            PageText.Text = "";
+            BackButton.IsEnabled = PreviousButton.IsEnabled = NextButton.IsEnabled = false;
+            StatusText.Text = $"{card.Choice.Drive} を選択中 · スキャンを開始してください。";
+        }
+    }
+
+    private async Task ShowSessionAsync(ScanSession current)
+    {
+        navigation.Clear();
+        Folders.RootNodes.Clear();
+        location = new(current.Root, current.Drive + "\\");
+        var root = new TreeViewNode
+        {
+            Content = new FolderNode(current.Drive, location),
+            HasUnrealizedChildren = true,
+        };
+        Folders.RootNodes.Add(root);
+        await LoadPageAsync(location, 0, false);
+        if (closed || session != current)
+            return;
+        await LoadChildrenAsync(root, 0);
+        if (closed || session != current)
+            return;
+        root.IsExpanded = true;
+        await LoadRankingAsync();
+    }
 
     private async Task StartScanAsync()
     {
-        if (busy || closed || DriveBox.SelectedItem is not string drive)
+        if (busy || closed || selectedCard is not { } card)
             return;
+        string drive = card.Choice.Drive;
         SetBusy(true);
         MessageBar.IsOpen = false;
         scanCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
@@ -183,46 +310,34 @@ public sealed partial class MainWindow : Window
         try
         {
             var next = demo
-                ? await scanner.CreateDemoAsync(progress, scanCancellation.Token)
+                ? await scanner.CreateDemoAsync(progress, scanCancellation.Token, drive)
                 : await scanner.ScanAsync(drive, progress, scanCancellation.Token);
             if (closed)
             {
                 await next.DisposeAsync();
                 return;
             }
-            if (session is { } previous)
+            if (sessions.TryGetValue(drive, out var previous))
                 await previous.DisposeAsync();
             session = next;
-            navigation.Clear();
-            Folders.RootNodes.Clear();
-            location = new(next.Root, next.Drive + "\\");
-            var root = new TreeViewNode
-            {
-                Content = new FolderNode(next.Drive, location),
-                HasUnrealizedChildren = true,
-            };
-            Folders.RootNodes.Add(root);
-            AllocatedText.Text = DisplayText.Bytes(
-                next.RootSample.Entries?.SubtreeData.AllocatedBytes
-            );
-            LogicalText.Text = DisplayText.Bytes(next.RootSample.Entries?.SubtreeData.LogicalBytes);
-            CountText.Text = next.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "未解決";
+            sessions[drive] = next;
+            card.SetResult(next);
+            card.RefreshVolume();
             StatusText.Text =
                 $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
-            ScanProgressBar.IsIndeterminate = false;
-            ScanProgressBar.Value = 100;
-            await LoadPageAsync(location, 0, false);
-            await LoadChildrenAsync(root, 0);
-            root.IsExpanded = true;
-            await LoadRankingAsync();
+            await ShowSessionAsync(next);
         }
         catch (OperationCanceledException)
         {
             if (!closed)
+            {
                 StatusText.Text = "キャンセルしました。前の結果は保持しています。";
+                card.SetResult(sessions.GetValueOrDefault(drive));
+            }
         }
         catch (Exception error)
         {
+            card.SetResult(sessions.GetValueOrDefault(drive));
             ShowError(error);
         }
         finally
@@ -237,17 +352,15 @@ public sealed partial class MainWindow : Window
     private void SetBusy(bool value)
     {
         busy = value;
-        DriveBox.IsEnabled = !value;
-        ScanButton.IsEnabled = !value && DriveBox.SelectedIndex >= 0;
-        CancelButton.IsEnabled = value;
+        foreach (var card in cards)
+            card.SetBusy(value, card == selectedCard);
         Folders.IsEnabled = !value;
         Entries.IsEnabled = !value;
         Ranking.IsEnabled = !value;
         DepthBox.IsEnabled = !value;
         LeafBox.IsEnabled = !value;
-        SortBox.IsEnabled = !value;
-        if (!value)
-            ScanProgressBar.IsIndeterminate = false;
+        SizeModeBox.IsEnabled = !value;
+        selectedCard?.SetProgress(value);
     }
 
     private void UpdateProgress(ScanProgress progress)
@@ -259,9 +372,7 @@ public sealed partial class MainWindow : Window
             || progress.Phase == ScanPhase.Completed
         )
             return;
-        ScanProgressBar.IsIndeterminate = progress.Fraction is null;
-        if (progress.Fraction is { } fraction)
-            ScanProgressBar.Value = fraction * 100;
+        selectedCard?.SetProgress(true, progress.Fraction);
         string phase = progress.Phase switch
         {
             ScanPhase.Reading => "メタデータを取得中",
@@ -272,6 +383,7 @@ public sealed partial class MainWindow : Window
         };
         StatusText.Text =
             $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
+        selectedCard?.SetState($"{phase} · {progress.Elapsed.TotalSeconds:F1}秒");
     }
 
     private async Task LoadPageAsync(FolderLocation target, int targetPage, bool addHistory)
@@ -286,9 +398,7 @@ public sealed partial class MainWindow : Window
                 targetPage,
                 false,
                 lifetime.Token,
-                sort: SortBox.SelectedIndex == 1
-                    ? FolderEntrySort.LogicalBytes
-                    : FolderEntrySort.AllocatedBytes
+                sort: !UseAllocated ? FolderEntrySort.LogicalBytes : FolderEntrySort.AllocatedBytes
             );
             if (closed || version != navigationVersion || session != current)
                 return;
@@ -297,7 +407,9 @@ public sealed partial class MainWindow : Window
             location = target;
             page = targetPage;
             PathText.Text = DisplayText.Escape(target.Path);
-            Entries.ItemsSource = result.Entries.Select(e => new EntryRow(e)).ToArray();
+            Entries.ItemsSource = result
+                .Entries.Select(e => new EntryRow(e, UseAllocated))
+                .ToArray();
             PageText.Text = $"{page + 1} ページ · {result.Entries.Length} 件";
             PreviousButton.IsEnabled = page > 0;
             NextButton.IsEnabled = result.HasMore;
@@ -502,10 +614,19 @@ public sealed partial class MainWindow : Window
             await LoadPageAsync(previous, 0, false);
     }
 
-    private async void OnContentSortChanged(object sender, SelectionChangedEventArgs args)
+    private async void OnSizeModeChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (!busy && location is { } target && session is not null)
+        if (!initialized || busy || closed)
+            return;
+        if (location is { } target && session is not null)
+        {
             await LoadPageAsync(target, 0, false);
+            await LoadRankingAsync();
+        }
+        ToolTipService.SetToolTip(
+            SizeColumnText,
+            UseAllocated ? "ディスク上の割り当て容量" : "ファイルの論理サイズ"
+        );
     }
 
     private async void OnPrevious(object sender, RoutedEventArgs args)
@@ -544,11 +665,13 @@ public sealed partial class MainWindow : Window
                     DepthBox.SelectedIndex == 0 ? null : DepthBox.SelectedIndex,
                     LeafBox.IsChecked == true
                 ),
-                lifetime.Token
+                lifetime.Token,
+                UseAllocated ? FolderEntrySort.AllocatedBytes : FolderEntrySort.LogicalBytes
             );
             if (closed || version != rankingVersion || current != session)
                 return;
-            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive)).ToArray();
+            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive, UseAllocated))
+                .ToArray();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -589,7 +712,7 @@ public sealed partial class MainWindow : Window
         closed = true;
         lifetime.Cancel();
         scanCancellation?.Cancel();
-        if (session is { } current)
+        foreach (var current in sessions.Values)
             await current.DisposeAsync();
     }
 }

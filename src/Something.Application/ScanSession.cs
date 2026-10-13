@@ -75,7 +75,8 @@ public sealed class ScanSession : IAsyncDisposable
 
     public async Task<RankedFolder[]> ReadLargestAsync(
         FolderRankingFilter filter,
-        CancellationToken token
+        CancellationToken token,
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
     )
     {
         await gate.WaitAsync(token);
@@ -84,7 +85,9 @@ public sealed class ScanSession : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
                 () =>
-                    database.Store.ReadLargestFolders(ScanId, 20, token, filter: filter).ToArray(),
+                    database
+                        .Store.ReadLargestFolders(ScanId, 20, token, filter: filter, sort: sort)
+                        .ToArray(),
                 token
             );
         }

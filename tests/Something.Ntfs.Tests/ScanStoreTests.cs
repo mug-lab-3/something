@@ -1822,6 +1822,39 @@ public sealed class ScanStoreTests
         );
     }
 
+    [Fact]
+    public void LargestFolders_SizeBasisChangesRankingWithoutChangingSavedCapacity()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts().Where(f => f.RecordIndex != 100))
+            buffer.Add(fact, token);
+        buffer.Add(Stage(File(100, 0, Ref(20)) with { Streams = [new("", 10000, 4096)] }), token);
+        buffer.Add(Stage(File(101, 0, Ref(21)) with { Streams = [new("", 1000, 8192)] }), token);
+        buffer.Complete(token);
+        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+
+        var disk = fixture.Store.ReadLargestFolders(id, cancellationToken: token);
+        var logical = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: token,
+            sort: FolderEntrySort.LogicalBytes
+        );
+
+        Assert.Equal(Ref(21), disk[0].Sample.Reference);
+        Assert.Equal(Ref(20), logical[0].Sample.Reference);
+        Assert.Equal(new CapacityAmount(10000, 4096), logical[0].Data);
+        Assert.Equal(logical[0].Data, disk[1].Data);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            fixture.Store.ReadLargestFolders(
+                id,
+                cancellationToken: token,
+                sort: (FolderEntrySort)42
+            )
+        );
+    }
+
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource
     {
         public MftRecordEncoding Encoding => MftRecordEncoding.RawProtected;

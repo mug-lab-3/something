@@ -35,13 +35,16 @@ public sealed partial class ScanStore
         int count = 5,
         CancellationToken cancellationToken = default,
         FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData,
-        FolderRankingFilter? filter = null
+        FolderRankingFilter? filter = null,
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
     )
     {
         if (count is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(count));
         if (!Enum.IsDefined(metric))
             throw new ArgumentOutOfRangeException(nameof(metric));
+        if (!Enum.IsDefined(sort))
+            throw new ArgumentOutOfRangeException(nameof(sort));
         filter ??= new();
         if (filter.Depth is < 1)
             throw new ArgumentOutOfRangeException(
@@ -120,10 +123,15 @@ public sealed partial class ScanStore
                 && (!filter.LeafOnly || !hasChildren.Contains(s.Reference))
             )
             .OrderByDescending(s =>
-                metric == FolderRankingMetric.PerVisibleNameUnnamedData
-                    ? s.Entries!.SubtreeData.AllocatedBytes
-                    : s.SubtreeData.AllocatedBytes
-            )
+            {
+                var data =
+                    metric == FolderRankingMetric.PerVisibleNameUnnamedData
+                        ? s.Entries!.SubtreeData
+                        : s.SubtreeData;
+                return sort == FolderEntrySort.AllocatedBytes
+                    ? data.AllocatedBytes
+                    : data.LogicalBytes;
+            })
             .ThenBy(s => s.Reference.RecordIndex)
             .Take(count)
             .ToArray();
