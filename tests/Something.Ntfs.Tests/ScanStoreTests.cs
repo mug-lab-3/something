@@ -1637,6 +1637,58 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void ParentFolder_UsesVisibleNameAndPreservesBothSequenceIdentities()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts())
+            buffer.Add(fact, token);
+        buffer.Add(Stage(Directory(22, Ref(20))), token);
+        buffer.Add(Stage(Directory(23, Ref(20, 99))), token);
+        buffer.Add(
+            Stage(
+                Directory(24, Root) with
+                {
+                    Names = [new(Root, "SHORT~1", FileNameNamespace.Dos, 0)],
+                }
+            ),
+            token
+        );
+        buffer.Add(
+            Stage(
+                Directory(25, Root) with
+                {
+                    Names =
+                    [
+                        new(Root, "ambiguous", FileNameNamespace.Win32, 0),
+                        new(Ref(20), "ambiguous", FileNameNamespace.Win32, 0),
+                    ],
+                }
+            ),
+            token
+        );
+        buffer.Complete(token);
+        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+
+        Assert.Equal(Root, fixture.Store.ReadParentFolder(id, Ref(20), "synthetic-0", token));
+        Assert.Equal(Ref(20), fixture.Store.ReadParentFolder(id, Ref(22), "synthetic-0", token));
+        Assert.Null(fixture.Store.ReadParentFolder(id, Root, "synthetic-0", token));
+        Assert.Null(fixture.Store.ReadParentFolder(id, Ref(22), "wrong-name", token));
+        Assert.Null(fixture.Store.ReadParentFolder(id, Ref(23), "synthetic-0", token));
+        Assert.Null(fixture.Store.ReadParentFolder(id, Ref(24), "SHORT~1", token));
+        Assert.Null(fixture.Store.ReadParentFolder(id, Ref(25), "ambiguous", token));
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Store.ReadParentFolder(id, Ref(22, 99), "synthetic-0", token)
+        );
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Store.ReadParentFolder(id, Ref(22), "synthetic-0", cancellation.Token)
+        );
+    }
+
+    [Fact]
     public void FolderContents_PreserveAliasesUnknownSizesAndParentSequenceWhilePaging()
     {
         using var fixture = new DatabaseFixture();
@@ -1669,7 +1721,8 @@ public sealed class ScanStoreTests
             id,
             Root,
             pageSize: 2,
-            cancellationToken: token
+            cancellationToken: token,
+            includeTotalCount: true
         );
         var second = fixture.Store.ReadFolderEntries(
             id,
@@ -1680,6 +1733,8 @@ public sealed class ScanStoreTests
         );
 
         Assert.True(first.HasMore);
+        Assert.Equal(4L, first.TotalCount);
+        Assert.Null(second.TotalCount);
         Assert.All(
             first.Entries,
             e =>
@@ -1705,6 +1760,19 @@ public sealed class ScanStoreTests
             fixture
                 .Store.ReadFolderEntries(id, Root, directoriesOnly: true, cancellationToken: token)
                 .Entries.Length
+        );
+        Assert.Equal(
+            2L,
+            fixture
+                .Store.ReadFolderEntries(
+                    id,
+                    Root,
+                    pageSize: 1,
+                    directoriesOnly: true,
+                    cancellationToken: token,
+                    includeTotalCount: true
+                )
+                .TotalCount
         );
         Assert.Throws<InvalidOperationException>(() =>
             fixture.Store.ReadFolderEntries(id, Ref(5, 2), cancellationToken: token)

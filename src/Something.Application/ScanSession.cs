@@ -42,12 +42,34 @@ public sealed class ScanSession : IAsyncDisposable
         Elapsed = elapsed;
     }
 
+    public async Task<FileReference?> ReadParentAsync(
+        FileReference folder,
+        string visibleName,
+        CancellationToken token
+    )
+    {
+        await gate.WaitAsync(token);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            return await Task.Run(
+                () => database.Store.ReadParentFolder(ScanId, folder, visibleName, token),
+                token
+            );
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     public async Task<FolderEntryPage> ReadFolderAsync(
         FileReference parent,
         int page,
         bool directoriesOnly,
         CancellationToken token,
-        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes,
+        bool includeTotalCount = false
     )
     {
         await gate.WaitAsync(token);
@@ -62,7 +84,8 @@ public sealed class ScanSession : IAsyncDisposable
                         page,
                         directoriesOnly: directoriesOnly,
                         cancellationToken: token,
-                        sort: sort
+                        sort: sort,
+                        includeTotalCount: includeTotalCount
                     ),
                 token
             );

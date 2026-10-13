@@ -19,6 +19,17 @@ public sealed partial class MainWindow : Window
     private readonly CancellationTokenSource lifetime = new();
     private readonly DriveScanner scanner = new();
     private readonly Stack<FolderLocation> navigation = [];
+    private readonly Stack<FolderLocation> forwardHistory = [];
+    private FolderLocation? parentLocation;
+
+    private enum NavigationAction
+    {
+        None,
+        New,
+        Back,
+        Forward,
+    }
+
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
 
     private sealed class ScanOperation(CancellationTokenSource cancellation)
@@ -37,7 +48,7 @@ public sealed partial class MainWindow : Window
     private DriveCard[] cards = [];
     private DriveCard? selectedCard;
     private FolderLocation? location;
-    private int page;
+    private CancellationTokenSource? listingCancellation;
     private int navigationVersion;
     private int rankingVersion;
     private bool closed;
@@ -134,9 +145,37 @@ public sealed partial class MainWindow : Window
             await LoadChildrenAsync(projects, 0);
             if (projects.Children.Count != 1)
                 throw new InvalidOperationException("Lazy folder children did not load.");
-            await LoadPageAsync(((FolderNode)projects.Content).Location, 0, true);
+            await LoadFolderAsync(((FolderNode)projects.Content).Location, true);
             if (Entries.Items.Count != 2 || navigation.Count != 1)
                 throw new InvalidOperationException("Folder navigation did not load.");
+            var projectLocation = location!;
+            await NavigateBackAsync();
+            if (location != rootLocation || !ForwardButton.IsEnabled || UpButton.IsEnabled)
+                throw new InvalidOperationException(
+                    "Back navigation did not preserve forward history."
+                );
+            await NavigateForwardAsync();
+            if (location != projectLocation || !UpButton.IsEnabled)
+                throw new InvalidOperationException(
+                    "Forward navigation did not restore the folder."
+                );
+            await NavigateBackAsync();
+            await LoadFolderAsync(projectLocation, true);
+            if (ForwardButton.IsEnabled || forwardHistory.Count != 0)
+                throw new InvalidOperationException(
+                    "New navigation did not discard forward history."
+                );
+            await LoadFolderAsync(((FolderNode)projects.Children[0].Content).Location, true);
+            var media = Folders
+                .RootNodes[0]
+                .Children.Single(node => node.Content is FolderNode { Name: "Media" });
+            await LoadFolderAsync(((FolderNode)media.Content).Location, true);
+            await NavigateUpAsync();
+            if (location != rootLocation || UpButton.IsEnabled || forwardHistory.Count != 0)
+                throw new InvalidOperationException(
+                    "Up followed history instead of the observed parent."
+                );
+            await LoadFolderAsync(projectLocation, true);
             DepthBox.SelectedIndex = 1;
             await LoadRankingAsync();
             if (Ranking.Items.Count != 2)
@@ -149,10 +188,13 @@ public sealed partial class MainWindow : Window
             LeafBox.IsChecked = false;
             await LoadRankingAsync();
             navigation.Clear();
-            await LoadPageAsync(rootLocation, 0, false);
+            forwardHistory.Clear();
+            await LoadFolderAsync(rootLocation, false);
             var note = Entries.Items.Cast<EntryRow>().Single(row => row.Entry.Name == "notes.md");
             if (note.Size != DisplayText.Bytes(note.Entry.Data?.AllocatedBytes))
                 throw new InvalidOperationException("Displayed size is not allocated capacity.");
+            await VerifyIncrementalListAsync(note.Entry);
+            await LoadFolderAsync(rootLocation, false);
             await SelectDriveAsync(cards[1]);
             if (session is not null || Entries.Items.Count != 0)
                 throw new InvalidOperationException(
@@ -245,7 +287,7 @@ public sealed partial class MainWindow : Window
             await encoder.FlushAsync();
             File.WriteAllText(
                 path + ".result",
-                "UI loaded; root entries=3; ranking=3; navigation, lazy tree, filters and concurrent drive scans passed; synthetic data only."
+                "UI loaded; root entries=3; ranking=3; back/forward/parent navigation, lazy tree, filters, concurrent drive scans, 600-row incremental scrolling and cancellation passed; synthetic data only."
             );
         }
         catch (Exception error)
@@ -300,13 +342,18 @@ public sealed partial class MainWindow : Window
         if (closed || card == selectedCard)
             return;
         selectedCard = card;
+        listingCancellation?.Cancel();
         navigationVersion++;
         rankingVersion++;
         UpdateDriveCards();
         card.StartBringIntoView();
         navigation.Clear();
+        forwardHistory.Clear();
+        parentLocation = null;
+        BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
         Folders.RootNodes.Clear();
         Entries.ItemsSource = null;
+        EntryCountText.DataContext = null;
         Ranking.ItemsSource = null;
         location = null;
         session = sessions.GetValueOrDefault(card.Choice.Drive);
@@ -320,8 +367,8 @@ public sealed partial class MainWindow : Window
         else
         {
             PathText.Text = "未スキャン";
-            PageText.Text = "";
-            BackButton.IsEnabled = PreviousButton.IsEnabled = NextButton.IsEnabled = false;
+            EntryCountText.DataContext = null;
+            BackButton.IsEnabled = false;
             StatusText.Text = $"{card.Choice.Drive} を選択中 · スキャンを開始してください。";
         }
         if (
@@ -335,6 +382,8 @@ public sealed partial class MainWindow : Window
     private async Task ShowSessionAsync(ScanSession current)
     {
         navigation.Clear();
+        forwardHistory.Clear();
+        parentLocation = null;
         Folders.RootNodes.Clear();
         location = new(current.Root, current.Drive + "\\");
         var root = new TreeViewNode
@@ -343,7 +392,7 @@ public sealed partial class MainWindow : Window
             HasUnrealizedChildren = true,
         };
         Folders.RootNodes.Add(root);
-        await LoadPageAsync(location, 0, false);
+        await LoadFolderAsync(location, false);
         if (closed || session != current)
             return;
         await LoadChildrenAsync(root, 0);
@@ -478,39 +527,179 @@ public sealed partial class MainWindow : Window
         );
     }
 
-    private async Task LoadPageAsync(FolderLocation target, int targetPage, bool addHistory)
+    private Task LoadFolderAsync(FolderLocation target, bool addHistory) =>
+        LoadFolderAsync(target, addHistory ? NavigationAction.New : NavigationAction.None);
+
+    private async Task LoadFolderAsync(FolderLocation target, NavigationAction action)
     {
         if (session is not { } current || closed)
             return;
         int version = ++navigationVersion;
+        listingCancellation?.Cancel();
+        listingCancellation?.Dispose();
+        var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        listingCancellation = request;
+        var token = request.Token;
+        BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
         try
         {
             var result = await current.ReadFolderAsync(
                 target.Reference,
-                targetPage,
+                0,
                 false,
-                lifetime.Token,
-                sort: FolderEntrySort.AllocatedBytes
+                token,
+                sort: FolderEntrySort.AllocatedBytes,
+                includeTotalCount: true
             );
+            FolderLocation? parent = null;
+            if (target.Reference != current.Root)
+            {
+                string path = target.Path.TrimEnd('\\');
+                int separator = path.LastIndexOf('\\');
+                if (
+                    separator >= 0
+                    && await current.ReadParentAsync(
+                        target.Reference,
+                        path[(separator + 1)..],
+                        token
+                    )
+                        is { } reference
+                )
+                    parent = new(
+                        reference,
+                        path[..separator] + (reference == current.Root ? "\\" : "")
+                    );
+            }
             if (closed || version != navigationVersion || session != current)
                 return;
-            if (addHistory && location is { } previous && previous != target)
-                navigation.Push(previous);
+            if (location is { } previous && previous != target)
+            {
+                switch (action)
+                {
+                    case NavigationAction.New:
+                        navigation.Push(previous);
+                        forwardHistory.Clear();
+                        break;
+                    case NavigationAction.Back:
+                        navigation.Pop();
+                        forwardHistory.Push(previous);
+                        break;
+                    case NavigationAction.Forward:
+                        forwardHistory.Pop();
+                        navigation.Push(previous);
+                        break;
+                }
+            }
             location = target;
-            page = targetPage;
+            parentLocation = parent;
             PathText.Text = DisplayText.Escape(target.Path);
-            Entries.ItemsSource = result.Entries.Select(e => new EntryRow(e)).ToArray();
-            PageText.Text = $"{page + 1} ページ · {result.Entries.Length} 件";
-            PreviousButton.IsEnabled = page > 0;
-            NextButton.IsEnabled = result.HasMore;
+            var rows = new FolderEntryCollection(
+                result,
+                (nextPage, cancellation) =>
+                    current.ReadFolderAsync(target.Reference, nextPage, false, cancellation),
+                error =>
+                {
+                    if (!closed && session == current && version == navigationVersion)
+                        ShowError(error);
+                },
+                token
+            );
+            Entries.ItemsSource = rows;
+            EntryCountText.DataContext = rows;
             BackButton.IsEnabled = navigation.Count > 0;
+            ForwardButton.IsEnabled = forwardHistory.Count > 0;
+            UpButton.IsEnabled = parentLocation is not null;
         }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
         {
-            if (session == current)
+            if (session == current && version == navigationVersion)
                 ShowError(error);
         }
+        finally
+        {
+            if (!closed && session == current && version == navigationVersion)
+            {
+                BackButton.IsEnabled = navigation.Count > 0;
+                ForwardButton.IsEnabled = forwardHistory.Count > 0;
+                UpButton.IsEnabled = parentLocation is not null;
+            }
+        }
+    }
+
+    private async Task VerifyIncrementalListAsync(FolderEntry template)
+    {
+        FolderEntry[] facts = Enumerable
+            .Range(0, 600)
+            .Select(i =>
+                template with
+                {
+                    Reference = Something.Ntfs.FileReference.Create((ulong)(4000 + i), 1),
+                    Name = $"file-{i:D4}.txt",
+                }
+            )
+            .ToArray();
+        FolderEntryPage Batch(int index) =>
+            new([.. facts.Skip(index * 250).Take(250)], index < 2, index == 0 ? 600 : null);
+        var rows = new FolderEntryCollection(
+            Batch(0),
+            async (index, token) =>
+            {
+                await Task.Delay(25, token);
+                return Batch(index);
+            },
+            error => throw new InvalidOperationException("Incremental list failed.", error),
+            lifetime.Token
+        );
+        Entries.ItemsSource = rows;
+        EntryCountText.DataContext = rows;
+        for (int i = 0; i < 8 && rows.Count < 600; i++)
+        {
+            await Task.Delay(150, lifetime.Token);
+            Entries.UpdateLayout();
+            var scroll =
+                FindListScrollViewer(Entries)
+                ?? throw new InvalidOperationException("List scroll viewer did not load.");
+            scroll.ChangeView(null, scroll.ScrollableHeight, null, true);
+        }
+        await Task.Delay(100, lifetime.Token);
+        if (
+            rows.Count != 600
+            || rows.HasMoreItems
+            || rows.Select(row => row.Entry.Reference).Distinct().Count() != 600
+            || EntryCountText.Text != $"{600:N0} 件"
+        )
+            throw new InvalidOperationException(
+                "Scrolling did not load every row and update the total count."
+            );
+
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        var pending = new FolderEntryCollection(
+            Batch(0),
+            async (index, token) =>
+            {
+                await Task.Delay(Timeout.Infinite, token);
+                return Batch(index);
+            },
+            error =>
+                throw new InvalidOperationException("Cancelled list reported an error.", error),
+            cancellation.Token
+        );
+        var request = pending.LoadMoreItemsAsync(250).AsTask();
+        cancellation.Cancel();
+        await request;
+        if (pending.Count != 250 || pending.HasMoreItems)
+            throw new InvalidOperationException("Cancelled navigation appended stale rows.");
+    }
+
+    private static ScrollViewer? FindListScrollViewer(DependencyObject parent)
+    {
+        if (parent is ScrollViewer scroll)
+            return scroll;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            if (FindListScrollViewer(VisualTreeHelper.GetChild(parent, i)) is { } child)
+                return child;
+        return null;
     }
 
     private async Task LoadChildrenAsync(TreeViewNode parent, int nextPage)
@@ -578,7 +767,7 @@ public sealed partial class MainWindow : Window
         if (folder.LoadMore && node.Parent is { } parent)
             await LoadChildrenAsync(parent, folder.NextPage);
         else
-            await LoadPageAsync(folder.Location, 0, true);
+            await LoadFolderAsync(folder.Location, true);
     }
 
     private FolderNode? FindContextFolder(DependencyObject? source)
@@ -691,29 +880,35 @@ public sealed partial class MainWindow : Window
             location is { } parent
             && Entries.SelectedItem is EntryRow { Entry.CanBrowse: true } row
         )
-            await LoadPageAsync(
+            await LoadFolderAsync(
                 new(row.Entry.Reference, parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name),
-                0,
                 true
             );
     }
 
-    private async void OnBack(object sender, RoutedEventArgs args)
+    private async void OnBack(object sender, RoutedEventArgs args) => await NavigateBackAsync();
+
+    private async void OnForward(object sender, RoutedEventArgs args) =>
+        await NavigateForwardAsync();
+
+    private async void OnUp(object sender, RoutedEventArgs args) => await NavigateUpAsync();
+
+    private async Task NavigateBackAsync()
     {
-        if (navigation.TryPop(out var previous))
-            await LoadPageAsync(previous, 0, false);
+        if (navigation.TryPeek(out var previous))
+            await LoadFolderAsync(previous, NavigationAction.Back);
     }
 
-    private async void OnPrevious(object sender, RoutedEventArgs args)
+    private async Task NavigateForwardAsync()
     {
-        if (location is { } target && page > 0)
-            await LoadPageAsync(target, page - 1, false);
+        if (forwardHistory.TryPeek(out var next))
+            await LoadFolderAsync(next, NavigationAction.Forward);
     }
 
-    private async void OnNext(object sender, RoutedEventArgs args)
+    private async Task NavigateUpAsync()
     {
-        if (location is { } target)
-            await LoadPageAsync(target, page + 1, false);
+        if (parentLocation is { } parent)
+            await LoadFolderAsync(parent, NavigationAction.New);
     }
 
     private async void OnRankingFilterChanged(object sender, SelectionChangedEventArgs args)
@@ -757,9 +952,8 @@ public sealed partial class MainWindow : Window
     private async void OnRankInvoked(object sender, DoubleTappedRoutedEventArgs args)
     {
         if (session is { } current && Ranking.SelectedItem is RankingRow row)
-            await LoadPageAsync(
+            await LoadFolderAsync(
                 new(row.Entry.Sample.Reference, current.Drive + "\\" + row.Entry.RelativePath),
-                0,
                 true
             );
     }
@@ -806,8 +1000,10 @@ public sealed partial class MainWindow : Window
     {
         closed = true;
         lifetime.Cancel();
+        listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         foreach (var current in sessions.Values)
             await current.DisposeAsync();
+        listingCancellation?.Dispose();
     }
 }

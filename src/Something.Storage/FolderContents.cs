@@ -22,10 +22,71 @@ public sealed record FolderEntry(
     bool CapacityIncomplete
 );
 
-public sealed record FolderEntryPage(ImmutableArray<FolderEntry> Entries, bool HasMore);
+public sealed record FolderEntryPage(
+    ImmutableArray<FolderEntry> Entries,
+    bool HasMore,
+    long? TotalCount = null
+);
 
 public sealed partial class ScanStore
 {
+    /// <summary>Returns the unique observed parent for this visible folder name.
+    /// Validates both sequence identities; ambiguous or missing parents remain unavailable.</summary>
+    public FileReference? ReadParentFolder(
+        Guid scanId,
+        FileReference folder,
+        string visibleName,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(visibleName);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCompleted(scanId);
+        long index = checked((long)folder.RecordIndex);
+        if (
+            !context.Observations.Any(f =>
+                f.ScanId == scanId
+                && f.RecordIndex == index
+                && f.Sequence == folder.SequenceNumber
+                && f.IsDirectory == true
+            )
+        )
+            throw new InvalidOperationException(
+                "Folder identity is not present in this completed generation."
+            );
+        if (folder.RecordIndex == 5)
+            return null;
+        var parents = (
+            from name in context.FolderNames.AsNoTracking()
+            join parent in context.Folders.AsNoTracking()
+                on new
+                {
+                    name.ScanId,
+                    RecordIndex = name.ParentIndex,
+                    Sequence = name.ParentSequence,
+                } equals new
+                {
+                    parent.ScanId,
+                    parent.RecordIndex,
+                    parent.Sequence,
+                }
+            where
+                name.ScanId == scanId
+                && name.RecordIndex == index
+                && name.Name == visibleName
+                && name.Namespace != FileNameNamespace.Dos
+                && parent.RecordIndex != index
+            select new { parent.RecordIndex, parent.Sequence }
+        )
+            .Distinct()
+            .Take(2)
+            .ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        return parents.Length == 1
+            ? FileReference.Create(checked((ulong)parents[0].RecordIndex), parents[0].Sequence)
+            : null;
+    }
+
     /// <summary>Immediate visible entries only. Preserves aliases and sequence identities;
     /// unresolved sizes stay null. Folder sizes include descendants; files show unnamed DATA.</summary>
     public FolderEntryPage ReadFolderEntries(
@@ -35,7 +96,8 @@ public sealed partial class ScanStore
         int pageSize = 250,
         bool directoriesOnly = false,
         CancellationToken cancellationToken = default,
-        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes,
+        bool includeTotalCount = false
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -113,6 +175,8 @@ public sealed partial class ScanStore
                     ? (long?)null
                     : ((long?)stream.Allocated ?? 0),
             };
+        long? totalCount = includeTotalCount ? query.LongCount() : null;
+        cancellationToken.ThrowIfCancellationRequested();
         var ordered =
             sort == FolderEntrySort.AllocatedBytes
                 ? query
@@ -161,6 +225,6 @@ public sealed partial class ScanStore
                 )
             );
         }
-        return new(entries.ToImmutable(), rows.Length > pageSize);
+        return new(entries.ToImmutable(), rows.Length > pageSize, totalCount);
     }
 }

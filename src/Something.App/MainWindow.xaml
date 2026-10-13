@@ -68,13 +68,23 @@
           </Grid>
         </Border>
         <TabView Grid.Column="1" IsAddTabButtonVisible="False">
-          <TabViewItem Header="フォルダ内" IsClosable="False">
+          <TabViewItem IsClosable="False">
+            <TabViewItem.Header>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="フォルダ内" />
+                <TextBlock
+                  x:Name="EntryCountText"
+                  Text="{Binding TotalCountText}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                  ToolTipService.ToolTip="{Binding CountDescription}"
+                />
+              </StackPanel>
+            </TabViewItem.Header>
             <Grid Padding="12" RowSpacing="12">
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
               </Grid.RowDefinitions>
               <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
@@ -82,7 +92,46 @@
                   <ColumnDefinition Width="*" />
                   <ColumnDefinition Width="0" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="BackButton" Content="戻る" Click="OnBack" IsEnabled="False" />
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <StackPanel.Resources>
+                    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                    <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                      <Setter Property="Width" Value="32" />
+                      <Setter Property="Height" Value="32" />
+                      <Setter Property="Padding" Value="0" />
+                      <Setter Property="Background" Value="Transparent" />
+                      <Setter Property="BorderThickness" Value="0" />
+                      <Setter Property="CornerRadius" Value="4" />
+                    </Style>
+                  </StackPanel.Resources>
+                  <Button
+                    x:Name="BackButton"
+                    Click="OnBack"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="戻る"
+                    AutomationProperties.Name="戻る"
+                  >
+                    <FontIcon Glyph="&#xE72B;" FontSize="16" />
+                  </Button>
+                  <Button
+                    x:Name="ForwardButton"
+                    Click="OnForward"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="進む"
+                    AutomationProperties.Name="進む"
+                  >
+                    <FontIcon Glyph="&#xE72A;" FontSize="16" />
+                  </Button>
+                  <Button
+                    x:Name="UpButton"
+                    Click="OnUp"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="上へ（親フォルダ）"
+                    AutomationProperties.Name="親フォルダへ移動"
+                  >
+                    <FontIcon Glyph="&#xE74A;" FontSize="16" />
+                  </Button>
+                </StackPanel>
                 <TextBlock
                   x:Name="PathText"
                   Grid.Column="1"
@@ -144,16 +193,6 @@
                   </DataTemplate>
                 </ListView.ItemTemplate>
               </ListView>
-              <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12">
-                <Button
-                  x:Name="PreviousButton"
-                  Content="前のページ"
-                  Click="OnPrevious"
-                  IsEnabled="False"
-                />
-                <TextBlock x:Name="PageText" Text="" VerticalAlignment="Center" />
-                <Button x:Name="NextButton" Content="次のページ" Click="OnNext" IsEnabled="False" />
-              </StackPanel>
             </Grid>
           </TabViewItem>
           <TabViewItem Header="容量ランキング" IsClosable="False">
