@@ -27,14 +27,12 @@ public sealed partial class MainWindow : Window
     );
     private DriveCard[] cards = [];
     private DriveCard? selectedCard;
-    private bool UseAllocated => SizeModeBox.SelectedIndex == 0;
     private FolderLocation? location;
     private int page;
     private int navigationVersion;
     private int rankingVersion;
     private bool busy;
     private bool closed;
-    private bool initialized;
 
     public MainWindow()
     {
@@ -87,7 +85,6 @@ public sealed partial class MainWindow : Window
         foreach (var card in cards)
             DriveCards.Children.Add(card);
         UpdateDriveCards();
-        initialized = true;
         Closed += OnClosed;
         if (demo)
         {
@@ -139,15 +136,9 @@ public sealed partial class MainWindow : Window
             await LoadRankingAsync();
             navigation.Clear();
             await LoadPageAsync(rootLocation, 0, false);
-            SizeModeBox.SelectedIndex = 1;
-            await LoadPageAsync(rootLocation, 0, false);
-            await LoadRankingAsync();
             var note = Entries.Items.Cast<EntryRow>().Single(row => row.Entry.Name == "notes.md");
-            if (note.Size != DisplayText.Bytes(note.Entry.Data?.LogicalBytes))
-                throw new InvalidOperationException("Logical size mode did not apply.");
-            SizeModeBox.SelectedIndex = 0;
-            await LoadPageAsync(rootLocation, 0, false);
-            await LoadRankingAsync();
+            if (note.Size != DisplayText.Bytes(note.Entry.Data?.AllocatedBytes))
+                throw new InvalidOperationException("Displayed size is not allocated capacity.");
             await SelectDriveAsync(cards[1]);
             if (session is not null || Entries.Items.Count != 0)
                 throw new InvalidOperationException(
@@ -377,7 +368,6 @@ public sealed partial class MainWindow : Window
         Ranking.IsEnabled = !value;
         DepthBox.IsEnabled = !value;
         LeafBox.IsEnabled = !value;
-        SizeModeBox.IsEnabled = !value;
         selectedCard?.SetProgress(value);
         if (value)
             selectedCard?.SetState("準備中");
@@ -429,7 +419,7 @@ public sealed partial class MainWindow : Window
                 targetPage,
                 false,
                 lifetime.Token,
-                sort: !UseAllocated ? FolderEntrySort.LogicalBytes : FolderEntrySort.AllocatedBytes
+                sort: FolderEntrySort.AllocatedBytes
             );
             if (closed || version != navigationVersion || session != current)
                 return;
@@ -438,9 +428,7 @@ public sealed partial class MainWindow : Window
             location = target;
             page = targetPage;
             PathText.Text = DisplayText.Escape(target.Path);
-            Entries.ItemsSource = result
-                .Entries.Select(e => new EntryRow(e, UseAllocated))
-                .ToArray();
+            Entries.ItemsSource = result.Entries.Select(e => new EntryRow(e)).ToArray();
             PageText.Text = $"{page + 1} ページ · {result.Entries.Length} 件";
             PreviousButton.IsEnabled = page > 0;
             NextButton.IsEnabled = result.HasMore;
@@ -645,21 +633,6 @@ public sealed partial class MainWindow : Window
             await LoadPageAsync(previous, 0, false);
     }
 
-    private async void OnSizeModeChanged(object sender, SelectionChangedEventArgs args)
-    {
-        if (!initialized || busy || closed)
-            return;
-        if (location is { } target && session is not null)
-        {
-            await LoadPageAsync(target, 0, false);
-            await LoadRankingAsync();
-        }
-        ToolTipService.SetToolTip(
-            SizeColumnText,
-            UseAllocated ? "ディスク上の割り当て容量" : "ファイルの論理サイズ"
-        );
-    }
-
     private async void OnPrevious(object sender, RoutedEventArgs args)
     {
         if (location is { } target && page > 0)
@@ -697,12 +670,11 @@ public sealed partial class MainWindow : Window
                     LeafBox.IsChecked == true
                 ),
                 lifetime.Token,
-                UseAllocated ? FolderEntrySort.AllocatedBytes : FolderEntrySort.LogicalBytes
+                FolderEntrySort.AllocatedBytes
             );
             if (closed || version != rankingVersion || current != session)
                 return;
-            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive, UseAllocated))
-                .ToArray();
+            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive)).ToArray();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)

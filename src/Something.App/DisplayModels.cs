@@ -4,27 +4,23 @@ using Something.Storage;
 
 namespace Something.App;
 
-public sealed partial class EntryRow(FolderEntry entry, bool allocated = true)
+public sealed partial class EntryRow(FolderEntry entry)
 {
     public FolderEntry Entry { get; } = entry;
     public string Name => DisplayText.Escape(Entry.Name);
     public string Kind => Entry.IsDirectory ? "フォルダ" : "ファイル";
-    public string Allocated => DisplayText.Bytes(Entry.Data?.AllocatedBytes);
-    public string Logical => DisplayText.Bytes(Entry.Data?.LogicalBytes);
-    public string Size => allocated ? Allocated : Logical;
+    public string Size => DisplayText.Bytes(Entry.Data?.AllocatedBytes);
     public string State =>
         Entry.CapacityIncomplete ? "未解決を含む"
         : !Entry.NamesComplete ? "名前集合が未確定"
         : "取得済み";
 }
 
-public sealed partial class RankingRow(RankedFolder entry, string drive, bool allocated = true)
+public sealed partial class RankingRow(RankedFolder entry, string drive)
 {
     public RankedFolder Entry { get; } = entry;
     public string Path => $"{drive}\\{DisplayText.Escape(Entry.RelativePath)}";
-    public string Allocated => DisplayText.Bytes(Entry.Data.AllocatedBytes);
-    public string Logical => DisplayText.Bytes(Entry.Data.LogicalBytes);
-    public string Size => allocated ? Allocated : Logical;
+    public string Size => DisplayText.Bytes(Entry.Data.AllocatedBytes);
 }
 
 internal sealed record FolderLocation(FileReference Reference, string Path);

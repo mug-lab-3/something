@@ -14,33 +14,16 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <Grid Grid.Row="0" ColumnSpacing="16">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="180" />
-      </Grid.ColumnDefinitions>
-      <ScrollViewer
-        x:Name="DriveScroll"
-        HorizontalScrollBarVisibility="Auto"
-        VerticalScrollBarVisibility="Disabled"
-        HorizontalScrollMode="Enabled"
-        VerticalScrollMode="Disabled"
-      >
-        <StackPanel x:Name="DriveCards" Orientation="Horizontal" Spacing="12" />
-      </ScrollViewer>
-      <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
-        <ComboBox
-          x:Name="SizeModeBox"
-          Header="サイズの基準"
-          SelectedIndex="0"
-          SelectionChanged="OnSizeModeChanged"
-          HorizontalAlignment="Stretch"
-        >
-          <ComboBoxItem Content="ディスク上のサイズ" />
-          <ComboBoxItem Content="論理サイズ" />
-        </ComboBox>
-      </StackPanel>
-    </Grid>
+    <ScrollViewer
+      x:Name="DriveScroll"
+      Grid.Row="0"
+      HorizontalScrollBarVisibility="Auto"
+      VerticalScrollBarVisibility="Disabled"
+      HorizontalScrollMode="Enabled"
+      VerticalScrollMode="Disabled"
+    >
+      <StackPanel x:Name="DriveCards" Orientation="Horizontal" Spacing="12" />
+    </ScrollViewer>
     <Grid Grid.Row="1" ColumnSpacing="16">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="250" />
