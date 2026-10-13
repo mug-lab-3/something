@@ -3,6 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Something.Storage;
 
+internal enum SqliteDatabaseProfile
+{
+    History,
+    DiagnosticFile,
+    DiagnosticMemory,
+    DiagnosticBoundedFile,
+}
+
 // Raw commands are limited to SQLite identity, schema introspection and connection PRAGMAs.
 // Application queries and updates use EF; prepared append inserts also derive from its model.
 internal static class SqliteDatabaseBootstrap
@@ -10,14 +18,34 @@ internal static class SqliteDatabaseBootstrap
     internal const int ApplicationId = 0x534F4D45;
     internal const int Version = 1;
 
-    internal static ScanDbContext Open(string path, CancellationToken cancellationToken)
+    internal static ScanDbContext Open(
+        string path,
+        CancellationToken cancellationToken,
+        SqliteDatabaseProfile profile = SqliteDatabaseProfile.History,
+        ulong? fileCacheBytes = null
+    )
     {
+        if (!Enum.IsDefined(profile))
+            throw new ArgumentOutOfRangeException(nameof(profile));
+        if (fileCacheBytes is not null && profile != SqliteDatabaseProfile.DiagnosticBoundedFile)
+            throw new ArgumentException(
+                "A cache budget requires the bounded file profile.",
+                nameof(fileCacheBytes)
+            );
+        ulong cacheBytes = fileCacheBytes ?? 64UL * 1024 * 1024;
+        if (
+            cacheBytes is < 64UL * 1024 * 1024 or > 2UL * 1024 * 1024 * 1024
+            || cacheBytes % 16384 != 0
+        )
+            throw new ArgumentOutOfRangeException(nameof(fileCacheBytes));
+        bool memory = profile == SqliteDatabaseProfile.DiagnosticMemory;
         cancellationToken.ThrowIfCancellationRequested();
         var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder
             {
-                DataSource = Path.GetFullPath(path),
-                Mode = SqliteOpenMode.ReadWriteCreate,
+                DataSource = memory ? ":memory:" : Path.GetFullPath(path),
+                Mode = memory ? SqliteOpenMode.Memory : SqliteOpenMode.ReadWriteCreate,
+                Cache = SqliteCacheMode.Private,
                 Pooling = false,
                 ForeignKeys = true,
                 DefaultTimeout = 5,
@@ -27,6 +55,31 @@ internal static class SqliteDatabaseBootstrap
         try
         {
             connection.Open();
+            if (profile != SqliteDatabaseProfile.History)
+            {
+                Execute(connection, "PRAGMA page_size=16384");
+                Execute(
+                    connection,
+                    profile == SqliteDatabaseProfile.DiagnosticBoundedFile
+                        ? "PRAGMA temp_store=FILE"
+                        : "PRAGMA temp_store=MEMORY"
+                );
+            }
+            if (profile == SqliteDatabaseProfile.DiagnosticBoundedFile)
+            {
+                long cacheKiB = checked((long)(cacheBytes / 1024));
+                Execute(
+                    connection,
+                    $"PRAGMA cache_size=-{cacheKiB.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+                );
+                Execute(connection, "PRAGMA cache_spill=ON");
+                Execute(connection, "PRAGMA locking_mode=EXCLUSIVE");
+            }
+            if (profile == SqliteDatabaseProfile.DiagnosticFile)
+            {
+                Execute(connection, "PRAGMA cache_spill=OFF");
+                Execute(connection, "PRAGMA locking_mode=EXCLUSIVE");
+            }
             long application = ScalarLong(connection, "PRAGMA application_id");
             long version = ScalarLong(connection, "PRAGMA user_version");
             bool empty = application == 0 && version == 0;
@@ -60,15 +113,24 @@ internal static class SqliteDatabaseBootstrap
             cancellationToken.ThrowIfCancellationRequested();
             context.Database.Migrate();
             using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA journal_mode=WAL";
+            string journal = profile switch
+            {
+                SqliteDatabaseProfile.History => "wal",
+                SqliteDatabaseProfile.DiagnosticFile
+                or SqliteDatabaseProfile.DiagnosticBoundedFile => "delete",
+                _ => "memory",
+            };
+            command.CommandText = $"PRAGMA journal_mode={journal}";
             if (
                 !string.Equals(
                     command.ExecuteScalar()?.ToString(),
-                    "wal",
+                    journal,
                     StringComparison.OrdinalIgnoreCase
                 )
             )
-                throw new InvalidDataException("Database could not enable WAL mode.");
+                throw new InvalidDataException(
+                    "Database could not enable the requested journal mode."
+                );
             Execute(connection, "PRAGMA synchronous=FULL");
             return context;
         }

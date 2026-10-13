@@ -48,6 +48,12 @@
           "SQLitePCLRaw.core": "2.1.12"
         }
       },
+      "SQLitePCLRaw.core": {
+        "type": "Direct",
+        "requested": "[2.1.12, )",
+        "resolved": "2.1.12",
+        "contentHash": "ETpNw9DY3ckWLgRRAeCHj+GKOuPi61aeczkXhgHexUvqoZBAYg8RYESE2J7O1M7+o6QbdSEZwrw9bfqztUVWXg=="
+      },
       "Humanizer.Core": {
         "type": "Transitive",
         "resolved": "2.14.1",
@@ -281,11 +287,6 @@
           "SQLitePCLRaw.lib.e_sqlite3": "2.1.12",
           "SQLitePCLRaw.provider.e_sqlite3": "2.1.12"
         }
-      },
-      "SQLitePCLRaw.core": {
-        "type": "Transitive",
-        "resolved": "2.1.12",
-        "contentHash": "ETpNw9DY3ckWLgRRAeCHj+GKOuPi61aeczkXhgHexUvqoZBAYg8RYESE2J7O1M7+o6QbdSEZwrw9bfqztUVWXg=="
       },
       "SQLitePCLRaw.lib.e_sqlite3": {
         "type": "Transitive",

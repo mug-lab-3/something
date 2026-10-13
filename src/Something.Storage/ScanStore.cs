@@ -29,6 +29,28 @@ public sealed partial class ScanStore : IDisposable
         CancellationToken cancellationToken = default
     ) => new(SqliteDatabaseBootstrap.Open(path, cancellationToken));
 
+    internal static ScanStore OpenInMemory(CancellationToken token) =>
+        new(
+            SqliteDatabaseBootstrap.Open(":memory:", token, SqliteDatabaseProfile.DiagnosticMemory)
+        );
+
+    internal static ScanStore OpenDiagnosticFile(
+        string path,
+        CancellationToken token,
+        bool boundedMemory = false,
+        ulong? fileCacheBytes = null
+    ) =>
+        new(
+            SqliteDatabaseBootstrap.Open(
+                path,
+                token,
+                boundedMemory
+                    ? SqliteDatabaseProfile.DiagnosticBoundedFile
+                    : SqliteDatabaseProfile.DiagnosticFile,
+                fileCacheBytes
+            )
+        );
+
     internal static void ValidateDescriptor(ScanDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);

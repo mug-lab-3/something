@@ -12,7 +12,8 @@ internal static class TopFolders
         string drive,
         int maximumRecords,
         CancellationToken token,
-        FolderRankingFilter? filter = null
+        FolderRankingFilter? filter = null,
+        DiagnosticDatabasePreference databasePreference = DiagnosticDatabasePreference.Automatic
     )
     {
         var watch = Stopwatch.StartNew();
@@ -20,7 +21,7 @@ internal static class TopFolders
         string phase = "scan-and-buffer";
         using var heartbeatCancellation = new CancellationTokenSource();
         Console.Error.WriteLine(
-            "Scanning for top 5 folders; progress every 5s; Ctrl+C cancels. A temporary SQLite database is used."
+            $"Scanning for top 5 folders; progress every 5s; Ctrl+C cancels. SQLite preference={databasePreference}."
         );
         var heartbeat = Task.Run(
             async () =>
@@ -101,12 +102,46 @@ internal static class TopFolders
                     long completionStarted = Stopwatch.GetTimestamp();
                     var result = buffer.Complete(token);
                     var completionTime = Stopwatch.GetElapsedTime(completionStarted);
+                    ulong estimate = buffer.EstimateDatabaseBytes(token);
+                    var memory = OperatingSystem.IsWindows()
+                        ? WindowsMemoryAvailability.TryRead()
+                        : null;
+                    var selection = DiagnosticDatabaseSelector.Select(
+                        estimate,
+                        memory is null
+                            ? null
+                            : new(
+                                memory.TotalPhysicalBytes,
+                                memory.AvailablePhysicalBytes,
+                                memory.AvailableCommitBytes,
+                                memory.AvailableVirtualBytes
+                            ),
+                        databasePreference
+                    );
+                    bool memoryDatabase = selection.UseMemory;
+                    Console.Error.WriteLine(
+                        $"Database-selection: memory={memoryDatabase}; reason={selection.Reason}; estimated-db-bytes={estimate}; required-additional-bytes={selection.RequiredAdditionalBytes}; reserve-bytes={selection.ReserveBytes}; file-cache-bytes={selection.FileCacheBytes}; available-physical-bytes={selection.Available?.PhysicalBytes.ToString() ?? "unknown"}; available-commit-bytes={selection.Available?.CommitBytes.ToString() ?? "unknown"}; available-virtual-bytes={selection.Available?.VirtualBytes.ToString() ?? "unknown"}"
+                    );
                     Volatile.Write(ref phase, "persist-and-publish");
                     long persistenceStarted = Stopwatch.GetTimestamp();
-                    using var temporary = TemporaryScanDatabase.Create(token);
+                    using var temporary = TemporaryScanDatabase.Create(
+                        token,
+                        inMemory: memoryDatabase,
+                        boundedMemory: !memoryDatabase,
+                        fileCacheBytes: memoryDatabase ? null : selection.FileCacheBytes
+                    );
                     var store = temporary.Store;
                     var id = store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
                     var persistenceTime = Stopwatch.GetElapsedTime(persistenceStarted);
+                    var exportTime = TimeSpan.Zero;
+                    long snapshotBytes = 0;
+                    if (memoryDatabase)
+                    {
+                        Volatile.Write(ref phase, "export-database");
+                        long exportStarted = Stopwatch.GetTimestamp();
+                        snapshotBytes = temporary.ExportSnapshot(token);
+                        exportTime = Stopwatch.GetElapsedTime(exportStarted);
+                    }
                     Volatile.Write(ref phase, "rank-folders");
                     long rankingStarted = Stopwatch.GetTimestamp();
                     var top = store.ReadLargestFolders(
@@ -152,6 +187,9 @@ internal static class TopFolders
                     Console.WriteLine(
                         $"Ranking-filter: depth={filter?.Depth?.ToString(CultureInfo.InvariantCulture) ?? "any"}; leaf-only={filter?.LeafOnly ?? false}; root-depth=0; subtree-included=True"
                     );
+                    Console.WriteLine(
+                        $"Database-mode: memory={memoryDatabase}; snapshot-bytes={snapshotBytes}; retained-history=False"
+                    );
                     int rank = 0;
                     foreach (var item in top)
                     {
@@ -178,7 +216,7 @@ internal static class TopFolders
                         $"Elapsed={watch.Elapsed.TotalSeconds:F3}s; incomplete={incomplete}; metadata-unresolved={result.Metadata.UnresolvedCount}; unattributed-unresolved={result.Unattributed.UnresolvedCount}"
                     );
                     Console.WriteLine(
-                        $"Timing: scan-and-buffer-seconds={scanTime.TotalSeconds:F3}; aggregate-buffer-seconds={completionTime.TotalSeconds:F3}; persist-publish-seconds={persistenceTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}; accounting-diagnostics-seconds={diagnosticTime.TotalSeconds:F3}"
+                        $"Timing: scan-and-buffer-seconds={scanTime.TotalSeconds:F3}; aggregate-buffer-seconds={completionTime.TotalSeconds:F3}; persist-publish-seconds={persistenceTime.TotalSeconds:F3}; db-snapshot-seconds={exportTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}; accounting-diagnostics-seconds={diagnosticTime.TotalSeconds:F3}"
                     );
                     using var process = Process.GetCurrentProcess();
                     Console.WriteLine(

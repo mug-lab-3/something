@@ -216,6 +216,25 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --t
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --depth 2 --leaf
 ```
 
+診断用SQLiteは既定で自動選択する。スキャンとメモリ集計が終わった時点の空きRAM・
+コミット可能量・仮想空間をDBサイズ見積もりと比べ、十分ならメモリDBを使う。
+余裕が足りない場合は残った空き量に応じた64 MiB〜2 GiBの可変キャッシュ（取得不能時64 MiB）・途中書き出し有効・
+ファイルの一時領域を使うファイルDBを選ぶ。既存の履歴DBの設定には適用しない。
+判断根拠はDatabase-selectionに表示する。設定と測定は [storage-design.md](storage-design.md) を参照。
+file-cache-bytesが選択したファイルDBキャッシュ目安。SQLite全体のメモリ上限や予約量ではない。
+
+比較のために方式を強制する場合は、`--memory-db`または`--file-db`を指定する（併用不可）。
+メモリDBを選ぶと、最後にファイルへコピーする。
+
+```powershell
+dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --leaf --memory-db
+dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --leaf --file-db
+```
+
+途中表示の`export-database`は最後の書き出し。Timingの`db-snapshot-seconds`に書き出し時間を分離し、
+Elapsedには含める。保存する情報は同じで、メモリ不足時の自動退避は未実装。
+ファイルの書き出し先はアプリ所有の一時領域で、コマンド終了時に削除する。履歴はまだ保持しない。
+
 深さは1以上、各フィルターは一度だけ指定する。`--max-records`を併用する場合は末尾へ置く。
 末端判定は観測した有効な子ディレクトリに基づく。未観測の子が存在しないことまで保証しない。
 絞り込んだ結果が空ならTop 0として表示し、未知の容量を0へ置き換えない。

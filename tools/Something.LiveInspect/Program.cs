@@ -6,20 +6,28 @@ using Something.Ntfs;
 using Something.Storage;
 using Something.Windows;
 
-if (args.Length is >= 1 and <= 3 && args[0] == "--storage-benchmark")
+if (args.Length >= 1 && args[0] == "--storage-benchmark")
 {
     int count = 100_000;
     if (
         (args.Length >= 2 && (!int.TryParse(args[1], out count) || count is < 1 or > 2_000_000))
-        || (args.Length == 3 && args[2] != "--buffered")
+        || args.Length > 4
+        || args.Skip(2).Any(a => a is not ("--buffered" or "--memory-db"))
+        || args.Skip(2).Distinct(StringComparer.Ordinal).Count() != Math.Max(0, args.Length - 2)
     )
     {
-        Console.Error.WriteLine("Storage benchmark count must be between 1 and 2000000.");
+        Console.Error.WriteLine(
+            "Usage: --storage-benchmark [count=100000, max=2000000] [--buffered] [--memory-db]"
+        );
         return 2;
     }
     try
     {
-        return StorageBenchmark.Run(count, args.Length == 3);
+        return StorageBenchmark.Run(
+            count,
+            args.Contains("--buffered"),
+            args.Contains("--memory-db")
+        );
     }
     catch (OperationCanceledException)
     {
@@ -44,12 +52,21 @@ if (args.Length >= 3 && args[^2] == "--max-records")
 }
 var rankingFilter = new FolderRankingFilter();
 bool invalidRankingFilter = false;
+var databasePreference = DiagnosticDatabasePreference.Automatic;
 if (args.Length >= 2 && args[1] == "--top5")
 {
     for (int i = 2; i < args.Length; i++)
     {
         if (args[i] == "--leaf" && !rankingFilter.LeafOnly)
             rankingFilter = rankingFilter with { LeafOnly = true };
+        else if (
+            args[i] is "--memory-db" or "--file-db"
+            && databasePreference == DiagnosticDatabasePreference.Automatic
+        )
+            databasePreference =
+                args[i] == "--memory-db"
+                    ? DiagnosticDatabasePreference.Memory
+                    : DiagnosticDatabasePreference.File;
         else if (
             args[i] == "--depth"
             && rankingFilter.Depth is null
@@ -103,7 +120,7 @@ if (
         "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
-        "   or: Something.LiveInspect <drive> --top5 [--depth <positive-int>] [--leaf] [--max-records <positive-int>]"
+        "   or: Something.LiveInspect <drive> --top5 [--depth <positive-int>] [--leaf] [--memory-db | --file-db] [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
         $"Per-file record limit defaults to {LiveMftFileReader.DefaultMaximumRecords}."
@@ -129,7 +146,8 @@ try
             args[0],
             maximumRecords,
             cancellation.Token,
-            rankingFilter
+            rankingFilter,
+            databasePreference
         );
     }
     if (args.Length == 3 && args[1] == "--record-file")

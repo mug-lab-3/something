@@ -920,6 +920,144 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void PreparedInserts_PreserveConversionsNullTransitionsAndConstraintErrors()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var first = fixture.Store.BeginScan(Descriptor(), token);
+        var second = fixture.Store.BeginScan(Descriptor("another-synthetic-volume"), token);
+        using var context = new ScanDbContext(
+            new DbContextOptionsBuilder<ScanDbContext>()
+                .UseSqlite($"Data Source={fixture.DatabasePath};Pooling=False;Foreign Keys=True")
+                .Options
+        );
+        Assert.Throws<InvalidOperationException>(() => new ModelInsert<ObservationEntity>(context));
+        using var transaction = context.Database.BeginTransaction();
+        using var rows = new ModelInsert<ObservationEntity>(context);
+        rows.Add(
+            new()
+            {
+                ScanId = first,
+                RecordIndex = 100,
+                Kind = MftScanEntryKind.ResolvedFile,
+                Status = LiveFileReadStatus.ObservedUnchanged,
+                Sequence = ushort.MaxValue,
+                ObservedLinkCount = ushort.MaxValue,
+                IsDirectory = false,
+                LinksComplete = true,
+                Domain = CapacityDomain.Ordinary,
+                Resolution = CapacityResolution.Resolved,
+            },
+            token
+        );
+        rows.Add(
+            new()
+            {
+                ScanId = second,
+                RecordIndex = 100,
+                Kind = MftScanEntryKind.Unresolved,
+                Status = LiveFileReadStatus.InvalidRecord,
+            },
+            token
+        );
+        rows.Add(
+            new()
+            {
+                ScanId = first,
+                RecordIndex = 101,
+                Kind = MftScanEntryKind.Unresolved,
+                Status = LiveFileReadStatus.Unsupported,
+                Sequence = 1,
+                IsDirectory = true,
+                LinksComplete = false,
+                Domain = CapacityDomain.Ordinary,
+                Resolution = CapacityResolution.Unresolved,
+            },
+            token
+        );
+        using var names = new ModelInsert<FileNameEntity>(context);
+        string unusualName = "日本語😀'\"\0" + new string('界', 300) + "\uD800";
+        names.Add(
+            new()
+            {
+                ScanId = first,
+                RecordIndex = 100,
+                Name = unusualName,
+                Namespace = FileNameNamespace.Posix,
+                ParentIndex = 5,
+                ParentSequence = ushort.MaxValue,
+                Attributes = uint.MaxValue,
+            },
+            token
+        );
+        using var streams = new ModelInsert<StreamEntity>(context);
+        streams.Add(
+            new()
+            {
+                ScanId = first,
+                RecordIndex = 100,
+                Name = "",
+                Logical = long.MaxValue,
+                Allocated = 0,
+            },
+            token
+        );
+        using var folders = new ModelInsert<FolderSampleEntity>(context);
+        folders.Add(
+            new()
+            {
+                ScanId = first,
+                RecordIndex = 5,
+                Sequence = 1,
+                SubtreeLogical = UInt128.MaxValue,
+            },
+            token
+        );
+        var duplicate = Assert.Throws<DbUpdateException>(() =>
+            rows.Add(new() { ScanId = first, RecordIndex = 100 }, token)
+        );
+        Assert.Equal(19, Assert.IsType<SqliteException>(duplicate.InnerException).SqliteErrorCode);
+        var foreignKey = Assert.Throws<DbUpdateException>(() =>
+            rows.Add(new() { ScanId = Guid.NewGuid(), RecordIndex = 100 }, token)
+        );
+        Assert.Equal(
+            787,
+            Assert.IsType<SqliteException>(foreignKey.InnerException).SqliteExtendedErrorCode
+        );
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            rows.Add(new() { ScanId = first, RecordIndex = 102 }, cancelled.Token)
+        );
+        rows.Add(new() { ScanId = first, RecordIndex = 102 }, token);
+        transaction.Commit();
+
+        var loaded = context.Observations.AsNoTracking().OrderBy(o => o.RecordIndex).ToArray();
+        Assert.Equal(4, loaded.Length);
+        var valid = loaded.Single(o => o.ScanId == first && o.RecordIndex == 100);
+        Assert.Equal(ushort.MaxValue, valid.Sequence);
+        Assert.Equal(ushort.MaxValue, valid.ObservedLinkCount);
+        Assert.False(valid.IsDirectory);
+        Assert.True(valid.LinksComplete);
+        var missing = loaded.Single(o => o.ScanId == second);
+        Assert.Null(missing.Sequence);
+        Assert.Null(missing.IsDirectory);
+        Assert.Null(missing.LinksComplete);
+        Assert.Null(missing.ObservedLinkCount);
+        Assert.True(loaded.Single(o => o.RecordIndex == 101).IsDirectory);
+        Assert.False(loaded.Single(o => o.RecordIndex == 101).LinksComplete);
+        var name = context.Names.AsNoTracking().Single();
+        Assert.Equal(unusualName, name.Name);
+        Assert.Equal(uint.MaxValue, name.Attributes);
+        Assert.Equal(ushort.MaxValue, name.ParentSequence);
+        Assert.Equal("", context.Streams.AsNoTracking().Single().Name);
+        Assert.Equal(long.MaxValue, context.Streams.AsNoTracking().Single().Logical);
+        var folder = context.Folders.AsNoTracking().Single();
+        Assert.Equal(UInt128.MaxValue, folder.SubtreeLogical);
+        Assert.Null(folder.EntrySubtreeLogical);
+    }
+
+    [Fact]
     public void BufferedDiagnostics_AccountForEveryUnattributedFileWithoutChangingSavedFacts()
     {
         using var fixture = new DatabaseFixture();
@@ -1178,8 +1316,10 @@ public sealed class ScanStoreTests
         );
     }
 
-    [Fact]
-    public void TemporaryScan_DoesNotTouchHistoryAndCanPublishRankAndDispose()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TemporaryScan_DoesNotTouchHistoryAndCanPublishRankAndDispose(bool inMemory)
     {
         using var history = new DatabaseFixture();
         var saved = history.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
@@ -1189,7 +1329,10 @@ public sealed class ScanStoreTests
             Started.AddSeconds(1),
             TestContext.Current.CancellationToken
         );
-        using var temporary = TemporaryScanDatabase.Create(TestContext.Current.CancellationToken);
+        using var temporary = TemporaryScanDatabase.Create(
+            TestContext.Current.CancellationToken,
+            inMemory
+        );
         var transient = temporary.Store.BeginScan(
             Descriptor(),
             TestContext.Current.CancellationToken
@@ -1221,6 +1364,276 @@ public sealed class ScanStoreTests
             saved,
             history.Store.GetPublishedScan(Descriptor().VolumeKey, Descriptor().Range)
         );
+    }
+
+    [Fact]
+    public void MemorySnapshot_WritesOnlyAfterCompletionAndPreservesAllFacts()
+    {
+        var token = TestContext.Current.CancellationToken;
+        using var temporary = TemporaryScanDatabase.Create(token, inMemory: true);
+        string directory = Path.GetDirectoryName(temporary.SnapshotPath)!;
+        Assert.True(temporary.IsInMemory);
+        Assert.Empty(System.IO.Directory.EnumerateFiles(directory));
+        Assert.Throws<InvalidOperationException>(() => temporary.OpenSnapshot(token));
+        Assert.Throws<InvalidOperationException>(() => temporary.ExportSnapshot(token));
+        var buffer = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts())
+            buffer.Add(fact, token);
+        var expected = buffer.Complete(token);
+        var id = temporary.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        Assert.Empty(System.IO.Directory.EnumerateFiles(directory));
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => temporary.ExportSnapshot(cancelled.Token));
+        Assert.False(System.IO.File.Exists(temporary.SnapshotPath));
+
+        long length = temporary.ExportSnapshot(token);
+
+        Assert.Equal(length, new FileInfo(temporary.SnapshotPath).Length);
+        Assert.True(length > 0);
+        using (var snapshot = temporary.OpenSnapshot(token))
+        {
+            Assert.Equal(id, snapshot.GetPublishedScan(Descriptor().VolumeKey, Descriptor().Range));
+            var restored = snapshot.ReadAggregation(id, token);
+            Assert.Equal(expected.Metadata, restored.Metadata);
+            Assert.Equal(expected.Unattributed, restored.Unattributed);
+            Assert.Equal(expected.HasUnknownAttribution, restored.HasUnknownAttribution);
+            foreach (var pair in expected.Folders)
+            {
+                Assert.Equal(pair.Value, restored.Folders[pair.Key]);
+                Assert.Equal(
+                    temporary.Store.ReadHistoricalFolderNames(id, pair.Key, token).ToArray(),
+                    snapshot.ReadHistoricalFolderNames(id, pair.Key, token).ToArray()
+                );
+            }
+            var files = snapshot.ReadFiles(id, token).ToDictionary(f => f.Reference);
+            foreach (var file in temporary.Store.ReadFiles(id, token))
+            {
+                Assert.Equal(
+                    file with
+                    {
+                        Names = [],
+                        Streams = [],
+                    },
+                    files[file.Reference] with
+                    {
+                        Names = [],
+                        Streams = [],
+                    }
+                );
+                Assert.Equal(file.Names.ToArray(), files[file.Reference].Names.ToArray());
+                Assert.Equal(file.Streams.ToArray(), files[file.Reference].Streams.ToArray());
+            }
+            Assert.Equal(
+                temporary.Store.ReadLargestFolders(id, cancellationToken: token).ToArray(),
+                snapshot.ReadLargestFolders(id, cancellationToken: token).ToArray()
+            );
+        }
+        // The snapshot is now durable and readable. A second export must not overwrite it.
+        byte[] before = System.IO.File.ReadAllBytes(temporary.SnapshotPath);
+        Assert.Throws<IOException>(() => temporary.ExportSnapshot(token));
+        Assert.Equal(before, System.IO.File.ReadAllBytes(temporary.SnapshotPath));
+        using (
+            var inspection = new SqliteConnection(
+                $"Data Source={temporary.SnapshotPath};Mode=ReadOnly;Pooling=False"
+            )
+        )
+        {
+            inspection.Open();
+            using var command = inspection.CreateCommand();
+            command.CommandText = "PRAGMA integrity_check";
+            Assert.Equal("ok", command.ExecuteScalar());
+            command.CommandText = "PRAGMA foreign_key_check";
+            Assert.Null(command.ExecuteScalar());
+        }
+        temporary.Dispose();
+        Assert.False(System.IO.Directory.Exists(directory));
+        Assert.Throws<ObjectDisposedException>(() => temporary.ExportSnapshot(token));
+    }
+
+    [Fact]
+    public void MemorySnapshot_RejectsRunningGenerationWithoutCreatingAFile()
+    {
+        var token = TestContext.Current.CancellationToken;
+        using var temporary = TemporaryScanDatabase.Create(token, inMemory: true);
+        var id = temporary.Store.BeginScan(Descriptor(), token);
+        temporary.Store.StageBatch(id, BasicFacts(), token);
+        Assert.Throws<InvalidOperationException>(() => temporary.ExportSnapshot(token));
+        Assert.False(System.IO.File.Exists(temporary.SnapshotPath));
+        temporary.Store.CompleteScan(id, Started.AddSeconds(1), token);
+        Assert.True(temporary.ExportSnapshot(token) > 0);
+    }
+
+    [Theory]
+    [InlineData(0, "wal")]
+    [InlineData(1, "delete")]
+    [InlineData(2, "memory")]
+    [InlineData(3, "delete")]
+    public void DatabaseProfiles_KeepConstraintsAndDurabilityWhileIsolatingDiagnosticSettings(
+        int profileValue,
+        string journal
+    )
+    {
+        using var fixture = new DatabaseFixture();
+        var profile = (SqliteDatabaseProfile)profileValue;
+        string path = Path.Combine(Path.GetDirectoryName(fixture.DatabasePath)!, "profile.sqlite3");
+        using var context = SqliteDatabaseBootstrap.Open(
+            path,
+            TestContext.Current.CancellationToken,
+            profile
+        );
+        object? Pragma(string name)
+        {
+            using var command = context.Database.GetDbConnection().CreateCommand();
+            command.CommandText = $"PRAGMA {name}";
+            return command.ExecuteScalar();
+        }
+
+        Assert.Equal(journal, Pragma("journal_mode"));
+        Assert.Equal(2L, Pragma("synchronous"));
+        Assert.Equal(1L, Pragma("foreign_keys"));
+        if (profile != SqliteDatabaseProfile.History)
+        {
+            Assert.Equal(16384L, Pragma("page_size"));
+            Assert.Equal(
+                profile == SqliteDatabaseProfile.DiagnosticBoundedFile ? 1L : 2L,
+                Pragma("temp_store")
+            );
+        }
+        if (
+            profile
+            is SqliteDatabaseProfile.DiagnosticFile
+                or SqliteDatabaseProfile.DiagnosticBoundedFile
+        )
+        {
+            if (profile == SqliteDatabaseProfile.DiagnosticFile)
+                Assert.Equal(0L, Pragma("cache_spill"));
+            else
+            {
+                Assert.Equal(-65536L, Pragma("cache_size"));
+                Assert.True((long)Pragma("cache_spill")! > 0);
+            }
+            Assert.Equal("exclusive", Pragma("locking_mode"));
+        }
+        else
+            Assert.Equal("normal", Pragma("locking_mode"));
+        Assert.Equal("ok", Pragma("integrity_check"));
+    }
+
+    [Fact]
+    public void BufferedEstimate_UsesMetadataLengthsRatherThanFileContentsAndSupportsBoundedPublication()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var small = new BufferedScan(Descriptor());
+        var large = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts(1))
+            small.Add(fact, token);
+        foreach (var fact in BasicFacts(long.MaxValue))
+            large.Add(fact, token);
+        Assert.Throws<InvalidOperationException>(() => small.EstimateDatabaseBytes(token));
+        var expected = small.Complete(token);
+        large.Complete(token);
+        Assert.Equal(small.EstimateDatabaseBytes(token), large.EstimateDatabaseBytes(token));
+        Assert.True(small.EstimateDatabaseBytes(token) >= 64 * 1024);
+        Assert.Equal(0UL, small.EstimateDatabaseBytes(token) % 16384);
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            small.EstimateDatabaseBytes(cancelled.Token)
+        );
+        using var temporary = TemporaryScanDatabase.Create(token, boundedMemory: true);
+        var id = temporary.Store.PublishBufferedScan(small, Started.AddSeconds(1), token);
+        var actual = temporary.Store.ReadAggregation(id, token);
+        foreach (var pair in expected.Folders)
+            Assert.Equal(pair.Value, actual.Folders[pair.Key]);
+        Assert.Equal(
+            id,
+            temporary.Store.GetPublishedScan(Descriptor().VolumeKey, Descriptor().Range)
+        );
+        Assert.Throws<ArgumentException>(() =>
+            TemporaryScanDatabase.Create(token, inMemory: true, boundedMemory: true)
+        );
+    }
+
+    [Theory]
+    [InlineData(64UL * 1024 * 1024)]
+    [InlineData(256UL * 1024 * 1024)]
+    [InlineData(2UL * 1024 * 1024 * 1024)]
+    public void BoundedFileCache_AppliesTheSelectedKiBBudgetAndPreservesPublication(
+        ulong cacheBytes
+    )
+    {
+        var token = TestContext.Current.CancellationToken;
+        using var fixture = new DatabaseFixture();
+        string path = Path.Combine(
+            Path.GetDirectoryName(fixture.DatabasePath)!,
+            "cache-profile.sqlite3"
+        );
+        using (
+            var context = SqliteDatabaseBootstrap.Open(
+                path,
+                token,
+                SqliteDatabaseProfile.DiagnosticBoundedFile,
+                cacheBytes
+            )
+        )
+        {
+            using var command = context.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "PRAGMA cache_size";
+            Assert.Equal(-checked((long)(cacheBytes / 1024)), command.ExecuteScalar());
+            command.CommandText = "PRAGMA cache_spill";
+            Assert.True((long)command.ExecuteScalar()! > 0);
+        }
+        using var temporary = TemporaryScanDatabase.Create(
+            token,
+            boundedMemory: true,
+            fileCacheBytes: cacheBytes
+        );
+        var buffer = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts())
+            buffer.Add(fact, token);
+        var expected = buffer.Complete(token);
+        var id = temporary.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var actual = temporary.Store.ReadAggregation(id, token);
+        foreach (var pair in expected.Folders)
+            Assert.Equal(pair.Value, actual.Folders[pair.Key]);
+    }
+
+    [Fact]
+    public void BoundedFileCache_RejectsInvalidBudgetsBeforeOpeningAFile()
+    {
+        var token = TestContext.Current.CancellationToken;
+        using var fixture = new DatabaseFixture();
+        string path = Path.Combine(
+            Path.GetDirectoryName(fixture.DatabasePath)!,
+            "invalid-cache.sqlite3"
+        );
+        foreach (
+            ulong bytes in new ulong[]
+            {
+                0,
+                1024 * 1024,
+                64 * 1024 * 1024 - 1,
+                64 * 1024 * 1024 + 1,
+                2UL * 1024 * 1024 * 1024 + 16384,
+                ulong.MaxValue,
+            }
+        )
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                SqliteDatabaseBootstrap.Open(
+                    path,
+                    token,
+                    SqliteDatabaseProfile.DiagnosticBoundedFile,
+                    bytes
+                )
+            );
+        Assert.Throws<ArgumentException>(() =>
+            SqliteDatabaseBootstrap.Open(path, token, fileCacheBytes: 64 * 1024 * 1024)
+        );
+        Assert.Throws<ArgumentException>(() =>
+            TemporaryScanDatabase.Create(token, fileCacheBytes: 64 * 1024 * 1024)
+        );
+        Assert.False(System.IO.File.Exists(path));
     }
 
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource
