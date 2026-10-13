@@ -38,6 +38,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = "Something";
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+        AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
         AppWindow.Resize(new(1280, 900));
         RootLayout.Loaded += (_, _) =>
@@ -191,7 +195,9 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(200, lifetime.Token);
                 RootLayout.UpdateLayout();
             }
-            await bitmap.RenderAsync(RootLayout);
+            if (!ExtendsContentIntoTitleBar || AppTitleBar.ActualHeight <= 0)
+                throw new InvalidOperationException("The integrated title bar did not load.");
+            await bitmap.RenderAsync(WindowLayout);
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");
             var pixels = (await bitmap.GetPixelsAsync()).ToArray();
