@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Something.Application;
 
 namespace Something.App;
@@ -18,6 +17,7 @@ public sealed partial class DriveCard : UserControl
     internal DriveChoice Choice { get; }
     internal event EventHandler? Invoked;
     internal event EventHandler? ScanRequested;
+    private bool? selectedState;
 
     internal DriveCard(DriveChoice choice)
     {
@@ -25,6 +25,10 @@ public sealed partial class DriveCard : UserControl
         Choice = choice;
         DriveText.Text = choice.Drive;
         LabelText.Text = DisplayText.Escape(choice.Label);
+        ToolTipService.SetToolTip(
+            LabelText,
+            $"{choice.Drive} {DisplayText.Escape(choice.Label)} · NTFS"
+        );
         RefreshVolume();
     }
 
@@ -67,9 +71,12 @@ public sealed partial class DriveCard : UserControl
         {
             var used = checked((UInt128)(current.Total.Value - current.Free.Value));
             UsageBar.Value = (double)used / current.Total.Value * 100;
-            UsageText.Text =
-                $"使用中 {DisplayText.Bytes(used)} / 合計 {DisplayText.Bytes((UInt128)current.Total.Value)}";
+            UsageText.Text = DisplayText.CapacityRatio(used, (UInt128)current.Total.Value);
             FreeText.Text = $"空き {DisplayText.Bytes((UInt128)current.Free.Value)}";
+            ToolTipService.SetToolTip(
+                UsageText,
+                $"使用中 {DisplayText.Bytes(used)} / 合計 {DisplayText.Bytes((UInt128)current.Total.Value)}"
+            );
         }
         else
         {
@@ -81,14 +88,12 @@ public sealed partial class DriveCard : UserControl
 
     internal void SetSelected(bool selected)
     {
-        Width = selected ? 500 : 280;
-        ScanDetails.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
-        CompactStateText.Visibility = selected ? Visibility.Collapsed : Visibility.Visible;
-        SelectedIcon.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
-        CardButton.BorderBrush = (Brush)
-            Microsoft.UI.Xaml.Application.Current.Resources[
-                selected ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"
-            ];
+        if (selectedState == selected)
+            return;
+        selectedState = selected;
+        // This outline is outside Button's visual states, so PointerOver/Pressed
+        // cannot replace it. Selection does not change the card's background.
+        SelectionOutline.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             CardButton,
             $"{Choice.Drive} {Choice.Label}{(selected ? " 選択中" : "")}"
@@ -97,9 +102,11 @@ public sealed partial class DriveCard : UserControl
 
     internal void SetResult(ScanSession? result)
     {
-        FilesText.Text =
-            $"ファイル数 {result?.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}";
-        SetState(
+        ScanStateText.Text = result is null
+            ? "未スキャン"
+            : $"✓ スキャン済み · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件";
+        ToolTipService.SetToolTip(
+            ScanStateText,
             result is null ? "未スキャン" : $"スキャン完了 · {result.Elapsed.TotalSeconds:F1}秒"
         );
     }
@@ -107,14 +114,12 @@ public sealed partial class DriveCard : UserControl
     internal void SetState(string text)
     {
         ScanStateText.Text = text;
-        CompactStateText.Text = text;
+        ToolTipService.SetToolTip(ScanStatus, text);
     }
 
-    internal void SetProgress(bool scanning, double? fraction = null)
+    internal void SetProgress(bool scanning)
     {
-        ScanProgressBar.Visibility = scanning ? Visibility.Visible : Visibility.Collapsed;
-        ScanProgressBar.IsIndeterminate = scanning && fraction is null;
-        if (fraction is { } value)
-            ScanProgressBar.Value = value * 100;
+        ScanSpinner.Visibility = scanning ? Visibility.Visible : Visibility.Collapsed;
+        ScanSpinner.IsActive = scanning;
     }
 }

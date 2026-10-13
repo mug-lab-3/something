@@ -41,6 +41,22 @@ internal sealed record FolderNode(
 
 internal static class DisplayText
 {
+    internal static string CapacityRatio(UInt128 used, UInt128 total)
+    {
+        string[] units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+        double size = (double)total;
+        double divisor = 1;
+        int unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            divisor *= 1024;
+            unit++;
+        }
+        string format = unit == 0 ? "N0" : "N2";
+        return $"{((double)used / divisor).ToString(format, CultureInfo.CurrentCulture)} / {size.ToString(format, CultureInfo.CurrentCulture)} {units[unit]}";
+    }
+
     internal static string Escape(string text) =>
         string.Concat(
             text.Select(c =>

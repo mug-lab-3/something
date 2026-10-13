@@ -163,6 +163,9 @@ public sealed partial class MainWindow : Window
                 throw new InvalidOperationException(MessageBar.Message);
             await Task.Delay(350, lifetime.Token);
             RootLayout.UpdateLayout();
+            DriveScroll.Width = 620;
+            RootLayout.UpdateLayout();
+            await Task.Delay(100, lifetime.Token);
             if (DriveScroll.ScrollableWidth <= 0 || DriveScroll.ScrollableHeight > 0)
                 throw new InvalidOperationException(
                     "Drive cards must scroll horizontally in one row."
@@ -173,6 +176,8 @@ public sealed partial class MainWindow : Window
                 throw new InvalidOperationException("Drive cards did not scroll.");
             DriveScroll.ChangeView(0, null, null, true);
             await Task.Delay(100, lifetime.Token);
+            DriveScroll.ClearValue(FrameworkElement.WidthProperty);
+            RootLayout.UpdateLayout();
             if (
                 FindContextFolder(Folders.ContainerFromNode(projects))?.Location.Path
                 != "Demo\\Projects"
@@ -181,6 +186,19 @@ public sealed partial class MainWindow : Window
                     "Tree context target did not resolve its own path."
                 );
             var bitmap = new RenderTargetBitmap();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-progress"))
+            {
+                var button = (Button)cards[0].FindName("CardButton");
+                VisualStateManager.GoToState(button, "PointerOver", false);
+                if (
+                    ((Border)cards[0].FindName("SelectionOutline")).Visibility != Visibility.Visible
+                )
+                    throw new InvalidOperationException("Hover hid the selection outline.");
+                SetBusy(true);
+                UpdateProgress(new(ScanPhase.Reading, 4, 0.42, TimeSpan.FromSeconds(5)));
+                await Task.Delay(200, lifetime.Token);
+                RootLayout.UpdateLayout();
+            }
             await bitmap.RenderAsync(RootLayout);
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");
@@ -361,6 +379,8 @@ public sealed partial class MainWindow : Window
         LeafBox.IsEnabled = !value;
         SizeModeBox.IsEnabled = !value;
         selectedCard?.SetProgress(value);
+        if (value)
+            selectedCard?.SetState("準備中");
     }
 
     private void UpdateProgress(ScanProgress progress)
@@ -372,7 +392,7 @@ public sealed partial class MainWindow : Window
             || progress.Phase == ScanPhase.Completed
         )
             return;
-        selectedCard?.SetProgress(true, progress.Fraction);
+        selectedCard?.SetProgress(true);
         string phase = progress.Phase switch
         {
             ScanPhase.Reading => "メタデータを取得中",
@@ -383,7 +403,18 @@ public sealed partial class MainWindow : Window
         };
         StatusText.Text =
             $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
-        selectedCard?.SetState($"{phase} · {progress.Elapsed.TotalSeconds:F1}秒");
+        selectedCard?.SetState(
+            progress.Phase switch
+            {
+                ScanPhase.Reading when progress.Fraction is { } fraction =>
+                    $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
+                ScanPhase.Reading => "走査中",
+                ScanPhase.Aggregating => "集計中",
+                ScanPhase.Saving => "保存中",
+                ScanPhase.WritingSnapshot => "書き出し中",
+                _ => "スキャン完了",
+            }
+        );
     }
 
     private async Task LoadPageAsync(FolderLocation target, int targetPage, bool addHistory)
