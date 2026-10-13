@@ -356,6 +356,13 @@
           "xunit.v3.runner.common": "[4.0.2]"
         }
       },
+      "something.application": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Storage": "[1.0.0, )",
+          "Something.Windows": "[1.0.0, )"
+        }
+      },
       "something.ntfs": {
         "type": "Project"
       },

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Something.Windows/Something.Windows.csproj" />
+    <ProjectReference Include="../Something.Storage/Something.Storage.csproj" />
+  </ItemGroup>
+</Project>

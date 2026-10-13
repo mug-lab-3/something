@@ -1,0 +1,302 @@
+<Window
+  x:Class="Something.App.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+  <Grid
+    x:Name="RootLayout"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Padding="24"
+    RowSpacing="16"
+  >
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <StackPanel Orientation="Horizontal" Spacing="16">
+      <FontIcon Glyph="&#xE8B7;" FontSize="28" VerticalAlignment="Center" />
+      <StackPanel>
+        <TextBlock Text="Something" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock
+          Text="ドライブの容量を見渡す"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        />
+      </StackPanel>
+    </StackPanel>
+    <Grid Grid.Row="1" ColumnSpacing="12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="300" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <ComboBox
+        x:Name="DriveBox"
+        Header="NTFSドライブ"
+        HorizontalAlignment="Stretch"
+        AutomationProperties.Name="スキャンするドライブ"
+      />
+      <Button
+        x:Name="ScanButton"
+        Grid.Column="1"
+        Content="スキャン開始"
+        Click="OnScan"
+        VerticalAlignment="Bottom"
+        Style="{StaticResource AccentButtonStyle}"
+      />
+      <Button
+        x:Name="CancelButton"
+        Grid.Column="2"
+        Content="キャンセル"
+        Click="OnCancel"
+        VerticalAlignment="Bottom"
+        IsEnabled="False"
+      />
+      <TextBlock
+        Grid.Column="3"
+        Text="ドライブ全体を読み取り専用で調査"
+        VerticalAlignment="Bottom"
+        Margin="12,0,0,10"
+        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+      />
+    </Grid>
+    <Grid Grid.Row="2" ColumnSpacing="12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border
+        CornerRadius="8"
+        Padding="16"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+      >
+        <StackPanel Spacing="4">
+          <TextBlock Text="フォルダ内の割り当て（名前別）" />
+          <TextBlock x:Name="AllocatedText" Text="—" FontSize="26" FontWeight="SemiBold" />
+        </StackPanel>
+      </Border>
+      <Border
+        Grid.Column="1"
+        CornerRadius="8"
+        Padding="16"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+      >
+        <StackPanel Spacing="4">
+          <TextBlock Text="論理サイズ（名前別）" />
+          <TextBlock x:Name="LogicalText" Text="—" FontSize="26" FontWeight="SemiBold" />
+        </StackPanel>
+      </Border>
+      <Border
+        Grid.Column="2"
+        CornerRadius="8"
+        Padding="16"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+      >
+        <StackPanel Spacing="4">
+          <TextBlock Text="ファイル名の数" />
+          <TextBlock x:Name="CountText" Text="—" FontSize="26" FontWeight="SemiBold" />
+        </StackPanel>
+      </Border>
+    </Grid>
+    <StackPanel Grid.Row="3" Spacing="8">
+      <ProgressBar x:Name="ScanProgressBar" Maximum="100" Value="0" />
+      <TextBlock
+        x:Name="StatusText"
+        Text="ドライブを選んでスキャンを開始してください。取得には管理者権限が必要です。"
+        TextWrapping="Wrap"
+      />
+    </StackPanel>
+    <Grid Grid.Row="4" ColumnSpacing="16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="290" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border
+        CornerRadius="8"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        BorderThickness="1"
+        Padding="8"
+      >
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <TextBlock Text="フォルダ" FontWeight="SemiBold" Margin="8,6,8,12" />
+          <TreeView
+            x:Name="Folders"
+            Grid.Row="1"
+            SelectionMode="Single"
+            Expanding="OnExpanding"
+            ItemInvoked="OnFolderInvoked"
+          />
+        </Grid>
+      </Border>
+      <TabView Grid.Column="1" IsAddTabButtonVisible="False">
+        <TabViewItem Header="フォルダ内" IsClosable="False">
+          <Grid Padding="12" RowSpacing="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="180" />
+              </Grid.ColumnDefinitions>
+              <Button x:Name="BackButton" Content="戻る" Click="OnBack" IsEnabled="False" />
+              <TextBlock
+                x:Name="PathText"
+                Grid.Column="1"
+                Text="未スキャン"
+                VerticalAlignment="Center"
+                TextTrimming="CharacterEllipsis"
+                ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
+              />
+              <ComboBox
+                x:Name="SortBox"
+                SelectedIndex="0"
+                SelectionChanged="OnContentSortChanged"
+                HorizontalAlignment="Stretch"
+                Width="180"
+                Grid.Column="2"
+              >
+                <ComboBoxItem Content="割り当て容量順" />
+                <ComboBoxItem Content="論理サイズ順" />
+              </ComboBox>
+            </Grid>
+            <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="65" />
+                <ColumnDefinition Width="110" />
+                <ColumnDefinition Width="110" />
+                <ColumnDefinition Width="120" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="名前" />
+              <TextBlock Grid.Column="1" Text="種類" />
+              <TextBlock Grid.Column="2" Text="割り当て" />
+              <TextBlock Grid.Column="3" Text="論理サイズ" />
+              <TextBlock Grid.Column="4" Text="状態" />
+            </Grid>
+            <ListView
+              x:Name="Entries"
+              Grid.Row="2"
+              DoubleTapped="OnEntryInvoked"
+              SelectionMode="Single"
+            >
+              <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:EntryRow" xmlns:local="using:Something.App">
+                  <Grid ColumnSpacing="12" Padding="0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="65" />
+                      <ColumnDefinition Width="110" />
+                      <ColumnDefinition Width="110" />
+                      <ColumnDefinition Width="120" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                      Text="{x:Bind Name}"
+                      TextTrimming="CharacterEllipsis"
+                      ToolTipService.ToolTip="{x:Bind Name}"
+                    />
+                    <TextBlock Grid.Column="1" Text="{x:Bind Kind}" />
+                    <TextBlock Grid.Column="2" Text="{x:Bind Allocated}" />
+                    <TextBlock Grid.Column="3" Text="{x:Bind Logical}" />
+                    <TextBlock
+                      Grid.Column="4"
+                      Text="{x:Bind State}"
+                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    />
+                  </Grid>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12">
+              <Button
+                x:Name="PreviousButton"
+                Content="前のページ"
+                Click="OnPrevious"
+                IsEnabled="False"
+              />
+              <TextBlock x:Name="PageText" Text="" VerticalAlignment="Center" />
+              <Button x:Name="NextButton" Content="次のページ" Click="OnNext" IsEnabled="False" />
+            </StackPanel>
+          </Grid>
+        </TabViewItem>
+        <TabViewItem Header="容量ランキング" IsClosable="False">
+          <Grid Padding="12" RowSpacing="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <ComboBox
+                x:Name="DepthBox"
+                Header="深さ"
+                SelectionChanged="OnRankingFilterChanged"
+                SelectedIndex="0"
+              >
+                <ComboBoxItem Content="すべて" />
+                <ComboBoxItem Content="直下（1）" />
+                <ComboBoxItem Content="2" />
+                <ComboBoxItem Content="3" />
+              </ComboBox>
+              <CheckBox
+                x:Name="LeafBox"
+                Content="最下位フォルダのみ"
+                Checked="OnLeafChanged"
+                Unchecked="OnLeafChanged"
+                VerticalAlignment="Bottom"
+              />
+            </StackPanel>
+            <ListView x:Name="Ranking" Grid.Row="1" DoubleTapped="OnRankInvoked">
+              <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:RankingRow" xmlns:local="using:Something.App">
+                  <Grid Padding="0,8" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="110" />
+                      <ColumnDefinition Width="110" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                      Text="{x:Bind Path}"
+                      TextTrimming="CharacterEllipsis"
+                      ToolTipService.ToolTip="{x:Bind Path}"
+                    />
+                    <TextBlock Grid.Column="1" Text="{x:Bind Allocated}" />
+                    <TextBlock Grid.Column="2" Text="{x:Bind Logical}" />
+                  </Grid>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+          </Grid>
+        </TabViewItem>
+      </TabView>
+    </Grid>
+    <StackPanel Grid.Row="5" Spacing="8">
+      <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True" />
+      <TextBlock
+        Text="フォルダはサブフォルダ込み。ハードリンクは名前ごとに計上し、リンク先はたどりません。結果はアプリ終了時に破棄されます。"
+        TextWrapping="Wrap"
+        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        FontSize="12"
+      />
+    </StackPanel>
+  </Grid>
+</Window>

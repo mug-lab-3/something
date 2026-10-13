@@ -1,0 +1,481 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Something.Application;
+using Something.Ntfs;
+using Something.Storage;
+using Windows.Graphics.Imaging;
+
+namespace Something.App;
+
+public sealed partial class MainWindow : Window
+{
+    private readonly CancellationTokenSource lifetime = new();
+    private readonly DriveScanner scanner = new();
+    private readonly Stack<FolderLocation> navigation = [];
+    private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
+    private CancellationTokenSource? scanCancellation;
+    private ScanSession? session;
+    private FolderLocation? location;
+    private int page;
+    private int navigationVersion;
+    private int rankingVersion;
+    private bool busy;
+    private bool closed;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        Title = "Something";
+        AppWindow.Resize(new(1280, 900));
+        RootLayout.Loaded += (_, _) =>
+        {
+            double scale = RootLayout.XamlRoot.RasterizationScale;
+            var workArea = Microsoft
+                .UI.Windowing.DisplayArea.GetFromWindowId(
+                    AppWindow.Id,
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Primary
+                )
+                .WorkArea;
+            AppWindow.Resize(
+                new(
+                    Math.Min((int)Math.Ceiling(1280 * scale), (int)(workArea.Width * 0.95)),
+                    Math.Min((int)Math.Ceiling(900 * scale), (int)(workArea.Height * 0.95))
+                )
+            );
+        };
+        DriveBox.ItemsSource = demo ? ["Demo（合成データ）"] : LocalDrives();
+        DriveBox.SelectedIndex = DriveBox.Items.Count > 0 ? 0 : -1;
+        ScanButton.IsEnabled = DriveBox.SelectedIndex >= 0;
+        Closed += OnClosed;
+        if (demo)
+        {
+            StatusText.Text = "デモモード。実ディスクやファイルは読み取りません。";
+            RootLayout.Loaded += async (_, _) =>
+            {
+                await StartScanAsync();
+                var arguments = Environment.GetCommandLineArgs();
+                int smoke = Array.IndexOf(arguments, "--smoke-test");
+                if (smoke >= 0 && smoke + 1 < arguments.Length)
+                    await CaptureSmokeTestAsync(arguments[smoke + 1]);
+            };
+        }
+    }
+
+    private async Task CaptureSmokeTestAsync(string path)
+    {
+        try
+        {
+            if (
+                session is null
+                || Entries.Items.Count != 3
+                || Ranking.Items.Count != 3
+                || MessageBar.IsOpen
+            )
+                throw new InvalidOperationException(
+                    $"Demo UI did not load: session={session is not null}; entries={Entries.Items.Count}; ranking={Ranking.Items.Count}; error={MessageBar.Title}: {MessageBar.Message}"
+                );
+            var rootLocation = location!;
+            var projects = Folders
+                .RootNodes[0]
+                .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
+            await LoadChildrenAsync(projects, 0);
+            if (projects.Children.Count != 1)
+                throw new InvalidOperationException("Lazy folder children did not load.");
+            await LoadPageAsync(((FolderNode)projects.Content).Location, 0, true);
+            if (Entries.Items.Count != 2 || navigation.Count != 1)
+                throw new InvalidOperationException("Folder navigation did not load.");
+            DepthBox.SelectedIndex = 1;
+            await LoadRankingAsync();
+            if (Ranking.Items.Count != 2)
+                throw new InvalidOperationException("Depth filtering did not apply.");
+            LeafBox.IsChecked = true;
+            await LoadRankingAsync();
+            if (Ranking.Items.Count != 1)
+                throw new InvalidOperationException("Leaf filtering did not apply.");
+            DepthBox.SelectedIndex = 0;
+            LeafBox.IsChecked = false;
+            await LoadRankingAsync();
+            navigation.Clear();
+            await LoadPageAsync(rootLocation, 0, false);
+            if (MessageBar.IsOpen)
+                throw new InvalidOperationException(MessageBar.Message);
+            await Task.Delay(350, lifetime.Token);
+            RootLayout.UpdateLayout();
+            var bitmap = new RenderTargetBitmap();
+            await bitmap.RenderAsync(RootLayout);
+            if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
+                throw new InvalidOperationException("The UI did not render.");
+            var pixels = (await bitmap.GetPixelsAsync()).ToArray();
+            using var file = File.Open(path, FileMode.Create, FileAccess.ReadWrite);
+            using var output = file.AsRandomAccessStream();
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, output);
+            encoder.SetPixelData(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied,
+                (uint)bitmap.PixelWidth,
+                (uint)bitmap.PixelHeight,
+                96,
+                96,
+                pixels
+            );
+            await encoder.FlushAsync();
+            File.WriteAllText(
+                path + ".result",
+                "UI loaded; root entries=3; ranking=3; navigation, lazy tree and filters passed; synthetic data only."
+            );
+        }
+        catch (Exception error)
+        {
+            File.WriteAllText(path + ".result", error.ToString());
+            Environment.ExitCode = 1;
+        }
+        finally
+        {
+            Close();
+        }
+    }
+
+    private static string[] LocalDrives()
+    {
+        var drives = new List<string>();
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (
+                    drive.DriveType == DriveType.Fixed
+                    && drive.IsReady
+                    && drive.DriveFormat == "NTFS"
+                )
+                    drives.Add(drive.Name[..2]);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+        return [.. drives];
+    }
+
+    private async void OnScan(object sender, RoutedEventArgs e) => await StartScanAsync();
+
+    private void OnCancel(object sender, RoutedEventArgs e) => scanCancellation?.Cancel();
+
+    private async Task StartScanAsync()
+    {
+        if (busy || closed || DriveBox.SelectedItem is not string drive)
+            return;
+        SetBusy(true);
+        MessageBar.IsOpen = false;
+        scanCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        var progress = new Progress<ScanProgress>(UpdateProgress);
+        try
+        {
+            var next = demo
+                ? await scanner.CreateDemoAsync(progress, scanCancellation.Token)
+                : await scanner.ScanAsync(drive, progress, scanCancellation.Token);
+            if (closed)
+            {
+                await next.DisposeAsync();
+                return;
+            }
+            if (session is { } previous)
+                await previous.DisposeAsync();
+            session = next;
+            navigation.Clear();
+            Folders.RootNodes.Clear();
+            location = new(next.Root, next.Drive + "\\");
+            var root = new TreeViewNode
+            {
+                Content = new FolderNode(next.Drive, location),
+                HasUnrealizedChildren = true,
+            };
+            Folders.RootNodes.Add(root);
+            AllocatedText.Text = DisplayText.Bytes(
+                next.RootSample.Entries?.SubtreeData.AllocatedBytes
+            );
+            LogicalText.Text = DisplayText.Bytes(next.RootSample.Entries?.SubtreeData.LogicalBytes);
+            CountText.Text = next.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "未解決";
+            StatusText.Text =
+                $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
+            ScanProgressBar.IsIndeterminate = false;
+            ScanProgressBar.Value = 100;
+            await LoadPageAsync(location, 0, false);
+            await LoadChildrenAsync(root, 0);
+            root.IsExpanded = true;
+            await LoadRankingAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            if (!closed)
+                StatusText.Text = "キャンセルしました。前の結果は保持しています。";
+        }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+        finally
+        {
+            scanCancellation.Dispose();
+            scanCancellation = null;
+            if (!closed)
+                SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool value)
+    {
+        busy = value;
+        DriveBox.IsEnabled = !value;
+        ScanButton.IsEnabled = !value && DriveBox.SelectedIndex >= 0;
+        CancelButton.IsEnabled = value;
+        Folders.IsEnabled = !value;
+        Entries.IsEnabled = !value;
+        Ranking.IsEnabled = !value;
+        DepthBox.IsEnabled = !value;
+        LeafBox.IsEnabled = !value;
+        SortBox.IsEnabled = !value;
+        if (!value)
+            ScanProgressBar.IsIndeterminate = false;
+    }
+
+    private void UpdateProgress(ScanProgress progress)
+    {
+        if (
+            closed
+            || !busy
+            || scanCancellation?.IsCancellationRequested == true
+            || progress.Phase == ScanPhase.Completed
+        )
+            return;
+        ScanProgressBar.IsIndeterminate = progress.Fraction is null;
+        if (progress.Fraction is { } fraction)
+            ScanProgressBar.Value = fraction * 100;
+        string phase = progress.Phase switch
+        {
+            ScanPhase.Reading => "メタデータを取得中",
+            ScanPhase.Aggregating => "フォルダ容量を集計中",
+            ScanPhase.Saving => "結果を保存中",
+            ScanPhase.WritingSnapshot => "結果をファイルへ書き出し中",
+            _ => "スキャン完了",
+        };
+        StatusText.Text =
+            $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
+    }
+
+    private async Task LoadPageAsync(FolderLocation target, int targetPage, bool addHistory)
+    {
+        if (session is not { } current || closed)
+            return;
+        int version = ++navigationVersion;
+        try
+        {
+            var result = await current.ReadFolderAsync(
+                target.Reference,
+                targetPage,
+                false,
+                lifetime.Token,
+                sort: SortBox.SelectedIndex == 1
+                    ? FolderEntrySort.LogicalBytes
+                    : FolderEntrySort.AllocatedBytes
+            );
+            if (closed || version != navigationVersion || session != current)
+                return;
+            if (addHistory && location is { } previous && previous != target)
+                navigation.Push(previous);
+            location = target;
+            page = targetPage;
+            PathText.Text = DisplayText.Escape(target.Path);
+            Entries.ItemsSource = result.Entries.Select(e => new EntryRow(e)).ToArray();
+            PageText.Text = $"{page + 1} ページ · {result.Entries.Length} 件";
+            PreviousButton.IsEnabled = page > 0;
+            NextButton.IsEnabled = result.HasMore;
+            BackButton.IsEnabled = navigation.Count > 0;
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            if (session == current)
+                ShowError(error);
+        }
+    }
+
+    private async Task LoadChildrenAsync(TreeViewNode parent, int nextPage)
+    {
+        if (session is not { } current || parent.Content is not FolderNode folder || closed)
+            return;
+        parent.HasUnrealizedChildren = false;
+        try
+        {
+            var result = await current.ReadFolderAsync(
+                folder.Location.Reference,
+                nextPage,
+                true,
+                lifetime.Token
+            );
+            if (closed || session != current)
+                return;
+            if (parent.Children.LastOrDefault()?.Content is FolderNode { LoadMore: true })
+                parent.Children.RemoveAt(parent.Children.Count - 1);
+            foreach (var entry in result.Entries)
+                parent.Children.Add(
+                    new TreeViewNode
+                    {
+                        Content = new FolderNode(
+                            entry.Name,
+                            new(
+                                entry.Reference,
+                                folder.Location.Path.TrimEnd('\\') + "\\" + entry.Name
+                            )
+                        ),
+                        HasUnrealizedChildren = true,
+                    }
+                );
+            if (result.HasMore)
+                parent.Children.Add(
+                    new TreeViewNode
+                    {
+                        Content = new FolderNode(
+                            "さらに読み込む…",
+                            folder.Location,
+                            nextPage + 1,
+                            true
+                        ),
+                    }
+                );
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            parent.HasUnrealizedChildren = true;
+            ShowError(error);
+        }
+    }
+
+    private async void OnExpanding(TreeView sender, TreeViewExpandingEventArgs args)
+    {
+        if (args.Node.HasUnrealizedChildren)
+            await LoadChildrenAsync(args.Node, 0);
+    }
+
+    private async void OnFolderInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItem is not TreeViewNode node || node.Content is not FolderNode folder)
+            return;
+        if (folder.LoadMore && node.Parent is { } parent)
+            await LoadChildrenAsync(parent, folder.NextPage);
+        else
+            await LoadPageAsync(folder.Location, 0, true);
+    }
+
+    private async void OnEntryInvoked(object sender, DoubleTappedRoutedEventArgs args)
+    {
+        if (
+            location is { } parent
+            && Entries.SelectedItem is EntryRow { Entry.CanBrowse: true } row
+        )
+            await LoadPageAsync(
+                new(row.Entry.Reference, parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name),
+                0,
+                true
+            );
+    }
+
+    private async void OnBack(object sender, RoutedEventArgs args)
+    {
+        if (navigation.TryPop(out var previous))
+            await LoadPageAsync(previous, 0, false);
+    }
+
+    private async void OnContentSortChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!busy && location is { } target && session is not null)
+            await LoadPageAsync(target, 0, false);
+    }
+
+    private async void OnPrevious(object sender, RoutedEventArgs args)
+    {
+        if (location is { } target && page > 0)
+            await LoadPageAsync(target, page - 1, false);
+    }
+
+    private async void OnNext(object sender, RoutedEventArgs args)
+    {
+        if (location is { } target)
+            await LoadPageAsync(target, page + 1, false);
+    }
+
+    private async void OnRankingFilterChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!busy && session is not null)
+            await LoadRankingAsync();
+    }
+
+    private async void OnLeafChanged(object sender, RoutedEventArgs args)
+    {
+        if (!busy && session is not null)
+            await LoadRankingAsync();
+    }
+
+    private async Task LoadRankingAsync()
+    {
+        if (session is not { } current || closed)
+            return;
+        int version = ++rankingVersion;
+        try
+        {
+            var rows = await current.ReadLargestAsync(
+                new(
+                    DepthBox.SelectedIndex == 0 ? null : DepthBox.SelectedIndex,
+                    LeafBox.IsChecked == true
+                ),
+                lifetime.Token
+            );
+            if (closed || version != rankingVersion || current != session)
+                return;
+            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive)).ToArray();
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+    }
+
+    private async void OnRankInvoked(object sender, DoubleTappedRoutedEventArgs args)
+    {
+        if (session is { } current && Ranking.SelectedItem is RankingRow row)
+            await LoadPageAsync(
+                new(row.Entry.Sample.Reference, current.Drive + "\\" + row.Entry.RelativePath),
+                0,
+                true
+            );
+    }
+
+    private void ShowError(Exception error)
+    {
+        if (closed)
+            return;
+        bool denied =
+            error is UnauthorizedAccessException
+            || error.InnerException is Win32Exception { NativeErrorCode: 5 };
+        MessageBar.Title = denied
+            ? "スキャンには管理者権限が必要です"
+            : "処理を完了できませんでした";
+        MessageBar.Message = denied
+            ? "管理者として開いたPowerShellからアプリを起動してください。ドライブへのアクセスは読み取り専用です。"
+            : error.Message;
+        MessageBar.Severity = InfoBarSeverity.Error;
+        MessageBar.IsOpen = true;
+    }
+
+    private async void OnClosed(object sender, WindowEventArgs args)
+    {
+        closed = true;
+        lifetime.Cancel();
+        scanCancellation?.Cancel();
+        if (session is { } current)
+            await current.DisposeAsync();
+    }
+}

@@ -1,7 +1,7 @@
 # Something
 
 容量履歴の保存にはSQLite + EF Coreを採用し、保守性を優先してLINQと型付きモデルを使います。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存基盤と一時DBによるフォルダ容量の上位5件表示を実装しています。履歴DBへの保存・履歴比較はまだ接続していません。
-フォルダ容量・共有ファイル・管理領域・肥大化比較の設計は [docs/statistics-design.md](docs/statistics-design.md) を参照してください。フォルダ表示は無名DATAを可視ファイル名ごとに数え、ハードリンクも名前ごとに計上します。ディスク全体の確認用には共有DATAを共通祖先へ一度だけ帰属した値も維持します。ライブ取得・統計・保存基盤とCLIランキングを実装しました。UI、種別分類、履歴比較は未実装です。
+フォルダ容量・共有ファイル・管理領域・肥大化比較の設計は [docs/statistics-design.md](docs/statistics-design.md) を参照してください。フォルダ表示は無名DATAを可視ファイル名ごとに数え、ハードリンクも名前ごとに計上します。ディスク全体の確認用には共有DATAを共通祖先へ一度だけ帰属した値も維持します。ライブ取得・統計・保存基盤とCLIランキング、初期WinUI画面を実装しました。種別分類、履歴比較は未実装です。
 
 Everythingをもじった、Windows向けのディスク使用量・フォルダ肥大化分析アプリです。
 
@@ -14,7 +14,28 @@ Everythingをもじった、Windows向けのディスク使用量・フォルダ
 - MFTのメタデータをまとめて読み取り、ファイル・フォルダの階層と容量を集計。
 - スキャン・解析・集計をUIから独立させ、バックグラウンドで実行。
 - SSD / NVMe向けの最適化は、読み取り・解析・集計の時間を分けて計測して判断。
-- 低レベルのボリューム読み取りには管理者権限が必要。権限取得の構成は実装前に検討。
+- 低レベルのボリューム読み取りには管理者権限が必要。実行ファイルを開くとWindowsのUACで昇格を求める。
+
+## アプリの起動
+
+セットアップ後、実行ファイル `src\Something.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\Something.App.exe` を開くとUAC確認が表示されます。Releaseビルドの場合は `Debug` を `Release` に読み替えてください。
+
+CLIからの `dotnet run` は管理者PowerShellで実行してください。通常のPowerShellからは昇格が必要な実行ファイルを直接起動できないことがあります。実データを使わず画面を確認する場合も、同じ実行ファイルのため昇格が必要です。
+
+```powershell
+dotnet run --project src/Something.App -- --demo
+```
+
+実際のドライブを調べる場合は、管理者として開いたPowerShellで起動します。
+
+```powershell
+dotnet run --project src/Something.App
+```
+
+ドライブを選んで「スキャン開始」を押すと、読み取り専用でドライブ全体を調べます。進捗表示・キャンセル、フォルダツリー、ファイル一覧、サイズ順の並べ替え、階層／末端フォルダで絞り込む容量ランキングを利用できます。フォルダ指定のスキャンは行いません。結果は一時DBに保存し、終了時に破棄します。画面の設計・制限は [docs/ui-design.md](docs/ui-design.md) を参照してください。
+
+VS Codeの「タスクの実行」で `run app` / `run app demo`、デバッグ構成で `Something app` / `Something app (demo)` を選べます。
+アプリ起動・デバッグ時はVS Codeも管理者として起動してください。セットアップ・ビルド・単体テストには管理者権限は不要です。
 
 ## 計画している機能
 
@@ -63,6 +84,6 @@ UIから独立したMFT解析ライブラリ、オフライン検査CLI、xUnit.
 
 VS Code / CLIでの開発手順は [docs/development.md](docs/development.md)、解析の境界・ライブ変更への対応設計・制限は [docs/ntfs-design.md](docs/ntfs-design.md) を参照してください。
 
-読み取り専用Windows取得層と検証CLIを追加しています。実機の通常ファイル1件でMFTとWindows APIの論理サイズ一致を確認しました。範囲と手順は [docs/windows-acquisition.md](docs/windows-acquisition.md) を参照してください。全件走査の基準測定用CLIも追加しました。途中経過は5秒ごとに絞り、最後にまとめて表示します。手順と制限は [docs/scan-benchmark.md](docs/scan-benchmark.md) を参照してください。MFT一括取得による高速化、USN追跡、統計履歴、GUIは今後の実装です。
+読み取り専用Windows取得層と検証CLIを追加しています。実機の通常ファイル1件でMFTとWindows APIの論理サイズ一致を確認しました。範囲と手順は [docs/windows-acquisition.md](docs/windows-acquisition.md) を参照してください。全件走査の基準測定用CLIも追加しました。途中経過は5秒ごとに絞り、最後にまとめて表示します。手順と制限は [docs/scan-benchmark.md](docs/scan-benchmark.md) を参照してください。USN追跡、統計履歴は今後の実装です。
 
 NISTの公開NTFSイメージ7件を使った追加検証を用意しています。利用条件、取得元、検査結果、再実行方法は [docs/public-corpus.md](docs/public-corpus.md) を参照してください。ダンプはGitへ含めません。

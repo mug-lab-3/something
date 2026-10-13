@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Something.App/Something.App.csproj" />
+    <Project Path="src/Something.Application/Something.Application.csproj" />
     <Project Path="src/Something.Ntfs/Something.Ntfs.csproj" />
     <Project Path="src/Something.Statistics/Something.Statistics.csproj" />
     <Project Path="src/Something.Storage/Something.Storage.csproj" />

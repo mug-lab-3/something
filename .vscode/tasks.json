@@ -2,6 +2,22 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "run app",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "src/Something.App"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run app demo",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "src/Something.App", "--", "--demo"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "format",
       "type": "process",
       "command": "dotnet",

@@ -2,6 +2,26 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Something app",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Something.App/bin/Debug/net10.0-windows10.0.26100.0/win-x64/Something.App.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    },
+    {
+      "name": "Something app (demo)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Something.App/bin/Debug/net10.0-windows10.0.26100.0/win-x64/Something.App.dll",
+      "args": ["--demo"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    },
+    {
       "name": "Inspect raw MFT dump",
       "type": "coreclr",
       "request": "launch",

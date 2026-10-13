@@ -7,6 +7,7 @@
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/Something.Application/Something.Application.csproj" />
     <None
       Include="../../tests/fixtures/nist-corpus.json"
       Link="nist-corpus.json"

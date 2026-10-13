@@ -1636,6 +1636,139 @@ public sealed class ScanStoreTests
         Assert.False(System.IO.File.Exists(path));
     }
 
+    [Fact]
+    public void FolderContents_PreserveAliasesUnknownSizesAndParentSequenceWhilePaging()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        foreach (var fact in BasicFacts())
+            buffer.Add(fact, token);
+        var named = File(110, 10, Root) with
+        {
+            Names =
+            [
+                new(Root, "日本語😀", FileNameNamespace.Win32, 0),
+                new(Root, "SHORT~1", FileNameNamespace.Dos, 0),
+            ],
+            Streams = [new("", 10, 4096), new("extra", 10000, 16384)],
+        };
+        var unknown = File(111, 0, Root) with
+        {
+            Resolution = CapacityResolution.Unresolved,
+            Streams = [],
+        };
+        var reusedParent = File(112, 500, Ref(5, 2));
+        buffer.Add(Stage(named), token);
+        buffer.Add(Stage(unknown), token);
+        buffer.Add(Stage(reusedParent), token);
+        buffer.Complete(token);
+        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+
+        var first = fixture.Store.ReadFolderEntries(
+            id,
+            Root,
+            pageSize: 2,
+            cancellationToken: token
+        );
+        var second = fixture.Store.ReadFolderEntries(
+            id,
+            Root,
+            page: 1,
+            pageSize: 2,
+            cancellationToken: token
+        );
+
+        Assert.True(first.HasMore);
+        Assert.All(
+            first.Entries,
+            e =>
+            {
+                Assert.True(e.IsDirectory);
+                Assert.True(e.CanBrowse);
+            }
+        );
+        Assert.False(second.HasMore);
+        Assert.Equal(2, second.Entries.Length);
+        var found = second.Entries.Single(e => e.Reference == named.Reference);
+        Assert.Equal("日本語😀", found.Name);
+        Assert.Equal(new CapacityAmount(10, 4096), found.Data);
+        var unresolved = second.Entries.Single(e => e.Reference == unknown.Reference);
+        Assert.Null(unresolved.Data);
+        Assert.True(unresolved.CapacityIncomplete);
+        Assert.DoesNotContain(
+            first.Entries.Concat(second.Entries),
+            e => e.Reference == reusedParent.Reference
+        );
+        Assert.Equal(
+            2,
+            fixture
+                .Store.ReadFolderEntries(id, Root, directoriesOnly: true, cancellationToken: token)
+                .Entries.Length
+        );
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Store.ReadFolderEntries(id, Ref(5, 2), cancellationToken: token)
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            fixture.Store.ReadFolderEntries(id, Root, page: -1, cancellationToken: token)
+        );
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Store.ReadFolderEntries(id, Root, cancellationToken: cancelled.Token)
+        );
+    }
+
+    [Fact]
+    public void FolderContents_SortSizesBeforePagingAndKeepKnownZeroAheadOfUnknown()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor());
+        buffer.Add(Stage(Directory(5, Root)), token);
+        buffer.Add(Stage(File(100, 0, Root) with { Streams = [new("", 9000, 4096)] }), token);
+        buffer.Add(Stage(File(101, 0, Root) with { Streams = [new("", 100, 8192)] }), token);
+        buffer.Add(Stage(File(102, 0, Root) with { Streams = [new("ads", 100000, 4096)] }), token);
+        buffer.Add(
+            Stage(
+                File(103, 0, Root) with
+                {
+                    Resolution = CapacityResolution.Unresolved,
+                    Streams = [],
+                }
+            ),
+            token
+        );
+        buffer.Complete(token);
+        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+
+        var allocated = fixture.Store.ReadFolderEntries(
+            id,
+            Root,
+            pageSize: 1,
+            cancellationToken: token
+        );
+        var logical = fixture.Store.ReadFolderEntries(
+            id,
+            Root,
+            pageSize: 1,
+            cancellationToken: token,
+            sort: FolderEntrySort.LogicalBytes
+        );
+        var tail = fixture.Store.ReadFolderEntries(
+            id,
+            Root,
+            page: 1,
+            pageSize: 2,
+            cancellationToken: token
+        );
+
+        Assert.Equal(Ref(101), Assert.Single(allocated.Entries).Reference);
+        Assert.Equal(Ref(100), Assert.Single(logical.Entries).Reference);
+        Assert.Equal(new CapacityAmount(0, 0), tail.Entries[0].Data);
+        Assert.Null(tail.Entries[1].Data);
+    }
+
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource
     {
         public MftRecordEncoding Encoding => MftRecordEncoding.RawProtected;

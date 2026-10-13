@@ -1,0 +1,41 @@
+# 初期WinUI画面
+
+スキャン対象はドライブ全体。固定ローカルNTFSドライブを選び、手動で開始する。フォルダ指定スキャンは提供しない。フォルダへの移動は完了した同一スキャン結果の閲覧であり、再スキャンではない。
+
+## 構成
+
+- `Something.App`: WinUI 3の画面と表示モデル。Windows App SDK 1.8の保守版を固定する。
+- `Something.Application`: 読み取り、集計、DB公開をバックグラウンドで実行する `DriveScanner` と、結果を所有する `ScanSession`。
+- 既存のWindows取得、NTFS解析、統計、EF Core保存を再利用する。画面からディスク書き込みAPIを呼ばない。
+
+.NET CLIだけでXAMLを含むビルドが可能。Windows App SDKのネイティブランタイムをNuGetからアプリ出力にコピーする、非パッケージ化構成を使う。Visual Studio、MSIX登録、開発者モード、別途のWindows App Runtimeインストールは前提にしない。.NETランタイムは開発セットアップで用意する。対象はx64 Windows 10 1809以降。
+
+既存のVS Code推奨拡張、CSharpier、セットアップスクリプトを使用する。SDKと依存パッケージは固定し、ロックファイルを含める。採用構成の参考はMicrosoftの [unpackaged WinUI CLI sample](https://github.com/microsoft/winappCli/tree/main/samples/winui-unpackaged-app)。
+
+## 動作と集計
+
+起動時はドライブ候補の確認だけを行い、自動スキャンしない。実スキャンでは既存の読み取り専用ボリュームハンドルを使用する。マニフェストは `requireAdministrator`。エクスプローラーから実行ファイルを開くとWindowsのUACで管理者権限を要求する。拒否した場合は起動しない。既に昇格済みの場合は追加の確認は不要。`dotnet run` とVS Codeデバッグは昇格済みのターミナル／VS Codeから実行する。
+
+高DPI対応はマニフェストで `PerMonitorV2` を宣言し、Windowsによるビットマップ拡大を防ぐ。初期ウィンドウサイズはXAMLの表示倍率から物理ピクセルに換算し、モニターの作業領域に収める。表示倍率の異なるモニター間の移動はWinUIのDPI対応を使用する。設定の根拠はMicrosoftの [DPI awareness](https://learn.microsoft.com/en-us/windows/win32/hidpi/setting-the-default-dpi-awareness-for-a-process) と [application manifests](https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests)。
+
+読み取り中は取得件数と進捗を更新する。集計・保存中は段階名と不定進捗アニメーションを表示する。キャンセル／失敗時は以前の結果を保持し、未完成のDBを公開しない。ウィンドウ終了でもキャンセルし、所有する一時DBを破棄する。履歴としての保存は次の実装段階。
+
+フォルダ容量はサブフォルダを含む名前別の無名DATA集計。ハードリンクは名前ごとに計上し、DOS別名は表示対象に含めない。ジャンクションやシンボリックリンクの参照先は辿らない。管理領域、名前付きストリーム、共有データの単一計上を含む物理的なドライブ使用量とは別の表示である。
+
+一覧は直下のファイル・フォルダを250件ずつ取得する。フォルダを先に並べ、割り当て／論理容量順をDBクエリで適用してからページ分割する。ツリーも必要になった枝だけ取得し、250件を超える枝は追加読み込みする。SQLをUIへ持ち込まず、EF CoreのLINQを保存層に置く。ランキングは上位20件、全階層またはルートから1～3階層、末端フォルダのみで絞り込める。
+
+ファイル参照のシーケンス番号を親照合と閲覧に使用し、再利用されたレコードを同じフォルダとみなさない。未解決サイズはゼロにせず「不明」と表示する。既知容量に未解決の子が含まれる場合も状態欄に表示する。ライブ観測なので同時点のスナップショットではない。
+
+## 確認方法
+
+`dotnet run --project src/Something.App -- --demo` は合成データだけで同じ集計・保存・閲覧経路を通る。調査対象のファイルやドライブを読み取らない。実スキャンと同じ実行ファイルなので起動には管理者権限が必要。
+
+画面のレンダリング確認には、存在する出力ディレクトリを指定する。
+
+```powershell
+dotnet run --project src/Something.App -- --demo --smoke-test "$PWD\artifacts\something-ui.png"
+```
+
+初期一覧・ランキングの件数、フォルダ移動、ツリー追加取得、階層／末端フィルターを検証し、画面をPNGへ保存して終了する。失敗時は終了コード1と `.result` に理由を出す。出力はGitに含めない。
+
+保存層のテストは別名、DOS除外、親シーケンス不一致、未解決サイズ、名前付きDATAだけの既知ゼロ、並べ替え後のページングを検証する。セッションのテストはデモ結果の閲覧、並行リクエスト、キャンセルと破棄を検証する。GUIからの実ボリュームスキャンは別途実機で確認する。
