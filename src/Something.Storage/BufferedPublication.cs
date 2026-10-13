@@ -72,6 +72,7 @@ public sealed partial class ScanStore
                 scan.State = StoredScanState.Completed;
                 scan.Ended = endedUtc;
                 SetPublishedGeneration(scan.Id, buffer.Descriptor);
+                SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
             },
             cancellationToken
         );

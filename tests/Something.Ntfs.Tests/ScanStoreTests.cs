@@ -1769,6 +1769,59 @@ public sealed class ScanStoreTests
         Assert.Null(tail.Entries[1].Data);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Publication_PreparesParentIndexStatisticsBeforeBrowsingAndReopening(bool buffered)
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var descriptor = Descriptor(range: new(0, 10000));
+        var facts = new List<StagedObservation> { Stage(Directory(5, Root)) };
+        for (ulong i = 20; i < 120; i++)
+            facts.Add(Stage(Directory(i, Root)));
+        for (ulong i = 1000; i < 4000; i++)
+            facts.Add(Stage(File(i, checked((long)i), Ref(20 + i % 100))));
+
+        Guid scan;
+        if (buffered)
+        {
+            var buffer = new BufferedScan(descriptor);
+            foreach (var fact in facts)
+                buffer.Add(fact, token);
+            buffer.Complete(token);
+            scan = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        }
+        else
+        {
+            scan = fixture.Store.BeginScan(descriptor, token);
+            foreach (var batch in facts.Chunk(ScanStore.MaximumBatchSize))
+                fixture.Store.StageBatch(scan, batch, token);
+            fixture.Store.CompleteScan(scan, Started.AddSeconds(1), token);
+        }
+        var entries = fixture.Store.ReadFolderEntries(scan, Ref(20), cancellationToken: token);
+        Assert.Equal(30, entries.Entries.Length);
+        Assert.All(entries.Entries, entry => Assert.NotNull(entry.Data));
+        fixture.Store.Dispose();
+        using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = fixture.DatabasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString()
+        );
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT stat FROM sqlite_stat1 WHERE idx = 'IX_file_name_ScanId_ParentIndex_ParentSequence'";
+        var statistics = Assert.IsType<string>(command.ExecuteScalar());
+        Assert.True(
+            long.Parse(statistics.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)
+                > 0
+        );
+    }
+
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource
     {
         public MftRecordEncoding Encoding => MftRecordEncoding.RawProtected;

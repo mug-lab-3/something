@@ -90,6 +90,7 @@ public sealed partial class ScanStore
                 entity.State = StoredScanState.Completed;
                 entity.Ended = endedUtc;
                 SetPublishedGeneration(scanId, scan.Descriptor);
+                SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
             },
             cancellationToken
         );

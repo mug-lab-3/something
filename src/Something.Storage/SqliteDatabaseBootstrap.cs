@@ -132,6 +132,8 @@ internal static class SqliteDatabaseBootstrap
                     "Database could not enable the requested journal mode."
                 );
             Execute(connection, "PRAGMA synchronous=FULL");
+            if (!empty)
+                OptimizeForBrowsing(context, cancellationToken);
             return context;
         }
         catch
@@ -140,6 +142,18 @@ internal static class SqliteDatabaseBootstrap
             connection.Dispose();
             throw;
         }
+    }
+
+    /// <summary>Refresh bounded planner statistics after bulk loading, before readers or export.
+    /// Without statistics SQLite may start folder joins from every observation in a scan,
+    /// rather than the selective parent-name index. This only touches our owned database.</summary>
+    internal static void OptimizeForBrowsing(ScanDbContext context, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        // 0x10000 examines all tables even when this connection has no query history.
+        // SQLite 3.46+ bounds the ANALYZE work performed by optimize automatically.
+        context.Database.ExecuteSqlRaw("PRAGMA optimize=0x10002");
+        token.ThrowIfCancellationRequested();
     }
 
     private static long ScalarLong(SqliteConnection connection, string sql)
