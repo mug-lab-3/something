@@ -29,11 +29,11 @@ public sealed class MftObservationAdapterTests
         );
 
     [Theory]
-    [InlineData(0, false)]
-    [InlineData(1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
     [InlineData(2, true)]
-    [InlineData(3, false)]
-    public void OnDiskNameCount_IncludesDosAliasesForCompleteness(ushort links, bool complete)
+    [InlineData(3, true)]
+    public void HeaderCount_DoesNotOverrideCompleteEnumeratedNames(ushort links, bool complete)
     {
         var result = MftObservationAdapter.Convert(
             Entry(links),
@@ -45,10 +45,12 @@ public sealed class MftObservationAdapterTests
         Assert.Equal(new StreamCapacity("", 4, 0), Assert.Single(result.Streams));
     }
 
-    [Fact]
-    public void MultipleRealLinksWithDosAliases_AreCompleteWithoutDoubleCounting()
+    [Theory]
+    [InlineData(4)]
+    [InlineData(99)]
+    public void MultipleRealLinksWithDosAliases_AreCompleteWithoutDoubleCounting(ushort headerCount)
     {
-        var entry = Entry(4);
+        var entry = Entry(headerCount);
         var observation = MftObservationAdapter.Convert(
             entry with
             {

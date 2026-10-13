@@ -6,7 +6,6 @@ namespace Something.Statistics;
 public enum UnattributedReason
 {
     IncompleteLinks,
-    NameCountMismatch,
     DuplicateNames,
     OrphanDosAlias,
     NoVisibleNames,
@@ -105,8 +104,6 @@ public sealed class UnattributedDiagnostics(FolderGraph graph)
         {
             if (!file.Names.Any(n => n.Namespace != FileNameNamespace.Dos))
                 return (UnattributedReason.NoVisibleNames, null, null);
-            if (file.ObservedHardLinkCount is { } count && count != file.Names.Length)
-                return (UnattributedReason.NameCountMismatch, null, null);
             if (
                 file.Names.Select(n => (n.Parent, n.Name, n.Namespace)).Distinct().Count()
                 != file.Names.Length

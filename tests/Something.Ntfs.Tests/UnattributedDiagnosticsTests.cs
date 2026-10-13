@@ -41,7 +41,7 @@ public sealed class UnattributedDiagnosticsTests
         };
 
     [Theory]
-    [InlineData(0, UnattributedReason.NameCountMismatch)]
+    [InlineData(0, UnattributedReason.IncompleteLinks)]
     [InlineData(1, UnattributedReason.NoVisibleNames)]
     [InlineData(2, UnattributedReason.MissingParent)]
     [InlineData(3, UnattributedReason.ReusedParent)]

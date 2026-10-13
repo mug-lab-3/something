@@ -63,14 +63,14 @@ public static class MftObservationAdapter
                 if (name.Namespace == FileNameNamespace.Win32)
                     longNameParents.Add(name.Parent);
             }
-            // The on-disk header counts FILE_NAME entries including separate DOS aliases.
-            // Capacity attribution later ignores aliases; completeness validation must include them.
+            // Successful acquisition/assembly enumerates every listed FILE_NAME. The header
+            // count can disagree; preserve it as diagnostic evidence, not a completeness gate.
+            // DOS aliases remain recorded but do not represent independent hard links.
             bool complete =
                 file.IsDirectory
                 || (
                     hasVisibleName
                     && names.Count == file.Names.Length
-                    && file.Names.Length == evidence.HardLinkCount
                     && file.Names.Where(n => n.Namespace == FileNameNamespace.Dos)
                         .All(n => longNameParents.Contains(n.Parent))
                 );

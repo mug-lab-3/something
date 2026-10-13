@@ -54,6 +54,8 @@ internal static class TopFolders
                     );
                     var buffer = new BufferedScan(descriptor);
                     CapacityAmount observed = default;
+                    long headerNameMismatches = 0;
+                    long completeMismatchedNameSets = 0;
                     long scanStarted = Stopwatch.GetTimestamp();
                     await foreach (
                         var entry in new LiveMftScanner(
@@ -69,7 +71,21 @@ internal static class TopFolders
                                     checked((UInt128)stream.LogicalBytes),
                                     checked((UInt128)stream.AllocatedBytes)
                                 );
-                        buffer.Add(entry, token);
+                        var staged = StagedObservation.FromEntry(entry, token);
+                        if (
+                            staged.File
+                                is {
+                                    Resolution: CapacityResolution.Resolved,
+                                    ObservedHardLinkCount: { } headerCount
+                                } stagedFile
+                            && headerCount != stagedFile.Names.Length
+                        )
+                        {
+                            headerNameMismatches++;
+                            if (stagedFile.LinkSetComplete)
+                                completeMismatchedNameSets++;
+                        }
+                        buffer.Add(staged, token);
                         Interlocked.Increment(ref candidates);
                     }
                     var scanTime = Stopwatch.GetElapsedTime(scanStarted);
@@ -142,6 +158,9 @@ internal static class TopFolders
                     );
                     Console.WriteLine(
                         $"Outside-folder-totals: metadata-known-allocated-bytes={result.Metadata.KnownData.AllocatedBytes}; unattributed-known-allocated-bytes={result.Unattributed.KnownData.AllocatedBytes}; unattributed-resolved={result.Unattributed.ResolvedCount}"
+                    );
+                    Console.WriteLine(
+                        $"Name-count-diagnostics: header-mismatches={headerNameMismatches}; complete-name-sets={completeMismatchedNameSets}; policy=EnumeratedFileNames; disk-repairs=False"
                     );
                     foreach (var group in buffer.Diagnostics)
                     {

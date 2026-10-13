@@ -486,10 +486,13 @@ public sealed class ScanStoreTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public async Task SyntheticLiveScan_AdapterStageAndAggregation_WorkWithoutVolumeAccess(
-        bool dosAlias
+        bool dosAlias,
+        bool headerMismatch
     )
     {
         byte[] root = RecordFixture.Record(
@@ -508,7 +511,11 @@ public sealed class ScanStoreTests
                 RecordFixture.Resident(
                     NtfsAttributeTypes.FileName,
                     0,
-                    RecordFixture.FileName("synthetic.bin", parent: Root.Value)
+                    RecordFixture.FileName(
+                        "synthetic.bin",
+                        FileNameNamespace.Win32AndDos,
+                        Root.Value
+                    )
                 ),
                 RecordFixture.Resident(NtfsAttributeTypes.Data, 1, new byte[11]),
             ],
@@ -534,6 +541,11 @@ public sealed class ScanStoreTests
             );
             RecordFixture.U16(file, 18, 2);
         }
+        ushort headerCount =
+            headerMismatch ? (ushort)3
+            : dosAlias ? (ushort)2
+            : (ushort)1;
+        RecordFixture.U16(file, 18, headerCount);
         using var fixture = new DatabaseFixture();
         var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
         await foreach (
@@ -561,7 +573,7 @@ public sealed class ScanStoreTests
             .Single(f => f.Reference.RecordIndex == 42);
         Assert.Equal("synthetic.bin", stored.Names[0].Name);
         Assert.Equal(dosAlias ? 2 : 1, stored.Names.Length);
-        Assert.Equal<ushort?>(dosAlias ? (ushort)2 : (ushort)1, stored.ObservedHardLinkCount);
+        Assert.Equal<ushort?>(headerCount, stored.ObservedHardLinkCount);
         Assert.True(stored.LinkSetComplete);
     }
 
@@ -921,7 +933,7 @@ public sealed class ScanStoreTests
         Assert.Equal(new CapacityAmount(94, 94), result.Unattributed.KnownData);
         Assert.Equal(default, result.Folders[Root].SubtreeData);
         Assert.Equal(2, buffer.Diagnostics.Length);
-        Assert.Equal(UnattributedReason.NameCountMismatch, buffer.Diagnostics[0].Reason);
+        Assert.Equal(UnattributedReason.IncompleteLinks, buffer.Diagnostics[0].Reason);
         Assert.Equal(new CapacityAmount(71, 71), buffer.Diagnostics[0].KnownData);
         Assert.Equal(UnattributedReason.MissingParent, buffer.Diagnostics[1].Reason);
         Assert.Equal(Ref(999), buffer.Diagnostics[1].Samples[0].ProblemParent);
