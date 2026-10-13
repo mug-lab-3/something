@@ -141,6 +141,7 @@
             SelectionMode="Single"
             Expanding="OnExpanding"
             ItemInvoked="OnFolderInvoked"
+            ContextRequested="OnTreeContextRequested"
           />
         </Grid>
       </Border>
@@ -167,6 +168,7 @@
                 VerticalAlignment="Center"
                 TextTrimming="CharacterEllipsis"
                 ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
+                ContextRequested="OnPathContextRequested"
               />
               <ComboBox
                 x:Name="SortBox"
@@ -198,6 +200,7 @@
               x:Name="Entries"
               Grid.Row="2"
               DoubleTapped="OnEntryInvoked"
+              ContextRequested="OnEntryContextRequested"
               SelectionMode="Single"
             >
               <ListView.ItemTemplate>
@@ -265,7 +268,12 @@
                 VerticalAlignment="Bottom"
               />
             </StackPanel>
-            <ListView x:Name="Ranking" Grid.Row="1" DoubleTapped="OnRankInvoked">
+            <ListView
+              x:Name="Ranking"
+              Grid.Row="1"
+              DoubleTapped="OnRankInvoked"
+              ContextRequested="OnRankContextRequested"
+            >
               <ListView.ItemTemplate>
                 <DataTemplate x:DataType="local:RankingRow" xmlns:local="using:Something.App">
                   <Grid Padding="0,8" ColumnSpacing="16">

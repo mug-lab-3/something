@@ -2,11 +2,14 @@ using System.ComponentModel;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Something.Application;
 using Something.Ntfs;
 using Something.Storage;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics.Imaging;
 
 namespace Something.App;
@@ -105,6 +108,13 @@ public sealed partial class MainWindow : Window
                 throw new InvalidOperationException(MessageBar.Message);
             await Task.Delay(350, lifetime.Token);
             RootLayout.UpdateLayout();
+            if (
+                FindContextFolder(Folders.ContainerFromNode(projects))?.Location.Path
+                != "Demo\\Projects"
+            )
+                throw new InvalidOperationException(
+                    "Tree context target did not resolve its own path."
+                );
             var bitmap = new RenderTargetBitmap();
             await bitmap.RenderAsync(RootLayout);
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
@@ -367,6 +377,110 @@ public sealed partial class MainWindow : Window
             await LoadChildrenAsync(parent, folder.NextPage);
         else
             await LoadPageAsync(folder.Location, 0, true);
+    }
+
+    private FolderNode? FindContextFolder(DependencyObject? source)
+    {
+        for (
+            var current = source;
+            current is not null && current != Folders;
+            current = VisualTreeHelper.GetParent(current)
+        )
+            if (current is TreeViewItem item)
+                return
+                    Folders.NodeFromContainer(item)?.Content
+                        is FolderNode { LoadMore: false } folder
+                    ? folder
+                    : null;
+        return null;
+    }
+
+    private void OnTreeContextRequested(UIElement sender, ContextRequestedEventArgs args)
+    {
+        if (FindContextFolder(args.OriginalSource as DependencyObject) is not { } folder)
+            return;
+        ShowPathMenu(Folders, folder.Location.Path, args);
+    }
+
+    private void OnPathContextRequested(UIElement sender, ContextRequestedEventArgs args)
+    {
+        if (location is { } current)
+            ShowPathMenu(PathText, current.Path, args);
+    }
+
+    private void ShowPathMenu(
+        FrameworkElement target,
+        string path,
+        ContextRequestedEventArgs args,
+        string? directoryPath = null
+    )
+    {
+        var menu = new MenuFlyout();
+        void AddCopy(string label, string value)
+        {
+            var item = new MenuFlyoutItem { Text = label, Icon = new SymbolIcon(Symbol.Copy) };
+            // Copy the original full path of this row, even if selection changes.
+            item.Click += (_, _) => CopyPath(value);
+            menu.Items.Add(item);
+        }
+        if (directoryPath is not null)
+            AddCopy("ディレクトリのパスをコピー", directoryPath);
+        AddCopy(directoryPath is null ? "パスをコピー" : "ファイルのパスをコピー", path);
+        if (args.TryGetPosition(target, out var position))
+            menu.ShowAt(target, new FlyoutShowOptions { Position = position });
+        else
+            menu.ShowAt(target);
+        args.Handled = true;
+    }
+
+    private static object? FindContextRow(ListView list, DependencyObject? source)
+    {
+        for (
+            var current = source;
+            current is not null && current != list;
+            current = VisualTreeHelper.GetParent(current)
+        )
+            if (current is ListViewItem item)
+                return list.ItemFromContainer(item);
+        return null;
+    }
+
+    private void OnEntryContextRequested(UIElement sender, ContextRequestedEventArgs args)
+    {
+        if (
+            location is { } parent
+            && FindContextRow(Entries, args.OriginalSource as DependencyObject) is EntryRow row
+        )
+            ShowPathMenu(
+                Entries,
+                parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name,
+                args,
+                row.Entry.IsDirectory ? null : parent.Path
+            );
+    }
+
+    private void OnRankContextRequested(UIElement sender, ContextRequestedEventArgs args)
+    {
+        if (
+            session is { } current
+            && FindContextRow(Ranking, args.OriginalSource as DependencyObject) is RankingRow row
+        )
+            ShowPathMenu(Ranking, current.Drive + "\\" + row.Entry.RelativePath, args);
+    }
+
+    private void CopyPath(string path)
+    {
+        try
+        {
+            var data = new DataPackage();
+            data.SetText(path);
+            Clipboard.SetContent(data);
+            Clipboard.Flush();
+        }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
     }
 
     private async void OnEntryInvoked(object sender, DoubleTappedRoutedEventArgs args)
