@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = "Something";
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
         AppWindow.Resize(new(1280, 900));
         RootLayout.Loaded += (_, _) =>
         {

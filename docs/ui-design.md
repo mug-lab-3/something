@@ -4,6 +4,8 @@
 
 ## 構成
 
+アプリアイコンは承認された赤みのある紫のSモノグラム。`Assets/app-icon.png` が元画像、`Assets/Something.ico` は16／20／24／32／40／48／64／96／128／256pxを含む透過アイコン。exeには `ApplicationIcon` で埋め込み、ウィンドウには [AppWindow.SetIcon](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.windowing.appwindow.seticon?view=windows-app-sdk-1.8) で同じICOを指定する。ICOは出力・発行先の `Assets` にコピーする。通常のビルドには追加ツール不要。元画像を変更した場合のみ `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/generate-app-icon.ps1` で再生成する。
+
 - `Something.App`: WinUI 3の画面と表示モデル。Windows App SDK 1.8の保守版を固定する。
 - `Something.Application`: 読み取り、集計、DB公開をバックグラウンドで実行する `DriveScanner` と、結果を所有する `ScanSession`。
 - 既存のWindows取得、NTFS解析、統計、EF Core保存を再利用する。画面からディスク書き込みAPIを呼ばない。

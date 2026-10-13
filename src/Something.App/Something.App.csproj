@@ -10,8 +10,15 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/Something.ico</ApplicationIcon>
+    <EnableDefaultAssets>false</EnableDefaultAssets>
   </PropertyGroup>
   <ItemGroup>
+    <Content
+      Include="Assets/Something.ico"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
     <ProjectReference Include="../Something.Application/Something.Application.csproj" />
