@@ -11,7 +11,8 @@ internal static class TopFolders
         WindowsMftRecordSource source,
         string drive,
         int maximumRecords,
-        CancellationToken token
+        CancellationToken token,
+        FolderRankingFilter? filter = null
     )
     {
         var watch = Stopwatch.StartNew();
@@ -108,7 +109,11 @@ internal static class TopFolders
                     var persistenceTime = Stopwatch.GetElapsedTime(persistenceStarted);
                     Volatile.Write(ref phase, "rank-folders");
                     long rankingStarted = Stopwatch.GetTimestamp();
-                    var top = store.ReadLargestFolders(id, cancellationToken: token);
+                    var top = store.ReadLargestFolders(
+                        id,
+                        cancellationToken: token,
+                        filter: filter
+                    );
                     var rankingTime = Stopwatch.GetElapsedTime(rankingStarted);
                     Volatile.Write(ref phase, "diagnose-accounting");
                     long diagnosticStarted = Stopwatch.GetTimestamp();
@@ -143,6 +148,9 @@ internal static class TopFolders
                     );
                     Console.WriteLine(
                         "Accounting-policy: folders=PerVisibleNameUnnamedData; volume=SingleCountAllData; dos-aliases=Excluded; reparse-targets=NotFollowed"
+                    );
+                    Console.WriteLine(
+                        $"Ranking-filter: depth={filter?.Depth?.ToString(CultureInfo.InvariantCulture) ?? "any"}; leaf-only={filter?.LeafOnly ?? false}; root-depth=0; subtree-included=True"
                     );
                     int rank = 0;
                     foreach (var item in top)

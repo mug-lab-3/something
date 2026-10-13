@@ -12,6 +12,9 @@ public enum FolderRankingMetric
     SingleCountAllData,
 }
 
+/// <summary>Depth is absolute: volume root is zero. A leaf has no observed valid child directories.</summary>
+public sealed record FolderRankingFilter(int? Depth = null, bool LeafOnly = false);
+
 public sealed record RankedFolder(string RelativePath, FolderCapacitySample Sample)
 {
     public FolderRankingMetric Metric { get; init; }
@@ -31,13 +34,20 @@ public sealed partial class ScanStore
         Guid scanId,
         int count = 5,
         CancellationToken cancellationToken = default,
-        FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData
+        FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData,
+        FolderRankingFilter? filter = null
     )
     {
         if (count is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(count));
         if (!Enum.IsDefined(metric))
             throw new ArgumentOutOfRangeException(nameof(metric));
+        filter ??= new();
+        if (filter.Depth is < 1)
+            throw new ArgumentOutOfRangeException(
+                nameof(filter),
+                "Depth must be at least 1; the volume root is excluded."
+            );
         cancellationToken.ThrowIfCancellationRequested();
         var aggregation = ReadAggregation(scanId, cancellationToken);
         if (
@@ -79,6 +89,14 @@ public sealed partial class ScanStore
             cancellationToken
         );
         var resolver = new ScanDomainResolver(graph);
+        var hasChildren = filter.LeafOnly
+            ? graph
+                .Nodes.Values.Where(n =>
+                    n.Depth is not null && n.Parent is not null && n.Parent != n.Reference
+                )
+                .Select(n => n.Parent!.Value)
+                .ToHashSet()
+            : [];
         bool Ordinary(FolderCapacitySample sample) =>
             resolver
                 .Resolve(
@@ -95,7 +113,12 @@ public sealed partial class ScanStore
                 )
                 .Domain == CapacityDomain.Ordinary;
         var largest = aggregation
-            .Folders.Values.Where(s => s.Reference != root && Ordinary(s))
+            .Folders.Values.Where(s =>
+                s.Reference != root
+                && Ordinary(s)
+                && (filter.Depth is null || graph.Nodes[s.Reference].Depth == filter.Depth)
+                && (!filter.LeafOnly || !hasChildren.Contains(s.Reference))
+            )
             .OrderByDescending(s =>
                 metric == FolderRankingMetric.PerVisibleNameUnnamedData
                     ? s.Entries!.SubtreeData.AllocatedBytes

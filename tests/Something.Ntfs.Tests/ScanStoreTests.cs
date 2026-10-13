@@ -1069,6 +1069,45 @@ public sealed class ScanStoreTests
             all.Single(t => t.Sample.Reference.RecordIndex == 26).RelativePath
         );
         Assert.DoesNotContain(all, t => t.Sample.Reference.RecordIndex is 5 or 11);
+        var depthTwo = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: TestContext.Current.CancellationToken,
+            filter: new(Depth: 2)
+        );
+        Assert.Equal(Ref(26), Assert.Single(depthTwo).Sample.Reference);
+        Assert.Equal(new CapacityAmount(50, 50), depthTwo[0].Data);
+        var leaf = fixture.Store.ReadLargestFolders(
+            id,
+            100,
+            TestContext.Current.CancellationToken,
+            filter: new(LeafOnly: true)
+        );
+        Assert.DoesNotContain(leaf, row => row.Sample.Reference == Ref(20));
+        Assert.Contains(leaf, row => row.Sample.Reference == Ref(26));
+        var depthOneLeaves = fixture.Store.ReadLargestFolders(
+            id,
+            100,
+            TestContext.Current.CancellationToken,
+            filter: new(Depth: 1, LeafOnly: true)
+        );
+        Assert.Equal(
+            new ulong[] { 21, 22, 23, 24, 25 },
+            depthOneLeaves.Select(row => row.Sample.Reference.RecordIndex)
+        );
+        Assert.Empty(
+            fixture.Store.ReadLargestFolders(
+                id,
+                cancellationToken: TestContext.Current.CancellationToken,
+                filter: new(Depth: 100)
+            )
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            fixture.Store.ReadLargestFolders(
+                id,
+                cancellationToken: TestContext.Current.CancellationToken,
+                filter: new(Depth: 0)
+            )
+        );
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             fixture.Store.ReadLargestFolders(id, 0, TestContext.Current.CancellationToken)
         );

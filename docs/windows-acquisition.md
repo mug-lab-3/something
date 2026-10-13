@@ -204,6 +204,22 @@ MFT等を含むファイルの総占有量ではない。
 比較診断はバッファにある事実から算出し、追加のライブファイル照会を行わない。
 追加の計算時間は`accounting-diagnostics-seconds`へ分離する。
 
+ランキング対象は次のように絞り込める。いずれも全体を走査・集計してから表示対象だけを絞る。
+サブディレクトリの容量は常に含め、部分走査からハードリンク集合を推定しない。
+
+```powershell
+# ドライブ直下のフォルダだけ（ドライブのルートは深さ0）
+dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --depth 1
+# 有効な子ディレクトリがない最下位ディレクトリだけ
+dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --leaf
+# 深さ2の最下位ディレクトリだけ
+dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --depth 2 --leaf
+```
+
+深さは1以上、各フィルターは一度だけ指定する。`--max-records`を併用する場合は末尾へ置く。
+末端判定は観測した有効な子ディレクトリに基づく。未観測の子が存在しないことまで保証しない。
+絞り込んだ結果が空ならTop 0として表示し、未知の容量を0へ置き換えない。
+
 終了コード: 0は範囲の処理完了または論理サイズ・割り当て容量の両方一致、1は未解決または不一致、
 2は入力・権限・I/Oエラー、130はキャンセル。範囲検査のMissingは報告するが、
 それだけでは異常終了しない。0もボリューム全体の正確さの証明ではない。

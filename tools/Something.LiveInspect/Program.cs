@@ -3,6 +3,7 @@ using System.Security.Principal;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
+using Something.Storage;
 using Something.Windows;
 
 if (args.Length is >= 1 and <= 3 && args[0] == "--storage-benchmark")
@@ -41,8 +42,33 @@ if (args.Length >= 3 && args[^2] == "--max-records")
     invalidRecordLimit = !int.TryParse(args[^1], out maximumRecords) || maximumRecords < 1;
     args = args[..^2];
 }
+var rankingFilter = new FolderRankingFilter();
+bool invalidRankingFilter = false;
+if (args.Length >= 2 && args[1] == "--top5")
+{
+    for (int i = 2; i < args.Length; i++)
+    {
+        if (args[i] == "--leaf" && !rankingFilter.LeafOnly)
+            rankingFilter = rankingFilter with { LeafOnly = true };
+        else if (
+            args[i] == "--depth"
+            && rankingFilter.Depth is null
+            && i + 1 < args.Length
+            && int.TryParse(args[++i], out int depth)
+            && depth >= 1
+        )
+            rankingFilter = rankingFilter with { Depth = depth };
+        else
+        {
+            invalidRankingFilter = true;
+            break;
+        }
+    }
+    args = args[..2];
+}
 if (
     invalidRecordLimit
+    || invalidRankingFilter
     || args.Length is < 1 or > 3
     || (
         args.Length > 1
@@ -77,7 +103,7 @@ if (
         "   or: Something.LiveInspect <drive> --scan [max-slots] [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
-        "   or: Something.LiveInspect <drive> --top5 [--max-records <positive-int>]"
+        "   or: Something.LiveInspect <drive> --top5 [--depth <positive-int>] [--leaf] [--max-records <positive-int>]"
     );
     Console.Error.WriteLine(
         $"Per-file record limit defaults to {LiveMftFileReader.DefaultMaximumRecords}."
@@ -98,7 +124,13 @@ try
     if (args.Length == 2 && args[1] == "--top5")
     {
         using var volume = WindowsMftRecordSource.Open(args[0]);
-        return await TopFolders.RunAsync(volume, args[0], maximumRecords, cancellation.Token);
+        return await TopFolders.RunAsync(
+            volume,
+            args[0],
+            maximumRecords,
+            cancellation.Token,
+            rankingFilter
+        );
     }
     if (args.Length == 3 && args[1] == "--record-file")
         return await RecordFileComparison.RunAsync(
