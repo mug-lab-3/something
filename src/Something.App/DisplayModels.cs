@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.UI.Xaml.Controls;
 using Something.Ntfs;
 using Something.Storage;
 
@@ -9,11 +10,20 @@ public sealed partial class EntryRow(FolderEntry entry)
     public FolderEntry Entry { get; } = entry;
     public string Name => DisplayText.Escape(Entry.Name);
     public string Kind => Entry.IsDirectory ? "フォルダ" : "ファイル";
-    public string Size => DisplayText.Bytes(Entry.Data?.AllocatedBytes);
-    public string State =>
-        Entry.CapacityIncomplete ? "未解決を含む"
-        : !Entry.NamesComplete ? "名前集合が未確定"
-        : "取得済み";
+    public Symbol Icon => Entry.IsDirectory ? Symbol.Folder : Symbol.Document;
+    public string Size =>
+        DisplayText.Bytes(Entry.Data?.AllocatedBytes)
+        + (
+            Entry.Data is not null && (Entry.CapacityIncomplete || !Entry.NamesComplete) ? " *" : ""
+        );
+    public string SizeDescription =>
+        "ディスク上の割り当て容量"
+        + (
+            Entry.CapacityIncomplete
+                ? "。容量が未解決の項目があります。未解決分は表示値に含まれません"
+                : ""
+        )
+        + (!Entry.NamesComplete ? "。名前集合が未確定です" : "");
 }
 
 public sealed partial class RankingRow(RankedFolder entry, string drive)

@@ -95,21 +95,17 @@
               </Grid>
               <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="24" />
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="65" />
                   <ColumnDefinition Width="140" />
-                  <ColumnDefinition Width="120" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="名前" />
-                <TextBlock Grid.Column="1" Text="種類" />
+                <TextBlock Grid.Column="1" Text="名前" />
                 <TextBlock
                   x:Name="SizeColumnText"
                   Grid.Column="2"
                   Text="サイズ"
                   ToolTipService.ToolTip="ディスク上の割り当て容量"
                 />
-
-                <TextBlock Grid.Column="3" Text="状態" />
               </Grid>
               <ListView
                 x:Name="Entries"
@@ -122,22 +118,27 @@
                   <DataTemplate x:DataType="local:EntryRow" xmlns:local="using:Something.App">
                     <Grid ColumnSpacing="12" Padding="0,8">
                       <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="65" />
                         <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="120" />
                       </Grid.ColumnDefinitions>
+                      <SymbolIcon
+                        Symbol="{x:Bind Icon}"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        ToolTipService.ToolTip="{x:Bind Kind}"
+                        AutomationProperties.Name="{x:Bind Kind}"
+                      />
                       <TextBlock
+                        Grid.Column="1"
                         Text="{x:Bind Name}"
                         TextTrimming="CharacterEllipsis"
                         ToolTipService.ToolTip="{x:Bind Name}"
                       />
-                      <TextBlock Grid.Column="1" Text="{x:Bind Kind}" />
-                      <TextBlock Grid.Column="2" Text="{x:Bind Size}" />
                       <TextBlock
-                        Grid.Column="3"
-                        Text="{x:Bind State}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Grid.Column="2"
+                        Text="{x:Bind Size}"
+                        ToolTipService.ToolTip="{x:Bind SizeDescription}"
                       />
                     </Grid>
                   </DataTemplate>
