@@ -76,6 +76,14 @@ internal sealed class FolderSampleEntity
     public long SubtreeUnresolved { get; set; }
     public bool DirectoryObserved { get; set; }
     public long UnobservedDirectories { get; set; }
+    public UInt128? EntryDirectLogical { get; set; }
+    public UInt128? EntryDirectAllocated { get; set; }
+    public UInt128? EntrySubtreeLogical { get; set; }
+    public UInt128? EntrySubtreeAllocated { get; set; }
+    public long? EntryDirectFiles { get; set; }
+    public long? EntrySubtreeFiles { get; set; }
+    public long? EntryDirectUnresolved { get; set; }
+    public long? EntrySubtreeUnresolved { get; set; }
 }
 
 internal sealed class FolderNameEntity

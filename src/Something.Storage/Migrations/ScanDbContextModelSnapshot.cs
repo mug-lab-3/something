@@ -126,6 +126,30 @@ namespace Something.Storage.Migrations
                     b.Property<bool>("DirectoryObserved")
                         .HasColumnType("INTEGER");
 
+                    b.Property<byte[]>("EntryDirectAllocated")
+                        .HasColumnType("BLOB");
+
+                    b.Property<long?>("EntryDirectFiles")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("EntryDirectLogical")
+                        .HasColumnType("BLOB");
+
+                    b.Property<long?>("EntryDirectUnresolved")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("EntrySubtreeAllocated")
+                        .HasColumnType("BLOB");
+
+                    b.Property<long?>("EntrySubtreeFiles")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("EntrySubtreeLogical")
+                        .HasColumnType("BLOB");
+
+                    b.Property<long?>("EntrySubtreeUnresolved")
+                        .HasColumnType("INTEGER");
+
                     b.Property<ushort>("Sequence")
                         .HasColumnType("INTEGER");
 
@@ -161,6 +185,8 @@ namespace Something.Storage.Migrations
                             t.HasCheckConstraint("folder_capacities", "length(DirectLogical)=16 AND length(DirectAllocated)=16 AND length(SharedLogical)=16 AND length(SharedAllocated)=16 AND length(DirectoryLogical)=16 AND length(DirectoryAllocated)=16 AND length(SubtreeLogical)=16 AND length(SubtreeAllocated)=16");
 
                             t.HasCheckConstraint("folder_counts", "AssignedCount >= 0 AND SubtreeCount >= 0 AND DirectUnresolved >= 0 AND SubtreeUnresolved >= 0 AND UnobservedDirectories >= 0 AND DirectoryObserved IN (0,1)");
+
+                            t.HasCheckConstraint("folder_entries", "(EntryDirectLogical IS NULL AND EntryDirectAllocated IS NULL AND EntrySubtreeLogical IS NULL AND EntrySubtreeAllocated IS NULL AND EntryDirectFiles IS NULL AND EntrySubtreeFiles IS NULL AND EntryDirectUnresolved IS NULL AND EntrySubtreeUnresolved IS NULL) OR (EntryDirectLogical IS NOT NULL AND EntryDirectAllocated IS NOT NULL AND EntrySubtreeLogical IS NOT NULL AND EntrySubtreeAllocated IS NOT NULL AND EntryDirectFiles IS NOT NULL AND EntrySubtreeFiles IS NOT NULL AND EntryDirectUnresolved IS NOT NULL AND EntrySubtreeUnresolved IS NOT NULL AND length(EntryDirectLogical)=16 AND length(EntryDirectAllocated)=16 AND length(EntrySubtreeLogical)=16 AND length(EntrySubtreeAllocated)=16 AND EntryDirectFiles >= 0 AND EntrySubtreeFiles >= 0 AND EntryDirectUnresolved >= 0 AND EntrySubtreeUnresolved >= 0)");
 
                             t.HasCheckConstraint("folder_identity", "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535");
                         });

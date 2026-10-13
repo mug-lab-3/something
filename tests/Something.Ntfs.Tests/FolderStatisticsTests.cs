@@ -181,6 +181,18 @@ public sealed class FolderStatisticsTests
         Assert.Equal(default, result.Folders[A].SubtreeData);
         Assert.Equal(default, result.Folders[B].SubtreeData);
         Assert.Equal(1UL, result.Folders[Root].SubtreeFileCount);
+        Assert.Equal(
+            new CapacityAmount(checked((UInt128)bytes * 2), checked((UInt128)bytes * 2)),
+            result.Folders[Root].Entries!.SubtreeData
+        );
+        Assert.Equal(
+            new CapacityAmount((UInt128)bytes, (UInt128)bytes),
+            result.Folders[A].Entries!.SubtreeData
+        );
+        Assert.Equal(
+            new CapacityAmount((UInt128)bytes, (UInt128)bytes),
+            result.Folders[B].Entries!.SubtreeData
+        );
         Assert.False(result.HasUnknownAttribution);
         Assert.Equal(2, observation.Names.Length);
     }
@@ -206,6 +218,8 @@ public sealed class FolderStatisticsTests
         Assert.Equal(1UL, result.Folders[A].SubtreeFileCount);
         Assert.Equal(result.Folders[A].SubtreeData, result.Folders[Root].SubtreeData);
         Assert.Equal(3, observation.Names.Length);
+        Assert.Equal(new CapacityAmount(10000, 8192), result.Folders[A].Entries!.DirectData);
+        Assert.Equal(2UL, result.Folders[A].Entries!.SubtreeFileCount);
     }
 
     [Theory]

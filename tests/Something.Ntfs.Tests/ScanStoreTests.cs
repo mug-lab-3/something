@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -770,6 +772,9 @@ public sealed class ScanStoreTests
         staged.Store.StageBatch(stagedId, facts, token);
         var expected = staged.Store.CompleteScan(stagedId, Started.AddMinutes(1), token);
         var buffer = new BufferedScan(descriptor);
+        Assert.Throws<InvalidOperationException>(() =>
+            buffer.ReadAccountingDiagnostics(Root, cancellationToken: token)
+        );
         foreach (var fact in facts.Reverse())
             buffer.Add(fact, token);
         Assert.Throws<InvalidOperationException>(() =>
@@ -784,7 +789,13 @@ public sealed class ScanStoreTests
         Assert.Equal(expected.Unattributed, actual.Unattributed);
         Assert.Equal(expected.HasUnknownAttribution, actual.HasUnknownAttribution);
         foreach (var pair in expected.Folders)
+        {
             Assert.Equal(pair.Value, actual.Folders[pair.Key]);
+            Assert.Equal(
+                pair.Value.SubtreeData,
+                buffer.ReadAccountingDiagnostics(pair.Key, cancellationToken: token).AssignedData
+            );
+        }
         var stored = buffered.Store.ReadFiles(bufferedId, token).ToDictionary(f => f.Reference);
         foreach (var file in staged.Store.ReadFiles(stagedId, token))
         {
@@ -947,12 +958,58 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public async Task EntryMigration_PreservesHistoricalTotalsWithoutInventingNameView()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var id = fixture.Store.BeginScan(Descriptor(), token);
+        fixture.Store.StageBatch(id, BasicFacts(), token);
+        var original = fixture.Store.CompleteScan(id, Started.AddSeconds(1), token);
+        fixture.Store.Dispose();
+        // Downgrade only this owned test database to exercise upgrade from the real old schema.
+        await using (
+            var context = new ScanDbContext(
+                new DbContextOptionsBuilder<ScanDbContext>()
+                    .UseSqlite(
+                        new SqliteConnectionStringBuilder
+                        {
+                            DataSource = fixture.DatabasePath,
+                            Pooling = false,
+                            ForeignKeys = true,
+                        }.ToString()
+                    )
+                    .Options
+            )
+        )
+            await context
+                .GetService<IMigrator>()
+                .MigrateAsync("20261012155458_InitialScanStorage", token);
+
+        fixture.Reopen();
+
+        var restored = fixture.Store.ReadAggregation(id, token);
+        foreach (var pair in original.Folders)
+            Assert.Equal(pair.Value with { Entries = null }, restored.Folders[pair.Key]);
+        Assert.Equal(original.Metadata, restored.Metadata);
+        Assert.Equal(original.Unattributed, restored.Unattributed);
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Store.ReadLargestFolders(id, cancellationToken: token)
+        );
+        var physical = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: token,
+            metric: FolderRankingMetric.SingleCountAllData
+        );
+        Assert.All(physical, row => Assert.Equal(row.Sample.SubtreeData, row.Data));
+    }
+
+    [Fact]
     public void InitialMigration_MatchesModelAndSurvivesReopen()
     {
         using var fixture = new DatabaseFixture();
         using var context = new ScanDbContextFactory().CreateDbContext([]);
         Assert.False(context.Database.HasPendingModelChanges());
-        Assert.Single(context.Database.GetMigrations());
+        Assert.Equal(2, context.Database.GetMigrations().Count());
         fixture.Reopen();
         var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
         Assert.Equal(StoredScanState.Running, fixture.Store.GetScan(id).State);
@@ -1053,10 +1110,27 @@ public sealed class ScanStoreTests
         Assert.Equal(Ref(20), top[0].Sample.Reference);
         Assert.Equal(new CapacityAmount(100, 100), top[0].Sample.SharedData);
         Assert.Equal(new CapacityAmount(110, 110), top[0].Sample.SubtreeData);
+        Assert.Equal(new CapacityAmount(210, 210), top[0].Data);
+        Assert.Equal(3UL, top[0].Sample.Entries!.SubtreeFileCount);
+        Assert.Equal(1UL, top[0].Sample.Entries!.SubtreeUnresolvedCount);
         Assert.Equal(1UL, top[0].Sample.SubtreeUnresolvedCount);
         Assert.Equal(
             new CapacityAmount(10, 10),
             top.Single(t => t.Sample.Reference == Ref(21)).Sample.SubtreeData
+        );
+        Assert.Equal(
+            new CapacityAmount(110, 110),
+            top.Single(t => t.Sample.Reference == Ref(21)).Data
+        );
+        var physical = fixture.Store.ReadLargestFolders(
+            id,
+            cancellationToken: TestContext.Current.CancellationToken,
+            metric: FolderRankingMetric.SingleCountAllData
+        );
+        Assert.Equal(new CapacityAmount(110, 110), physical[0].Data);
+        Assert.Equal(
+            new CapacityAmount(10, 10),
+            physical.Single(t => t.Sample.Reference == Ref(21)).Data
         );
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();

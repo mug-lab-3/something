@@ -3,6 +3,16 @@ using Something.Ntfs;
 
 namespace Something.Statistics;
 
+/// <summary>Unnamed DATA per visible name. This view intentionally counts hard links repeatedly.</summary>
+public sealed record FolderEntrySample(
+    CapacityAmount DirectData,
+    CapacityAmount SubtreeData,
+    ulong DirectFileCount,
+    ulong SubtreeFileCount,
+    ulong DirectUnresolvedCount,
+    ulong SubtreeUnresolvedCount
+);
+
 public sealed record FolderCapacitySample(
     FileReference Reference,
     CapacityAmount DirectData,
@@ -15,7 +25,11 @@ public sealed record FolderCapacitySample(
     ulong SubtreeUnresolvedCount,
     bool DirectoryCapacityObserved,
     ulong SubtreeUnobservedDirectoryCount
-);
+)
+{
+    /// <summary>Null for historical generations that predate per-name accounting.</summary>
+    public FolderEntrySample? Entries { get; init; }
+}
 
 public sealed record CapacityBucket(
     CapacityAmount KnownData,
@@ -60,6 +74,9 @@ public sealed class FolderAggregator(FolderGraph graph)
                 false,
                 0
             )
+            {
+                Entries = new(default, default, 0, 0, 0, 0),
+            }
         );
         var seen = new HashSet<ulong>();
         var metadata = new CapacityBucket(default, 0, 0);
@@ -94,6 +111,40 @@ public sealed class FolderAggregator(FolderGraph graph)
                 unattributed = Add(unattributed, attribution.Capacity);
                 unknownAttribution = true;
                 continue;
+            }
+            if (!observation.IsDirectory)
+            {
+                var unnamed = observation.Streams.FirstOrDefault(s => s.Name.Length == 0);
+                foreach (var name in observation.Names)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (name.Namespace == FileNameNamespace.Dos)
+                        continue;
+                    var parent = folders[name.Parent];
+                    var entries = parent.Entries!;
+                    folders[name.Parent] = parent with
+                    {
+                        Entries = attribution.Capacity is null
+                            ? entries with
+                            {
+                                DirectUnresolvedCount = checked(entries.DirectUnresolvedCount + 1),
+                            }
+                            : entries with
+                            {
+                                DirectData =
+                                    entries.DirectData
+                                    + (
+                                        unnamed is null
+                                            ? default
+                                            : new CapacityAmount(
+                                                (UInt128)unnamed.LogicalBytes,
+                                                (UInt128)unnamed.AllocatedBytes
+                                            )
+                                    ),
+                                DirectFileCount = checked(entries.DirectFileCount + 1),
+                            },
+                    };
+                }
             }
             var sample = folders[owner];
             if (attribution.Capacity is not { } capacity)
@@ -143,6 +194,16 @@ public sealed class FolderAggregator(FolderGraph graph)
                     sample.SubtreeUnobservedDirectoryCount
                     + (sample.DirectoryCapacityObserved ? 0UL : 1UL)
                 ),
+                Entries = sample.Entries! with
+                {
+                    SubtreeData = sample.Entries.SubtreeData + sample.Entries.DirectData,
+                    SubtreeFileCount = checked(
+                        sample.Entries.SubtreeFileCount + sample.Entries.DirectFileCount
+                    ),
+                    SubtreeUnresolvedCount = checked(
+                        sample.Entries.SubtreeUnresolvedCount + sample.Entries.DirectUnresolvedCount
+                    ),
+                },
             };
             folders[reference] = sample;
             if (reference == graph.Root)
@@ -160,6 +221,17 @@ public sealed class FolderAggregator(FolderGraph graph)
                     parentSample.SubtreeUnobservedDirectoryCount
                     + sample.SubtreeUnobservedDirectoryCount
                 ),
+                Entries = parentSample.Entries! with
+                {
+                    SubtreeData = parentSample.Entries.SubtreeData + sample.Entries!.SubtreeData,
+                    SubtreeFileCount = checked(
+                        parentSample.Entries.SubtreeFileCount + sample.Entries.SubtreeFileCount
+                    ),
+                    SubtreeUnresolvedCount = checked(
+                        parentSample.Entries.SubtreeUnresolvedCount
+                        + sample.Entries.SubtreeUnresolvedCount
+                    ),
+                },
             };
         }
         return new(folders.ToImmutableDictionary(), metadata, unattributed, unknownAttribution);

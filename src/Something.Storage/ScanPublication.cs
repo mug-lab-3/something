@@ -116,6 +116,14 @@ public sealed partial class ScanStore
             SubtreeUnresolved = checked((long)sample.SubtreeUnresolvedCount),
             DirectoryObserved = sample.DirectoryCapacityObserved,
             UnobservedDirectories = checked((long)sample.SubtreeUnobservedDirectoryCount),
+            EntryDirectLogical = sample.Entries?.DirectData.LogicalBytes,
+            EntryDirectAllocated = sample.Entries?.DirectData.AllocatedBytes,
+            EntrySubtreeLogical = sample.Entries?.SubtreeData.LogicalBytes,
+            EntrySubtreeAllocated = sample.Entries?.SubtreeData.AllocatedBytes,
+            EntryDirectFiles = checked((long?)sample.Entries?.DirectFileCount),
+            EntrySubtreeFiles = checked((long?)sample.Entries?.SubtreeFileCount),
+            EntryDirectUnresolved = checked((long?)sample.Entries?.DirectUnresolvedCount),
+            EntrySubtreeUnresolved = checked((long?)sample.Entries?.SubtreeUnresolvedCount),
         };
 
     private static VolumeSampleEntity ToEntity(Guid scanId, FolderAggregationResult result) =>
@@ -162,6 +170,9 @@ public sealed partial class ScanStore
                     row.DirectoryObserved,
                     checked((ulong)row.UnobservedDirectories)
                 )
+                {
+                    Entries = ReadEntrySample(row),
+                }
             );
         }
         var summary =
@@ -182,6 +193,47 @@ public sealed partial class ScanStore
             summary.UnknownAttribution
         );
     }
+
+    private static FolderEntrySample? ReadEntrySample(FolderSampleEntity row) =>
+        row.EntryDirectLogical is null
+            ? null
+            : new(
+                new(
+                    row.EntryDirectLogical.Value,
+                    row.EntryDirectAllocated
+                        ?? throw new InvalidDataException("Missing entry capacity.")
+                ),
+                new(
+                    row.EntrySubtreeLogical
+                        ?? throw new InvalidDataException("Missing entry capacity."),
+                    row.EntrySubtreeAllocated
+                        ?? throw new InvalidDataException("Missing entry capacity.")
+                ),
+                checked(
+                    (ulong)(
+                        row.EntryDirectFiles
+                        ?? throw new InvalidDataException("Missing entry count.")
+                    )
+                ),
+                checked(
+                    (ulong)(
+                        row.EntrySubtreeFiles
+                        ?? throw new InvalidDataException("Missing entry count.")
+                    )
+                ),
+                checked(
+                    (ulong)(
+                        row.EntryDirectUnresolved
+                        ?? throw new InvalidDataException("Missing entry count.")
+                    )
+                ),
+                checked(
+                    (ulong)(
+                        row.EntrySubtreeUnresolved
+                        ?? throw new InvalidDataException("Missing entry count.")
+                    )
+                )
+            );
 
     public ImmutableArray<NtfsFileName> ReadHistoricalFolderNames(
         Guid scanId,

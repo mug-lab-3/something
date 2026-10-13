@@ -53,6 +53,7 @@ internal static class TopFolders
                         DateTimeOffset.UtcNow
                     );
                     var buffer = new BufferedScan(descriptor);
+                    var storageTraits = new Dictionary<FileReference, FileStorageTraits>();
                     CapacityAmount observed = default;
                     long headerNameMismatches = 0;
                     long completeMismatchedNameSets = 0;
@@ -66,11 +67,16 @@ internal static class TopFolders
                     )
                     {
                         if (entry.File is { } file)
+                        {
+                            var traits = FolderAccountingDiagnostics.Classify(file);
+                            if (traits != FileStorageTraits.None)
+                                storageTraits.Add(file.Reference, traits);
                             foreach (var stream in file.DataStreams)
                                 observed += new CapacityAmount(
                                     checked((UInt128)stream.LogicalBytes),
                                     checked((UInt128)stream.AllocatedBytes)
                                 );
+                        }
                         var staged = StagedObservation.FromEntry(entry, token);
                         if (
                             staged.File
@@ -104,6 +110,28 @@ internal static class TopFolders
                     long rankingStarted = Stopwatch.GetTimestamp();
                     var top = store.ReadLargestFolders(id, cancellationToken: token);
                     var rankingTime = Stopwatch.GetElapsedTime(rankingStarted);
+                    Volatile.Write(ref phase, "diagnose-accounting");
+                    long diagnosticStarted = Stopwatch.GetTimestamp();
+                    var accounting = top.ToDictionary(
+                        item => item.Sample.Reference,
+                        item =>
+                            buffer.ReadAccountingDiagnostics(
+                                item.Sample.Reference,
+                                storageTraits,
+                                token
+                            )
+                    );
+                    foreach (var item in top)
+                        if (
+                            accounting[item.Sample.Reference].AssignedData
+                                != item.Sample.SubtreeData
+                            || accounting[item.Sample.Reference].PerVisibleNameUnnamedData
+                                != item.Data
+                        )
+                            throw new InvalidDataException(
+                                "Folder accounting diagnostics differ from the published ranking."
+                            );
+                    var diagnosticTime = Stopwatch.GetElapsedTime(diagnosticStarted);
                     bool incomplete =
                         result.HasUnknownAttribution
                         || result.Unattributed.UnresolvedCount != 0
@@ -111,14 +139,17 @@ internal static class TopFolders
                             f.SubtreeUnresolvedCount != 0 || f.SubtreeUnobservedDirectoryCount != 0
                         );
                     Console.WriteLine(
-                        $"Top {top.Length} folders by known allocated DATA in subtree (root excluded):"
+                        $"Top {top.Length} folders by known allocated unnamed DATA per visible file name in subtree (root excluded):"
+                    );
+                    Console.WriteLine(
+                        "Accounting-policy: folders=PerVisibleNameUnnamedData; volume=SingleCountAllData; dos-aliases=Excluded; reparse-targets=NotFollowed"
                     );
                     int rank = 0;
                     foreach (var item in top)
                     {
                         token.ThrowIfCancellationRequested();
                         string size = (
-                            (double)item.Sample.SubtreeData.AllocatedBytes / (1024 * 1024 * 1024)
+                            (double)item.Data.AllocatedBytes / (1024 * 1024 * 1024)
                         ).ToString("F3", CultureInfo.InvariantCulture);
                         string path = string.Concat(
                             item.RelativePath.Select(c =>
@@ -128,14 +159,18 @@ internal static class TopFolders
                             )
                         );
                         Console.WriteLine(
-                            $"{++rank}. {drive}\\{path} | {size} GiB | allocated-bytes={item.Sample.SubtreeData.AllocatedBytes}; logical-bytes={item.Sample.SubtreeData.LogicalBytes}; subtree-unresolved={item.Sample.SubtreeUnresolvedCount}"
+                            $"{++rank}. {drive}\\{path} | {size} GiB | allocated-bytes={item.Data.AllocatedBytes}; logical-bytes={item.Data.LogicalBytes}; subtree-unresolved={item.Sample.Entries!.SubtreeUnresolvedCount}; file-names={item.Sample.Entries.SubtreeFileCount}"
                         );
+                        Console.WriteLine(
+                            $"  Single-count-DATA: logical-bytes={item.Sample.SubtreeData.LogicalBytes}; allocated-bytes={item.Sample.SubtreeData.AllocatedBytes}"
+                        );
+                        PrintAccounting(accounting[item.Sample.Reference]);
                     }
                     Console.WriteLine(
                         $"Elapsed={watch.Elapsed.TotalSeconds:F3}s; incomplete={incomplete}; metadata-unresolved={result.Metadata.UnresolvedCount}; unattributed-unresolved={result.Unattributed.UnresolvedCount}"
                     );
                     Console.WriteLine(
-                        $"Timing: scan-and-buffer-seconds={scanTime.TotalSeconds:F3}; aggregate-buffer-seconds={completionTime.TotalSeconds:F3}; persist-publish-seconds={persistenceTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}"
+                        $"Timing: scan-and-buffer-seconds={scanTime.TotalSeconds:F3}; aggregate-buffer-seconds={completionTime.TotalSeconds:F3}; persist-publish-seconds={persistenceTime.TotalSeconds:F3}; ranking-seconds={rankingTime.TotalSeconds:F3}; accounting-diagnostics-seconds={diagnosticTime.TotalSeconds:F3}"
                     );
                     using var process = Process.GetCurrentProcess();
                     Console.WriteLine(
@@ -154,7 +189,7 @@ internal static class TopFolders
                         $"Capacity-accounting: observed-logical-bytes={observed.LogicalBytes}; observed-allocated-bytes={observed.AllocatedBytes}; conservation-match={observed == accounted}"
                     );
                     Console.WriteLine(
-                        $"Folder-root-DATA: logical-bytes={rootData.LogicalBytes}; allocated-bytes={rootData.AllocatedBytes}"
+                        $"Folder-root-single-count-DATA: logical-bytes={rootData.LogicalBytes}; allocated-bytes={rootData.AllocatedBytes}"
                     );
                     Console.WriteLine(
                         $"Outside-folder-totals: metadata-known-allocated-bytes={result.Metadata.KnownData.AllocatedBytes}; unattributed-known-allocated-bytes={result.Unattributed.KnownData.AllocatedBytes}; unattributed-resolved={result.Unattributed.ResolvedCount}"
@@ -185,5 +220,25 @@ internal static class TopFolders
             heartbeatCancellation.Cancel();
             await heartbeat;
         }
+    }
+
+    private static void PrintAccounting(FolderAccountingSummary summary)
+    {
+        Console.WriteLine(
+            $"  Name-view-unnamed-DATA: logical-bytes={summary.PerVisibleNameUnnamedData.LogicalBytes}; allocated-bytes={summary.PerVisibleNameUnnamedData.AllocatedBytes}; visible-files={summary.VisibleFiles}; visible-names={summary.VisibleNames}; descendant-directories={summary.DescendantDirectories}; incomplete-name-sets={summary.IncompleteNameSets}; unattributed-visible-files={summary.UnattributedVisibleFiles}; unresolved-visible-files={summary.UnresolvedVisibleFiles}"
+        );
+        Console.WriteLine(
+            $"  Hard-links: multiple-name-files-in-subtree={summary.MultipleNameFiles}; dos-aliases={summary.DosAliases}; duplicate-extra-logical-bytes={summary.DuplicateNameExtraUnnamedData.LogicalBytes}; duplicate-extra-allocated-bytes={summary.DuplicateNameExtraUnnamedData.AllocatedBytes}; cross-boundary-logical-bytes={summary.CrossBoundaryUnnamedData.LogicalBytes}; cross-boundary-allocated-bytes={summary.CrossBoundaryUnnamedData.AllocatedBytes}"
+        );
+        Console.WriteLine(
+            $"  Assigned-other-DATA: named-logical-bytes={summary.AssignedNamedStreams.LogicalBytes}; named-allocated-bytes={summary.AssignedNamedStreams.AllocatedBytes}; directory-logical-bytes={summary.AssignedDirectoryData.LogicalBytes}; directory-allocated-bytes={summary.AssignedDirectoryData.AllocatedBytes}; reparse-directories={summary.ReparseDirectories}"
+        );
+        foreach (var (kind, bucket) in summary.SpecialFiles.OrderBy(p => p.Key))
+            Console.WriteLine(
+                $"  Special-file-DATA: kind={kind}; files={bucket.ResolvedCount}; unresolved={bucket.UnresolvedCount}; logical-bytes={bucket.KnownData.LogicalBytes}; allocated-bytes={bucket.KnownData.AllocatedBytes}"
+            );
+        Console.WriteLine(
+            "  Name view counts unnamed DATA per non-DOS name; reparse targets are not followed. Special-file groups overlap and include all DATA of each selected file once; they must not be added together."
+        );
     }
 }

@@ -6,21 +6,47 @@ using Something.Statistics;
 namespace Something.Storage;
 
 /// <summary>Paths are observed names for display, not paths to open or follow.</summary>
-public sealed record RankedFolder(string RelativePath, FolderCapacitySample Sample);
+public enum FolderRankingMetric
+{
+    PerVisibleNameUnnamedData,
+    SingleCountAllData,
+}
+
+public sealed record RankedFolder(string RelativePath, FolderCapacitySample Sample)
+{
+    public FolderRankingMetric Metric { get; init; }
+    public CapacityAmount Data =>
+        Metric == FolderRankingMetric.SingleCountAllData
+            ? Sample.SubtreeData
+            : Sample.Entries?.SubtreeData
+                ?? throw new InvalidOperationException(
+                    "This generation has no per-name aggregation."
+                );
+}
 
 public sealed partial class ScanStore
 {
-    /// <summary>Ranks optimistic subtree DATA; excludes root and NTFS metadata. Nested rows are not additive.</summary>
+    /// <summary>Defaults to unnamed DATA per visible name. Excludes root and NTFS metadata; nested rows overlap.</summary>
     public ImmutableArray<RankedFolder> ReadLargestFolders(
         Guid scanId,
         int count = 5,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData
     )
     {
         if (count is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(count));
+        if (!Enum.IsDefined(metric))
+            throw new ArgumentOutOfRangeException(nameof(metric));
         cancellationToken.ThrowIfCancellationRequested();
         var aggregation = ReadAggregation(scanId, cancellationToken);
+        if (
+            metric == FolderRankingMetric.PerVisibleNameUnnamedData
+            && aggregation.Folders.Values.Any(f => f.Entries is null)
+        )
+            throw new InvalidOperationException(
+                "This historical generation has no per-name aggregation. Rescan or select SingleCountAllData."
+            );
         var names = new Dictionary<ulong, List<FolderNameEntity>>();
         foreach (
             var name in context
@@ -70,7 +96,11 @@ public sealed partial class ScanStore
                 .Domain == CapacityDomain.Ordinary;
         var largest = aggregation
             .Folders.Values.Where(s => s.Reference != root && Ordinary(s))
-            .OrderByDescending(s => s.SubtreeData.AllocatedBytes)
+            .OrderByDescending(s =>
+                metric == FolderRankingMetric.PerVisibleNameUnnamedData
+                    ? s.Entries!.SubtreeData.AllocatedBytes
+                    : s.SubtreeData.AllocatedBytes
+            )
             .ThenBy(s => s.Reference.RecordIndex)
             .Take(count)
             .ToArray();
@@ -101,7 +131,7 @@ public sealed partial class ScanStore
                 components.Push(name.Name);
                 current = parent;
             }
-            result.Add(new(string.Join('\\', components), sample));
+            result.Add(new(string.Join('\\', components), sample) { Metric = metric });
         }
         return result.ToImmutable();
     }

@@ -13,6 +13,27 @@ public sealed class BufferedScan
     private readonly StoredScan validation;
     private FolderAggregationResult? aggregation;
     private ImmutableArray<UnattributedSummary> diagnostics;
+    private FolderGraph? completedGraph;
+
+    public FolderAccountingSummary ReadAccountingDiagnostics(
+        FileReference scope,
+        IReadOnlyDictionary<FileReference, FileStorageTraits>? traits = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (aggregation is null || completedGraph is not { } graph)
+            throw new InvalidOperationException("Buffered enumeration has not completed.");
+        var resolver = new ScanDomainResolver(graph);
+        return FolderAccountingDiagnostics.Analyze(
+            graph,
+            scope,
+            observations
+                .Where(o => o.File is not null)
+                .Select(o => resolver.Resolve(o.File!, cancellationToken)),
+            traits,
+            cancellationToken
+        );
+    }
 
     public BufferedScan(ScanDescriptor descriptor)
     {
@@ -119,6 +140,7 @@ public sealed class BufferedScan
                 result.HasUnknownAttribution
                 || observations.Any(o => o.Kind == MftScanEntryKind.Unresolved && o.File is null),
         };
+        completedGraph = graph;
         indices.Clear();
         indices.TrimExcess();
         return aggregation;
