@@ -8,6 +8,7 @@ namespace Something.Application;
 
 public enum ScanPhase
 {
+    WaitingForMemory,
     Reading,
     Aggregating,
     Saving,
@@ -25,6 +26,21 @@ public sealed record ScanProgress(
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
 public sealed class DriveScanner
 {
+    private readonly ScanMemoryBudget memoryBudget = new(ReadAvailable);
+
+    private static AvailableMemory? ReadAvailable()
+    {
+        var memory = OperatingSystem.IsWindows() ? WindowsMemoryAvailability.TryRead() : null;
+        return memory is null
+            ? null
+            : new(
+                memory.TotalPhysicalBytes,
+                memory.AvailablePhysicalBytes,
+                memory.AvailableCommitBytes,
+                memory.AvailableVirtualBytes
+            );
+    }
+
     public Task<ScanSession> ScanAsync(
         string drive,
         IProgress<ScanProgress>? progress,
@@ -37,6 +53,14 @@ public sealed class DriveScanner
                     throw new PlatformNotSupportedException();
                 using var source = WindowsMftRecordSource.Open(drive);
                 var watch = Stopwatch.StartNew();
+                progress?.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
+                // Observed slots include unused records. 1 KiB per slot is a conservative
+                // initial buffer/aggregation heuristic, independent of file content size.
+                UInt128 estimate = (UInt128)source.Volume.ObservedRecordCount * 1024;
+                using var reservation = await memoryBudget.ReserveAsync(
+                    (ulong)UInt128.Min(ulong.MaxValue, UInt128.Max(64UL << 20, estimate)),
+                    token
+                );
                 var scope = Guid.NewGuid();
                 var buffer = new BufferedScan(
                     new(
@@ -72,7 +96,16 @@ public sealed class DriveScanner
                         )
                     );
                 }
-                return Publish(buffer, drive, false, candidates, watch, progress, token);
+                return Publish(
+                    buffer,
+                    drive,
+                    false,
+                    candidates,
+                    watch,
+                    progress,
+                    token,
+                    reservation
+                );
             },
             token
         );
@@ -84,9 +117,10 @@ public sealed class DriveScanner
         string drive = "Demo"
     ) =>
         Task.Run(
-            () =>
+            async () =>
             {
                 var watch = Stopwatch.StartNew();
+                using var reservation = await memoryBudget.ReserveAsync(64UL << 20, token);
                 var buffer = new BufferedScan(
                     new("demo", Guid.NewGuid(), 1, new(0, 1000), DateTimeOffset.UtcNow)
                 );
@@ -141,7 +175,7 @@ public sealed class DriveScanner
                     1_610_612_736
                 );
                 Add(103, "preview.png", false, FileReference.Create(20, 1), 12_581_034, 12_582_912);
-                return Publish(buffer, drive, true, 8, watch, progress, token);
+                return Publish(buffer, drive, true, 8, watch, progress, token, reservation);
             },
             token
         );
@@ -153,23 +187,13 @@ public sealed class DriveScanner
         ulong candidates,
         Stopwatch watch,
         IProgress<ScanProgress>? progress,
-        CancellationToken token
+        CancellationToken token,
+        ScanMemoryBudget.Reservation reservation
     )
     {
         progress?.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var aggregation = buffer.Complete(token);
-        var memory = OperatingSystem.IsWindows() ? WindowsMemoryAvailability.TryRead() : null;
-        var selection = DiagnosticDatabaseSelector.Select(
-            buffer.EstimateDatabaseBytes(token),
-            memory is null
-                ? null
-                : new(
-                    memory.TotalPhysicalBytes,
-                    memory.AvailablePhysicalBytes,
-                    memory.AvailableCommitBytes,
-                    memory.AvailableVirtualBytes
-                )
-        );
+        var selection = reservation.SelectDatabase(buffer.EstimateDatabaseBytes(token));
         progress?.Report(new(ScanPhase.Saving, candidates, null, watch.Elapsed));
         var database = TemporaryScanDatabase.Create(
             token,

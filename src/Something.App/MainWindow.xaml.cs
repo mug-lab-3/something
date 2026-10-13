@@ -20,7 +20,16 @@ public sealed partial class MainWindow : Window
     private readonly DriveScanner scanner = new();
     private readonly Stack<FolderLocation> navigation = [];
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
-    private CancellationTokenSource? scanCancellation;
+
+    private sealed class ScanOperation(CancellationTokenSource cancellation)
+    {
+        public CancellationTokenSource Cancellation { get; } = cancellation;
+        public Task Task { get; set; } = Task.CompletedTask;
+        public ScanProgress? Progress { get; set; }
+        public bool Finished { get; set; }
+    }
+
+    private readonly Dictionary<DriveCard, ScanOperation> scans = [];
     private ScanSession? session;
     private readonly Dictionary<string, ScanSession> sessions = new(
         StringComparer.OrdinalIgnoreCase
@@ -31,8 +40,8 @@ public sealed partial class MainWindow : Window
     private int page;
     private int navigationVersion;
     private int rankingVersion;
-    private bool busy;
     private bool closed;
+    private bool allowClose;
 
     public MainWindow()
     {
@@ -74,23 +83,23 @@ public sealed partial class MainWindow : Window
             card.Invoked += async (_, _) => await SelectDriveAsync(card);
             card.ScanRequested += async (_, _) =>
             {
-                if (busy)
+                if (scans.TryGetValue(card, out var running))
                 {
-                    scanCancellation?.Cancel();
+                    running.Cancellation.Cancel();
                     return;
                 }
                 await SelectDriveAsync(card);
                 if (selectedCard != card)
                     return;
-                await StartScanAsync();
+                await StartScanAsync(card);
             };
-            card.SetBusy(false, false);
+            card.SetBusy(false);
         }
         selectedCard = cards.FirstOrDefault();
         foreach (var card in cards)
             DriveCards.Children.Add(card);
         UpdateDriveCards();
-        Closed += OnClosed;
+        AppWindow.Closing += OnClosing;
         if (demo)
         {
             StatusText.Text = "デモモード。実ディスクやファイルは読み取りません。";
@@ -152,6 +161,26 @@ public sealed partial class MainWindow : Window
             await SelectDriveAsync(cards[0]);
             if (session is null || Entries.Items.Count != 3)
                 throw new InvalidOperationException("Completed drive result was not retained.");
+            var displayed = session;
+            Task second = StartScanAsync(cards[1]);
+            Task third = StartScanAsync(cards[2]);
+            await StartScanAsync(cards[1]);
+            await Task.WhenAll(second, third);
+            if (
+                session != displayed
+                || selectedCard != cards[0]
+                || sessions.Count != 3
+                || scans.Count != 0
+            )
+                throw new InvalidOperationException(
+                    "Concurrent scans changed the selected drive or lost results."
+                );
+            await SelectDriveAsync(cards[1]);
+            if (session?.Drive != cards[1].Choice.Drive || Entries.Items.Count != 3)
+                throw new InvalidOperationException(
+                    "Concurrent drive result could not be browsed."
+                );
+            await SelectDriveAsync(cards[0]);
             projects = Folders
                 .RootNodes[0]
                 .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
@@ -190,8 +219,8 @@ public sealed partial class MainWindow : Window
                     ((Border)cards[0].FindName("SelectionOutline")).Visibility != Visibility.Visible
                 )
                     throw new InvalidOperationException("Hover hid the selection outline.");
-                SetBusy(true);
-                UpdateProgress(new(ScanPhase.Reading, 4, 0.42, TimeSpan.FromSeconds(5)));
+                cards[0].SetBusy(true);
+                DisplayProgress(cards[0], new(ScanPhase.Reading, 4, 0.42, TimeSpan.FromSeconds(5)));
                 await Task.Delay(200, lifetime.Token);
                 RootLayout.UpdateLayout();
             }
@@ -216,7 +245,7 @@ public sealed partial class MainWindow : Window
             await encoder.FlushAsync();
             File.WriteAllText(
                 path + ".result",
-                "UI loaded; root entries=3; ranking=3; navigation, lazy tree and filters passed; synthetic data only."
+                "UI loaded; root entries=3; ranking=3; navigation, lazy tree, filters and concurrent drive scans passed; synthetic data only."
             );
         }
         catch (Exception error)
@@ -226,6 +255,8 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
+            await ShutdownAsync();
+            allowClose = true;
             Close();
         }
     }
@@ -266,9 +297,11 @@ public sealed partial class MainWindow : Window
 
     private async Task SelectDriveAsync(DriveCard card)
     {
-        if (busy || closed || card == selectedCard)
+        if (closed || card == selectedCard)
             return;
         selectedCard = card;
+        navigationVersion++;
+        rankingVersion++;
         UpdateDriveCards();
         card.StartBringIntoView();
         navigation.Clear();
@@ -291,6 +324,12 @@ public sealed partial class MainWindow : Window
             BackButton.IsEnabled = PreviousButton.IsEnabled = NextButton.IsEnabled = false;
             StatusText.Text = $"{card.Choice.Drive} を選択中 · スキャンを開始してください。";
         }
+        if (
+            selectedCard == card
+            && scans.TryGetValue(card, out var running)
+            && running.Progress is { } progress
+        )
+            DisplayProgress(card, progress);
     }
 
     private async Task ShowSessionAsync(ScanSession current)
@@ -314,95 +353,120 @@ public sealed partial class MainWindow : Window
         await LoadRankingAsync();
     }
 
-    private async Task StartScanAsync()
+    private Task StartScanAsync(DriveCard? requested = null)
     {
-        if (busy || closed || selectedCard is not { } card)
-            return;
+        var card = requested ?? selectedCard;
+        if (closed || card is null || scans.ContainsKey(card))
+            return Task.CompletedTask;
+        var operation = new ScanOperation(
+            CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)
+        );
+        scans.Add(card, operation);
+        card.SetBusy(true);
+        card.SetProgress(true);
+        card.SetState("準備中");
+        operation.Task = RunScanAsync(card, operation);
+        return operation.Task;
+    }
+
+    private async Task RunScanAsync(DriveCard card, ScanOperation operation)
+    {
         string drive = card.Choice.Drive;
-        SetBusy(true);
         MessageBar.IsOpen = false;
-        scanCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-        var progress = new Progress<ScanProgress>(UpdateProgress);
+        var progress = new Progress<ScanProgress>(value =>
+        {
+            if (
+                closed
+                || !scans.TryGetValue(card, out var active)
+                || active != operation
+                || operation.Finished
+                || operation.Cancellation.IsCancellationRequested
+                || value.Phase == ScanPhase.Completed
+            )
+                return;
+            operation.Progress = value;
+            DisplayProgress(card, value);
+        });
         try
         {
             var next = demo
-                ? await scanner.CreateDemoAsync(progress, scanCancellation.Token, drive)
-                : await scanner.ScanAsync(drive, progress, scanCancellation.Token);
+                ? await scanner.CreateDemoAsync(progress, operation.Cancellation.Token, drive)
+                : await scanner.ScanAsync(drive, progress, operation.Cancellation.Token);
+            operation.Finished = true;
             if (closed)
             {
                 await next.DisposeAsync();
                 return;
             }
-            if (sessions.TryGetValue(drive, out var previous))
-                await previous.DisposeAsync();
-            session = next;
+            sessions.TryGetValue(drive, out var previous);
             sessions[drive] = next;
+            operation.Progress = null;
             card.SetResult(next);
             card.RefreshVolume();
-            StatusText.Text =
-                $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
-            await ShowSessionAsync(next);
+            try
+            {
+                if (selectedCard == card)
+                {
+                    session = next;
+                    navigationVersion++;
+                    rankingVersion++;
+                    StatusText.Text =
+                        $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
+                    await ShowSessionAsync(next);
+                }
+            }
+            finally
+            {
+                if (previous is not null)
+                    await previous.DisposeAsync();
+            }
         }
         catch (OperationCanceledException)
         {
             if (!closed)
             {
-                StatusText.Text = "キャンセルしました。前の結果は保持しています。";
+                if (selectedCard == card)
+                    StatusText.Text = "キャンセルしました。前の結果は保持しています。";
                 card.SetResult(sessions.GetValueOrDefault(drive));
             }
         }
         catch (Exception error)
         {
             card.SetResult(sessions.GetValueOrDefault(drive));
-            ShowError(error);
+            if (!closed)
+                ShowError(new InvalidOperationException($"{drive}: {error.Message}", error));
         }
         finally
         {
-            scanCancellation.Dispose();
-            scanCancellation = null;
+            scans.Remove(card);
+            operation.Cancellation.Dispose();
             if (!closed)
-                SetBusy(false);
+            {
+                card.SetBusy(false);
+                card.SetProgress(false);
+            }
         }
     }
 
-    private void SetBusy(bool value)
+    private void DisplayProgress(DriveCard card, ScanProgress progress)
     {
-        busy = value;
-        foreach (var card in cards)
-            card.SetBusy(value, card == selectedCard);
-        Folders.IsEnabled = !value;
-        Entries.IsEnabled = !value;
-        Ranking.IsEnabled = !value;
-        DepthBox.IsEnabled = !value;
-        LeafBox.IsEnabled = !value;
-        selectedCard?.SetProgress(value);
-        if (value)
-            selectedCard?.SetState("準備中");
-    }
-
-    private void UpdateProgress(ScanProgress progress)
-    {
-        if (
-            closed
-            || !busy
-            || scanCancellation?.IsCancellationRequested == true
-            || progress.Phase == ScanPhase.Completed
-        )
-            return;
-        selectedCard?.SetProgress(true);
+        card.SetProgress(true);
         string phase = progress.Phase switch
         {
+            ScanPhase.WaitingForMemory => "メモリ予算の空きを待機中",
             ScanPhase.Reading => "メタデータを取得中",
             ScanPhase.Aggregating => "フォルダ容量を集計中",
             ScanPhase.Saving => "結果を保存中",
             ScanPhase.WritingSnapshot => "結果をファイルへ書き出し中",
             _ => "スキャン完了",
         };
-        StatusText.Text =
-            $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
-        selectedCard?.SetState(
+        if (selectedCard == card)
+            StatusText.Text =
+                $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
+        card.SetState(
             progress.Phase switch
             {
+                ScanPhase.WaitingForMemory => "メモリ待ち",
                 ScanPhase.Reading when progress.Fraction is { } fraction =>
                     $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
                 ScanPhase.Reading => "走査中",
@@ -654,13 +718,13 @@ public sealed partial class MainWindow : Window
 
     private async void OnRankingFilterChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (!busy && session is not null)
+        if (session is not null)
             await LoadRankingAsync();
     }
 
     private async void OnLeafChanged(object sender, RoutedEventArgs args)
     {
-        if (!busy && session is not null)
+        if (session is not null)
             await LoadRankingAsync();
     }
 
@@ -717,11 +781,32 @@ public sealed partial class MainWindow : Window
         MessageBar.IsOpen = true;
     }
 
-    private async void OnClosed(object sender, WindowEventArgs args)
+    private async void OnClosing(
+        Microsoft.UI.Windowing.AppWindow sender,
+        Microsoft.UI.Windowing.AppWindowClosingEventArgs args
+    )
+    {
+        if (allowClose)
+            return;
+        args.Cancel = true;
+        if (closed)
+            return;
+        try
+        {
+            await ShutdownAsync();
+        }
+        finally
+        {
+            allowClose = true;
+            Close();
+        }
+    }
+
+    private async Task ShutdownAsync()
     {
         closed = true;
         lifetime.Cancel();
-        scanCancellation?.Cancel();
+        await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         foreach (var current in sessions.Values)
             await current.DisposeAsync();
     }

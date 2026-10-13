@@ -38,11 +38,11 @@ public sealed partial class DriveCard : UserControl
     private void OnScanRequested(object sender, RoutedEventArgs args) =>
         ScanRequested?.Invoke(this, EventArgs.Empty);
 
-    internal void SetBusy(bool busy, bool selected)
+    internal void SetBusy(bool busy)
     {
-        CardButton.IsEnabled = !busy;
-        ScanIconButton.IsEnabled = !busy || selected;
-        bool cancel = busy && selected;
+        CardButton.IsEnabled = true;
+        ScanIconButton.IsEnabled = true;
+        bool cancel = busy;
         ScanIcon.Glyph = cancel ? "\uE71A" : "\uE72C";
         string label = cancel ? "スキャンをキャンセル" : "このドライブをスキャン";
         ToolTipService.SetToolTip(ScanIconButton, label);
