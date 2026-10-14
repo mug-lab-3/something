@@ -1329,7 +1329,7 @@ public sealed class ScanStoreTests
             Started.AddSeconds(1),
             TestContext.Current.CancellationToken
         );
-        using var temporary = TemporaryScanDatabase.Create(
+        using var temporary = TemporaryScanDatabase.CreateSqlite(
             TestContext.Current.CancellationToken,
             inMemory
         );
@@ -1370,7 +1370,7 @@ public sealed class ScanStoreTests
     public void MemorySnapshot_WritesOnlyAfterCompletionAndPreservesAllFacts()
     {
         var token = TestContext.Current.CancellationToken;
-        using var temporary = TemporaryScanDatabase.Create(token, inMemory: true);
+        using var temporary = TemporaryScanDatabase.CreateSqlite(token, inMemory: true);
         string directory = Path.GetDirectoryName(temporary.SnapshotPath)!;
         Assert.True(temporary.IsInMemory);
         Assert.Empty(System.IO.Directory.EnumerateFiles(directory));
@@ -1455,7 +1455,7 @@ public sealed class ScanStoreTests
     public void MemorySnapshot_RejectsRunningGenerationWithoutCreatingAFile()
     {
         var token = TestContext.Current.CancellationToken;
-        using var temporary = TemporaryScanDatabase.Create(token, inMemory: true);
+        using var temporary = TemporaryScanDatabase.CreateSqlite(token, inMemory: true);
         var id = temporary.Store.BeginScan(Descriptor(), token);
         temporary.Store.StageBatch(id, BasicFacts(), token);
         Assert.Throws<InvalidOperationException>(() => temporary.ExportSnapshot(token));
@@ -1541,7 +1541,7 @@ public sealed class ScanStoreTests
         Assert.Throws<OperationCanceledException>(() =>
             small.EstimateDatabaseBytes(cancelled.Token)
         );
-        using var temporary = TemporaryScanDatabase.Create(token, boundedMemory: true);
+        using var temporary = TemporaryScanDatabase.CreateSqlite(token, boundedMemory: true);
         var id = temporary.Store.PublishBufferedScan(small, Started.AddSeconds(1), token);
         var actual = temporary.Store.ReadAggregation(id, token);
         foreach (var pair in expected.Folders)
@@ -1551,7 +1551,7 @@ public sealed class ScanStoreTests
             temporary.Store.GetPublishedScan(Descriptor().VolumeKey, Descriptor().Range)
         );
         Assert.Throws<ArgumentException>(() =>
-            TemporaryScanDatabase.Create(token, inMemory: true, boundedMemory: true)
+            TemporaryScanDatabase.CreateSqlite(token, inMemory: true, boundedMemory: true)
         );
     }
 
@@ -1584,7 +1584,7 @@ public sealed class ScanStoreTests
             command.CommandText = "PRAGMA cache_spill";
             Assert.True((long)command.ExecuteScalar()! > 0);
         }
-        using var temporary = TemporaryScanDatabase.Create(
+        using var temporary = TemporaryScanDatabase.CreateSqlite(
             token,
             boundedMemory: true,
             fileCacheBytes: cacheBytes
@@ -1636,7 +1636,7 @@ public sealed class ScanStoreTests
             )
         );
         Assert.Throws<ArgumentException>(() =>
-            TemporaryScanDatabase.Create(token, fileCacheBytes: 64 * 1024 * 1024)
+            TemporaryScanDatabase.CreateSqlite(token, fileCacheBytes: 64 * 1024 * 1024)
         );
         Assert.False(System.IO.File.Exists(path));
     }
@@ -1926,6 +1926,61 @@ public sealed class ScanStoreTests
                 sort: (FolderEntrySort)42
             )
         );
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DerivedReadModelPublication_FailureOrCancellationRollsBackWithSourceFacts(
+        bool cancel
+    )
+    {
+        var token = TestContext.Current.CancellationToken;
+        using var store = ScanStore.OpenInMemory(token);
+        var descriptor = Descriptor();
+        var buffer = new BufferedScan(descriptor);
+        foreach (var fact in BasicFacts())
+            buffer.Add(fact, token);
+        buffer.Complete(token);
+        var previous = store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        store.HistoryContext.Database.ExecuteSqlRaw(
+            "CREATE TABLE read_model_probe(Value INTEGER);"
+        );
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+
+        void Publish() =>
+            store.PublishHistoryBuffer(
+                buffer,
+                Started.AddSeconds(2),
+                new()
+                {
+                    VolumeKey = descriptor.VolumeKey,
+                    Drive = "Synthetic",
+                    CompletedUtcTicks = Started.AddSeconds(2).UtcTicks,
+                    LocalDay = DateOnly.FromDateTime(Started.UtcDateTime).DayNumber,
+                },
+                cancellation.Token,
+                (context, _) =>
+                {
+                    context.Database.ExecuteSqlRaw("INSERT INTO read_model_probe VALUES(1);");
+                    if (cancel)
+                        cancellation.Cancel();
+                    else
+                        throw new InvalidOperationException("Derived read model failed.");
+                }
+            );
+
+        if (cancel)
+            Assert.Throws<OperationCanceledException>(Publish);
+        else
+            Assert.Throws<InvalidOperationException>(Publish);
+
+        Assert.Equal(previous, store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range));
+        Assert.Equal(1, store.HistoryContext.Scans.Count());
+        Assert.Empty(store.HistoryContext.HistorySnapshots);
+        using var command = store.HistoryContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM read_model_probe;";
+        Assert.Equal(0L, command.ExecuteScalar());
     }
 
     private sealed class SyntheticSource(byte[] root, byte[] file) : IMftScanSource

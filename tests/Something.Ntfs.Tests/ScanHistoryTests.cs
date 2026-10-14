@@ -114,7 +114,7 @@ public sealed class ScanHistoryTests
         var error = Assert.Throws<DbUpdateException>(() =>
             snapshot.Store.BeginScan(new("volume:B", Guid.NewGuid(), 1, new(0, 100), Now), Token)
         );
-        Assert.Equal(8, Assert.IsType<SqliteException>(error.InnerException).SqliteErrorCode);
+        Assert.Contains("cannot modify", error.Message);
     }
 
     [Fact]
@@ -187,8 +187,8 @@ public sealed class ScanHistoryTests
         Assert.Equal(first.Id, reader.Store.GetScan(first.Id).Id);
         reader.Dispose();
         fixture.Archive.Maintain(Token);
-        using var stored = ScanStore.OpenSnapshotReadOnly(
-            Path.Combine(fixture.Root, "catalog.sqlite3"),
+        using var stored = ScanStore.OpenDuckPath(
+            Path.Combine(fixture.Root, "catalog.duckdb"),
             Token
         );
         Assert.Throws<KeyNotFoundException>(() => stored.GetScan(first.Id));
@@ -209,12 +209,12 @@ public sealed class ScanHistoryTests
         cancelled.Cancel();
         Assert.Throws<OperationCanceledException>(() => fixture.Save(Now, cancelled.Token));
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
-        Assert.Single(Directory.GetFiles(fixture.Root, "*.sqlite3"));
+        Assert.Single(Directory.GetFiles(fixture.Root, "*.duckdb"));
         Assert.False(Directory.Exists(Path.Combine(fixture.Root, "snapshots")));
     }
 
     [Fact]
-    public void OldDevelopmentCatalogIsRejectedWithoutReadingOrDeletingSnapshotFiles()
+    public void OldSqliteCatalogIsPreservedWithoutImportingOrDeletingSnapshotFiles()
     {
         using var fixture = new HistoryFixture(Now);
         Guid id = Guid.NewGuid();
@@ -241,11 +241,12 @@ public sealed class ScanHistoryTests
             catalog.SaveChanges();
         }
 
-        var error = Assert.Throws<InvalidDataException>(() =>
-            fixture.Archive.List("volume:A", Token)
+        byte[] catalogBefore = File.ReadAllBytes(Path.Combine(fixture.Root, "catalog.sqlite3"));
+        Assert.Empty(fixture.Archive.List("volume:A", Token));
+        Assert.Equal(
+            catalogBefore,
+            File.ReadAllBytes(Path.Combine(fixture.Root, "catalog.sqlite3"))
         );
-
-        Assert.Contains("automatic conversion is disabled", error.Message);
         Assert.Equal(original, File.ReadAllBytes(fixture.PathFor(id)));
         using var preserved = SqliteDatabaseBootstrap.Open(
             Path.Combine(fixture.Root, "catalog.sqlite3"),
@@ -270,8 +271,8 @@ public sealed class ScanHistoryTests
         reader.Dispose();
         other.Maintain(Token);
 
-        using var remaining = ScanStore.OpenSnapshotReadOnly(
-            Path.Combine(fixture.Root, "catalog.sqlite3"),
+        using var remaining = ScanStore.OpenDuckPath(
+            Path.Combine(fixture.Root, "catalog.duckdb"),
             Token
         );
         Assert.Throws<KeyNotFoundException>(() => remaining.GetScan(first.Id));

@@ -16,12 +16,14 @@ internal static class TopFolders
         DiagnosticDatabasePreference databasePreference = DiagnosticDatabasePreference.Automatic
     )
     {
+        if (databasePreference == DiagnosticDatabasePreference.Automatic)
+            databasePreference = DiagnosticDatabasePreference.File;
         var watch = Stopwatch.StartNew();
         long candidates = 0;
         string phase = "scan-and-buffer";
         using var heartbeatCancellation = new CancellationTokenSource();
         Console.Error.WriteLine(
-            $"Scanning for top 5 folders; progress every 5s; Ctrl+C cancels. SQLite preference={databasePreference}."
+            $"Scanning for top 5 folders; progress every 5s; Ctrl+C cancels. DuckDB preference={databasePreference}."
         );
         var heartbeat = Task.Run(
             async () =>
@@ -41,7 +43,7 @@ internal static class TopFolders
         );
         try
         {
-            // Source acquisition and SQLite calls are synchronous; keep them off the heartbeat thread.
+            // Source acquisition and DuckDB calls are synchronous; keep them off the heartbeat thread.
             return await Task.Run(
                 async () =>
                 {
@@ -106,7 +108,7 @@ internal static class TopFolders
                     var memory = OperatingSystem.IsWindows()
                         ? WindowsMemoryAvailability.TryRead()
                         : null;
-                    var selection = DiagnosticDatabaseSelector.Select(
+                    var selection = DiagnosticDatabaseSelector.SelectDuckDb(
                         estimate,
                         memory is null
                             ? null
@@ -120,7 +122,7 @@ internal static class TopFolders
                     );
                     bool memoryDatabase = selection.UseMemory;
                     Console.Error.WriteLine(
-                        $"Database-selection: memory={memoryDatabase}; reason={selection.Reason}; estimated-db-bytes={estimate}; required-additional-bytes={selection.RequiredAdditionalBytes}; reserve-bytes={selection.ReserveBytes}; file-cache-bytes={selection.FileCacheBytes}; available-physical-bytes={selection.Available?.PhysicalBytes.ToString() ?? "unknown"}; available-commit-bytes={selection.Available?.CommitBytes.ToString() ?? "unknown"}; available-virtual-bytes={selection.Available?.VirtualBytes.ToString() ?? "unknown"}"
+                        $"Database-selection: memory={memoryDatabase}; reason={selection.Reason}; estimated-db-bytes={estimate}; required-additional-bytes={selection.RequiredAdditionalBytes}; reserve-bytes={selection.ReserveBytes}; duckdb-memory-limit-bytes={selection.FileCacheBytes}; available-physical-bytes={selection.Available?.PhysicalBytes.ToString() ?? "unknown"}; available-commit-bytes={selection.Available?.CommitBytes.ToString() ?? "unknown"}; available-virtual-bytes={selection.Available?.VirtualBytes.ToString() ?? "unknown"}"
                     );
                     Volatile.Write(ref phase, "persist-and-publish");
                     long persistenceStarted = Stopwatch.GetTimestamp();

@@ -10,6 +10,7 @@ public sealed partial class ScanStore : IDisposable
 {
     public const int MaximumBatchSize = 1000;
     private readonly ScanDbContext context;
+    private bool disposed;
 
     private ScanStore(ScanDbContext context) => this.context = context;
 
@@ -21,7 +22,7 @@ public sealed partial class ScanStore : IDisposable
             throw new InvalidOperationException("Application data directory is unavailable.");
         string directory = Path.Combine(root, "Something");
         Directory.CreateDirectory(directory);
-        return OpenTrustedPath(Path.Combine(directory, "history.sqlite3"), cancellationToken);
+        return OpenDuckPath(Path.Combine(directory, "history.duckdb"), cancellationToken);
     }
 
     internal static ScanStore OpenTrustedPath(
@@ -36,7 +37,28 @@ public sealed partial class ScanStore : IDisposable
         string path,
         ulong? cacheBytes,
         CancellationToken token
+    ) => new(DuckDatabaseBootstrap.Open(path, token, cacheBytes));
+
+    internal static ScanStore OpenSqliteHistoryWriter(
+        string path,
+        ulong? cacheBytes,
+        CancellationToken token
     ) => new(SqliteDatabaseBootstrap.Open(path, token, SqliteDatabaseProfile.History, cacheBytes));
+
+    internal static ScanStore OpenDuckPath(
+        string path,
+        CancellationToken token,
+        bool readOnly = false
+    ) => new(DuckDatabaseBootstrap.Open(path, token, readOnly: readOnly));
+
+    internal static ScanStore OpenDuckMemory(CancellationToken token) =>
+        new(DuckDatabaseBootstrap.Open(":memory:", token));
+
+    internal static ScanStore OpenDuckDiagnostic(
+        string path,
+        CancellationToken token,
+        ulong? budget
+    ) => new(DuckDatabaseBootstrap.Open(path, token, budget));
 
     internal static ScanStore OpenInMemory(CancellationToken token) =>
         new(
@@ -75,7 +97,7 @@ public sealed partial class ScanStore : IDisposable
             );
     }
 
-    private static ScanEntity CreateScanEntity(ScanDescriptor descriptor)
+    internal static ScanEntity CreateScanEntity(ScanDescriptor descriptor)
     {
         ValidateDescriptor(descriptor);
         return new ScanEntity
@@ -95,7 +117,14 @@ public sealed partial class ScanStore : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var scan = CreateScanEntity(descriptor);
-        Write(() => context.Scans.Add(scan), cancellationToken);
+        Write(
+            () =>
+            {
+                EnsureVolumeAvailable(descriptor.VolumeKey);
+                context.Scans.Add(scan);
+            },
+            cancellationToken
+        );
         return scan.Id;
     }
 
@@ -124,6 +153,19 @@ public sealed partial class ScanStore : IDisposable
     // Tracked entities are always released, even after rollback.
     private void Write(Action action, CancellationToken token)
     {
+        if (context is DuckScanDbContext)
+        {
+            lock (DuckDatabaseBootstrap.Gate(context.Database.GetDbConnection().DataSource))
+                WriteCore(action, token);
+        }
+        else
+            WriteCore(action, token);
+    }
+
+    private void WriteCore(Action action, CancellationToken token)
+    {
+        if (context is DuckScanDbContext { ReadOnly: true })
+            throw new DbUpdateException("History readers cannot modify the database.");
         token.ThrowIfCancellationRequested();
         using var transaction = context.Database.BeginTransaction();
         try
@@ -131,12 +173,16 @@ public sealed partial class ScanStore : IDisposable
             action();
             token.ThrowIfCancellationRequested();
             context.SaveChanges();
+            if (context is DuckScanDbContext duck)
+                DuckReadModel.CompleteWrite(duck, token);
             token.ThrowIfCancellationRequested();
             transaction.Commit();
         }
         finally
         {
             context.ChangeTracker.Clear();
+            if (context is DuckScanDbContext duck)
+                duck.DirtyGenerations.Clear();
         }
     }
 
@@ -239,7 +285,7 @@ public sealed partial class ScanStore : IDisposable
                 throw new InvalidDataException("Invalid staged name.");
     }
 
-    private static ObservationEntity ToEntity(Guid scanId, StagedObservation item)
+    internal static ObservationEntity ToEntity(Guid scanId, StagedObservation item)
     {
         var file = item.File;
         return new()
@@ -484,6 +530,17 @@ public sealed partial class ScanStore : IDisposable
         return scan;
     }
 
+    private void EnsureVolumeAvailable(string volumeKey)
+    {
+        if (
+            context is DuckScanDbContext
+            && context.Scans.Any(s =>
+                s.VolumeKey == volumeKey && s.State == StoredScanState.Running
+            )
+        )
+            throw new DbUpdateException("A scan for this volume is already running.");
+    }
+
     private static void ValidateEnd(StoredScan scan, DateTimeOffset endedUtc)
     {
         if (endedUtc.Offset != TimeSpan.Zero || endedUtc < scan.Descriptor.StartedUtc)
@@ -493,5 +550,11 @@ public sealed partial class ScanStore : IDisposable
             );
     }
 
-    public void Dispose() => context.Dispose();
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+        disposed = true;
+        context.Dispose();
+    }
 }

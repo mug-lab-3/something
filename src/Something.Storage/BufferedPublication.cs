@@ -17,14 +17,16 @@ public sealed partial class ScanStore
         BufferedScan buffer,
         DateTimeOffset endedUtc,
         HistorySnapshotEntity history,
-        CancellationToken token
-    ) => PublishBufferedScanCore(buffer, endedUtc, history, token);
+        CancellationToken token,
+        Action<ScanDbContext, Guid>? prepareReadModel = null
+    ) => PublishBufferedScanCore(buffer, endedUtc, history, token, prepareReadModel);
 
     private Guid PublishBufferedScanCore(
         BufferedScan buffer,
         DateTimeOffset endedUtc,
         HistorySnapshotEntity? history,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        Action<ScanDbContext, Guid>? prepareReadModel = null
     )
     {
         ArgumentNullException.ThrowIfNull(buffer);
@@ -35,6 +37,7 @@ public sealed partial class ScanStore
         Write(
             () =>
             {
+                EnsureVolumeAvailable(scan.VolumeKey);
                 context.Scans.Add(scan);
                 // Make the parent key available within this transaction; this is not a commit.
                 context.SaveChanges();
@@ -82,6 +85,11 @@ public sealed partial class ScanStore
                         );
                     }
                 }
+                rows.Dispose();
+                names.Dispose();
+                streams.Dispose();
+                folders.Dispose();
+                historyNames.Dispose();
                 context.Volumes.Add(ToEntity(scan.Id, result));
                 scan.State = StoredScanState.Completed;
                 scan.Ended = endedUtc;
@@ -91,6 +99,8 @@ public sealed partial class ScanStore
                     history.Id = scan.Id;
                     context.HistorySnapshots.Add(history);
                 }
+                // Optional experimental read models share the publication transaction.
+                prepareReadModel?.Invoke(context, scan.Id);
                 SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
             },
             cancellationToken

@@ -1,18 +1,19 @@
+using DuckDB.NET.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Something.Storage;
 
-/// <summary>All volumes and generations share one SQLite database. Typed generation imports and retention are atomic.</summary>
+/// <summary>All volumes and generations share one DuckDB file. Typed generation imports and retention are atomic.</summary>
 public sealed partial class ScanHistoryArchive
 {
     private readonly string root;
-    private readonly object sync = new();
+    private readonly object sync;
     private readonly Dictionary<Guid, int> readers = [];
     private readonly TimeProvider clock;
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
-    private string DatabasePath => Path.Combine(root, "catalog.sqlite3");
+    private string DatabasePath => Path.Combine(root, "catalog.duckdb");
 
     private string LeasePath(Guid id) => Path.Combine(root, "leases", $"{id:N}.lock");
 
@@ -23,6 +24,7 @@ public sealed partial class ScanHistoryArchive
     )
     {
         this.root = Path.GetFullPath(root);
+        sync = DuckDatabaseBootstrap.Gate(DatabasePath);
         this.clock = clock ?? TimeProvider.System;
         this.timeZone = timeZone ?? TimeZoneInfo.Local;
     }
@@ -159,6 +161,7 @@ public sealed partial class ScanHistoryArchive
                     is IOException
                         or UnauthorizedAccessException
                         or SqliteException
+                        or DuckDBException
                         or DbUpdateException
             )
         {
@@ -228,7 +231,7 @@ public sealed partial class ScanHistoryArchive
             ScanStore? reader = null;
             try
             {
-                reader = ScanStore.OpenSnapshotReadOnly(DatabasePath, token);
+                reader = ScanStore.OpenDuckPath(DatabasePath, token, readOnly: true);
                 var scan = reader.GetScan(id);
                 if (
                     scan.State != StoredScanState.Completed

@@ -30,6 +30,7 @@ try {
     $env:DOTNET_NOLOGO = '1'
     $ProgressPreference = 'SilentlyContinue'
     $taskDotnet = & (Join-Path $PSScriptRoot 'setup-system-sdk.ps1')
+    & (Join-Path $PSScriptRoot 'setup-native-runtime.ps1')
     $taskSdkRoot = Split-Path -Parent $taskDotnet
     $env:PATH = "$taskSdkRoot;$taskOldPath"
     Invoke-SetupDotnet @('--version')

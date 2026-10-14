@@ -97,7 +97,7 @@ public sealed partial class ScanStore
         return result;
     }
 
-    private static FolderSampleEntity ToEntity(Guid scanId, FolderCapacitySample sample) =>
+    internal static FolderSampleEntity ToEntity(Guid scanId, FolderCapacitySample sample) =>
         new()
         {
             ScanId = scanId,
@@ -127,7 +127,7 @@ public sealed partial class ScanStore
             EntrySubtreeUnresolved = checked((long?)sample.Entries?.SubtreeUnresolvedCount),
         };
 
-    private static VolumeSampleEntity ToEntity(Guid scanId, FolderAggregationResult result) =>
+    internal static VolumeSampleEntity ToEntity(Guid scanId, FolderAggregationResult result) =>
         new()
         {
             ScanId = scanId,
@@ -307,6 +307,18 @@ public sealed partial class ScanStore
                     .Take(MaximumBatchSize)
                     .Select(o => o.RecordIndex)
                     .ToArray();
+                if (context is DuckScanDbContext)
+                {
+                    context
+                        .Names.Where(n => n.ScanId == scanId && batch.Contains(n.RecordIndex))
+                        .ExecuteDelete();
+                    context
+                        .Streams.Where(s => s.ScanId == scanId && batch.Contains(s.RecordIndex))
+                        .ExecuteDelete();
+                    context
+                        .Browser.Where(b => b.ScanId == scanId && batch.Contains(b.RecordIndex))
+                        .ExecuteDelete();
+                }
                 removed = context
                     .Observations.Where(o => o.ScanId == scanId && batch.Contains(o.RecordIndex))
                     .ExecuteDelete();

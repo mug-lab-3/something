@@ -9,6 +9,47 @@ public sealed class ScanMemoryBudgetTests
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task SmallDuckScanReservesEngineWorkspaceInsteadOfSmallSqliteCache()
+    {
+        var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        using var second = await budget.ReserveAsync(GiB, Token);
+
+        var selection = first.SelectDuckDatabase(1024);
+        var competing = second.SelectDuckDatabase(1024);
+
+        Assert.False(selection.UseMemory);
+        Assert.InRange(selection.FileCacheBytes, GiB, 2 * GiB);
+        Assert.Equal(
+            12 * GiB - GiB - 2 * selection.FileCacheBytes,
+            competing.Available!.PhysicalBytes
+        );
+        Assert.InRange(competing.FileCacheBytes, GiB, 2 * GiB);
+    }
+
+    [Fact]
+    public void DuckEngineBudgetDoesNotDependOnNewDriveDatabaseEstimate()
+    {
+        var available = new AvailableMemory(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB);
+
+        var small = DiagnosticDatabaseSelector.SelectDuckDb(1, available);
+        var large = DiagnosticDatabaseSelector.SelectDuckDb(8 * GiB, available);
+
+        Assert.Equal(2 * GiB, small.FileCacheBytes);
+        Assert.Equal(small.FileCacheBytes, large.FileCacheBytes);
+    }
+
+    [Fact]
+    public void DuckEngineBudgetHasBoundedFallbackForUnknownOrLowHeadroom()
+    {
+        Assert.Equal(GiB, DiagnosticDatabaseSelector.SelectDuckDb(1, null).FileCacheBytes);
+        Assert.Equal(
+            GiB,
+            DiagnosticDatabaseSelector.SelectDuckDb(1, new(4 * GiB, 1, 1, 1)).FileCacheBytes
+        );
+    }
+
+    [Fact]
     public async Task CompetingScanBudgetIsSubtractedFromAllAvailableResources()
     {
         var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 13 * GiB, 14 * GiB));

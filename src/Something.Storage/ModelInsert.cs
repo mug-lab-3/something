@@ -13,13 +13,19 @@ namespace Something.Storage;
 internal sealed class ModelInsert<T> : IDisposable
     where T : class
 {
-    private readonly sqlite3 connection;
-    private readonly sqlite3_stmt statement;
-    private readonly Func<T, object?>[] values;
-    private readonly string?[] boundText;
+    private readonly sqlite3 connection = null!;
+    private readonly sqlite3_stmt statement = null!;
+    private readonly Func<T, object?>[] values = [];
+    private readonly string?[] boundText = [];
+    private readonly DuckModelInsert<T>? duck;
 
     internal ModelInsert(ScanDbContext context)
     {
+        if (context is DuckScanDbContext native)
+        {
+            duck = new(native);
+            return;
+        }
         if (context.Database.CurrentTransaction is null)
             throw new InvalidOperationException("Prepared inserts require a transaction.");
         connection =
@@ -96,6 +102,11 @@ internal sealed class ModelInsert<T> : IDisposable
 
     internal void Add(T row, CancellationToken token)
     {
+        if (duck is not null)
+        {
+            duck.Add(row, token);
+            return;
+        }
         token.ThrowIfCancellationRequested();
         try
         {
@@ -162,5 +173,11 @@ internal sealed class ModelInsert<T> : IDisposable
             )
         );
 
-    public void Dispose() => statement.Dispose();
+    public void Dispose()
+    {
+        if (duck is not null)
+            duck.Dispose();
+        else
+            statement.Dispose();
+    }
 }

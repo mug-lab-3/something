@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace Something.Storage;
 
 /// <summary>A disposable database for one diagnostic volume scan; never opens or replaces saved history.</summary>
@@ -8,13 +10,20 @@ public sealed class TemporaryScanDatabase : IDisposable
     private bool exported;
     public ScanStore Store { get; }
     public bool IsInMemory { get; }
-    public string SnapshotPath => Path.Combine(directory, "scan.sqlite3");
+    private readonly bool sqlite;
+    public string SnapshotPath => Path.Combine(directory, sqlite ? "scan.sqlite3" : "scan.duckdb");
 
-    private TemporaryScanDatabase(string directory, ScanStore store, bool inMemory)
+    private TemporaryScanDatabase(
+        string directory,
+        ScanStore store,
+        bool inMemory,
+        bool sqlite = false
+    )
     {
         this.directory = directory;
         Store = store;
         IsInMemory = inMemory;
+        this.sqlite = sqlite;
     }
 
     public static TemporaryScanDatabase Create(
@@ -22,6 +31,21 @@ public sealed class TemporaryScanDatabase : IDisposable
         bool inMemory = false,
         bool boundedMemory = false,
         ulong? fileCacheBytes = null
+    ) => CreateCore(cancellationToken, inMemory, boundedMemory, fileCacheBytes, false);
+
+    internal static TemporaryScanDatabase CreateSqlite(
+        CancellationToken cancellationToken = default,
+        bool inMemory = false,
+        bool boundedMemory = false,
+        ulong? fileCacheBytes = null
+    ) => CreateCore(cancellationToken, inMemory, boundedMemory, fileCacheBytes, true);
+
+    private static TemporaryScanDatabase CreateCore(
+        CancellationToken cancellationToken,
+        bool inMemory,
+        bool boundedMemory,
+        ulong? fileCacheBytes,
+        bool sqlite
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -43,15 +67,24 @@ public sealed class TemporaryScanDatabase : IDisposable
         {
             return new(
                 directory,
-                inMemory
-                    ? ScanStore.OpenInMemory(cancellationToken)
-                    : ScanStore.OpenDiagnosticFile(
-                        Path.Combine(directory, "scan.sqlite3"),
-                        cancellationToken,
-                        boundedMemory,
-                        fileCacheBytes
-                    ),
-                inMemory
+                !sqlite
+                    ? inMemory
+                        ? ScanStore.OpenDuckMemory(cancellationToken)
+                        : ScanStore.OpenDuckDiagnostic(
+                            Path.Combine(directory, "scan.duckdb"),
+                            cancellationToken,
+                            fileCacheBytes
+                        )
+                    : inMemory
+                        ? ScanStore.OpenInMemory(cancellationToken)
+                        : ScanStore.OpenDiagnosticFile(
+                            Path.Combine(directory, "scan.sqlite3"),
+                            cancellationToken,
+                            boundedMemory,
+                            fileCacheBytes
+                        ),
+                inMemory,
+                sqlite
             );
         }
         catch
@@ -81,7 +114,9 @@ public sealed class TemporaryScanDatabase : IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
         if (!exported)
             throw new InvalidOperationException("The memory snapshot has not been exported.");
-        return ScanStore.OpenTrustedPath(SnapshotPath, token);
+        return sqlite
+            ? ScanStore.OpenTrustedPath(SnapshotPath, token)
+            : ScanStore.OpenDuckPath(SnapshotPath, token, readOnly: true);
     }
 
     public void Dispose()
@@ -114,6 +149,8 @@ public sealed class TemporaryScanDatabase : IDisposable
                 "scan.sqlite3-wal",
                 "scan.sqlite3-shm",
                 "scan.sqlite3-journal",
+                "scan.duckdb",
+                "scan.duckdb.wal",
             }
         )
             File.Delete(Path.Combine(owned, fileName));

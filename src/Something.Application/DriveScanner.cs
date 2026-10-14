@@ -199,12 +199,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
     {
         progress?.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var aggregation = buffer.Complete(token);
-        var selection = reservation.SelectDatabase(
-            buffer.EstimateDatabaseBytes(token),
-            history is not null && !demo
-                ? DiagnosticDatabasePreference.File
-                : DiagnosticDatabasePreference.Automatic
-        );
+        var selection = reservation.SelectDuckDatabase(buffer.EstimateDatabaseBytes(token));
         if (history is not null && !demo)
         {
             progress?.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));

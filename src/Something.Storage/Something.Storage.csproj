@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="DuckDB.EFCoreProvider" Version="1.27.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -9,5 +10,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="SQLitePCLRaw.core" Version="2.1.12" />
     <InternalsVisibleTo Include="Something.Ntfs.Tests" />
+    <InternalsVisibleTo Include="Something.StorageCompare" />
   </ItemGroup>
 </Project>

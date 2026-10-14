@@ -14,6 +14,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
 
 1. `global.json`の.NET SDK 10.0.401をWindowsの通常の場所へインストール。`scripts/sdk-downloads.json`に固定したMicrosoft公式インストーラURLとSHA-512で取得内容を検証。既に同じSDKがある場合は再利用。
    `.config/dotnet-tools.json`でバージョン固定したCSharpierとdotnet-efも`dotnet tool restore`で復元。
+   DuckDBの実行に必要なMicrosoft Visual C++ Redistributable x64（検証済みの14.51.36247以降）も確認し、未導入・旧版の場合は固定した[Microsoft公式インストーラー](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)を取得する。`scripts/native-runtime-download.json`のSHA-256とMicrosoftの署名を検証して導入する。wingetやVisual Studio本体は不要。
 2. `.vscode/extensions.json`の推奨拡張をインストール。拡張のバージョンは固定していません。既存の拡張を強制更新しません。
 3. NuGet依存を各プロジェクトの`packages.lock.json`に従って`--locked-mode`で復元。
    CSharpierで整形済みかを検査し、整形漏れがあればファイルを書き換えずに停止。
@@ -135,10 +136,12 @@ dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchma
 EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
 
 ```powershell
-dotnet ef migrations add ChangeName --project src/Something.Storage --output-dir Migrations
+dotnet ef migrations add ChangeName --project src/Something.Storage --context DuckScanDbContext --output-dir DuckMigrations
 dotnet csharpier format . --no-cache --ignore-path .csharpierignore
 ```
 
 生成したマイグレーションとモデルスナップショットをレビューし、DB制約と既存データの更新を検証してコミットします。テストはモデルとスナップショットの一致も検査します。設計時ファクトリーはメモリDBの接続設定でモデルを構築し、ユーザーの履歴DBを開きません。アプリのDB識別バージョンや対応するマイグレーション履歴の受け入れ範囲を変える場合は、`SqliteDatabaseBootstrap`も見直してください。
 
 EF Core導入後も空の`.tools`から`setup.ps1 -SkipExtensions`を実行し、固定ツール復元・locked-mode復元・整形検査・ビルド・611テストの成功を確認しました（公開コーパス7件は通常セットアップではスキップ）。コーパスありの別実行では全618テストが成功しました。実ボリュームのデータを保存するCLIはまだ接続していません。
+
+DuckDB用の新しいマイグレーションでは、論理参照をEFモデルに保ちつつ、物理FK・カスケードを生成しない運用を維持します。自動生成されたDDLを確認し、集合検査・明示的な世代削除と合わせてテストしてください。SQLite用のモデルと旧マイグレーションは比較・回帰テスト用に保持しています。

@@ -1,6 +1,6 @@
 # Something
 
-容量履歴の保存にはSQLite + EF Coreを採用し、保守性を優先してLINQと型付きモデルを使います。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存基盤・履歴保存と、過去24時間・7日・365日のフォルダ変動照会APIを実装しています。
+容量履歴の保存には、性能比較を経てDuckDBのファイル方式を採用しました。[比較結果と採用理由](docs/decisions/20261014-duckdb-storage.md) を記録しています。アプリと診断CLIはDuckDBで動作し、通常の照会はEF Core・LINQ・型付きモデルを使います。保存モデル・欠測の扱い・履歴比較の方針は [docs/storage-design.md](docs/storage-design.md) を参照してください。保存基盤・履歴保存と、過去24時間・7日・365日のフォルダ変動照会APIを実装しています。旧SQLite履歴の自動移行は行わず、新たなスキャンからDuckDBに記録します。
 フォルダ容量・共有ファイル・管理領域・肥大化比較の設計は [docs/statistics-design.md](docs/statistics-design.md) を参照してください。フォルダ表示は無名DATAを可視ファイル名ごとに数え、ハードリンクも名前ごとに計上します。ディスク全体の確認用には共有DATAを共通祖先へ一度だけ帰属した値も維持します。ライブ取得・統計・保存基盤とCLIランキング、初期WinUI画面を実装しました。種別分類と履歴比較UIは未実装です。
 
 Everythingをもじった、Windows向けのディスク使用量・フォルダ肥大化分析アプリです。
@@ -39,6 +39,8 @@ VS Codeの「タスクの実行」で `run app` / `run app demo`、デバッグ�
 
 ## 計画している機能
 
+SQLiteとDuckDBの合成データによる性能比較CLIは [docs/storage-comparison.md](docs/storage-comparison.md) を参照してください。最適化DuckDBのファイル方式へ切り替え済みです。
+
 - フォルダ別の容量一覧、容量バー、階層移動。
 - 論理サイズとディスク上の割り当て容量の表示。
 - ローカルに保存した計測履歴による増加量・増加率の比較。
@@ -72,7 +74,7 @@ USNジャーナルによる差分更新は、その後の拡張として検討�
 
 ## 開発状況
 
-WindowsでGitとVS Code（`code`コマンド）を用意し、リポジトリを取得したら以下の一コマンドで開発環境を準備できます。Visual Studioや事前の.NETインストール、管理者権限は不要です。初回はインターネット接続が必要です。
+WindowsでGitとVS Code（`code`コマンド）を用意し、リポジトリを取得したら以下の一コマンドで開発環境を準備できます。Visual Studioや事前の.NETインストールは不要です。SDK・Visual C++ランタイムが未導入の場合はWindowsの管理者確認が必要です。初回はインターネット接続が必要です。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open

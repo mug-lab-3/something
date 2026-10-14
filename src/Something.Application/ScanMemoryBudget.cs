@@ -42,17 +42,17 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         Guid id,
         ulong bufferBytes,
         ulong estimate,
-        DiagnosticDatabasePreference preference
+        DiagnosticDatabasePreference preference,
+        bool duckDb = false
     )
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            var selection = DiagnosticDatabaseSelector.Select(
-                estimate,
-                Subtract(readAvailable(), TotalExcept(id)),
-                preference
-            );
+            var available = Subtract(readAvailable(), TotalExcept(id));
+            var selection = duckDb
+                ? DiagnosticDatabaseSelector.SelectDuckDb(estimate, available, preference)
+                : DiagnosticDatabaseSelector.Select(estimate, available, preference);
             ulong databaseBudget = Saturate(
                 (UInt128)(selection.UseMemory ? estimate : selection.FileCacheBytes) * 2
             );
@@ -131,6 +131,15 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             ulong estimate,
             DiagnosticDatabasePreference preference = DiagnosticDatabasePreference.Automatic
         ) => owner.Select(id, bufferBytes, estimate, preference);
+
+        public DiagnosticDatabaseSelection SelectDuckDatabase(ulong estimate) =>
+            owner.Select(
+                id,
+                bufferBytes,
+                estimate,
+                DiagnosticDatabasePreference.File,
+                duckDb: true
+            );
 
         public void Dispose() => owner.Release(id);
     }

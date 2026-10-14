@@ -175,6 +175,38 @@ public sealed partial class ScanStore
                     ? (long?)null
                     : ((long?)stream.Allocated ?? 0),
             };
+        if (context is DuckScanDbContext)
+            query = context
+                .Browser.AsNoTracking()
+                .Where(row =>
+                    row.ScanId == scanId
+                    && row.ParentIndex == parentIndex
+                    && row.ParentSequence == parent.SequenceNumber
+                    && (!directoriesOnly || row.IsDirectory == true && row.FolderSequence != null)
+                )
+                .Select(row => new
+                {
+                    row.RecordIndex,
+                    row.Ordinal,
+                    row.Name,
+                    row.Sequence,
+                    row.IsDirectory,
+                    row.Resolution,
+                    row.LinksComplete,
+                    FolderLogical = row.EntrySubtreeLogical,
+                    FolderAllocated = row.EntrySubtreeAllocated,
+                    FolderSequence = row.FolderSequence,
+                    Unresolved = row.EntrySubtreeUnresolved,
+                    Unobserved = row.UnobservedDirectories,
+                    StreamLogical = row.IsDirectory == true
+                    || row.Resolution != CapacityResolution.Resolved
+                        ? (long?)null
+                        : (row.StreamLogical ?? 0),
+                    StreamAllocated = row.IsDirectory == true
+                    || row.Resolution != CapacityResolution.Resolved
+                        ? (long?)null
+                        : (row.StreamAllocated ?? 0),
+                });
         long? totalCount = includeTotalCount ? query.LongCount() : null;
         cancellationToken.ThrowIfCancellationRequested();
         var ordered =

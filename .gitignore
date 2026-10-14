@@ -33,6 +33,8 @@ scan-data/
 *.db-wal
 *.sqlite
 *.sqlite3
+*.duckdb
+*.duckdb.wal
 
 # Temporary files
 *.log

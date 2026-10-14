@@ -39,6 +39,33 @@ public static class DiagnosticDatabaseSelector
 {
     private const ulong GiB = 1024UL * 1024 * 1024;
 
+    /// <summary>DuckDB's engine budget includes query workspace and resident indexes, not
+    /// just cached file pages. A small new scan can share a much larger history database.</summary>
+    public static DiagnosticDatabaseSelection SelectDuckDb(
+        ulong estimatedDatabaseBytes,
+        AvailableMemory? available,
+        DiagnosticDatabasePreference preference = DiagnosticDatabasePreference.File
+    )
+    {
+        var selection = Select(estimatedDatabaseBytes, available, preference);
+        if (selection.UseMemory)
+            return selection;
+        ulong limit = GiB;
+        if (selection.Available is { } memory)
+        {
+            ulong headroom = Math.Min(
+                memory.PhysicalBytes,
+                Math.Min(memory.CommitBytes, memory.VirtualBytes)
+            );
+            ulong surplus =
+                headroom > selection.ReserveBytes ? headroom - selection.ReserveBytes : 0;
+            limit = Math.Clamp(surplus / 4, GiB, 2 * GiB);
+            limit = limit / 16384 * 16384;
+        }
+        // FileCacheBytes is the legacy transport field; for DuckDB it carries memory_limit.
+        return selection with { FileCacheBytes = limit };
+    }
+
     public static DiagnosticDatabaseSelection Select(
         ulong estimatedDatabaseBytes,
         AvailableMemory? available,

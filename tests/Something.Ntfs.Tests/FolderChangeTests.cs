@@ -64,7 +64,7 @@ public sealed class FolderChangeTests
             new ulong[] { 30, 20 },
             report.Rank(FolderChangeRanking.Magnitude).Select(row => row.Reference.RecordIndex)
         );
-        Assert.Single(Directory.GetFiles(fixture.Root, "*.sqlite3"));
+        Assert.Single(Directory.GetFiles(fixture.Root, "*.duckdb"));
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public sealed class FolderChangeTests
         fixture.Save(Now, [new(20, "folder", 0)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                Path.Combine(fixture.Root, "catalog.duckdb"),
                 null,
                 Token
             )
@@ -217,7 +217,7 @@ public sealed class FolderChangeTests
         fixture.Save(Now, [new(20, "folder", 200)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                Path.Combine(fixture.Root, "catalog.duckdb"),
                 null,
                 Token
             )
@@ -253,23 +253,44 @@ public sealed class FolderChangeTests
         var previous = fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 100)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                Path.Combine(fixture.Root, "catalog.duckdb"),
                 null,
                 Token
             )
         )
         {
-            // Fault injection in an isolated test database, after bulk facts have been inserted.
-            writer.HistoryContext.Database.ExecuteSqlRaw(
-                "CREATE TRIGGER reject_history BEFORE INSERT ON history_snapshot BEGIN SELECT RAISE(ABORT, 'injected history failure'); END;"
+            using var source = fixture.Archive.Open(previous.Id, Token);
+            var buffer = new BufferedScan(source.Store.GetScan(previous.Id).Descriptor);
+            foreach (var file in source.Store.ReadFiles(previous.Id, Token))
+                buffer.Add(
+                    new StagedObservation(
+                        file.Reference.RecordIndex,
+                        MftScanEntryKind.ResolvedFile,
+                        LiveFileReadStatus.ObservedUnchanged,
+                        file
+                    ),
+                    Token
+                );
+            buffer.Complete(Token);
+            Assert.Throws<DbUpdateException>(() =>
+                writer.PublishHistoryBuffer(
+                    buffer,
+                    Now,
+                    new()
+                    {
+                        VolumeKey = "volume:A",
+                        Drive = "Demo",
+                        CompletedUtcTicks = Now.UtcTicks,
+                        LocalDay = -1,
+                    },
+                    Token
+                )
             );
         }
 
-        Assert.Throws<DbUpdateException>(() => fixture.Save(Now, [new(20, "folder", 200)]));
-
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
-        using var stored = ScanStore.OpenSnapshotReadOnly(
-            Path.Combine(fixture.Root, "catalog.sqlite3"),
+        using var stored = ScanStore.OpenDuckPath(
+            Path.Combine(fixture.Root, "catalog.duckdb"),
             Token
         );
         Assert.Equal(previous.Id, Assert.Single(stored.HistoryContext.Scans).Id);

@@ -3,6 +3,27 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
+internal sealed class BrowserEntity
+{
+    public Guid ScanId { get; set; }
+    public long ParentIndex { get; set; }
+    public ushort ParentSequence { get; set; }
+    public long RecordIndex { get; set; }
+    public int Ordinal { get; set; }
+    public string Name { get; set; } = "";
+    public ushort? Sequence { get; set; }
+    public bool? IsDirectory { get; set; }
+    public CapacityResolution? Resolution { get; set; }
+    public bool? LinksComplete { get; set; }
+    public UInt128? EntrySubtreeLogical { get; set; }
+    public UInt128? EntrySubtreeAllocated { get; set; }
+    public ushort? FolderSequence { get; set; }
+    public long? EntrySubtreeUnresolved { get; set; }
+    public long? UnobservedDirectories { get; set; }
+    public long? StreamLogical { get; set; }
+    public long? StreamAllocated { get; set; }
+}
+
 internal sealed class ScanEntity
 {
     public Guid Id { get; set; }

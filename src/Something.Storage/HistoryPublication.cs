@@ -49,6 +49,7 @@ public sealed partial class ScanStore
                     token
                 );
                 context.HistorySnapshots.Add(metadata);
+                SetPublishedGeneration(scan.Id, source.GetScan(scan.Id).Descriptor);
                 SqliteDatabaseBootstrap.OptimizeForBrowsing(context, token);
             },
             token
@@ -68,6 +69,16 @@ public sealed partial class ScanStore
     internal void DeleteHistoryGeneration(Guid id)
     {
         context.Published.Where(row => row.ScanId == id).ExecuteDelete();
+        if (context is DuckScanDbContext)
+        {
+            context.Browser.Where(row => row.ScanId == id).ExecuteDelete();
+            context.FolderNames.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Names.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Streams.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Folders.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Observations.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Volumes.Where(row => row.ScanId == id).ExecuteDelete();
+        }
         context.Scans.Where(row => row.Id == id).ExecuteDelete(); // All generation facts cascade.
         context.HistorySnapshots.Where(row => row.Id == id).ExecuteDelete();
     }

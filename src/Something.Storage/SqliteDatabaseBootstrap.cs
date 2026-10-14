@@ -204,6 +204,10 @@ internal static class SqliteDatabaseBootstrap
     /// rather than the selective parent-name index. This only touches our owned database.</summary>
     internal static void OptimizeForBrowsing(ScanDbContext context, CancellationToken token)
     {
+        if (context is DuckScanDbContext)
+            return;
+        if (context is DuckScanDbContext)
+            return;
         token.ThrowIfCancellationRequested();
         // 0x10000 examines all tables even when this connection has no query history.
         // SQLite 3.46+ bounds the ANALYZE work performed by optimize automatically.

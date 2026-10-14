@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Security.Principal;
+using DuckDB.NET.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
@@ -315,7 +316,7 @@ catch (OperationCanceledException)
     Console.Error.WriteLine("Cancelled.");
     return 130;
 }
-catch (Exception error) when (error is DbUpdateException or SqliteException)
+catch (Exception error) when (error is DbUpdateException or SqliteException or DuckDBException)
 {
     Console.Error.WriteLine(
         $"Diagnostic database operation failed: {error.InnerException?.Message ?? error.Message}"

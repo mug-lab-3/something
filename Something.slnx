@@ -14,5 +14,6 @@
     <Project Path="tools/Something.CorpusCheck/Something.CorpusCheck.csproj" />
     <Project Path="tools/Something.MftInspect/Something.MftInspect.csproj" />
     <Project Path="tools/Something.LiveInspect/Something.LiveInspect.csproj" />
+    <Project Path="tools/Something.StorageCompare/Something.StorageCompare.csproj" />
   </Folder>
 </Solution>

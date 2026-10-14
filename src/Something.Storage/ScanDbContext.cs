@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Something.Storage;
 
-internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : DbContext(options)
+internal class ScanDbContext(DbContextOptions options) : DbContext(options)
 {
     internal DbSet<ScanEntity> Scans => Set<ScanEntity>();
     internal DbSet<ObservationEntity> Observations => Set<ObservationEntity>();
@@ -16,6 +16,7 @@ internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : D
     internal DbSet<VolumeSampleEntity> Volumes => Set<VolumeSampleEntity>();
     internal DbSet<PublishedGenerationEntity> Published => Set<PublishedGenerationEntity>();
     internal DbSet<HistorySnapshotEntity> HistorySnapshots => Set<HistorySnapshotEntity>();
+    internal DbSet<BrowserEntity> Browser => Set<BrowserEntity>();
 
     private static readonly ValueConverter<UInt128, byte[]> Capacity = new(
         v => StorageEncoding.Unsigned128(v),
@@ -252,6 +253,24 @@ internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : D
             .WithMany()
             .HasForeignKey(x => x.ScanId)
             .OnDelete(DeleteBehavior.Restrict);
+        if (this is DuckScanDbContext)
+        {
+            var browser = model.Entity<BrowserEntity>();
+            browser.ToTable("browser");
+            browser.HasKey(x => new
+            {
+                x.ScanId,
+                x.RecordIndex,
+                x.Ordinal,
+            });
+            browser.HasIndex(x => x.ParentIndex);
+            browser.Property(x => x.Name).HasConversion(Name);
+            browser.Property(x => x.EntrySubtreeLogical).HasConversion(Capacity);
+            browser.Property(x => x.EntrySubtreeAllocated).HasConversion(Capacity);
+            DuckModel.Configure(model);
+        }
+        else
+            model.Ignore<BrowserEntity>();
     }
 
     private static void NameChecks<TEntity>(TableBuilder<TEntity> table)
