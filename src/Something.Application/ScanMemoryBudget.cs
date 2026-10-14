@@ -71,6 +71,47 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         }
     }
 
+    private ulong? TryGrowDuckDatabase(Guid id, ulong bufferBytes, ulong currentLimit)
+    {
+        lock (sync)
+        {
+            ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
+            const ulong maximum = 8UL << 30;
+            if (currentLimit < 1UL << 30 || currentLimit >= maximum)
+                return null;
+            ulong next = (ulong)UInt128.Min((UInt128)currentLimit * 2, maximum);
+            next = next / 16384 * 16384;
+            var available = Subtract(readAvailable(), TotalExcept(id));
+            if (available is null)
+                return null;
+            ulong reserve = Math.Clamp(available.TotalPhysicalBytes / 5, 1UL << 30, 4UL << 30);
+            // OS availability already charges the live buffer and existing native allocations.
+            // Budget twice the incremental growth for native overhead, not all existing RAM again.
+            ulong additional = Saturate((UInt128)(next - currentLimit) * 2);
+            if (!Fits(available, additional, reserve))
+                return null;
+            reservations[id] = Math.Max(
+                reservations[id],
+                Saturate((UInt128)bufferBytes + next * 2)
+            );
+            Signal();
+            return next;
+        }
+    }
+
+    private void AccountDuckDatabaseLimit(Guid id, ulong bufferBytes, ulong limit)
+    {
+        lock (sync)
+        {
+            ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
+            reservations[id] = Math.Max(
+                reservations[id],
+                Saturate((UInt128)bufferBytes + (UInt128)limit * 2)
+            );
+            Signal();
+        }
+    }
+
     private ulong TotalExcept(Guid id)
     {
         UInt128 total = 0;
@@ -142,5 +183,11 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             );
 
         public void Dispose() => owner.Release(id);
+
+        public ulong? TryGrowDuckDatabase(ulong currentLimit) =>
+            owner.TryGrowDuckDatabase(id, bufferBytes, currentLimit);
+
+        public void AccountDuckDatabaseLimit(ulong limit) =>
+            owner.AccountDuckDatabaseLimit(id, bufferBytes, limit);
     }
 }

@@ -22,7 +22,12 @@ public sealed record ScanProgress(
     ulong Candidates,
     double? Fraction,
     TimeSpan Elapsed
-);
+)
+{
+    public ScanWorkProgress? Work { get; init; }
+    public bool SavesHistory { get; init; }
+    public ScanStep Step => ScanProgressSteps.Locate(Phase, Work?.Stage, SavesHistory);
+}
 
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
 public sealed class DriveScanner(ScanHistoryArchive? history = null)
@@ -57,7 +62,10 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                 if (history is not null && volumeKey != WindowsVolumeIdentity.ReadKey(drive))
                     throw new IOException("Volume mount changed while opening scan.");
                 var watch = Stopwatch.StartNew();
-                progress?.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
+                var reports = progress is null
+                    ? null
+                    : new HistoryProgress(progress, history is not null);
+                reports?.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
                 // Observed slots include unused records. 1 KiB per slot is a conservative
                 // initial buffer/aggregation heuristic, independent of file content size.
                 UInt128 estimate = (UInt128)source.Volume.ObservedRecordCount * 1024;
@@ -79,7 +87,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                 );
                 ulong candidates = 0;
                 TimeSpan lastReport = TimeSpan.Zero;
-                progress?.Report(new(ScanPhase.Reading, 0, 0, watch.Elapsed));
+                reports?.Report(new(ScanPhase.Reading, 0, 0, watch.Elapsed));
                 await foreach (
                     var entry in new LiveMftScanner(
                         source.Volume.BytesPerCluster,
@@ -92,7 +100,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                     if (watch.Elapsed - lastReport < TimeSpan.FromMilliseconds(250))
                         continue;
                     lastReport = watch.Elapsed;
-                    progress?.Report(
+                    reports?.Report(
                         new(
                             ScanPhase.Reading,
                             candidates,
@@ -108,7 +116,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                     false,
                     candidates,
                     watch,
-                    progress,
+                    reports,
                     token,
                     reservation
                 );
@@ -186,6 +194,13 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
             token
         );
 
+    private sealed class HistoryProgress(IProgress<ScanProgress> target, bool savesHistory)
+        : IProgress<ScanProgress>
+    {
+        public void Report(ScanProgress value) =>
+            target.Report(value with { SavesHistory = savesHistory });
+    }
+
     private ScanSession Publish(
         BufferedScan buffer,
         string drive,
@@ -198,7 +213,10 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
     )
     {
         progress?.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
-        var aggregation = buffer.Complete(token);
+        var aggregation = buffer.Complete(
+            token,
+            progress is null ? null : value => ReportWork(ScanPhase.Aggregating, value)
+        );
         var selection = reservation.SelectDuckDatabase(buffer.EstimateDatabaseBytes(token));
         if (history is not null && !demo)
         {
@@ -209,7 +227,10 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                 drive,
                 watch.Elapsed,
                 selection.FileCacheBytes,
-                token
+                token,
+                progress is null ? null : value => ReportWork(ScanPhase.SavingHistory, value),
+                reservation.TryGrowDuckDatabase,
+                reservation.AccountDuckDatabaseLimit
             );
             var session = ScanSession.FromHistory(history.Open(entry.Id, token), drive, token);
             progress?.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
@@ -224,7 +245,14 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
         );
         try
         {
-            var id = database.Store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
+            var id = database.Store.PublishBufferedScan(
+                buffer,
+                DateTimeOffset.UtcNow,
+                token,
+                progress is null ? null : value => ReportWork(ScanPhase.Saving, value),
+                reservation.TryGrowDuckDatabase,
+                reservation.AccountDuckDatabaseLimit
+            );
             if (selection.UseMemory)
             {
                 progress?.Report(new(ScanPhase.WritingSnapshot, candidates, null, watch.Elapsed));
@@ -249,5 +277,10 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
             database.Dispose();
             throw;
         }
+
+        void ReportWork(ScanPhase phase, ScanWorkProgress value) =>
+            progress?.Report(
+                new(phase, candidates, value.Fraction, watch.Elapsed) { Work = value }
+            );
     }
 }

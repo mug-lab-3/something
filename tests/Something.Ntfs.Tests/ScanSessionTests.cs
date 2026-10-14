@@ -5,6 +5,78 @@ namespace Something.Ntfs.Tests;
 public sealed class ScanSessionTests
 {
     [Fact]
+    public async Task DemoForwardsAggregationAndSavingProgressBeforeCompletion()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var updates = new List<ScanProgress>();
+
+        await using var session = await new DriveScanner().CreateDemoAsync(
+            new SynchronousProgress(updates.Add),
+            token
+        );
+
+        Assert.Contains(updates, p => p.Phase == ScanPhase.Aggregating && p.Fraction is > 0);
+        Assert.Contains(updates, p => p.Phase == ScanPhase.Saving && p.Fraction is > 0);
+        Assert.Contains(
+            updates,
+            p => p.Work?.Stage == Something.Storage.ScanWorkStage.Committing && p.Fraction is null
+        );
+        Assert.Equal(ScanPhase.Completed, updates[^1].Phase);
+        Assert.Equal(1, updates[^1].Fraction);
+        Assert.All(updates, p => Assert.Equal(13, p.Step.Total));
+        Assert.Contains(updates, p => p.Step.Number == 4 && p.Phase == ScanPhase.Aggregating);
+        Assert.Contains(updates, p => p.Step.Number == 7 && p.Phase == ScanPhase.Saving);
+        Assert.Equal(new ScanStep(13, 13), updates[^1].Step);
+        Assert.True(
+            updates
+                .Zip(updates.Skip(1))
+                .All(pair => pair.First.Step.Number <= pair.Second.Step.Number)
+        );
+    }
+
+    [Fact]
+    public void HistoryPlanIncludesRetentionWithoutRestartingStepNumbersAtEachPhase()
+    {
+        var collection = new ScanProgress(ScanPhase.Aggregating, 100, 0.5, TimeSpan.Zero)
+        {
+            SavesHistory = true,
+            Work = new(Something.Storage.ScanWorkStage.CollectingFolders, 50, 100),
+        };
+        var writing = collection with
+        {
+            Phase = ScanPhase.SavingHistory,
+            Work = new(Something.Storage.ScanWorkStage.WritingFolders, 50, 100),
+        };
+        var native = writing with
+        {
+            Fraction = null,
+            Work = new(Something.Storage.ScanWorkStage.BuildingFolderList, 0, null),
+        };
+        var retention = native with
+        {
+            Work = new(Something.Storage.ScanWorkStage.MaintainingHistory, 0, null),
+        };
+
+        Assert.Equal(new ScanStep(2, 14), collection.Step);
+        Assert.Equal(new ScanStep(8, 14), writing.Step);
+        Assert.Equal(0.5, writing.Fraction);
+        Assert.Equal(new ScanStep(12, 14), native.Step);
+        Assert.Null(native.Fraction);
+        Assert.Equal(new ScanStep(14, 14), retention.Step);
+        Assert.Null(retention.Fraction);
+        Assert.Equal(new ScanStep(14, 14), (retention with { Phase = ScanPhase.Completed }).Step);
+        Assert.Equal(
+            new ScanStep(0, 14),
+            (collection with { Phase = ScanPhase.WaitingForMemory }).Step
+        );
+    }
+
+    private sealed class SynchronousProgress(Action<ScanProgress> report) : IProgress<ScanProgress>
+    {
+        public void Report(ScanProgress value) => report(value);
+    }
+
+    [Fact]
     public async Task DemoSession_BrowsesRanksAndSerializesQueriesWithoutVolumeAccess()
     {
         var token = TestContext.Current.CancellationToken;

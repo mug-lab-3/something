@@ -53,7 +53,8 @@ public sealed class FolderAggregator(FolderGraph graph)
     public FolderAggregationResult Aggregate(
         IEnumerable<FileCapacityObservation> observations,
         CancellationToken cancellationToken = default,
-        Action<FileCapacityObservation, FileAttribution>? onUnattributed = null
+        Action<FileCapacityObservation, FileAttribution>? onUnattributed = null,
+        Action<int, int>? onRollup = null
     )
     {
         ArgumentNullException.ThrowIfNull(observations);
@@ -174,9 +175,13 @@ public sealed class FolderAggregator(FolderGraph graph)
                 ),
             };
         }
+        onRollup?.Invoke(0, graph.ParentFirst.Length);
         for (int i = graph.ParentFirst.Length - 1; i >= 0; i--)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            int completed = graph.ParentFirst.Length - i - 1;
+            if (completed > 0 && completed % 1024 == 0)
+                onRollup?.Invoke(completed, graph.ParentFirst.Length);
             var reference = graph.ParentFirst[i];
             var sample = folders[reference];
             sample = sample with
@@ -234,6 +239,7 @@ public sealed class FolderAggregator(FolderGraph graph)
                 },
             };
         }
+        onRollup?.Invoke(graph.ParentFirst.Length, graph.ParentFirst.Length);
         return new(folders.ToImmutableDictionary(), metadata, unattributed, unknownAttribution);
     }
 

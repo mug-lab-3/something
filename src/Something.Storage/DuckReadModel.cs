@@ -7,8 +7,13 @@ internal static class DuckReadModel
 {
     // These measured set operations are isolated here; models and application queries remain EF/LINQ.
     // No physical foreign keys: immutable generation relationships are checked before publication.
-    internal static void CompleteWrite(DuckScanDbContext context, CancellationToken token)
+    internal static void CompleteWrite(
+        DuckScanDbContext context,
+        CancellationToken token,
+        ScanWorkReporter? progress = null
+    )
     {
+        progress?.Start(ScanWorkStage.ValidatingRelationships);
         foreach (var entry in context.ChangeTracker.Entries<ScanEntity>())
             context.DirtyGenerations.Add(entry.Entity.Id);
         foreach (Guid id in context.DirtyGenerations)
@@ -48,6 +53,7 @@ internal static class DuckReadModel
                     .Any(s => s.Id == id && s.State == StoredScanState.Completed)
             )
                 continue;
+            progress?.Start(ScanWorkStage.BuildingFolderList);
             context.Database.ExecuteSqlInterpolated($"DELETE FROM browser WHERE ScanId={id}");
             context.Database.ExecuteSqlInterpolated(
                 $"""

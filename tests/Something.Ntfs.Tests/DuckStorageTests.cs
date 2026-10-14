@@ -1,4 +1,5 @@
 using System.Numerics;
+using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
 using Something.Statistics;
@@ -11,6 +12,182 @@ public sealed class DuckStorageTests
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private static readonly DateTimeOffset Start = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
     private static readonly FileReference Root = FileReference.Create(5, 1);
+
+    [Fact]
+    public void RecoveryDoesNotRetryWhenCommitHasStarted()
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        int growthRequests = 0;
+
+        Assert.Throws<DuckDBException>(() =>
+            DuckMemoryRecovery.Run<int>(
+                (DuckScanDbContext)database.Store.HistoryContext,
+                report =>
+                {
+                    report?.Invoke(new(ScanWorkStage.Committing, 0, null));
+                    throw CreateMemoryError();
+                },
+                limit =>
+                {
+                    growthRequests++;
+                    return limit * 2;
+                },
+                null,
+                Token
+            )
+        );
+
+        Assert.Equal(0, growthRequests);
+    }
+
+    private static DuckDBException CreateMemoryError() =>
+        CreateQueryError("SELECT i, count(*) FROM range(100000) t(i) GROUP BY i", lowMemory: true);
+
+    private static DuckDBException CreateQueryError(string sql, bool lowMemory = false)
+    {
+        // Get a real native error without allocating a large fixture or touching a live drive.
+        using var connection = new DuckDBConnection("Data Source=:memory:");
+        connection.Open();
+        if (lowMemory)
+        {
+            using var settings = connection.CreateCommand();
+            settings.CommandText = "SET memory_limit='1KiB'; SET temp_directory='';";
+            settings.ExecuteNonQuery();
+        }
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Assert.Throws<DuckDBException>(() => command.ExecuteScalar());
+    }
+
+    [Fact]
+    public void MemoryFailureRollsBackBeforeBudgetGrowthAndRetriesCompletedFactsOnce()
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        var store = database.Store;
+        var buffer = Buffer();
+        var previous = store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var updates = new List<ScanWorkProgress>();
+        int attempts = 0,
+            increases = 0;
+
+        var id = store.PublishHistoryBuffer(
+            buffer,
+            Start.AddSeconds(2),
+            new()
+            {
+                VolumeKey = "synthetic:A",
+                Drive = "Synthetic",
+                CompletedUtcTicks = Start.AddSeconds(2).UtcTicks,
+                LocalDay = 739902,
+            },
+            Token,
+            (context, _) =>
+            {
+                if (++attempts == 1)
+                    throw CreateMemoryError();
+            },
+            updates.Add,
+            limit =>
+            {
+                increases++;
+                Assert.Equal(1UL << 30, limit);
+                Assert.Single(store.HistoryContext.Scans);
+                Assert.Equal(
+                    previous,
+                    store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+                );
+                Assert.All(store.HistoryContext.Browser, row => Assert.Equal(previous, row.ScanId));
+                return 2UL << 30;
+            }
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal(1, increases);
+        Assert.Equal(2, store.HistoryContext.Scans.Count());
+        Assert.Single(store.HistoryContext.HistorySnapshots);
+        Assert.Equal(
+            id,
+            store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+        );
+        Assert.Contains(updates, p => p.RetryAttempt == 1 && p.MemoryLimitBytes == 2UL << 30);
+        Assert.Equal(2, store.ReadFolderEntries(id, Root, cancellationToken: Token).Entries.Length);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FailedRecoveryPreservesPreviousGenerationAndBoundsRetries(int failure)
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        var store = database.Store;
+        var buffer = Buffer();
+        var previous = store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        int attempts = 0;
+        Action publish = () =>
+            store.PublishHistoryBuffer(
+                buffer,
+                Start.AddSeconds(2),
+                new()
+                {
+                    VolumeKey = "synthetic:A",
+                    Drive = "Synthetic",
+                    CompletedUtcTicks = Start.AddSeconds(2).UtcTicks,
+                    LocalDay = 739902,
+                },
+                cancellation.Token,
+                (_, _) =>
+                {
+                    attempts++;
+                    if (failure == 2)
+                        cancellation.Cancel();
+                    throw CreateMemoryError();
+                },
+                reserveMemoryGrowth: limit => failure == 0 ? null : Math.Min(limit * 2, 8UL << 30)
+            );
+
+        if (failure == 2)
+            Assert.Throws<OperationCanceledException>(publish);
+        else
+            Assert.Throws<DuckDBException>(publish);
+
+        Assert.Equal(failure == 1 ? 4 : 1, attempts);
+        Assert.Single(store.HistoryContext.Scans);
+        Assert.Empty(store.HistoryContext.HistorySnapshots);
+        Assert.Equal(
+            previous,
+            store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+        );
+    }
+
+    [Fact]
+    public void EngineBudgetIsReleasedWhenLastContextCloses()
+    {
+        using var database = TemporaryScanDatabase.Create(
+            Token,
+            boundedMemory: true,
+            fileCacheBytes: 2UL << 30
+        );
+        database.Store.Dispose();
+        using var fresh = ScanStore.OpenHistoryWriter(database.SnapshotPath, 1UL << 30, Token);
+        Assert.Equal(
+            1UL << 30,
+            DuckDatabaseBootstrap.ReadMemoryLimit((DuckScanDbContext)fresh.HistoryContext)
+        );
+    }
+
+    [Fact]
+    public void MemoryRecoveryDoesNotTreatOtherErrorsAsRetryable()
+    {
+        Assert.False(DuckMemoryRecovery.IsOutOfMemory(new OutOfMemoryException()));
+        Assert.False(
+            DuckMemoryRecovery.IsOutOfMemory(CreateQueryError("SELECT nonexistent_column"))
+        );
+        Assert.True(
+            DuckMemoryRecovery.IsOutOfMemory(new DbUpdateException("Wrapped", CreateMemoryError()))
+        );
+    }
 
     [Fact]
     public void LegacySmallCacheBudgetCannotConstrainSharedHistoryEngineTo64MiB()
@@ -29,14 +206,17 @@ public sealed class DuckStorageTests
         using var settings = smallDrive.HistoryContext.Database.GetDbConnection().CreateCommand();
         settings.CommandText = "SELECT current_setting('memory_limit');";
 
-        Assert.Equal("1.0 GiB", settings.ExecuteScalar());
+        Assert.Equal("2.0 GiB", settings.ExecuteScalar());
         Assert.Equal(
             2,
             database.Store.ReadFolderEntries(id, Root, cancellationToken: Token).Entries.Length
         );
     }
 
-    private static BufferedScan Buffer(string volume = "synthetic:A")
+    private static BufferedScan Buffer(
+        string volume = "synthetic:A",
+        Action<ScanWorkProgress>? progress = null
+    )
     {
         var buffer = new BufferedScan(new(volume, Guid.NewGuid(), 1, new(0, 100), Start));
         foreach (
@@ -75,8 +255,89 @@ public sealed class DuckStorageTests
                 ),
                 Token
             );
-        buffer.Complete(Token);
+        buffer.Complete(Token, progress);
         return buffer;
+    }
+
+    [Fact]
+    public void CountedStagesReportRealTotalsAndNativeWorkRemainsIndeterminate()
+    {
+        var aggregation = new List<ScanWorkProgress>();
+        var buffer = Buffer(progress: aggregation.Add);
+        using var database = TemporaryScanDatabase.Create(Token);
+        var publication = new List<ScanWorkProgress>();
+
+        var id = database.Store.PublishBufferedScan(
+            buffer,
+            Start.AddSeconds(1),
+            Token,
+            publication.Add
+        );
+
+        AssertStage(aggregation, ScanWorkStage.CollectingFolders, 2);
+        AssertStage(aggregation, ScanWorkStage.AggregatingFiles, 2);
+        AssertStage(aggregation, ScanWorkStage.RollingUpFolders, 1);
+        AssertStage(publication, ScanWorkStage.WritingFiles, 2);
+        AssertStage(publication, ScanWorkStage.WritingFolders, 1);
+        AssertStage(publication, ScanWorkStage.WritingFolderNames, 2);
+        Assert.All(
+            publication.Where(p =>
+                p.Stage
+                    is ScanWorkStage.FlushingRows
+                        or ScanWorkStage.ValidatingRelationships
+                        or ScanWorkStage.BuildingFolderList
+                        or ScanWorkStage.Committing
+            ),
+            p => Assert.Null(p.Fraction)
+        );
+        Assert.Equal(ScanWorkStage.Committing, publication[^1].Stage);
+        Assert.Equal(
+            id,
+            database.Store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+        );
+
+        static void AssertStage(List<ScanWorkProgress> updates, ScanWorkStage stage, long expected)
+        {
+            var rows = updates.Where(p => p.Stage == stage).ToArray();
+            Assert.Equal(0, rows[0].Completed);
+            Assert.Equal(expected, rows[^1].Completed);
+            Assert.All(rows, p => Assert.Equal(expected, p.Total));
+            Assert.Equal(1, rows[^1].Fraction);
+            Assert.True(
+                rows.Zip(rows.Skip(1)).All(pair => pair.First.Completed <= pair.Second.Completed)
+            );
+        }
+    }
+
+    [Fact]
+    public void CancellationFromCountedProgressDoesNotReachCommitOrReplacePreviousGeneration()
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        var buffer = Buffer();
+        var previous = database.Store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var updates = new List<ScanWorkProgress>();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            database.Store.PublishBufferedScan(
+                buffer,
+                Start.AddSeconds(2),
+                cancellation.Token,
+                progress =>
+                {
+                    updates.Add(progress);
+                    if (progress.Stage == ScanWorkStage.WritingFiles && progress.Completed > 0)
+                        cancellation.Cancel();
+                }
+            )
+        );
+
+        Assert.DoesNotContain(updates, p => p.Stage == ScanWorkStage.Committing);
+        Assert.Equal(
+            previous,
+            database.Store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+        );
+        Assert.Single(database.Store.HistoryContext.Scans);
     }
 
     [Fact]

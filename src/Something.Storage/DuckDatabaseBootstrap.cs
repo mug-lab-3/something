@@ -6,6 +6,17 @@ namespace Something.Storage;
 
 internal static class DuckDatabaseBootstrap
 {
+    internal const ulong MaximumMemoryLimit = 8UL << 30;
+
+    private sealed class EngineMemory(ulong limit)
+    {
+        internal ulong Limit = limit;
+        internal int Connections;
+    }
+
+    private static readonly Dictionary<string, EngineMemory> Engines = new(
+        StringComparer.OrdinalIgnoreCase
+    );
     private static readonly ConcurrentDictionary<string, object> Gates = new(
         StringComparer.OrdinalIgnoreCase
     );
@@ -38,10 +49,7 @@ internal static class DuckDatabaseBootstrap
         token.ThrowIfCancellationRequested();
         if (
             budget is { } requested
-            && (
-                requested is < 64UL * 1024 * 1024 or > 2UL * 1024 * 1024 * 1024
-                || requested % 16384 != 0
-            )
+            && (requested is < 64UL * 1024 * 1024 or > MaximumMemoryLimit || requested % 16384 != 0)
         )
             throw new ArgumentOutOfRangeException(nameof(budget));
         bool memory = path == ":memory:";
@@ -102,21 +110,7 @@ internal static class DuckDatabaseBootstrap
                 if (Convert.ToInt64(identity.ExecuteScalar()) != 1)
                     throw new InvalidDataException("DuckDB database identity is unsupported.");
             }
-            if (budget is not null || !exists)
-            {
-                // Legacy callers supplied a SQLite page-cache budget. DuckDB needs space
-                // for indexes and query workspace across every volume in this shared file.
-                ulong bytes = Math.Max(budget ?? 1024UL * 1024 * 1024, 1UL << 30);
-                if (
-                    bytes is < 64UL * 1024 * 1024 or > 2UL * 1024 * 1024 * 1024
-                    || bytes % 16384 != 0
-                )
-                    throw new ArgumentOutOfRangeException(nameof(budget));
-                using var settings = context.Database.GetDbConnection().CreateCommand();
-                settings.CommandText =
-                    $"SET memory_limit='{bytes / 1048576}MiB'; SET threads=4; SET preserve_insertion_order=false;";
-                settings.ExecuteNonQuery();
-            }
+            RegisterMemory(context, path, budget);
             token.ThrowIfCancellationRequested();
             if (!memory)
                 Validated.TryAdd(path, 0);
@@ -128,5 +122,67 @@ internal static class DuckDatabaseBootstrap
             native.Dispose();
             throw;
         }
+    }
+
+    // Connections to one file share a native engine. Keep its limit while any of our
+    // contexts remain open; release the remembered budget when the last one closes.
+    private static void RegisterMemory(DuckScanDbContext context, string path, ulong? budget)
+    {
+        string key =
+            path == ":memory:"
+                ? Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))
+                : path;
+        lock (Gate(key))
+        {
+            lock (Engines)
+            {
+                bool known = Engines.TryGetValue(key, out var state);
+                state ??= new(Math.Max(budget ?? 1UL << 30, 1UL << 30));
+                ulong desired = Math.Max(state.Limit, budget ?? state.Limit);
+                if (!known || desired > state.Limit)
+                    SetMemoryLimit(context, desired);
+                state.Limit = desired;
+                state.Connections++;
+                Engines[key] = state;
+            }
+            context.ReleaseEngine = () =>
+            {
+                lock (Gate(key))
+                    lock (Engines)
+                        if (--Engines[key].Connections == 0)
+                            Engines.Remove(key);
+            };
+            context.MemoryKey = key;
+        }
+    }
+
+    internal static ulong ReadMemoryLimit(DuckScanDbContext context)
+    {
+        lock (Gate(context.MemoryKey))
+            lock (Engines)
+                return Engines[context.MemoryKey].Limit;
+    }
+
+    internal static void IncreaseMemoryLimit(DuckScanDbContext context, ulong bytes)
+    {
+        if (bytes is < 1UL << 30 or > MaximumMemoryLimit || bytes % 16384 != 0)
+            throw new ArgumentOutOfRangeException(nameof(bytes));
+        lock (Gate(context.MemoryKey))
+            lock (Engines)
+            {
+                var state = Engines[context.MemoryKey];
+                if (bytes <= state.Limit)
+                    throw new ArgumentOutOfRangeException(nameof(bytes));
+                SetMemoryLimit(context, bytes);
+                state.Limit = bytes;
+            }
+    }
+
+    private static void SetMemoryLimit(DuckScanDbContext context, ulong bytes)
+    {
+        using var settings = context.Database.GetDbConnection().CreateCommand();
+        settings.CommandText =
+            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order=false;";
+        settings.ExecuteNonQuery();
     }
 }

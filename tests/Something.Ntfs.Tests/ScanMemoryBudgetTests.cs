@@ -9,6 +9,48 @@ public sealed class ScanMemoryBudgetTests
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task ExistingSharedEngineLimitIsAccountedBeforeAnotherDriveSelectsBudget()
+    {
+        var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        using var second = await budget.ReserveAsync(GiB, Token);
+        first.SelectDuckDatabase(1);
+
+        first.AccountDuckDatabaseLimit(8 * GiB);
+
+        Assert.Equal(3 * GiB, second.SelectDuckDatabase(1).Available!.PhysicalBytes);
+    }
+
+    [Fact]
+    public async Task DuckGrowthReservesIncrementAndSubtractsCompetingDriveBudget()
+    {
+        var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        using var second = await budget.ReserveAsync(GiB, Token);
+        first.SelectDuckDatabase(1);
+
+        Assert.Equal(4 * GiB, first.TryGrowDuckDatabase(2 * GiB));
+        var competing = second.SelectDuckDatabase(1);
+        Assert.Equal(11 * GiB, competing.Available!.PhysicalBytes);
+        Assert.Equal(8 * GiB, first.TryGrowDuckDatabase(4 * GiB));
+        Assert.Null(first.TryGrowDuckDatabase(8 * GiB));
+    }
+
+    [Fact]
+    public async Task DuckGrowthDoesNotIncreaseBudgetWhenAvailableRamIsInsufficientOrUnknown()
+    {
+        AvailableMemory? memory = new(8 * GiB, 2 * GiB, 2 * GiB, 2 * GiB);
+        var budget = new ScanMemoryBudget(() => memory);
+        using var reservation = await budget.ReserveAsync(GiB, Token);
+
+        Assert.Null(reservation.TryGrowDuckDatabase(GiB));
+        memory = null;
+        Assert.Null(reservation.TryGrowDuckDatabase(GiB));
+        reservation.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => reservation.TryGrowDuckDatabase(GiB));
+    }
+
+    [Fact]
     public async Task SmallDuckScanReservesEngineWorkspaceInsteadOfSmallSqliteCache()
     {
         var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB));

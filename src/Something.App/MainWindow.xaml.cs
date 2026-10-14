@@ -858,22 +858,53 @@ public sealed partial class MainWindow : Window
             ScanPhase.WritingSnapshot => "結果をファイルへ書き出し中",
             _ => "スキャン完了",
         };
+        string? detail = progress.Work?.Stage switch
+        {
+            ScanWorkStage.CollectingFolders => "フォルダを抽出中",
+            ScanWorkStage.BuildingHierarchy => "階層を構築中",
+            ScanWorkStage.AggregatingFiles => "ファイル容量を集計中",
+            ScanWorkStage.RollingUpFolders => "サブフォルダを集計中",
+            ScanWorkStage.ValidatingAggregation => "集計結果を検証中",
+            ScanWorkStage.WritingFiles => "ファイル情報を保存中",
+            ScanWorkStage.WritingFolders => "フォルダ容量を保存中",
+            ScanWorkStage.WritingFolderNames => "フォルダ名を保存中",
+            ScanWorkStage.FlushingRows => "保存データを反映中",
+            ScanWorkStage.ValidatingRelationships => "保存データを検証中",
+            ScanWorkStage.BuildingFolderList => "一覧用データを生成中",
+            ScanWorkStage.Committing => "保存を確定中",
+            ScanWorkStage.MaintainingHistory => "履歴を整理中",
+            _ => null,
+        };
+        string percentage = progress.Fraction is { } value ? $" {Math.Clamp(value, 0, 1):P0}" : "";
+        string counts = progress.Work is { Total: { } total } work
+            ? $" · {work.Completed:N0}/{total:N0} 件"
+            : $" · {progress.Candidates:N0} 件";
+        var step = progress.Step;
+        string retry = progress.Work is { RetryAttempt: > 0 } retrying
+            ? $" · 再試行 {retrying.RetryAttempt}（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
+            : "";
+        string stepText = step.Number == 0 ? "準備中" : $"ステップ {step.Number}/{step.Total}";
         if (selectedCard == card)
             StatusText.Text =
-                $"{phase} · {progress.Candidates:N0} 件 · {progress.Elapsed.TotalSeconds:F1} 秒";
+                $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒";
         card.SetState(
-            progress.Phase switch
-            {
-                ScanPhase.SavingHistory => "履歴保存中",
-                ScanPhase.WaitingForMemory => "メモリ待ち",
-                ScanPhase.Reading when progress.Fraction is { } fraction =>
-                    $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
-                ScanPhase.Reading => "走査中",
-                ScanPhase.Aggregating => "集計中",
-                ScanPhase.Saving => "保存中",
-                ScanPhase.WritingSnapshot => "書き出し中",
-                _ => "スキャン完了",
-            }
+            (step.Number == 0 ? "" : $"{step.Number}/{step.Total} · ")
+                + (
+                    detail is not null
+                        ? detail + percentage
+                        : progress.Phase switch
+                        {
+                            ScanPhase.SavingHistory => "履歴保存中",
+                            ScanPhase.WaitingForMemory => "メモリ待ち",
+                            ScanPhase.Reading when progress.Fraction is { } fraction =>
+                                $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
+                            ScanPhase.Reading => "走査中",
+                            ScanPhase.Aggregating => "集計中",
+                            ScanPhase.Saving => "保存中",
+                            ScanPhase.WritingSnapshot => "書き出し中",
+                            _ => "スキャン完了",
+                        }
+                )
         );
     }
 

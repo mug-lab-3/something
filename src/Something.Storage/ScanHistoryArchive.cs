@@ -78,17 +78,30 @@ public sealed partial class ScanHistoryArchive
         string drive,
         TimeSpan elapsed,
         ulong cacheBytes,
-        CancellationToken token = default
+        CancellationToken token = default,
+        Action<ScanWorkProgress>? progress = null,
+        Func<ulong, ulong?>? reserveMemoryGrowth = null,
+        Action<ulong>? accountMemoryLimit = null
     )
     {
         ValidateArguments(buffer.Descriptor.VolumeKey, drive, elapsed);
+        progress?.Invoke(new(ScanWorkStage.WritingFiles, 0, null));
         lock (sync)
         {
             using var target = OpenDatabase(token, cacheBytes);
             var metadata = ToEntity(
                 NewEntry(Guid.Empty, buffer.Descriptor.VolumeKey, drive, endedUtc, elapsed)
             );
-            target.PublishHistoryBuffer(buffer, endedUtc, metadata, token);
+            target.PublishHistoryBuffer(
+                buffer,
+                endedUtc,
+                metadata,
+                token,
+                progress: progress,
+                reserveMemoryGrowth: reserveMemoryGrowth,
+                accountMemoryLimit: accountMemoryLimit
+            );
+            progress?.Invoke(new(ScanWorkStage.MaintainingHistory, 0, null));
             MaintainAfterPublication(target);
             return ToEntry(metadata);
         }

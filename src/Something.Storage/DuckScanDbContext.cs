@@ -12,6 +12,32 @@ internal sealed class DuckScanDbContext(DbContextOptions<DuckScanDbContext> opti
 {
     internal bool ReadOnly { get; init; }
     internal HashSet<Guid> DirtyGenerations { get; } = [];
+    internal Action? ReleaseEngine;
+    internal string MemoryKey { get; set; } = "";
+
+    public override void Dispose()
+    {
+        try
+        {
+            base.Dispose();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref ReleaseEngine, null)?.Invoke();
+        }
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref ReleaseEngine, null)?.Invoke();
+        }
+    }
 }
 
 internal sealed class DuckScanDbContextFactory : IDesignTimeDbContextFactory<DuckScanDbContext>

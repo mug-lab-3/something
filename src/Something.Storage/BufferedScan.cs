@@ -98,47 +98,57 @@ public sealed class BufferedScan
         observations.Add(observation);
     }
 
-    public FolderAggregationResult Complete(CancellationToken cancellationToken = default)
+    public FolderAggregationResult Complete(
+        CancellationToken cancellationToken = default,
+        Action<ScanWorkProgress>? progress = null
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (aggregation is not null)
             return aggregation;
-        var folders = observations
-            .Where(o => o.File is { IsDirectory: true, LinkSetComplete: true })
-            .Select(o => new FolderObservation(
-                o.File!.Reference,
-                [
-                    .. o
-                        .File.Names.Where(n => n.Namespace != FileNameNamespace.Dos)
-                        .Select(n => n.Parent)
-                        .Distinct(),
-                ]
-            ))
-            .ToArray();
+        var reporter = new ScanWorkReporter(progress);
+        reporter.Start(ScanWorkStage.CollectingFolders, observations.Count);
+        var folders = new List<FolderObservation>();
+        long collected = 0;
+        foreach (var observation in observations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (observation.File is { IsDirectory: true, LinkSetComplete: true } file)
+                folders.Add(
+                    new(
+                        file.Reference,
+                        [
+                            .. file
+                                .Names.Where(n => n.Namespace != FileNameNamespace.Dos)
+                                .Select(n => n.Parent)
+                                .Distinct(),
+                        ]
+                    )
+                );
+            reporter.Advance(++collected);
+        }
         var root =
             folders.SingleOrDefault(f => f.Reference.RecordIndex == 5)
             ?? throw new InvalidDataException("A complete root observation is required.");
+        reporter.Start(ScanWorkStage.BuildingHierarchy);
         var graph = FolderGraph.Build(root.Reference, folders, cancellationToken);
         var resolver = new ScanDomainResolver(graph);
         var collector = new UnattributedDiagnostics(graph);
         CapacityAmount observed = default;
+        reporter.Start(ScanWorkStage.AggregatingFiles, observations.Count);
         var result = new FolderAggregator(graph).Aggregate(
-            observations
-                .Where(o => o.File is not null)
-                .Select(o =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var file = o.File!;
-                    foreach (var stream in file.Streams)
-                        observed += new CapacityAmount(
-                            (UInt128)stream.LogicalBytes,
-                            (UInt128)stream.AllocatedBytes
-                        );
-                    return resolver.Resolve(file, cancellationToken);
-                }),
+            ResolvedFiles(),
             cancellationToken,
-            collector.Add
+            collector.Add,
+            (completed, total) =>
+            {
+                if (completed == 0)
+                    reporter.Start(ScanWorkStage.RollingUpFolders, total);
+                else
+                    reporter.Advance(completed);
+            }
         );
+        reporter.Start(ScanWorkStage.ValidatingAggregation);
         if (!result.Folders.TryGetValue(root.Reference, out var rootSample))
             throw new InvalidDataException("A valid root hierarchy is required for publication.");
         if (
@@ -175,5 +185,24 @@ public sealed class BufferedScan
         indices.Clear();
         indices.TrimExcess();
         return aggregation;
+
+        IEnumerable<FileCapacityObservation> ResolvedFiles()
+        {
+            long completed = 0;
+            foreach (var item in observations)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (item.File is { } file)
+                {
+                    foreach (var stream in file.Streams)
+                        observed += new CapacityAmount(
+                            (UInt128)stream.LogicalBytes,
+                            (UInt128)stream.AllocatedBytes
+                        );
+                    yield return resolver.Resolve(file, cancellationToken);
+                }
+                reporter.Advance(++completed);
+            }
+        }
     }
 }

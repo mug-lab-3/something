@@ -151,18 +151,18 @@ public sealed partial class ScanStore : IDisposable
 
     // State validation, writes and publication are enclosed in one transaction.
     // Tracked entities are always released, even after rollback.
-    private void Write(Action action, CancellationToken token)
+    private void Write(Action action, CancellationToken token, ScanWorkReporter? progress = null)
     {
         if (context is DuckScanDbContext)
         {
             lock (DuckDatabaseBootstrap.Gate(context.Database.GetDbConnection().DataSource))
-                WriteCore(action, token);
+                WriteCore(action, token, progress);
         }
         else
-            WriteCore(action, token);
+            WriteCore(action, token, progress);
     }
 
-    private void WriteCore(Action action, CancellationToken token)
+    private void WriteCore(Action action, CancellationToken token, ScanWorkReporter? progress)
     {
         if (context is DuckScanDbContext { ReadOnly: true })
             throw new DbUpdateException("History readers cannot modify the database.");
@@ -174,8 +174,9 @@ public sealed partial class ScanStore : IDisposable
             token.ThrowIfCancellationRequested();
             context.SaveChanges();
             if (context is DuckScanDbContext duck)
-                DuckReadModel.CompleteWrite(duck, token);
+                DuckReadModel.CompleteWrite(duck, token, progress);
             token.ThrowIfCancellationRequested();
+            progress?.Start(ScanWorkStage.Committing);
             transaction.Commit();
         }
         finally
