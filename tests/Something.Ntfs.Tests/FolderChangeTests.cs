@@ -1,0 +1,392 @@
+using System.Numerics;
+using Microsoft.EntityFrameworkCore;
+using Something.Application;
+using Something.Ntfs;
+using Something.Statistics;
+using Something.Storage;
+
+namespace Something.Ntfs.Tests;
+
+public sealed class FolderChangeTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
+    private static CancellationToken Token => TestContext.Current.CancellationToken;
+
+    private sealed record Folder(
+        ulong Index,
+        string Name,
+        UInt128 Bytes,
+        ushort Sequence = 1,
+        bool Unresolved = false
+    );
+
+    [Theory]
+    [InlineData(FolderChangePeriod.Last24Hours, 1)]
+    [InlineData(FolderChangePeriod.Last7Days, 7)]
+    [InlineData(FolderChangePeriod.Last365Days, 365)]
+    public async Task PeriodSelectsRetainedEndpointsAndRanksSignedAllocatedChanges(
+        FolderChangePeriod period,
+        int days
+    )
+    {
+        using var fixture = new Fixture();
+        var baseline = fixture.Save(
+            Now.AddDays(-days).AddHours(-2),
+            [new(20, "growing", 100), new(30, "shrinking", 500), new(40, "stable", 10)]
+        );
+        var latest = fixture.Save(
+            Now.AddMinutes(-1),
+            [new(20, "renamed", 400), new(30, "shrinking", 50), new(40, "stable", 10)]
+        );
+        fixture.Save(Now.AddMinutes(1), [new(20, "future", 9999)]);
+
+        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
+            "volume:A",
+            period,
+            Token,
+            Now
+        );
+
+        Assert.Equal(FolderComparisonAvailability.Available, report.Availability);
+        Assert.Equal(Now.AddDays(-days), report.RequestedBaselineUtc);
+        Assert.Equal(baseline.Id, report.Baseline!.Id);
+        Assert.Equal(latest.Id, report.Latest!.Id);
+        Assert.Equal(2, report.ChangedFolders.Length);
+        var growth = Assert.Single(report.Rank(FolderChangeRanking.Growth));
+        Assert.Equal(new BigInteger(300), growth.AllocatedDelta);
+        Assert.Equal("growing", growth.BeforePath);
+        Assert.Equal("renamed", growth.AfterPath);
+        Assert.Equal(
+            new BigInteger(-450),
+            Assert.Single(report.Rank(FolderChangeRanking.Shrinkage)).AllocatedDelta
+        );
+        Assert.Equal(
+            new ulong[] { 30, 20 },
+            report.Rank(FolderChangeRanking.Magnitude).Select(row => row.Reference.RecordIndex)
+        );
+        Assert.Single(Directory.GetFiles(fixture.Root, "*.sqlite3"));
+    }
+
+    [Fact]
+    public void MissingEndpointsDoNotCreateZeroChanges()
+    {
+        using var fixture = new Fixture();
+        var noData = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Token
+        );
+        Assert.Equal(FolderComparisonAvailability.NoLatestObservation, noData.Availability);
+        fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 100)]);
+        var noBaseline = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Token
+        );
+        Assert.Equal(FolderComparisonAvailability.NoBaseline, noBaseline.Availability);
+        Assert.Empty(noBaseline.Folders);
+        var stale = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now.AddDays(2),
+            Token
+        );
+        Assert.Equal(FolderComparisonAvailability.NoRecentObservation, stale.Availability);
+        Assert.Empty(stale.Rank(FolderChangeRanking.Growth));
+    }
+
+    [Fact]
+    public void ReusedReferencesMissingFoldersAndUnresolvedSizesAreNotRankedAsChanges()
+    {
+        using var fixture = new Fixture();
+        fixture.Save(
+            Now.AddDays(-2),
+            [new(20, "old", 50), new(30, "missing", 100), new(40, "uncertain", 10)]
+        );
+        fixture.Save(
+            Now,
+            [
+                new(20, "reused", 999, Sequence: 2),
+                new(40, "uncertain", 10, Unresolved: true),
+                new(50, "unseen", 200),
+            ]
+        );
+
+        var report = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Token
+        );
+
+        Assert.Equal(5, report.Folders.Length);
+        Assert.All(report.Folders, row => Assert.Null(row.AllocatedDelta));
+        Assert.Empty(report.ChangedFolders);
+        Assert.Equal(5, report.UncertainFolders.Length);
+        Assert.Equal(
+            2,
+            report.Folders.Count(row => row.Status == FolderChangeStatus.NotObservedBefore)
+        );
+        Assert.Equal(
+            2,
+            report.Folders.Count(row => row.Status == FolderChangeStatus.NotObservedAfter)
+        );
+        Assert.Single(report.Folders, row => row.Status == FolderChangeStatus.UncertainCapacity);
+        Assert.Empty(report.Rank(FolderChangeRanking.Magnitude));
+    }
+
+    [Fact]
+    public void DeltaSupportsFullUnsignedCapacityRange()
+    {
+        using var fixture = new Fixture();
+        var baseline = fixture.Save(Now.AddDays(-2), [new(20, "folder", 100)]);
+        fixture.Save(Now, [new(20, "folder", 0)]);
+        using (
+            var writer = ScanStore.OpenHistoryWriter(
+                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                null,
+                Token
+            )
+        )
+        {
+            var folder = writer.HistoryContext.Folders.Single(row =>
+                row.ScanId == baseline.Id && row.RecordIndex == 20
+            );
+            folder.EntrySubtreeAllocated = UInt128.MaxValue;
+            writer.HistoryContext.SaveChanges();
+        }
+
+        var report = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Token
+        );
+
+        Assert.Equal(
+            -BigInteger.CreateChecked(UInt128.MaxValue),
+            Assert.Single(report.Folders).AllocatedDelta
+        );
+        Assert.Single(report.Rank(FolderChangeRanking.Shrinkage));
+    }
+
+    [Fact]
+    public void VolumeIsolationCancellationAndArgumentValidation()
+    {
+        using var fixture = new Fixture();
+        fixture.Save(Now.AddDays(-2), [new(20, "folder", 100)], "volume:B");
+        fixture.Save(Now, [new(20, "folder", 200)]);
+        Assert.Equal(
+            FolderComparisonAvailability.NoBaseline,
+            fixture
+                .Archive.ReadFolderChanges("volume:A", FolderChangePeriod.Last24Hours, Now, Token)
+                .Availability
+        );
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Archive.ReadFolderChanges(
+                "volume:A",
+                FolderChangePeriod.Last24Hours,
+                Now,
+                cancelled.Token
+            )
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            fixture.Archive.ReadFolderChanges("volume:A", (FolderChangePeriod)99, Now, Token)
+        );
+        var report = fixture.Archive.ReadFolderChanges(
+            "volume:A",
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Token
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(() => report.Rank((FolderChangeRanking)99));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            report.Rank(FolderChangeRanking.Growth, 0)
+        );
+    }
+
+    [Fact]
+    public void LegacyMetricIsNotSilentlySubstituted()
+    {
+        using var fixture = new Fixture();
+        var old = fixture.Save(Now.AddDays(-2), [new(20, "folder", 100)]);
+        fixture.Save(Now, [new(20, "folder", 200)]);
+        using (
+            var writer = ScanStore.OpenHistoryWriter(
+                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                null,
+                Token
+            )
+        )
+        {
+            var folder = writer.HistoryContext.Folders.Single(row =>
+                row.ScanId == old.Id && row.RecordIndex == 20
+            );
+            folder.EntrySubtreeAllocated = null;
+            folder.EntrySubtreeLogical = null;
+            folder.EntryDirectAllocated = null;
+            folder.EntryDirectLogical = null;
+            folder.EntryDirectFiles = null;
+            folder.EntrySubtreeFiles = null;
+            folder.EntryDirectUnresolved = null;
+            folder.EntrySubtreeUnresolved = null;
+            writer.HistoryContext.SaveChanges();
+        }
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Archive.ReadFolderChanges(
+                "volume:A",
+                FolderChangePeriod.Last24Hours,
+                Now,
+                Token
+            )
+        );
+    }
+
+    [Fact]
+    public void FailedHistoryMetadataCommitRollsBackFactsAndLatestPointer()
+    {
+        using var fixture = new Fixture();
+        var previous = fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 100)]);
+        using (
+            var writer = ScanStore.OpenHistoryWriter(
+                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                null,
+                Token
+            )
+        )
+        {
+            // Fault injection in an isolated test database, after bulk facts have been inserted.
+            writer.HistoryContext.Database.ExecuteSqlRaw(
+                "CREATE TRIGGER reject_history BEFORE INSERT ON history_snapshot BEGIN SELECT RAISE(ABORT, 'injected history failure'); END;"
+            );
+        }
+
+        Assert.Throws<DbUpdateException>(() => fixture.Save(Now, [new(20, "folder", 200)]));
+
+        Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
+        using var stored = ScanStore.OpenSnapshotReadOnly(
+            Path.Combine(fixture.Root, "catalog.sqlite3"),
+            Token
+        );
+        Assert.Equal(previous.Id, Assert.Single(stored.HistoryContext.Scans).Id);
+        Assert.Equal(previous.Id, Assert.Single(stored.HistoryContext.Published).ScanId);
+        Assert.All(
+            stored.HistoryContext.Observations,
+            row => Assert.Equal(previous.Id, row.ScanId)
+        );
+    }
+
+    private sealed class Clock : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class Fixture : IDisposable
+    {
+        public string Root { get; } =
+            Path.Combine(
+                Path.GetTempPath(),
+                "something-changes-test-" + Guid.NewGuid().ToString("N")
+            );
+        public ScanHistoryArchive Archive { get; }
+
+        public Fixture() => Archive = new(Root, new Clock(), TimeZoneInfo.Utc);
+
+        public ScanHistoryEntry Save(
+            DateTimeOffset ended,
+            Folder[] folders,
+            string key = "volume:A"
+        )
+        {
+            var buffer = new BufferedScan(
+                new(key, Guid.NewGuid(), 1, new(0, 1000), ended.AddSeconds(-1))
+            );
+            var root = FileReference.Create(5, 1);
+            Add(
+                new(
+                    root,
+                    true,
+                    CapacityDomain.Ordinary,
+                    CapacityResolution.Resolved,
+                    [new(root, "root", FileNameNamespace.Win32, 0)],
+                    [],
+                    true
+                )
+            );
+            foreach (var folder in folders)
+            {
+                var reference = FileReference.Create(folder.Index, folder.Sequence);
+                Add(
+                    new(
+                        reference,
+                        true,
+                        CapacityDomain.Ordinary,
+                        CapacityResolution.Resolved,
+                        [new(root, folder.Name, FileNameNamespace.Win32, 0)],
+                        [],
+                        true
+                    )
+                );
+                Add(
+                    new(
+                        FileReference.Create(folder.Index + 100, folder.Sequence),
+                        false,
+                        CapacityDomain.Ordinary,
+                        folder.Unresolved
+                            ? CapacityResolution.Unresolved
+                            : CapacityResolution.Resolved,
+                        [new(reference, "file", FileNameNamespace.Win32, 0)],
+                        folder.Unresolved
+                            ? []
+                            : [new("", checked((long)folder.Bytes), checked((long)folder.Bytes))],
+                        true
+                    )
+                );
+            }
+            buffer.Complete(Token);
+            return Archive.Publish(
+                buffer,
+                ended,
+                "Demo",
+                TimeSpan.FromSeconds(1),
+                64UL * 1024 * 1024,
+                Token
+            );
+
+            void Add(FileCapacityObservation file) =>
+                buffer.Add(
+                    new StagedObservation(
+                        file.Reference.RecordIndex,
+                        file.Resolution == CapacityResolution.Resolved
+                            ? MftScanEntryKind.ResolvedFile
+                            : MftScanEntryKind.Unresolved,
+                        file.Resolution == CapacityResolution.Resolved
+                            ? LiveFileReadStatus.ObservedUnchanged
+                            : LiveFileReadStatus.Unsupported,
+                        file
+                    ),
+                    Token
+                );
+        }
+
+        public void Dispose()
+        {
+            string owned = Path.GetFullPath(Root);
+            string parent =
+                Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            if (
+                !owned.StartsWith(parent, StringComparison.OrdinalIgnoreCase)
+                || !Path.GetFileName(owned)
+                    .StartsWith("something-changes-test-", StringComparison.Ordinal)
+            )
+                throw new InvalidOperationException("Invalid cleanup path.");
+            if (Directory.Exists(owned))
+                Directory.Delete(owned, recursive: true);
+        }
+    }
+}

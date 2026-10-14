@@ -199,7 +199,27 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
     {
         progress?.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var aggregation = buffer.Complete(token);
-        var selection = reservation.SelectDatabase(buffer.EstimateDatabaseBytes(token));
+        var selection = reservation.SelectDatabase(
+            buffer.EstimateDatabaseBytes(token),
+            history is not null && !demo
+                ? DiagnosticDatabasePreference.File
+                : DiagnosticDatabasePreference.Automatic
+        );
+        if (history is not null && !demo)
+        {
+            progress?.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
+            var entry = history.Publish(
+                buffer,
+                DateTimeOffset.UtcNow,
+                drive,
+                watch.Elapsed,
+                selection.FileCacheBytes,
+                token
+            );
+            var session = ScanSession.FromHistory(history.Open(entry.Id, token), drive, token);
+            progress?.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
+            return session;
+        }
         progress?.Report(new(ScanPhase.Saving, candidates, null, watch.Elapsed));
         var database = TemporaryScanDatabase.Create(
             token,
@@ -210,13 +230,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
         try
         {
             var id = database.Store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
-            ScanHistoryEntry? saved = null;
-            if (history is not null && !demo)
-            {
-                progress?.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
-                saved = history.Save(database.Store, id, drive, watch.Elapsed, token);
-            }
-            else if (selection.UseMemory)
+            if (selection.UseMemory)
             {
                 progress?.Report(new(ScanPhase.WritingSnapshot, candidates, null, watch.Elapsed));
                 database.ExportSnapshot(token);
@@ -232,8 +246,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                 aggregation.Metadata.UnresolvedCount,
                 selection,
                 demo,
-                watch.Elapsed,
-                saved
+                watch.Elapsed
             );
         }
         catch

@@ -101,40 +101,41 @@ public sealed class ScanSession : IAsyncDisposable
         Guid id,
         string drive,
         CancellationToken token
-    ) =>
-        Task.Run(
-            () =>
-            {
-                var snapshot = archive.Open(id, token);
-                try
-                {
-                    var summary = snapshot.Store.ReadSnapshotSummary(id, token);
-                    return new ScanSession(
-                        snapshot,
-                        snapshot.Store,
-                        id,
-                        drive,
-                        summary.Root.Reference,
-                        summary.Root,
-                        summary.MetadataUnresolved,
-                        DiagnosticDatabaseSelector.Select(
-                            snapshot.SizeBytes,
-                            null,
-                            DiagnosticDatabasePreference.File
-                        ),
-                        false,
-                        snapshot.Entry.Elapsed,
-                        snapshot.Entry
-                    );
-                }
-                catch
-                {
-                    snapshot.Dispose();
-                    throw;
-                }
-            },
-            token
-        );
+    ) => Task.Run(() => FromHistory(archive.Open(id, token), drive, token), token);
+
+    internal static ScanSession FromHistory(
+        HistorySnapshot snapshot,
+        string drive,
+        CancellationToken token
+    )
+    {
+        try
+        {
+            var summary = snapshot.Store.ReadSnapshotSummary(snapshot.Entry.Id, token);
+            return new ScanSession(
+                snapshot,
+                snapshot.Store,
+                snapshot.Entry.Id,
+                drive,
+                summary.Root.Reference,
+                summary.Root,
+                summary.MetadataUnresolved,
+                DiagnosticDatabaseSelector.Select(
+                    snapshot.SizeBytes,
+                    null,
+                    DiagnosticDatabasePreference.File
+                ),
+                false,
+                snapshot.Entry.Elapsed,
+                snapshot.Entry
+            );
+        }
+        catch
+        {
+            snapshot.Dispose();
+            throw;
+        }
+    }
 
     public async Task<FileReference?> ReadParentAsync(
         FileReference folder,

@@ -32,6 +32,12 @@ public sealed partial class ScanStore : IDisposable
     internal static ScanStore OpenSnapshotReadOnly(string path, CancellationToken token) =>
         new(SqliteDatabaseBootstrap.OpenSnapshotReadOnly(path, token));
 
+    internal static ScanStore OpenHistoryWriter(
+        string path,
+        ulong? cacheBytes,
+        CancellationToken token
+    ) => new(SqliteDatabaseBootstrap.Open(path, token, SqliteDatabaseProfile.History, cacheBytes));
+
     internal static ScanStore OpenInMemory(CancellationToken token) =>
         new(
             SqliteDatabaseBootstrap.Open(":memory:", token, SqliteDatabaseProfile.DiagnosticMemory)

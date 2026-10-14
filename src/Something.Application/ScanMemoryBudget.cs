@@ -38,14 +38,20 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         }
     }
 
-    private DiagnosticDatabaseSelection Select(Guid id, ulong bufferBytes, ulong estimate)
+    private DiagnosticDatabaseSelection Select(
+        Guid id,
+        ulong bufferBytes,
+        ulong estimate,
+        DiagnosticDatabasePreference preference
+    )
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
             var selection = DiagnosticDatabaseSelector.Select(
                 estimate,
-                Subtract(readAvailable(), TotalExcept(id))
+                Subtract(readAvailable(), TotalExcept(id)),
+                preference
             );
             ulong databaseBudget = Saturate(
                 (UInt128)(selection.UseMemory ? estimate : selection.FileCacheBytes) * 2
@@ -121,8 +127,10 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             this.bufferBytes = bufferBytes;
         }
 
-        public DiagnosticDatabaseSelection SelectDatabase(ulong estimate) =>
-            owner.Select(id, bufferBytes, estimate);
+        public DiagnosticDatabaseSelection SelectDatabase(
+            ulong estimate,
+            DiagnosticDatabasePreference preference = DiagnosticDatabasePreference.Automatic
+        ) => owner.Select(id, bufferBytes, estimate, preference);
 
         public void Dispose() => owner.Release(id);
     }

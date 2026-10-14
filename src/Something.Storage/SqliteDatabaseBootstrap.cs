@@ -68,7 +68,14 @@ internal static class SqliteDatabaseBootstrap
     {
         if (!Enum.IsDefined(profile))
             throw new ArgumentOutOfRangeException(nameof(profile));
-        if (fileCacheBytes is not null && profile != SqliteDatabaseProfile.DiagnosticBoundedFile)
+        if (
+            fileCacheBytes is not null
+            && profile
+                is not (
+                    SqliteDatabaseProfile.DiagnosticBoundedFile
+                    or SqliteDatabaseProfile.History
+                )
+        )
             throw new ArgumentException(
                 "A cache budget requires the bounded file profile.",
                 nameof(fileCacheBytes)
@@ -104,6 +111,13 @@ internal static class SqliteDatabaseBootstrap
                     profile == SqliteDatabaseProfile.DiagnosticBoundedFile
                         ? "PRAGMA temp_store=FILE"
                         : "PRAGMA temp_store=MEMORY"
+                );
+            }
+            if (profile == SqliteDatabaseProfile.History && fileCacheBytes is not null)
+            {
+                Execute(
+                    connection,
+                    $"PRAGMA cache_size=-{(cacheBytes / 1024).ToString(System.Globalization.CultureInfo.InvariantCulture)}"
                 );
             }
             if (profile == SqliteDatabaseProfile.DiagnosticBoundedFile)

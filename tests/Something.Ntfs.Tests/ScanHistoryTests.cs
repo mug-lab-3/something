@@ -141,27 +141,14 @@ public sealed class ScanHistoryTests
     }
 
     [Fact]
-    public void SnapshotCollisionDoesNotOverwriteExistingFileOrPreviousHistory()
+    public void DuplicateGenerationCannotOverwritePreviousHistory()
     {
         using var fixture = new HistoryFixture(Now);
         var previous = fixture.Save(Now.AddMinutes(-2), Token);
-        Guid collision = Guid.Empty;
-        byte[] protectedBytes = [1, 2, 3, 4];
-
-        Assert.Throws<IOException>(() =>
-            fixture.Save(
-                Now,
-                Token,
-                id =>
-                {
-                    collision = id;
-                    File.WriteAllBytes(fixture.PathFor(id), protectedBytes);
-                }
-            )
+        using var reader = fixture.Archive.Open(previous.Id, Token);
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Archive.Save(reader.Store, previous.Id, "Demo", TimeSpan.Zero, Token)
         );
-
-        Assert.Equal(protectedBytes, File.ReadAllBytes(fixture.PathFor(collision)));
-        Assert.False(File.Exists(fixture.PathFor(collision) + ".pending"));
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
     }
 
@@ -196,12 +183,16 @@ public sealed class ScanHistoryTests
         fixture.Archive.Maintain(Token);
 
         Assert.Equal(second.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
-        Assert.True(File.Exists(fixture.PathFor(first.Id)));
+        Assert.Throws<InvalidOperationException>(() => fixture.Archive.Open(first.Id, Token));
         Assert.Equal(first.Id, reader.Store.GetScan(first.Id).Id);
         reader.Dispose();
         fixture.Archive.Maintain(Token);
-        Assert.False(File.Exists(fixture.PathFor(first.Id)));
-        Assert.True(File.Exists(fixture.PathFor(second.Id)));
+        using var stored = ScanStore.OpenSnapshotReadOnly(
+            Path.Combine(fixture.Root, "catalog.sqlite3"),
+            Token
+        );
+        Assert.Throws<KeyNotFoundException>(() => stored.GetScan(first.Id));
+        Assert.Equal(second.Id, stored.GetScan(second.Id).Id);
     }
 
     [Fact]
@@ -218,7 +209,72 @@ public sealed class ScanHistoryTests
         cancelled.Cancel();
         Assert.Throws<OperationCanceledException>(() => fixture.Save(Now, cancelled.Token));
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
-        Assert.Single(Directory.GetFiles(Path.Combine(fixture.Root, "snapshots")));
+        Assert.Single(Directory.GetFiles(fixture.Root, "*.sqlite3"));
+        Assert.False(Directory.Exists(Path.Combine(fixture.Root, "snapshots")));
+    }
+
+    [Fact]
+    public void OldDevelopmentCatalogIsRejectedWithoutReadingOrDeletingSnapshotFiles()
+    {
+        using var fixture = new HistoryFixture(Now);
+        Guid id = Guid.NewGuid();
+        Directory.CreateDirectory(Path.Combine(fixture.Root, "snapshots"));
+        byte[] original = [1, 2, 3, 4];
+        File.WriteAllBytes(fixture.PathFor(id), original);
+        using (
+            var catalog = SqliteDatabaseBootstrap.Open(
+                Path.Combine(fixture.Root, "catalog.sqlite3"),
+                Token
+            )
+        )
+        {
+            catalog.HistorySnapshots.Add(
+                new()
+                {
+                    Id = id,
+                    VolumeKey = "volume:A",
+                    Drive = "Demo",
+                    CompletedUtcTicks = Now.UtcTicks,
+                    LocalDay = DateOnly.FromDateTime(Now.UtcDateTime).DayNumber,
+                }
+            );
+            catalog.SaveChanges();
+        }
+
+        var error = Assert.Throws<InvalidDataException>(() =>
+            fixture.Archive.List("volume:A", Token)
+        );
+
+        Assert.Contains("automatic conversion is disabled", error.Message);
+        Assert.Equal(original, File.ReadAllBytes(fixture.PathFor(id)));
+        using var preserved = SqliteDatabaseBootstrap.Open(
+            Path.Combine(fixture.Root, "catalog.sqlite3"),
+            Token
+        );
+        Assert.Equal(id, Assert.Single(preserved.HistorySnapshots).Id);
+        Assert.Empty(preserved.Scans);
+    }
+
+    [Fact]
+    public void IndependentArchiveReaderDefersGenerationDeletion()
+    {
+        using var fixture = new HistoryFixture(Now.AddDays(-2));
+        var first = fixture.Save(Now.AddDays(-2).AddHours(-1), Token);
+        fixture.Save(Now.AddDays(-2), Token);
+        using var reader = fixture.Archive.Open(first.Id, Token);
+        fixture.Clock.Now = Now;
+        var other = new ScanHistoryArchive(fixture.Root, fixture.Clock, TimeZoneInfo.Utc);
+
+        other.Maintain(Token);
+        Assert.Equal(first.Id, reader.Store.GetScan(first.Id).Id);
+        reader.Dispose();
+        other.Maintain(Token);
+
+        using var remaining = ScanStore.OpenSnapshotReadOnly(
+            Path.Combine(fixture.Root, "catalog.sqlite3"),
+            Token
+        );
+        Assert.Throws<KeyNotFoundException>(() => remaining.GetScan(first.Id));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

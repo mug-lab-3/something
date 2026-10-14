@@ -1628,7 +1628,12 @@ public sealed class ScanStoreTests
                 )
             );
         Assert.Throws<ArgumentException>(() =>
-            SqliteDatabaseBootstrap.Open(path, token, fileCacheBytes: 64 * 1024 * 1024)
+            SqliteDatabaseBootstrap.Open(
+                path,
+                token,
+                SqliteDatabaseProfile.DiagnosticFile,
+                fileCacheBytes: 64 * 1024 * 1024
+            )
         );
         Assert.Throws<ArgumentException>(() =>
             TemporaryScanDatabase.Create(token, fileCacheBytes: 64 * 1024 * 1024)

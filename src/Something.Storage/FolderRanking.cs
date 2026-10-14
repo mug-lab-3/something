@@ -41,6 +41,20 @@ public sealed partial class ScanStore
     {
         if (count is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(count));
+        return ReadRankedFolders(scanId, count, cancellationToken, metric, filter, sort);
+    }
+
+    internal ImmutableArray<RankedFolder> ReadRankedFolders(
+        Guid scanId,
+        int count,
+        CancellationToken cancellationToken,
+        FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData,
+        FolderRankingFilter? filter = null,
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
+    )
+    {
+        if (count < 1)
+            throw new ArgumentOutOfRangeException(nameof(count));
         if (!Enum.IsDefined(metric))
             throw new ArgumentOutOfRangeException(nameof(metric));
         if (!Enum.IsDefined(sort))
@@ -118,6 +132,7 @@ public sealed partial class ScanStore
         var largest = aggregation
             .Folders.Values.Where(s =>
                 s.Reference != root
+                && graph.Nodes[s.Reference].Depth is not null
                 && Ordinary(s)
                 && (filter.Depth is null || graph.Nodes[s.Reference].Depth == filter.Depth)
                 && (!filter.LeafOnly || !hasChildren.Contains(s.Reference))

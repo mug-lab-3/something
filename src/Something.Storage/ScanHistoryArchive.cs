@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Something.Storage;
 
-/// <summary>Owns immutable full scan databases and a small EF catalog. Inspected file paths never select archive paths.</summary>
-public sealed class ScanHistoryArchive
+/// <summary>All volumes and generations share one SQLite database. Typed generation imports and retention are atomic.</summary>
+public sealed partial class ScanHistoryArchive
 {
     private readonly string root;
     private readonly object sync = new();
@@ -12,6 +12,9 @@ public sealed class ScanHistoryArchive
     private readonly TimeProvider clock;
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
+    private string DatabasePath => Path.Combine(root, "catalog.sqlite3");
+
+    private string LeasePath(Guid id) => Path.Combine(root, "leases", $"{id:N}.lock");
 
     public ScanHistoryArchive(
         string root,
@@ -34,11 +37,9 @@ public sealed class ScanHistoryArchive
         return new(Path.Combine(directory, "Something", "History"));
     }
 
-    private string SnapshotPath(Guid id) => Path.Combine(root, "snapshots", $"{id:N}.sqlite3");
-
-    private ScanDbContext OpenCatalog(CancellationToken token)
+    private ScanStore OpenDatabase(CancellationToken token, ulong? cacheBytes = null)
     {
-        foreach (string directory in new[] { root, Path.Combine(root, "snapshots") })
+        foreach (string directory in new[] { root, Path.Combine(root, "leases") })
         {
             Directory.CreateDirectory(directory);
             if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
@@ -46,7 +47,49 @@ public sealed class ScanHistoryArchive
                     "History directories must not be reparse points."
                 );
         }
-        return SqliteDatabaseBootstrap.Open(Path.Combine(root, "catalog.sqlite3"), token);
+        var store = NewHistoryStore(cacheBytes, token);
+        try
+        {
+            if (
+                store.HistoryContext.HistorySnapshots.Any(row =>
+                    !store.HistoryContext.Scans.Any(scan => scan.Id == row.Id)
+                )
+            )
+                throw new InvalidDataException(
+                    "This development history uses an unsupported format. Preserve the old history directory and start with an empty one; automatic conversion is disabled."
+                );
+            return store;
+        }
+        catch
+        {
+            store.Dispose();
+            throw;
+        }
+    }
+
+    private ScanStore NewHistoryStore(ulong? cacheBytes, CancellationToken token) =>
+        ScanStore.OpenHistoryWriter(DatabasePath, cacheBytes, token);
+
+    public ScanHistoryEntry Publish(
+        BufferedScan buffer,
+        DateTimeOffset endedUtc,
+        string drive,
+        TimeSpan elapsed,
+        ulong cacheBytes,
+        CancellationToken token = default
+    )
+    {
+        ValidateArguments(buffer.Descriptor.VolumeKey, drive, elapsed);
+        lock (sync)
+        {
+            using var target = OpenDatabase(token, cacheBytes);
+            var metadata = ToEntity(
+                NewEntry(Guid.Empty, buffer.Descriptor.VolumeKey, drive, endedUtc, elapsed)
+            );
+            target.PublishHistoryBuffer(buffer, endedUtc, metadata, token);
+            MaintainAfterPublication(target);
+            return ToEntry(metadata);
+        }
     }
 
     public ScanHistoryEntry Save(
@@ -58,75 +101,20 @@ public sealed class ScanHistoryArchive
     )
     {
         ArgumentNullException.ThrowIfNull(source);
-        ArgumentException.ThrowIfNullOrWhiteSpace(drive);
-        ArgumentOutOfRangeException.ThrowIfNegative(elapsed.Ticks);
         lock (sync)
         {
             token.ThrowIfCancellationRequested();
             var scan = source.GetScan(scanId);
             if (scan.State != StoredScanState.Completed || scan.EndedUtc is not { } ended)
                 throw new InvalidOperationException("Only a completed scan can be archived.");
-            if (scan.Descriptor.VolumeKey.StartsWith("diagnostic:", StringComparison.Ordinal))
-                throw new InvalidOperationException(
-                    "Persistent history requires a stable volume identity."
-                );
-            var local = TimeZoneInfo.ConvertTime(ended, timeZone);
-            var entry = new ScanHistoryEntry(
-                scanId,
-                scan.Descriptor.VolumeKey,
-                drive,
-                ended,
-                DateOnly.FromDateTime(local.DateTime),
-                (int)local.Offset.TotalMinutes,
-                elapsed
-            );
-            using var catalog = OpenCatalog(token);
-            if (catalog.HistorySnapshots.Any(row => row.Id == scanId))
+            ValidateArguments(scan.Descriptor.VolumeKey, drive, elapsed);
+            var entry = NewEntry(scanId, scan.Descriptor.VolumeKey, drive, ended, elapsed);
+            using var target = OpenDatabase(token);
+            if (target.HistoryContext.HistorySnapshots.Any(row => row.Id == scanId))
                 throw new InvalidOperationException("This scan has already been archived.");
-            string final = SnapshotPath(scanId);
-            string pending = final + ".pending";
-            bool pendingOwned = false;
-            bool finalOwned = false;
-            bool committed = false;
-            try
-            {
-                source.SaveNewSnapshot(pending, token);
-                pendingOwned = true;
-                token.ThrowIfCancellationRequested();
-                File.Move(pending, final, overwrite: false);
-                pendingOwned = false;
-                finalOwned = true;
-                using var transaction = catalog.Database.BeginTransaction();
-                catalog.HistorySnapshots.Add(ToEntity(entry));
-                token.ThrowIfCancellationRequested();
-                catalog.SaveChanges();
-                transaction.Commit();
-                committed = true;
-            }
-            finally
-            {
-                if (pendingOwned)
-                    File.Delete(pending);
-                if (finalOwned && !committed)
-                    File.Delete(final);
-            }
-            // Publication is already durable. Retention maintenance must not report that
-            // the new snapshot failed or remove it when a later cleanup fails.
-            try
-            {
-                MaintainCore(catalog);
-                MaintenanceError = null;
-            }
-            catch (Exception error)
-                when (error
-                        is IOException
-                            or UnauthorizedAccessException
-                            or SqliteException
-                            or DbUpdateException
-                )
-            {
-                MaintenanceError = error.Message;
-            }
+            var metadata = ToEntity(entry);
+            target.CopyHistoryGeneration(source, metadata, token);
+            MaintainAfterPublication(target);
             return entry;
         }
     }
@@ -136,9 +124,9 @@ public sealed class ScanHistoryArchive
         ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
         lock (sync)
         {
-            using var catalog = OpenCatalog(token);
-            return catalog
-                .HistorySnapshots.AsNoTracking()
+            using var store = OpenDatabase(token);
+            return store
+                .HistoryContext.HistorySnapshots.AsNoTracking()
                 .Where(row => row.VolumeKey == volumeKey && !row.Retired)
                 .OrderByDescending(row => row.CompletedUtcTicks)
                 .ThenByDescending(row => row.Id)
@@ -152,42 +140,70 @@ public sealed class ScanHistoryArchive
     {
         lock (sync)
         {
-            using var catalog = OpenCatalog(token);
+            using var store = OpenDatabase(token);
             token.ThrowIfCancellationRequested();
-            MaintainCore(catalog);
+            MaintainCore(store);
             MaintenanceError = null;
         }
     }
 
-    private void MaintainCore(ScanDbContext catalog)
+    private void MaintainAfterPublication(ScanStore store)
     {
-        using (var transaction = catalog.Database.BeginTransaction())
+        try
         {
-            var rows = catalog.HistorySnapshots.Where(row => !row.Retired).ToArray();
+            MaintainCore(store);
+            MaintenanceError = null;
+        }
+        catch (Exception error)
+            when (error
+                    is IOException
+                        or UnauthorizedAccessException
+                        or SqliteException
+                        or DbUpdateException
+            )
+        {
+            MaintenanceError = error.Message;
+        }
+    }
+
+    private void MaintainCore(ScanStore store)
+    {
+        var context = store.HistoryContext;
+        using (var transaction = context.Database.BeginTransaction())
+        {
+            var rows = context.HistorySnapshots.Where(row => !row.Retired).ToArray();
             var keep = HistoryRetention.Keep(rows.Select(ToEntry), clock.GetUtcNow());
             foreach (var row in rows)
                 if (!keep.Contains(row.Id))
                     row.Retired = true;
-            catalog.SaveChanges();
+            context.SaveChanges();
             transaction.Commit();
         }
-        foreach (var row in catalog.HistorySnapshots.Where(row => row.Retired).ToArray())
+        context.ChangeTracker.Clear();
+        foreach (
+            var row in context.HistorySnapshots.AsNoTracking().Where(row => row.Retired).ToArray()
+        )
         {
             if (readers.ContainsKey(row.Id))
                 continue;
             try
             {
-                string path = SnapshotPath(row.Id);
-                if (
-                    File.Exists(path)
-                    && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0
-                )
-                    continue;
-                File.Delete(path);
-                catalog.HistorySnapshots.Remove(row);
-                catalog.SaveChanges();
+                using (var transaction = context.Database.BeginTransaction())
+                {
+                    // A tiny shared-read lease protects a generation in another process.
+                    // Do not pin a long-lived WAL read transaction for the lifetime of the UI.
+                    using var lease = new FileStream(
+                        LeasePath(row.Id),
+                        FileMode.OpenOrCreate,
+                        FileAccess.ReadWrite,
+                        FileShare.None
+                    );
+                    store.DeleteHistoryGeneration(row.Id);
+                    transaction.Commit();
+                }
+                File.Delete(LeasePath(row.Id));
             }
-            catch (IOException) { } // A reader in another app instance may still own the file.
+            catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
     }
@@ -196,50 +212,87 @@ public sealed class ScanHistoryArchive
     {
         lock (sync)
         {
-            using var catalog = OpenCatalog(token);
+            using var writer = OpenDatabase(token);
+            using var transaction = writer.HistoryContext.Database.BeginTransaction();
             var row =
-                catalog
-                    .HistorySnapshots.AsNoTracking()
+                writer
+                    .HistoryContext.HistorySnapshots.AsNoTracking()
                     .SingleOrDefault(row => row.Id == id && !row.Retired)
-                ?? throw new InvalidOperationException("History snapshot is unavailable.");
-            string path = SnapshotPath(id);
-            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("History snapshot must not be a reparse point.");
-            var store = ScanStore.OpenSnapshotReadOnly(path, token);
+                ?? throw new InvalidOperationException("History generation is unavailable.");
+            var lease = new FileStream(
+                LeasePath(id),
+                FileMode.OpenOrCreate,
+                FileAccess.Read,
+                FileShare.Read
+            );
+            ScanStore? reader = null;
             try
             {
-                var scan = store.GetScan(id);
+                reader = ScanStore.OpenSnapshotReadOnly(DatabasePath, token);
+                var scan = reader.GetScan(id);
                 if (
                     scan.State != StoredScanState.Completed
                     || scan.Descriptor.VolumeKey != row.VolumeKey
                     || scan.EndedUtc?.UtcTicks != row.CompletedUtcTicks
                 )
                     throw new InvalidDataException(
-                        "History catalog and snapshot identities disagree."
+                        "History metadata and generation identities disagree."
                     );
+                transaction.Commit();
                 readers[id] = readers.GetValueOrDefault(id) + 1;
                 return new(
-                    store,
+                    reader,
                     ToEntry(row),
-                    (ulong)new FileInfo(path).Length,
-                    () => Release(id)
+                    Math.Max(1, (ulong)new FileInfo(DatabasePath).Length),
+                    () =>
+                    {
+                        lease.Dispose();
+                        lock (sync)
+                        {
+                            if (--readers[id] == 0)
+                                readers.Remove(id);
+                        }
+                    }
                 );
             }
             catch
             {
-                store.Dispose();
+                reader?.Dispose();
+                lease.Dispose();
                 throw;
             }
         }
     }
 
-    private void Release(Guid id)
+    private ScanHistoryEntry NewEntry(
+        Guid id,
+        string key,
+        string drive,
+        DateTimeOffset ended,
+        TimeSpan elapsed
+    )
     {
-        lock (sync)
-        {
-            if (--readers[id] == 0)
-                readers.Remove(id);
-        }
+        var local = TimeZoneInfo.ConvertTime(ended, timeZone);
+        return new(
+            id,
+            key,
+            drive,
+            ended,
+            DateOnly.FromDateTime(local.DateTime),
+            (int)local.Offset.TotalMinutes,
+            elapsed
+        );
+    }
+
+    private static void ValidateArguments(string key, string drive, TimeSpan elapsed)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(drive);
+        ArgumentOutOfRangeException.ThrowIfNegative(elapsed.Ticks);
+        if (key.StartsWith("diagnostic:", StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "Persistent history requires a stable volume identity."
+            );
     }
 
     private static HistorySnapshotEntity ToEntity(ScanHistoryEntry entry) =>
@@ -254,7 +307,7 @@ public sealed class ScanHistoryArchive
             ElapsedTicks = entry.Elapsed.Ticks,
         };
 
-    private static ScanHistoryEntry ToEntry(HistorySnapshotEntity row) =>
+    internal static ScanHistoryEntry ToEntry(HistorySnapshotEntity row) =>
         new(
             row.Id,
             row.VolumeKey,

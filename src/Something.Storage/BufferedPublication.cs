@@ -11,6 +11,20 @@ public sealed partial class ScanStore
         BufferedScan buffer,
         DateTimeOffset endedUtc,
         CancellationToken cancellationToken = default
+    ) => PublishBufferedScanCore(buffer, endedUtc, null, cancellationToken);
+
+    internal Guid PublishHistoryBuffer(
+        BufferedScan buffer,
+        DateTimeOffset endedUtc,
+        HistorySnapshotEntity history,
+        CancellationToken token
+    ) => PublishBufferedScanCore(buffer, endedUtc, history, token);
+
+    private Guid PublishBufferedScanCore(
+        BufferedScan buffer,
+        DateTimeOffset endedUtc,
+        HistorySnapshotEntity? history,
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(buffer);
@@ -72,6 +86,11 @@ public sealed partial class ScanStore
                 scan.State = StoredScanState.Completed;
                 scan.Ended = endedUtc;
                 SetPublishedGeneration(scan.Id, buffer.Descriptor);
+                if (history is not null)
+                {
+                    history.Id = scan.Id;
+                    context.HistorySnapshots.Add(history);
+                }
                 SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
             },
             cancellationToken
