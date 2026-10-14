@@ -2,27 +2,43 @@
   "version": 1,
   "dependencies": {
     "net10.0-windows10.0.26100": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "xi+BDjFpW+Sb+MHFHaH6Y/gV9I8BluFwRXc1QyCdoZbIK26eNiBeFuMTe/FMwc33G1wdHCyDg7CVTmb8OdQrMQ=="
+      },
       "Microsoft.Windows.SDK.BuildTools": {
         "type": "Direct",
         "requested": "[10.0.26100.7175, )",
         "resolved": "10.0.26100.7175",
         "contentHash": "8Ln51aKMOhnjOAIehd2EGBOL2+ZIsT96OUd7YVA/+9fYiAbzFI/u6kJMYX+XtW1FUsMLGsF4Fba3cBXlCKHV+w=="
       },
-      "Microsoft.WindowsAppSDK": {
+      "Microsoft.Windows.SDK.BuildTools.MSIX": {
         "type": "Direct",
-        "requested": "[1.8.260921001, )",
-        "resolved": "1.8.260921001",
-        "contentHash": "uoES0zOM4rNsy5FMWjzGg4uDUakodMkSQbhpT59Gb4J8ONf2L1XEwcyvZC6Li9Sm8fmCUkPK/mkfYdRUpnlJqQ==",
+        "requested": "[1.7.20250829.1, )",
+        "resolved": "1.7.20250829.1",
+        "contentHash": "IMdvRmCIZnBS5GkYnv0po1bcx6U1OF39pqA4TphQ9evDzpCRoSE19/PkDvlUNNrBavTsLIEJgd/TAIFner75ow=="
+      },
+      "Microsoft.WindowsAppSDK.DWrite": {
+        "type": "Direct",
+        "requested": "[1.8.25122902, )",
+        "resolved": "1.8.25122902",
+        "contentHash": "zFNn07i7Cyz62Y8FnPQAyzeZK7ww3m9t42i9pzy4C04pNbyUDQ4fG7pB6VSh6n4EyFuYtuFQuDzt4mKmXFrkrg==",
         "dependencies": {
-          "Microsoft.WindowsAppSDK.AI": "[1.8.79]",
-          "Microsoft.WindowsAppSDK.Base": "[1.8.251216001]",
-          "Microsoft.WindowsAppSDK.DWrite": "[1.8.25122902]",
-          "Microsoft.WindowsAppSDK.Foundation": "[1.8.260803002]",
-          "Microsoft.WindowsAppSDK.InteractiveExperiences": "[1.8.260708001]",
-          "Microsoft.WindowsAppSDK.ML": "[1.8.2223]",
-          "Microsoft.WindowsAppSDK.Runtime": "[1.8.260921001]",
-          "Microsoft.WindowsAppSDK.Widgets": "[1.8.251231004]",
-          "Microsoft.WindowsAppSDK.WinUI": "[1.8.260803003]"
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001"
+        }
+      },
+      "Microsoft.WindowsAppSDK.WinUI": {
+        "type": "Direct",
+        "requested": "[1.8.260803003, )",
+        "resolved": "1.8.260803003",
+        "contentHash": "yQFFlQ6IQj4dpDqGvMghRUQMAYlnu+hhf1unvkf4ymtdWDww+UotPi+MPTJyDc7x+xEyBXfXnlXZVk0NG0eMrA==",
+        "dependencies": {
+          "Microsoft.Web.WebView2": "1.0.3179.45",
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
+          "Microsoft.WindowsAppSDK.Foundation": "1.8.260803002",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260708001"
         }
       },
       "Apache.Arrow": {
@@ -210,20 +226,6 @@
         "resolved": "1.0.3179.45",
         "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
       },
-      "Microsoft.Windows.SDK.BuildTools.MSIX": {
-        "type": "Transitive",
-        "resolved": "1.7.20250829.1",
-        "contentHash": "IMdvRmCIZnBS5GkYnv0po1bcx6U1OF39pqA4TphQ9evDzpCRoSE19/PkDvlUNNrBavTsLIEJgd/TAIFner75ow=="
-      },
-      "Microsoft.WindowsAppSDK.AI": {
-        "type": "Transitive",
-        "resolved": "1.8.79",
-        "contentHash": "28lVLUoYd51EFddxC1REA0NmbrUDYaDgWVV/jQ4Dohz2qArRhXpyYCuggfvQW0D29vWzWFdMjQgNI0qP9CwYyw==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
-          "Microsoft.WindowsAppSDK.Foundation": "1.8.260501000"
-        }
-      },
       "Microsoft.WindowsAppSDK.Base": {
         "type": "Transitive",
         "resolved": "1.8.251216001",
@@ -231,14 +233,6 @@
         "dependencies": {
           "Microsoft.Windows.SDK.BuildTools": "10.0.26100.4654",
           "Microsoft.Windows.SDK.BuildTools.MSIX": "1.7.20250829.1"
-        }
-      },
-      "Microsoft.WindowsAppSDK.DWrite": {
-        "type": "Transitive",
-        "resolved": "1.8.25122902",
-        "contentHash": "zFNn07i7Cyz62Y8FnPQAyzeZK7ww3m9t42i9pzy4C04pNbyUDQ4fG7pB6VSh6n4EyFuYtuFQuDzt4mKmXFrkrg==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001"
         }
       },
       "Microsoft.WindowsAppSDK.Foundation": {
@@ -256,43 +250,6 @@
         "contentHash": "lKvL9ArPGRhzbQwXUg7Spc8dgB7N2NnMoC6BKD9sn0Mzx9FxcJC55rohV9x52eBCfviHzrn5ZtujwORZthsqbA==",
         "dependencies": {
           "Microsoft.WindowsAppSDK.Base": "1.8.251216001"
-        }
-      },
-      "Microsoft.WindowsAppSDK.ML": {
-        "type": "Transitive",
-        "resolved": "1.8.2223",
-        "contentHash": "enVopOqNAmV4U/6zXja3I+FeJBEzLw6L19UhFDNYEPgoPMWqNdc9evGfJQ5qYKXdjTSG6woFye65KVp26dLAmg==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
-          "Microsoft.WindowsAppSDK.Foundation": "1.8.260803002",
-          "System.Numerics.Tensors": "9.0.0"
-        }
-      },
-      "Microsoft.WindowsAppSDK.Runtime": {
-        "type": "Transitive",
-        "resolved": "1.8.260921001",
-        "contentHash": "UX0e2skKg08iM/rUqg9ax23cc0YqBT7OACm6POSqL0NCT6Y+wO43X3BHUdmJ/iEef/hTdJ/8YRizOX9IB+GREQ==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001"
-        }
-      },
-      "Microsoft.WindowsAppSDK.Widgets": {
-        "type": "Transitive",
-        "resolved": "1.8.251231004",
-        "contentHash": "bIWqQYR8DCoB1SoPOMil5AtgtkTn438wJTdpsHgyO/6o7Eh7PMP5BzrR0KbDsFqy+4LhPWQ4vtwko5k93fECcA==",
-        "dependencies": {
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001"
-        }
-      },
-      "Microsoft.WindowsAppSDK.WinUI": {
-        "type": "Transitive",
-        "resolved": "1.8.260803003",
-        "contentHash": "yQFFlQ6IQj4dpDqGvMghRUQMAYlnu+hhf1unvkf4ymtdWDww+UotPi+MPTJyDc7x+xEyBXfXnlXZVk0NG0eMrA==",
-        "dependencies": {
-          "Microsoft.Web.WebView2": "1.0.3179.45",
-          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
-          "Microsoft.WindowsAppSDK.Foundation": "1.8.260803002",
-          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260708001"
         }
       },
       "Skuirrels.DuckDB.NET.Bindings.Full": {
@@ -335,11 +292,6 @@
         "dependencies": {
           "SQLitePCLRaw.core": "2.1.12"
         }
-      },
-      "System.Numerics.Tensors": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A=="
       },
       "something.application": {
         "type": "Project",

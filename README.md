@@ -20,6 +20,22 @@ Everythingをもじった、Windows向けのディスク使用量・フォルダ
 
 ## アプリの起動
 
+普段の開発では `dotnet build Something.slnx` またはVS Codeの `build` タスクを使い、`src\Something.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\Something.App.exe` を起動します。DLLや画面リソースが並ぶ通常の出力で、自己展開は行いません。Releaseビルドも同じ方式です。通常のビルド・起動は配布用exeを生成しません。
+
+配布用の単一exeが必要なときだけ、以下でpublishします。VS Codeのタスク `publish app` からも実行できます。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
+```
+
+出力は `artifacts\publish\win-x64\Something.App.exe` です。このexeだけを配布してください。.NET 10・WinUI・DuckDB・画面リソース・依存ライセンス通知を同梱するため、配布先で.NETやWindows App SDKを事前にインストールする必要はありません。PDBやXML APIドキュメントは含めません。開発用の `bin\Release` は配布対象ではありません。
+
+初回起動時、依存ファイルを通常 `%TEMP%\.net\Something.App\<bundle-id>` に展開します。同じexeの次回起動では展開済みファイルを再利用します。これは通常のインストーラーや静的リンクとは異なり、実行時には展開先のファイルを使用します。新しい版では別の展開先になるため、旧版のキャッシュが残る場合があります。履歴DBの保存先は引き続き `%LOCALAPPDATA%\Something\History` です。
+
+Windows App SDKの総合パッケージではなく、WinUI・DWriteのコンポーネントパッケージを使用します。元の総合パッケージと同じコンポーネント版を固定し、AI・ML・ウィジェットの未使用依存を取り込みません。WinUI/Foundationの共通ランタイム、Windowsメタデータ、多言語リソースは維持します。[配布構成の確認結果](docs/deployment.md)を参照してください。
+
+再発行は完成した新しいフォルダで出力を置き換えるため、前回の残りファイルを混ぜません。`artifacts\publish\win-x64` は生成物専用で、手作業のファイルを置かないでください。そのフォルダから起動中の場合はアプリを閉じてから再発行します。開発用のアプリとビルド出力は別の場所なので、開発用アプリを閉じずに発行できます。
+
 セットアップ後、実行ファイル `src\Something.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\Something.App.exe` を開くとUAC確認が表示されます。Releaseビルドの場合は `Debug` を `Release` に読み替えてください。
 
 CLIからの `dotnet run` は管理者PowerShellで実行してください。通常のPowerShellからは昇格が必要な実行ファイルを直接起動できないことがあります。実データを使わず画面を確認する場合も、同じ実行ファイルのため昇格が必要です。

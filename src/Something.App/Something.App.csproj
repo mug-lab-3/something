@@ -9,6 +9,7 @@
     <WinUISDKReferences>false</WinUISDKReferences>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/Something.ico</ApplicationIcon>
     <EnableDefaultAssets>false</EnableDefaultAssets>
@@ -25,7 +26,9 @@
       CopyToPublishDirectory="PreserveNewest"
     />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.20250829.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="1.8.260803003" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="1.8.25122902" />
     <ProjectReference Include="../Something.Application/Something.Application.csproj" />
   </ItemGroup>
 </Project>
