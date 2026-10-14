@@ -19,23 +19,26 @@ public sealed partial class FolderEntryCollection
     private readonly long totalCount;
     private int nextPage = 1;
     private bool hasMore;
+    private readonly Func<FolderEntry, EntryRow> createRow;
 
     internal FolderEntryCollection(
         FolderEntryPage first,
         Func<int, CancellationToken, Task<FolderEntryPage>> readPage,
         Action<Exception> onError,
-        CancellationToken navigationToken
+        CancellationToken navigationToken,
+        Func<FolderEntry, EntryRow>? createRow = null
     )
     {
         this.readPage = readPage;
         this.onError = onError;
         this.navigationToken = navigationToken;
+        this.createRow = createRow ?? (entry => new(entry));
         totalCount =
             first.TotalCount
             ?? throw new ArgumentException("A total entry count is required.", nameof(first));
         hasMore = first.HasMore;
         foreach (var entry in first.Entries)
-            Add(new(entry));
+            Add(this.createRow(entry));
     }
 
     public bool HasMoreItems => hasMore && !navigationToken.IsCancellationRequested;
@@ -62,7 +65,7 @@ public sealed partial class FolderEntryCollection
                 var result = await readPage(nextPage, cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
                 foreach (var entry in result.Entries)
-                    Add(new(entry));
+                    Add(createRow(entry));
                 nextPage = checked(nextPage + 1);
                 hasMore = result.HasMore;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CountDescription)));

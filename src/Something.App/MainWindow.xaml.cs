@@ -76,6 +76,7 @@ public sealed partial class MainWindow : Window
                 : null
             : ScanHistoryArchive.CreateDefault();
         scanner = new(history);
+        InitializeComparisonControls();
         if (demo && history is null)
             HistoryBox.Visibility = Visibility.Collapsed;
         Title = "Something";
@@ -271,6 +272,8 @@ public sealed partial class MainWindow : Window
             await SelectDriveAsync(cards[0]);
             if (history is not null)
                 await VerifyHistorySelectionAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-comparison"))
+                await VerifyComparisonModeAsync();
             projects = Folders
                 .RootNodes[0]
                 .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
@@ -335,7 +338,7 @@ public sealed partial class MainWindow : Window
             await encoder.FlushAsync();
             File.WriteAllText(
                 path + ".result",
-                "UI loaded; root entries=3; ranking=3; back/forward/parent navigation, lazy tree, filters, concurrent drive scans, 600-row incremental scrolling, cancellation and optional history selection passed; synthetic data only."
+                "UI loaded; back/forward/parent navigation, lazy tree, filters, concurrent drive scans, 600-row incremental scrolling, cancellation, optional history selection and requested comparison checks passed; synthetic data only."
             );
         }
         catch (Exception error)
@@ -541,6 +544,10 @@ public sealed partial class MainWindow : Window
             {
                 updatingHistoryChoices = false;
             }
+            UpdateComparisonChoices(rows);
+            UpdateComparisonLayout();
+            if (Comparing && !applyingComparison && ComparisonNeedsRefresh())
+                await TrackComparisonAsync();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -640,6 +647,10 @@ public sealed partial class MainWindow : Window
         if (closed || card == selectedCard)
             return;
         selectedCard = card;
+        await ClearComparisonAsync();
+        if (closed || selectedCard != card)
+            return;
+        UpdateComparisonChoices([]);
         updatingHistoryChoices = true;
         try
         {
@@ -704,7 +715,11 @@ public sealed partial class MainWindow : Window
         location = new(current.Root, current.Drive + "\\");
         var root = new TreeViewNode
         {
-            Content = new FolderNode(current.Drive, location),
+            Content = new FolderNode(
+                current.Drive,
+                location,
+                Change: FolderChangeLabel(current.Root)
+            ),
             HasUnrealizedChildren = true,
         };
         Folders.RootNodes.Add(root);
@@ -787,6 +802,8 @@ public sealed partial class MainWindow : Window
                     historyVersion++;
                     var oldHistory = historicalSession;
                     historicalSession = null;
+                    if (!applyingComparison)
+                        await ClearComparisonAsync();
                     session = next;
                     navigationVersion++;
                     rankingVersion++;
@@ -924,7 +941,8 @@ public sealed partial class MainWindow : Window
         BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
         try
         {
-            var result = await current.ReadFolderAsync(
+            var browser = ComparisonBrowser(current, target.Reference);
+            var result = await browser.ReadFolderAsync(
                 target.Reference,
                 0,
                 false,
@@ -939,7 +957,7 @@ public sealed partial class MainWindow : Window
                 int separator = path.LastIndexOf('\\');
                 if (
                     separator >= 0
-                    && await current.ReadParentAsync(
+                    && await browser.ReadParentAsync(
                         target.Reference,
                         path[(separator + 1)..],
                         token
@@ -974,16 +992,43 @@ public sealed partial class MainWindow : Window
             location = target;
             parentLocation = parent;
             PathText.Text = DisplayText.Escape(target.Path);
+            Func<FolderEntry, EntryRow>? createRow = Comparing
+                ? entry => new(entry, comparing: true)
+                : null;
+            Func<int, CancellationToken, Task<FolderEntryPage>> readPage = (
+                nextPage,
+                cancellation
+            ) => browser.ReadFolderAsync(target.Reference, nextPage, false, cancellation);
+            if (Comparing && comparisonReport is not null)
+            {
+                var compared = await ReadComparedEntriesAsync(current, target.Reference, token);
+                if (closed || version != navigationVersion || session != current)
+                    return;
+                FolderEntryPage Page(int index) =>
+                    new(
+                        [.. compared.Skip(index * 250).Take(250).Select(row => row.Entry)],
+                        (long)(index + 1) * 250 < compared.Length,
+                        index == 0 ? compared.Length : null
+                    );
+                result = Page(0);
+                readPage = (index, cancellation) =>
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    return Task.FromResult(Page(index));
+                };
+                var lookup = compared.ToDictionary(row => (row.Entry.Reference, row.Entry.Name));
+                createRow = entry => new(entry, lookup[(entry.Reference, entry.Name)], true);
+            }
             var rows = new FolderEntryCollection(
                 result,
-                (nextPage, cancellation) =>
-                    current.ReadFolderAsync(target.Reference, nextPage, false, cancellation),
+                readPage,
                 error =>
                 {
                     if (!closed && session == current && version == navigationVersion)
                         ShowError(error);
                 },
-                token
+                token,
+                createRow
             );
             Entries.ItemsSource = rows;
             EntryCountText.DataContext = rows;
@@ -1087,17 +1132,32 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || parent.Content is not FolderNode folder || closed)
             return;
+        int requestVersion = comparisonVersion;
         parent.HasUnrealizedChildren = false;
         try
         {
-            var result = await current.ReadFolderAsync(
-                folder.Location.Reference,
-                nextPage,
-                true,
-                lifetime.Token
-            );
-            if (closed || session != current)
+            var result = await ComparisonBrowser(current, folder.Location.Reference)
+                .ReadFolderAsync(folder.Location.Reference, nextPage, true, lifetime.Token);
+            if (closed || session != current || requestVersion != comparisonVersion)
                 return;
+            if (Comparing && comparisonReport is not null)
+            {
+                var compared = await ReadComparedEntriesAsync(
+                    current,
+                    folder.Location.Reference,
+                    lifetime.Token
+                );
+                if (closed || session != current || requestVersion != comparisonVersion)
+                    return;
+                var directories = compared
+                    .Where(row => row.Entry.IsDirectory && row.Entry.CanBrowse)
+                    .Select(row => row.Entry)
+                    .ToArray();
+                result = new(
+                    [.. directories.Skip(nextPage * 250).Take(250)],
+                    (long)(nextPage + 1) * 250 < directories.Length
+                );
+            }
             if (parent.Children.LastOrDefault()?.Content is FolderNode { LoadMore: true })
                 parent.Children.RemoveAt(parent.Children.Count - 1);
             foreach (var entry in result.Entries)
@@ -1109,7 +1169,8 @@ public sealed partial class MainWindow : Window
                             new(
                                 entry.Reference,
                                 folder.Location.Path.TrimEnd('\\') + "\\" + entry.Name
-                            )
+                            ),
+                            Change: FolderChangeLabel(entry.Reference)
                         ),
                         HasUnrealizedChildren = true,
                     }
@@ -1127,9 +1188,12 @@ public sealed partial class MainWindow : Window
                     }
                 );
         }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (OperationCanceledException)
+            when (lifetime.IsCancellationRequested || requestVersion != comparisonVersion) { }
         catch (Exception error)
         {
+            if (closed || requestVersion != comparisonVersion)
+                return;
             parent.HasUnrealizedChildren = true;
             ShowError(error);
         }
@@ -1237,7 +1301,7 @@ public sealed partial class MainWindow : Window
             session is { } current
             && FindContextRow(Ranking, args.OriginalSource as DependencyObject) is RankingRow row
         )
-            ShowPathMenu(Ranking, current.Drive + "\\" + row.Entry.RelativePath, args);
+            ShowPathMenu(Ranking, current.Drive + "\\" + row.RelativePath, args);
     }
 
     private void CopyPath(string path)
@@ -1311,6 +1375,31 @@ public sealed partial class MainWindow : Window
         int version = ++rankingVersion;
         try
         {
+            if (Comparing)
+            {
+                var report = comparisonReport;
+                int depth = DepthBox.SelectedIndex;
+                bool leafOnly = LeafBox.IsChecked == true;
+                var order = ChangeOrderBox.SelectedIndex switch
+                {
+                    1 => FolderChangeRanking.Shrinkage,
+                    2 => FolderChangeRanking.Magnitude,
+                    _ => FolderChangeRanking.Growth,
+                };
+                var changed = report is null
+                    ? Array.Empty<RankingRow>()
+                    : await Task.Run(
+                        () =>
+                            (report with { Folders = [.. FilterChanges(report, depth, leafOnly)] })
+                                .Rank(order)
+                                .Select(row => new RankingRow(row, current.Drive))
+                                .ToArray(),
+                        lifetime.Token
+                    );
+                if (!closed && version == rankingVersion && current == session)
+                    Ranking.ItemsSource = changed;
+                return;
+            }
             var rows = await current.ReadLargestAsync(
                 new(
                     DepthBox.SelectedIndex == 0 ? null : DepthBox.SelectedIndex,
@@ -1334,7 +1423,7 @@ public sealed partial class MainWindow : Window
     {
         if (session is { } current && Ranking.SelectedItem is RankingRow row)
             await LoadFolderAsync(
-                new(row.Entry.Sample.Reference, current.Drive + "\\" + row.Entry.RelativePath),
+                new(row.Reference, current.Drive + "\\" + row.RelativePath),
                 true
             );
     }
@@ -1388,6 +1477,9 @@ public sealed partial class MainWindow : Window
         await Task.WhenAll(historyTasks.ToArray());
         if (historicalSession is not null)
             await historicalSession.DisposeAsync();
+        if (comparisonBaseline is not null)
+            await comparisonBaseline.DisposeAsync();
+        comparisonCancellation?.Dispose();
         foreach (var current in sessions.Values)
             await current.DisposeAsync();
         listingCancellation?.Dispose();

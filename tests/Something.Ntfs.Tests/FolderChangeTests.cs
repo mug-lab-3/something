@@ -23,6 +23,7 @@ public sealed class FolderChangeTests
     [Theory]
     [InlineData(FolderChangePeriod.Last24Hours, 1)]
     [InlineData(FolderChangePeriod.Last7Days, 7)]
+    [InlineData(FolderChangePeriod.Last30Days, 30)]
     [InlineData(FolderChangePeriod.Last365Days, 365)]
     public async Task PeriodSelectsRetainedEndpointsAndRanksSignedAllocatedChanges(
         FolderChangePeriod period,
@@ -308,6 +309,36 @@ public sealed class FolderChangeTests
     private sealed class Clock : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
+    public async Task ExplicitScansCompareSignedSizesAndRejectWrongVolumeOrOrder()
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Save(Now.AddMinutes(-20), [new(20, "folder", 100)]);
+        var after = fixture.Save(Now.AddMinutes(-10), [new(20, "folder", 300)]);
+        var other = fixture.Save(Now.AddMinutes(-5), [new(20, "folder", 999)], "volume:B");
+
+        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
+            "volume:A",
+            before.Id,
+            after.Id,
+            Token
+        );
+
+        Assert.Equal(new BigInteger(200), Assert.Single(report.ChangedFolders).AllocatedDelta);
+        Assert.Equal(new BigInteger(200), report.Root!.AllocatedDelta);
+        Assert.Equal(before.Id, report.Baseline!.Id);
+        Assert.Equal(after.Id, report.Latest!.Id);
+        Assert.Throws<ArgumentException>(() =>
+            fixture.Archive.ReadFolderChanges("volume:A", after.Id, before.Id, Token)
+        );
+        Assert.Throws<ArgumentException>(() =>
+            fixture.Archive.ReadFolderChanges("volume:A", before.Id, before.Id, Token)
+        );
+        Assert.Throws<InvalidOperationException>(() =>
+            fixture.Archive.ReadFolderChanges("volume:A", before.Id, other.Id, Token)
+        );
     }
 
     private sealed class Fixture : IDisposable

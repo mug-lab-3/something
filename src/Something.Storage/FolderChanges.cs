@@ -10,6 +10,12 @@ public enum FolderChangePeriod
     Last24Hours,
     Last7Days,
     Last365Days,
+    Last30Days,
+    Today,
+    ThisWeek,
+    ThisMonth,
+    ThisYear,
+    Custom,
 }
 
 public enum FolderChangeRanking
@@ -58,6 +64,7 @@ public sealed record FolderChangeReport(
     ImmutableArray<FolderChange> Folders
 )
 {
+    public FolderChange? Root { get; init; }
     public ImmutableArray<FolderChange> ChangedFolders =>
         [
             .. Folders.Where(row =>
@@ -96,6 +103,58 @@ public sealed record FolderChangeReport(
 
 public sealed partial class ScanHistoryArchive
 {
+    public FolderChangeReport ReadFolderChanges(
+        string volumeKey,
+        Guid beforeId,
+        Guid afterId,
+        CancellationToken token = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
+        if (beforeId == afterId)
+            throw new ArgumentException("Select two distinct scans.", nameof(afterId));
+        lock (sync)
+        {
+            token.ThrowIfCancellationRequested();
+            using var store = OpenDatabase(token);
+            using var transaction = store.HistoryContext.Database.BeginTransaction();
+            var query = store
+                .HistoryContext.HistorySnapshots.AsNoTracking()
+                .Where(row => row.VolumeKey == volumeKey && !row.Retired);
+            var before =
+                query.SingleOrDefault(row => row.Id == beforeId)
+                ?? throw new InvalidOperationException(
+                    "The comparison baseline is no longer available."
+                );
+            var after =
+                query.SingleOrDefault(row => row.Id == afterId)
+                ?? throw new InvalidOperationException(
+                    "The comparison endpoint is no longer available."
+                );
+            if (before.CompletedUtcTicks > after.CompletedUtcTicks)
+                throw new ArgumentException(
+                    "The baseline must precede the endpoint.",
+                    nameof(beforeId)
+                );
+            var changes = CompareFolders(store, beforeId, afterId, token, out var root);
+            token.ThrowIfCancellationRequested();
+            transaction.Commit();
+            return new(
+                volumeKey,
+                FolderChangePeriod.Custom,
+                ToEntry(after).CompletedUtc,
+                ToEntry(before).CompletedUtc,
+                ToEntry(before),
+                ToEntry(after),
+                FolderComparisonAvailability.Available,
+                changes
+            )
+            {
+                Root = root,
+            };
+        }
+    }
+
     /// <summary>Uses the latest retained completion at or before each requested endpoint.
     /// Missing folders and unresolved capacities are never treated as zero or confirmed deletions.</summary>
     public FolderChangeReport ReadFolderChanges(
@@ -106,15 +165,8 @@ public sealed partial class ScanHistoryArchive
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
-        int days = period switch
-        {
-            FolderChangePeriod.Last24Hours => 1,
-            FolderChangePeriod.Last7Days => 7,
-            FolderChangePeriod.Last365Days => 365,
-            _ => throw new ArgumentOutOfRangeException(nameof(period)),
-        };
         var end = (asOfUtc ?? clock.GetUtcNow()).ToUniversalTime();
-        var start = end.AddDays(-days);
+        var start = ComparisonSelection.Resolve([], period, end, timeZone).RequestedBeforeUtc;
         lock (sync)
         {
             token.ThrowIfCancellationRequested();
@@ -142,46 +194,9 @@ public sealed partial class ScanHistoryArchive
                 : baseline is null ? FolderComparisonAvailability.NoBaseline
                 : FolderComparisonAvailability.Available;
             ImmutableArray<FolderChange> changes = [];
+            FolderChange? root = null;
             if (availability == FolderComparisonAvailability.Available)
-            {
-                var before = ReadComparisonFolders(store, baseline!.Id, token);
-                var after = ReadComparisonFolders(store, latest!.Id, token);
-                var rows = ImmutableArray.CreateBuilder<FolderChange>();
-                foreach (
-                    var reference in before
-                        .Keys.Union(after.Keys)
-                        .OrderBy(r => r.RecordIndex)
-                        .ThenBy(r => r.SequenceNumber)
-                )
-                {
-                    token.ThrowIfCancellationRequested();
-                    before.TryGetValue(reference, out var old);
-                    after.TryGetValue(reference, out var current);
-                    var status =
-                        old is null ? FolderChangeStatus.NotObservedBefore
-                        : current is null ? FolderChangeStatus.NotObservedAfter
-                        : old.Bytes is null || current.Bytes is null
-                            ? FolderChangeStatus.UncertainCapacity
-                        : FolderChangeStatus.Comparable;
-                    BigInteger? delta =
-                        status == FolderChangeStatus.Comparable
-                            ? BigInteger.CreateChecked(current!.Bytes!.Value)
-                                - BigInteger.CreateChecked(old!.Bytes!.Value)
-                            : null;
-                    rows.Add(
-                        new(
-                            reference,
-                            old?.Path,
-                            current?.Path,
-                            old?.Bytes,
-                            current?.Bytes,
-                            delta,
-                            status
-                        )
-                    );
-                }
-                changes = rows.ToImmutable();
-            }
+                changes = CompareFolders(store, baseline!.Id, latest!.Id, token, out root);
             token.ThrowIfCancellationRequested();
             transaction.Commit();
             return new(
@@ -193,8 +208,52 @@ public sealed partial class ScanHistoryArchive
                 latest is null ? null : ToEntry(latest),
                 availability,
                 changes
+            )
+            {
+                Root = root,
+            };
+        }
+    }
+
+    private static ImmutableArray<FolderChange> CompareFolders(
+        ScanStore store,
+        Guid beforeId,
+        Guid afterId,
+        CancellationToken token,
+        out FolderChange? root
+    )
+    {
+        var before = ReadComparisonFolders(store, beforeId, token);
+        var after = ReadComparisonFolders(store, afterId, token);
+        var rows = ImmutableArray.CreateBuilder<FolderChange>();
+        foreach (
+            var reference in before
+                .Keys.Union(after.Keys)
+                .OrderBy(r => r.RecordIndex)
+                .ThenBy(r => r.SequenceNumber)
+        )
+        {
+            token.ThrowIfCancellationRequested();
+            before.TryGetValue(reference, out var old);
+            after.TryGetValue(reference, out var current);
+            var status =
+                old is null ? FolderChangeStatus.NotObservedBefore
+                : current is null ? FolderChangeStatus.NotObservedAfter
+                : old.Bytes is null || current.Bytes is null ? FolderChangeStatus.UncertainCapacity
+                : FolderChangeStatus.Comparable;
+            BigInteger? delta =
+                status == FolderChangeStatus.Comparable
+                    ? BigInteger.CreateChecked(current!.Bytes!.Value)
+                        - BigInteger.CreateChecked(old!.Bytes!.Value)
+                    : null;
+            rows.Add(
+                new(reference, old?.Path, current?.Path, old?.Bytes, current?.Bytes, delta, status)
             );
         }
+        root =
+            rows.FirstOrDefault(row => row.Reference.RecordIndex == 5 && row.AfterPath is not null)
+            ?? rows.FirstOrDefault(row => row.Reference.RecordIndex == 5);
+        return [.. rows.Where(row => row.Reference.RecordIndex != 5)];
     }
 
     private sealed record ComparisonFolder(string Path, UInt128? Bytes);
@@ -213,7 +272,7 @@ public sealed partial class ScanHistoryArchive
             );
         bool unknownAttribution =
             aggregation.HasUnknownAttribution || aggregation.Unattributed.UnresolvedCount != 0;
-        return store
+        var folders = store
             .ReadRankedFolders(id, int.MaxValue, token)
             .ToDictionary(
                 row => row.Sample.Reference,
@@ -227,5 +286,19 @@ public sealed partial class ScanHistoryArchive
                         : null
                 )
             );
+        var root = aggregation.Folders.Single(row => row.Key.RecordIndex == 5).Value;
+        folders.Add(
+            root.Reference,
+            new(
+                "",
+                !unknownAttribution
+                && root.DirectoryCapacityObserved
+                && root.SubtreeUnobservedDirectoryCount == 0
+                && root.Entries!.SubtreeUnresolvedCount == 0
+                    ? root.Entries.SubtreeData.AllocatedBytes
+                    : null
+            )
+        );
+        return folders;
     }
 }
