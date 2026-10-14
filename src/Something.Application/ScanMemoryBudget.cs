@@ -76,15 +76,23 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            const ulong maximum = 8UL << 30;
-            if (currentLimit < 1UL << 30 || currentLimit >= maximum)
-                return null;
-            ulong next = (ulong)UInt128.Min((UInt128)currentLimit * 2, maximum);
-            next = next / 16384 * 16384;
             var available = Subtract(readAvailable(), TotalExcept(id));
             if (available is null)
                 return null;
             ulong reserve = Math.Clamp(available.TotalPhysicalBytes / 5, 1UL << 30, 4UL << 30);
+            ulong headroom = Math.Min(
+                available.PhysicalBytes,
+                Math.Min(available.CommitBytes, available.VirtualBytes)
+            );
+            ulong surplus = headroom > reserve ? headroom - reserve : 0;
+            ulong next = (ulong)
+                UInt128.Min(
+                    (UInt128)currentLimit + surplus / 2,
+                    (UInt128)long.MaxValue / 16384 * 16384
+                );
+            next = next / 16384 * 16384;
+            if (next <= currentLimit)
+                return null;
             // OS availability already charges the live buffer and existing native allocations.
             // Budget twice the incremental growth for native overhead, not all existing RAM again.
             ulong additional = Saturate((UInt128)(next - currentLimit) * 2);
@@ -92,7 +100,7 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
                 return null;
             reservations[id] = Math.Max(
                 reservations[id],
-                Saturate((UInt128)bufferBytes + next * 2)
+                Saturate((UInt128)bufferBytes + (UInt128)next * 2)
             );
             Signal();
             return next;

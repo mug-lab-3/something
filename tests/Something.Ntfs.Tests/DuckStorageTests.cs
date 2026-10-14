@@ -9,6 +9,18 @@ namespace Something.Ntfs.Tests;
 
 public sealed class DuckStorageTests
 {
+    internal static DuckDBException NativeAppenderMessage(string message) =>
+        (DuckDBException)
+            typeof(DuckDBException)
+                .GetConstructor(
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic,
+                    null,
+                    [typeof(string)],
+                    null
+                )!
+                .Invoke([message]);
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private static readonly DateTimeOffset Start = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
     private static readonly FileReference Root = FileReference.Create(5, 1);
@@ -186,6 +198,30 @@ public sealed class DuckStorageTests
         );
         Assert.True(
             DuckMemoryRecovery.IsOutOfMemory(new DbUpdateException("Wrapped", CreateMemoryError()))
+        );
+    }
+
+    [Theory]
+    [InlineData(
+        "Failed to append: failed to allocate data of size 32.0 KiB (1.0 GiB/1.0 GiB used)",
+        true
+    )]
+    [InlineData(
+        "Failed to append: could not allocate block of size 256.0 KiB (1.0 GiB/1.0 GiB used)",
+        true
+    )]
+    [InlineData("Failed to append: Current transaction is aborted (please ROLLBACK)", false)]
+    [InlineData("Failed to append: CHECK constraint failed", false)]
+    public void AppenderMemoryMessagesAreRecognizedWithoutTheQueryErrorPrefix(
+        string message,
+        bool expected
+    )
+    {
+        var error = NativeAppenderMessage(message);
+        Assert.Equal(expected, DuckMemoryRecovery.IsOutOfMemory(error));
+        Assert.Equal(
+            expected,
+            DuckMemoryRecovery.IsOutOfMemory(new DbUpdateException("Wrapped", error))
         );
     }
 

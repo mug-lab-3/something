@@ -61,7 +61,17 @@ internal static class DuckMemoryRecovery
         for (Exception? current = error; current is not null; current = current.InnerException)
             if (
                 current is DuckDBException
-                && current.Message.Contains("Out of Memory Error:", StringComparison.Ordinal)
+                && (
+                    current.Message.Contains("Out of Memory Error:", StringComparison.Ordinal)
+                    || current.Message.Contains(
+                        "failed to allocate data of size",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || current.Message.Contains(
+                        "could not allocate block of size",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
             )
                 return true;
         return false;

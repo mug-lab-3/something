@@ -187,7 +187,7 @@ public sealed class ScanHistoryTests
         Assert.Equal(first.Id, reader.Store.GetScan(first.Id).Id);
         reader.Dispose();
         fixture.Archive.Maintain(Token);
-        using var stored = ScanStore.OpenDuckPath(
+        using var stored = ScanStore.OpenSharedHistoryReader(
             Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );
@@ -271,7 +271,7 @@ public sealed class ScanHistoryTests
         reader.Dispose();
         other.Maintain(Token);
 
-        using var remaining = ScanStore.OpenDuckPath(
+        using var remaining = ScanStore.OpenSharedHistoryReader(
             Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );

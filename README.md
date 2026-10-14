@@ -5,7 +5,7 @@
 
 Everythingをもじった、Windows向けのディスク使用量・フォルダ肥大化分析アプリです。
 
-各スキャンのステップ別処理時間と合計時間もDBへ記録し、ドライブカードに `スキャン済み (53.4秒)` と表示します。保存先は `%LOCALAPPDATA%\Something\History\catalog-v2.duckdb`。未リリースのため旧DBとの互換性・移行処理は持たず、旧ファイルを保持して新しいスキャンから記録します。
+各スキャンのステップ別処理時間と合計時間もDBへ記録し、ドライブカードに `スキャン済み (53.4秒)` と表示します。保存先は `%LOCALAPPDATA%\Something\History\catalog-v3.duckdb`。未変更の観測・名前・ストリーム・フォルダ一覧・集計を共有し、各スキャンは保存済みの状態を直接参照します。未リリースのため旧DBとの互換性・移行処理は持たず、旧ファイルを保持して新しいスキャンから記録します。
 
 現在の大容量フォルダだけでなく、徐々に容量が増えているフォルダを見つけることを重視します。
 
@@ -42,6 +42,8 @@ VS Codeの「タスクの実行」で `run app` / `run app demo`、デバッグ�
 ## 計画している機能
 
 SQLiteとDuckDBの合成データによる性能比較CLIは [docs/storage-comparison.md](docs/storage-comparison.md) を参照してください。最適化DuckDBのファイル方式へ切り替え済みです。
+
+履歴の重複保存を減らす比較結果は [docs/history-deduplication-comparison.md](docs/history-deduplication-comparison.md)、本体に組み込んだ共有方式は [docs/decisions/20261014-shared-history.md](docs/decisions/20261014-shared-history.md) を参照してください。
 
 - フォルダ別の容量一覧、容量バー、階層移動。
 - 論理サイズとディスク上の割り当て容量の表示。

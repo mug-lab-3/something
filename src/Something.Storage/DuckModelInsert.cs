@@ -19,24 +19,35 @@ internal sealed class DuckModelInsert<T> : IDisposable
     private readonly List<(T Row, IProperty Property, BigInteger Value)> large = [];
     private bool disposed;
 
-    internal DuckModelInsert(DuckScanDbContext context)
+    internal DuckModelInsert(DuckScanDbContext context, string? targetTable = null)
     {
         this.context = context;
         if (context.Database.CurrentTransaction is null)
             throw new InvalidOperationException("Appender requires a publication transaction.");
         var entity = context.Model.FindEntityType(typeof(T))!;
-        table = entity.GetTableName()!;
+        table = targetTable ?? entity.GetTableName()!;
         using var columns = context.Database.GetDbConnection().CreateCommand();
         columns.Transaction = context.Database.CurrentTransaction.GetDbTransaction();
         columns.CommandText =
-            "SELECT column_name FROM information_schema.columns WHERE table_schema='main' AND table_name=$table ORDER BY ordinal_position;";
+            "SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='main' AND table_name=$table ORDER BY ordinal_position;";
         columns.Parameters.Add(new DuckDBParameter("table", table));
         using var reader = columns.ExecuteReader();
         var ordered = new List<IProperty>();
         while (reader.Read())
-            ordered.Add(
-                entity.GetProperties().Single(p => p.GetColumnName() == reader.GetString(0))
-            );
+        {
+            var property = entity
+                .GetProperties()
+                .Single(p => p.GetColumnName() == reader.GetString(0));
+            if (
+                !string.Equals(
+                    property.GetRelationalTypeMapping().StoreType,
+                    reader.GetString(1),
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                throw new InvalidDataException("Appender column type and typed model disagree.");
+            ordered.Add(property);
+        }
         if (ordered.Count != entity.GetProperties().Count())
             throw new InvalidDataException("Appender schema and typed model disagree.");
         properties = [.. ordered];
@@ -56,6 +67,19 @@ internal sealed class DuckModelInsert<T> : IDisposable
     }
 
     internal void Add(T item, CancellationToken token)
+    {
+        try
+        {
+            AddCore(item, token);
+        }
+        catch (Exception error)
+        {
+            context.AppendFailure ??= error;
+            throw;
+        }
+    }
+
+    private void AddCore(T item, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var row = appender.CreateRow();
@@ -127,6 +151,24 @@ internal sealed class DuckModelInsert<T> : IDisposable
         if (disposed)
             return;
         disposed = true;
+        try
+        {
+            FlushAndClose();
+        }
+        catch (Exception) when (context.AppendFailure is not null)
+        {
+            // Another append/flush already failed. Disposal must not replace that
+            // exception (especially OOM) with the resulting aborted-transaction error.
+        }
+        catch (Exception error)
+        {
+            context.AppendFailure = error;
+            throw;
+        }
+    }
+
+    private void FlushAndClose()
+    {
         appender.Dispose();
         // Rare values outside the signed appender range are fixed in the same
         // unpublished transaction. A failed correction prevents publication.

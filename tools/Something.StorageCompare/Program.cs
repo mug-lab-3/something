@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Something.Storage;
 using Something.StorageCompare;
 
+if (args.FirstOrDefault() == "--history-dedup")
+    return await HistoryDedupBenchmark.RunAsync(args[1..]);
+
 int count = 100_000,
     repeats = 3,
     budgetMiB = 256;

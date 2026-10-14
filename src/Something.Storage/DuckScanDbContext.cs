@@ -7,11 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Something.Storage;
 
-internal sealed class DuckScanDbContext(DbContextOptions<DuckScanDbContext> options)
-    : ScanDbContext(options)
+internal class DuckScanDbContext(DbContextOptions options) : ScanDbContext(options)
 {
     internal bool ReadOnly { get; init; }
     internal HashSet<Guid> DirtyGenerations { get; } = [];
+    internal Exception? AppendFailure { get; set; }
     internal Action? ReleaseEngine;
     internal string MemoryKey { get; set; } = "";
 
@@ -42,7 +42,7 @@ internal sealed class DuckScanDbContext(DbContextOptions<DuckScanDbContext> opti
 
 internal sealed class DuckScanDbContextFactory : IDesignTimeDbContextFactory<DuckScanDbContext>
 {
-    private static readonly ServiceProvider Services = new ServiceCollection()
+    internal static readonly ServiceProvider Services = new ServiceCollection()
         .AddEntityFrameworkDuckDB()
         .AddSingleton<IRelationalTypeMappingSourcePlugin, DuckCapacityMappingPlugin>()
         .BuildServiceProvider();

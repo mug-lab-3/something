@@ -23,7 +23,18 @@ internal sealed class ModelInsert<T> : IDisposable
     {
         if (context is DuckScanDbContext native)
         {
-            duck = new(native);
+            string? target =
+                context is SharedHistoryDbContext
+                    ? typeof(T).Name switch
+                    {
+                        nameof(ObservationEntity) => "incoming_observation",
+                        nameof(FileNameEntity) => "incoming_file_name",
+                        nameof(StreamEntity) => "incoming_stream",
+                        nameof(FolderSampleEntity) => "incoming_folder_sample",
+                        _ => null,
+                    }
+                    : null;
+            duck = new(native, target);
             return;
         }
         if (context.Database.CurrentTransaction is null)

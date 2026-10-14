@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Something.Ntfs;
+using Something.Statistics;
 
 namespace Something.Storage;
 
@@ -19,6 +21,56 @@ public sealed partial class ScanStore
             || scan.Ended?.UtcTicks != metadata.CompletedUtcTicks
         )
             throw new InvalidDataException("History metadata and source generation disagree.");
+        if (context is SharedHistoryDbContext)
+        {
+            var buffer = new BufferedScan(source.GetScan(scan.Id).Descriptor);
+            foreach (
+                var row in source
+                    .context.Observations.AsNoTracking()
+                    .Where(row => row.ScanId == scan.Id)
+                    .Include(row => row.Names)
+                    .Include(row => row.Streams)
+                    .AsSplitQuery()
+            )
+            {
+                token.ThrowIfCancellationRequested();
+                FileCapacityObservation? file = row.Sequence is { } sequence
+                    ? new(
+                        FileReference.Create(checked((ulong)row.RecordIndex), sequence),
+                        row.IsDirectory!.Value,
+                        row.Domain!.Value,
+                        row.Resolution!.Value,
+                        [.. row.Names.OrderBy(n => n.Ordinal).Select(ToName)],
+                        [
+                            .. row
+                                .Streams.OrderBy(s => s.Ordinal)
+                                .Select(s => new StreamCapacity(s.Name, s.Logical, s.Allocated)),
+                        ],
+                        row.LinksComplete!.Value
+                    )
+                    {
+                        ObservedHardLinkCount = row.ObservedLinkCount,
+                    }
+                    : null;
+                buffer.Add(
+                    new StagedObservation(
+                        checked((ulong)row.RecordIndex),
+                        row.Kind,
+                        row.Status,
+                        file
+                    ),
+                    token
+                );
+            }
+            buffer.Complete(token);
+            PublishHistoryBuffer(buffer, scan.Ended!.Value, metadata, token);
+            if (
+                source.context is DuckScanDbContext
+                && source.ReadTimings(scan.Id, token) is { } timing
+            )
+                SaveTimings(scan.Id, timing, token);
+            return;
+        }
         Write(
             () =>
             {
@@ -82,7 +134,17 @@ public sealed partial class ScanStore
     internal void DeleteHistoryGeneration(Guid id)
     {
         context.Published.Where(row => row.ScanId == id).ExecuteDelete();
-        if (context is DuckScanDbContext)
+        if (context is SharedHistoryDbContext shared)
+        {
+            context.StepTimings.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Timings.Where(row => row.ScanId == id).ExecuteDelete();
+            shared.Listings.Where(row => row.ScanId == id).ExecuteDelete();
+            shared.Auxiliary.Where(row => row.ScanId == id).ExecuteDelete();
+            shared.SharedFolders.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Volumes.Where(row => row.ScanId == id).ExecuteDelete();
+            SharedHistoryPublication.Collect(shared);
+        }
+        else if (context is DuckScanDbContext)
         {
             context.StepTimings.Where(row => row.ScanId == id).ExecuteDelete();
             context.Timings.Where(row => row.ScanId == id).ExecuteDelete();

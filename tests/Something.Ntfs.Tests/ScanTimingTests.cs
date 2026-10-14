@@ -84,7 +84,7 @@ public sealed class ScanTimingTests
                     Assert.IsType<ScanTimingSnapshot>(restored.Timings).Steps
                 );
             }
-            using var store = ScanStore.OpenDuckPath(
+            using var store = ScanStore.OpenSharedHistoryReader(
                 Path.Combine(directory, ScanHistoryArchive.DatabaseFileName),
                 Token
             );

@@ -39,6 +39,15 @@ public sealed partial class ScanStore : IDisposable
         CancellationToken token
     ) => new(DuckDatabaseBootstrap.Open(path, token, cacheBytes));
 
+    internal static ScanStore OpenSharedHistoryWriter(
+        string path,
+        ulong? cacheBytes,
+        CancellationToken token
+    ) => new(DuckDatabaseBootstrap.Open(path, token, cacheBytes, sharedHistory: true));
+
+    internal static ScanStore OpenSharedHistoryReader(string path, CancellationToken token) =>
+        new(DuckDatabaseBootstrap.Open(path, token, readOnly: true, sharedHistory: true));
+
     internal static ScanStore OpenSqliteHistoryWriter(
         string path,
         ulong? cacheBytes,
@@ -167,13 +176,17 @@ public sealed partial class ScanStore : IDisposable
         if (context is DuckScanDbContext { ReadOnly: true })
             throw new DbUpdateException("History readers cannot modify the database.");
         token.ThrowIfCancellationRequested();
+        if (context is DuckScanDbContext writing)
+            writing.AppendFailure = null;
         using var transaction = context.Database.BeginTransaction();
         try
         {
             action();
             token.ThrowIfCancellationRequested();
             context.SaveChanges();
-            if (context is DuckScanDbContext duck)
+            if (context is SharedHistoryDbContext shared)
+                SharedHistoryPublication.Validate(shared, token, progress);
+            else if (context is DuckScanDbContext duck)
                 DuckReadModel.CompleteWrite(duck, token, progress);
             token.ThrowIfCancellationRequested();
             progress?.Start(ScanWorkStage.Committing);
@@ -183,7 +196,10 @@ public sealed partial class ScanStore : IDisposable
         {
             context.ChangeTracker.Clear();
             if (context is DuckScanDbContext duck)
+            {
                 duck.DirtyGenerations.Clear();
+                duck.AppendFailure = null;
+            }
         }
     }
 

@@ -13,7 +13,7 @@ public sealed partial class ScanHistoryArchive
     private readonly TimeProvider clock;
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
-    internal const string DatabaseFileName = "catalog-v2.duckdb";
+    internal const string DatabaseFileName = "catalog-v3.duckdb";
     private string DatabasePath => Path.Combine(root, DatabaseFileName);
 
     public void SaveTimings(
@@ -84,7 +84,7 @@ public sealed partial class ScanHistoryArchive
     }
 
     private ScanStore NewHistoryStore(ulong? cacheBytes, CancellationToken token) =>
-        ScanStore.OpenHistoryWriter(DatabasePath, cacheBytes, token);
+        ScanStore.OpenSharedHistoryWriter(DatabasePath, cacheBytes, token);
 
     public ScanHistoryEntry Publish(
         BufferedScan buffer,
@@ -258,7 +258,7 @@ public sealed partial class ScanHistoryArchive
             ScanStore? reader = null;
             try
             {
-                reader = ScanStore.OpenDuckPath(DatabasePath, token, readOnly: true);
+                reader = ScanStore.OpenSharedHistoryReader(DatabasePath, token);
                 var scan = reader.GetScan(id);
                 if (
                     scan.State != StoredScanState.Completed

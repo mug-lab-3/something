@@ -6,7 +6,9 @@ namespace Something.Storage;
 
 internal static class DuckDatabaseBootstrap
 {
-    internal const ulong MaximumMemoryLimit = 8UL << 30;
+    // Native memory limits are signed byte counts. This is a representation bound,
+    // not an application RAM budget; budgets come from current OS availability.
+    internal const ulong MaximumMemoryLimit = (ulong)long.MaxValue / 16384 * 16384;
 
     private sealed class EngineMemory(ulong limit)
     {
@@ -30,26 +32,28 @@ internal static class DuckDatabaseBootstrap
         string path,
         CancellationToken token,
         ulong? budget = null,
-        bool readOnly = false
+        bool readOnly = false,
+        bool sharedHistory = false
     )
     {
         if (path != ":memory:")
             lock (Gate(path))
-                return OpenCore(path, token, budget, readOnly);
-        return OpenCore(path, token, budget, readOnly);
+                return OpenCore(path, token, budget, readOnly, sharedHistory);
+        return OpenCore(path, token, budget, readOnly, sharedHistory);
     }
 
     private static ScanDbContext OpenCore(
         string path,
         CancellationToken token,
         ulong? budget,
-        bool readOnly
+        bool readOnly,
+        bool sharedHistory
     )
     {
         token.ThrowIfCancellationRequested();
         if (
             budget is { } requested
-            && (requested is < 64UL * 1024 * 1024 or > MaximumMemoryLimit || requested % 16384 != 0)
+            && (requested is < 16384 or > MaximumMemoryLimit || requested % 16384 != 0)
         )
             throw new ArgumentOutOfRangeException(nameof(budget));
         bool memory = path == ":memory:";
@@ -86,10 +90,15 @@ internal static class DuckDatabaseBootstrap
         var native = new DuckDBConnection(
             new DuckDBConnectionStringBuilder { DataSource = path }.ConnectionString
         );
-        var context = new DuckScanDbContext(DuckScanDbContextFactory.Options(native))
-        {
-            ReadOnly = readOnly,
-        };
+        DuckScanDbContext context = sharedHistory
+            ? new SharedHistoryDbContext(SharedHistoryDbContextFactory.Options(native))
+            {
+                ReadOnly = readOnly,
+            }
+            : new DuckScanDbContext(DuckScanDbContextFactory.Options(native))
+            {
+                ReadOnly = readOnly,
+            };
         try
         {
             context.Database.OpenConnection();
@@ -107,7 +116,7 @@ internal static class DuckDatabaseBootstrap
             {
                 identity.CommandText =
                     "SELECT Version FROM something_format WHERE Application='Something';";
-                if (Convert.ToInt64(identity.ExecuteScalar()) != 2)
+                if (Convert.ToInt64(identity.ExecuteScalar()) != (sharedHistory ? 3 : 2))
                     throw new InvalidDataException("DuckDB database identity is unsupported.");
             }
             RegisterMemory(context, path, budget);
@@ -165,7 +174,7 @@ internal static class DuckDatabaseBootstrap
 
     internal static void IncreaseMemoryLimit(DuckScanDbContext context, ulong bytes)
     {
-        if (bytes is < 1UL << 30 or > MaximumMemoryLimit || bytes % 16384 != 0)
+        if (bytes is < 16384 or > MaximumMemoryLimit || bytes % 16384 != 0)
             throw new ArgumentOutOfRangeException(nameof(bytes));
         lock (Gate(context.MemoryKey))
             lock (Engines)
@@ -182,7 +191,8 @@ internal static class DuckDatabaseBootstrap
     {
         using var settings = context.Database.GetDbConnection().CreateCommand();
         settings.CommandText =
-            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order=false;";
+            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order=false;"
+            + (context is SharedHistoryDbContext ? " SET temp_directory='';" : "");
         settings.ExecuteNonQuery();
     }
 }

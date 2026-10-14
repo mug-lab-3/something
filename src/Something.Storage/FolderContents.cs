@@ -176,8 +176,11 @@ public sealed partial class ScanStore
                     : ((long?)stream.Allocated ?? 0),
             };
         if (context is DuckScanDbContext)
-            query = context
-                .Browser.AsNoTracking()
+            query = (
+                context is SharedHistoryDbContext
+                    ? SharedFolderRows(scanId, parent)
+                    : context.Browser.AsNoTracking()
+            )
                 .Where(row =>
                     row.ScanId == scanId
                     && row.ParentIndex == parentIndex

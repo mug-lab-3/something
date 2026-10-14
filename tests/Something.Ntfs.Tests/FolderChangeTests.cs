@@ -144,16 +144,18 @@ public sealed class FolderChangeTests
         var baseline = fixture.Save(Now.AddDays(-2), [new(20, "folder", 100)]);
         fixture.Save(Now, [new(20, "folder", 0)]);
         using (
-            var writer = ScanStore.OpenHistoryWriter(
+            var writer = ScanStore.OpenSharedHistoryWriter(
                 Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
             )
         )
         {
-            var folder = writer.HistoryContext.Folders.Single(row =>
-                row.ScanId == baseline.Id && row.RecordIndex == 20
-            );
+            var db = Assert.IsType<SharedHistoryDbContext>(writer.HistoryContext);
+            var version = db
+                .SharedFolders.Single(row => row.ScanId == baseline.Id && row.RecordIndex == 20)
+                .SampleVersion;
+            var folder = db.Samples.Single(row => row.ScanId == version && row.RecordIndex == 20);
             folder.EntrySubtreeAllocated = UInt128.MaxValue;
             writer.HistoryContext.SaveChanges();
         }
@@ -216,16 +218,18 @@ public sealed class FolderChangeTests
         var old = fixture.Save(Now.AddDays(-2), [new(20, "folder", 100)]);
         fixture.Save(Now, [new(20, "folder", 200)]);
         using (
-            var writer = ScanStore.OpenHistoryWriter(
+            var writer = ScanStore.OpenSharedHistoryWriter(
                 Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
             )
         )
         {
-            var folder = writer.HistoryContext.Folders.Single(row =>
-                row.ScanId == old.Id && row.RecordIndex == 20
-            );
+            var db = Assert.IsType<SharedHistoryDbContext>(writer.HistoryContext);
+            var version = db
+                .SharedFolders.Single(row => row.ScanId == old.Id && row.RecordIndex == 20)
+                .SampleVersion;
+            var folder = db.Samples.Single(row => row.ScanId == version && row.RecordIndex == 20);
             folder.EntrySubtreeAllocated = null;
             folder.EntrySubtreeLogical = null;
             folder.EntryDirectAllocated = null;
@@ -252,7 +256,7 @@ public sealed class FolderChangeTests
         using var fixture = new Fixture();
         var previous = fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 100)]);
         using (
-            var writer = ScanStore.OpenHistoryWriter(
+            var writer = ScanStore.OpenSharedHistoryWriter(
                 Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
@@ -289,7 +293,7 @@ public sealed class FolderChangeTests
         }
 
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
-        using var stored = ScanStore.OpenDuckPath(
+        using var stored = ScanStore.OpenSharedHistoryReader(
             Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );

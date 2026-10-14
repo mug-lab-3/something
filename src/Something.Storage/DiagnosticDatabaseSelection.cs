@@ -59,7 +59,9 @@ public static class DiagnosticDatabaseSelector
             );
             ulong surplus =
                 headroom > selection.ReserveBytes ? headroom - selection.ReserveBytes : 0;
-            limit = Math.Clamp(surplus / 4, GiB, 2 * GiB);
+            // Reserve matching headroom for native allocations outside memory_limit.
+            // No fixed GiB ceiling: larger PCs can use their available workspace.
+            limit = Math.Clamp(surplus / 2, GiB, DuckDatabaseBootstrap.MaximumMemoryLimit);
             limit = limit / 16384 * 16384;
         }
         // FileCacheBytes is the legacy transport field; for DuckDB it carries memory_limit.

@@ -27,19 +27,15 @@ public sealed class ScanMemoryBudgetTests
         var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
         using var first = await budget.ReserveAsync(GiB, Token);
         using var second = await budget.ReserveAsync(GiB, Token);
-        first.SelectDuckDatabase(1);
-
-        Assert.Equal(4 * GiB, first.TryGrowDuckDatabase(2 * GiB));
+        Assert.Equal(19 * GiB / 2, first.TryGrowDuckDatabase(2 * GiB));
         var competing = second.SelectDuckDatabase(1);
-        Assert.Equal(11 * GiB, competing.Available!.PhysicalBytes);
-        Assert.Equal(8 * GiB, first.TryGrowDuckDatabase(4 * GiB));
-        Assert.Null(first.TryGrowDuckDatabase(8 * GiB));
+        Assert.Equal(0UL, competing.Available!.PhysicalBytes);
     }
 
     [Fact]
     public async Task DuckGrowthDoesNotIncreaseBudgetWhenAvailableRamIsInsufficientOrUnknown()
     {
-        AvailableMemory? memory = new(8 * GiB, 2 * GiB, 2 * GiB, 2 * GiB);
+        AvailableMemory? memory = new(8 * GiB, GiB, GiB, GiB);
         var budget = new ScanMemoryBudget(() => memory);
         using var reservation = await budget.ReserveAsync(GiB, Token);
 
@@ -61,12 +57,12 @@ public sealed class ScanMemoryBudgetTests
         var competing = second.SelectDuckDatabase(1024);
 
         Assert.False(selection.UseMemory);
-        Assert.InRange(selection.FileCacheBytes, GiB, 2 * GiB);
+        Assert.True(selection.FileCacheBytes > 2 * GiB);
         Assert.Equal(
             12 * GiB - GiB - 2 * selection.FileCacheBytes,
             competing.Available!.PhysicalBytes
         );
-        Assert.InRange(competing.FileCacheBytes, GiB, 2 * GiB);
+        Assert.Equal(GiB, competing.FileCacheBytes);
     }
 
     [Fact]
@@ -77,7 +73,7 @@ public sealed class ScanMemoryBudgetTests
         var small = DiagnosticDatabaseSelector.SelectDuckDb(1, available);
         var large = DiagnosticDatabaseSelector.SelectDuckDb(8 * GiB, available);
 
-        Assert.Equal(2 * GiB, small.FileCacheBytes);
+        Assert.True(small.FileCacheBytes > 2 * GiB);
         Assert.Equal(small.FileCacheBytes, large.FileCacheBytes);
     }
 
@@ -89,6 +85,18 @@ public sealed class ScanMemoryBudgetTests
             GiB,
             DiagnosticDatabaseSelector.SelectDuckDb(1, new(4 * GiB, 1, 1, 1)).FileCacheBytes
         );
+    }
+
+    [Fact]
+    public async Task DuckGrowthCanUseAvailableMemoryBeyondEightGiB()
+    {
+        AvailableMemory? memory = new(64 * GiB, 40 * GiB, 40 * GiB, 40 * GiB);
+        var budget = new ScanMemoryBudget(() => memory);
+        using var reservation = await budget.ReserveAsync(GiB, Token);
+        Assert.Equal(18 * GiB, reservation.SelectDuckDatabase(1).FileCacheBytes);
+        Assert.Equal(26 * GiB, reservation.TryGrowDuckDatabase(8 * GiB));
+        memory = new(64 * GiB, 4 * GiB, 4 * GiB, 4 * GiB);
+        Assert.Null(reservation.TryGrowDuckDatabase(26 * GiB));
     }
 
     [Fact]

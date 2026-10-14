@@ -96,6 +96,8 @@ public sealed partial class ScanStore
         var result = buffer.Aggregation;
         var reporter = new ScanWorkReporter(progress);
         var scan = CreateScanEntity(buffer.Descriptor);
+        if (history is { Id: var importedId } && importedId != Guid.Empty)
+            scan.Id = importedId;
         ValidateEnd(new(scan.Id, buffer.Descriptor, StoredScanState.Running, null), endedUtc);
         Write(
             () =>
@@ -104,83 +106,105 @@ public sealed partial class ScanStore
                 context.Scans.Add(scan);
                 // Make the parent key available within this transaction; this is not a commit.
                 context.SaveChanges();
+                if (context is SharedHistoryDbContext shared)
+                    SharedHistoryPublication.Prepare(shared, cancellationToken);
                 using var rows = new ModelInsert<ObservationEntity>(context);
                 using var names = new ModelInsert<FileNameEntity>(context);
                 using var streams = new ModelInsert<StreamEntity>(context);
                 using var folders = new ModelInsert<FolderSampleEntity>(context);
-                using var historyNames = new ModelInsert<FolderNameEntity>(context);
-                reporter.Start(ScanWorkStage.WritingFiles, buffer.Count);
-                long completed = 0;
-                foreach (var item in buffer.Observations)
+                using var historyNames =
+                    context is SharedHistoryDbContext
+                        ? null
+                        : new ModelInsert<FolderNameEntity>(context);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var entity = ToEntity(scan.Id, item);
-                    rows.Add(entity, cancellationToken);
-                    foreach (var name in entity.Names)
-                        names.Add(name, cancellationToken);
-                    foreach (var stream in entity.Streams)
-                        streams.Add(stream, cancellationToken);
-                    reporter.Advance(++completed);
-                }
-                reporter.Start(ScanWorkStage.WritingFolders, result.Folders.Count);
-                completed = 0;
-                foreach (var sample in result.Folders.Values)
-                {
-                    folders.Add(ToEntity(scan.Id, sample), cancellationToken);
-                    reporter.Advance(++completed);
-                }
-                // The traversal includes non-directories, so its denominator is all observations.
-                reporter.Start(ScanWorkStage.WritingFolderNames, buffer.Count);
-                completed = 0;
-                foreach (var item in buffer.Observations)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (
-                        item.File is not { IsDirectory: true } file
-                        || !result.Folders.ContainsKey(file.Reference)
-                    )
+                    reporter.Start(ScanWorkStage.WritingFiles, buffer.Count);
+                    long completed = 0;
+                    foreach (var item in buffer.Observations)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var entity = ToEntity(scan.Id, item);
+                        rows.Add(entity, cancellationToken);
+                        foreach (var name in entity.Names)
+                            names.Add(name, cancellationToken);
+                        foreach (var stream in entity.Streams)
+                            streams.Add(stream, cancellationToken);
                         reporter.Advance(++completed);
-                        continue;
                     }
-                    for (int i = 0; i < file.Names.Length; i++)
+                    reporter.Start(ScanWorkStage.WritingFolders, result.Folders.Count);
+                    completed = 0;
+                    foreach (var sample in result.Folders.Values)
                     {
-                        var name = file.Names[i];
-                        historyNames.Add(
-                            new()
-                            {
-                                ScanId = scan.Id,
-                                RecordIndex = checked((long)file.Reference.RecordIndex),
-                                Ordinal = i,
-                                ParentIndex = checked((long)name.Parent.RecordIndex),
-                                ParentSequence = name.Parent.SequenceNumber,
-                                Name = name.Name,
-                                Namespace = name.Namespace,
-                                Attributes = name.FileAttributes,
-                            },
-                            cancellationToken
-                        );
+                        folders.Add(ToEntity(scan.Id, sample), cancellationToken);
+                        reporter.Advance(++completed);
                     }
-                    reporter.Advance(++completed);
+                    // The traversal includes non-directories, so its denominator is all observations.
+                    reporter.Start(ScanWorkStage.WritingFolderNames, buffer.Count);
+                    completed = 0;
+                    foreach (var item in buffer.Observations)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (
+                            historyNames is null
+                            || item.File is not { IsDirectory: true } file
+                            || !result.Folders.ContainsKey(file.Reference)
+                        )
+                        {
+                            reporter.Advance(++completed);
+                            continue;
+                        }
+                        for (int i = 0; i < file.Names.Length; i++)
+                        {
+                            var name = file.Names[i];
+                            historyNames.Add(
+                                new()
+                                {
+                                    ScanId = scan.Id,
+                                    RecordIndex = checked((long)file.Reference.RecordIndex),
+                                    Ordinal = i,
+                                    ParentIndex = checked((long)name.Parent.RecordIndex),
+                                    ParentSequence = name.Parent.SequenceNumber,
+                                    Name = name.Name,
+                                    Namespace = name.Namespace,
+                                    Attributes = name.FileAttributes,
+                                },
+                                cancellationToken
+                            );
+                        }
+                        reporter.Advance(++completed);
+                    }
+                    reporter.Start(ScanWorkStage.FlushingRows);
+                    rows.Dispose();
+                    names.Dispose();
+                    streams.Dispose();
+                    folders.Dispose();
+                    historyNames?.Dispose();
+                    if (context is SharedHistoryDbContext sharedHistory)
+                        SharedHistoryPublication.Publish(
+                            sharedHistory,
+                            scan,
+                            cancellationToken,
+                            reporter
+                        );
+                    context.Volumes.Add(ToEntity(scan.Id, result));
+                    scan.State = StoredScanState.Completed;
+                    scan.Ended = endedUtc;
+                    SetPublishedGeneration(scan.Id, buffer.Descriptor);
+                    if (history is not null)
+                    {
+                        history.Id = scan.Id;
+                        context.HistorySnapshots.Add(history);
+                    }
+                    // Optional experimental read models share the publication transaction.
+                    prepareReadModel?.Invoke(context, scan.Id);
+                    SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
                 }
-                reporter.Start(ScanWorkStage.FlushingRows);
-                rows.Dispose();
-                names.Dispose();
-                streams.Dispose();
-                folders.Dispose();
-                historyNames.Dispose();
-                context.Volumes.Add(ToEntity(scan.Id, result));
-                scan.State = StoredScanState.Completed;
-                scan.Ended = endedUtc;
-                SetPublishedGeneration(scan.Id, buffer.Descriptor);
-                if (history is not null)
+                catch (Exception error)
                 {
-                    history.Id = scan.Id;
-                    context.HistorySnapshots.Add(history);
+                    if (context is DuckScanDbContext duck)
+                        duck.AppendFailure ??= error;
+                    throw;
                 }
-                // Optional experimental read models share the publication transaction.
-                prepareReadModel?.Invoke(context, scan.Id);
-                SqliteDatabaseBootstrap.OptimizeForBrowsing(context, cancellationToken);
             },
             cancellationToken,
             reporter
