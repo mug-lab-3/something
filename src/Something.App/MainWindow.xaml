@@ -90,7 +90,7 @@
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="0" />
+                  <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <StackPanel.Resources>
@@ -140,6 +140,16 @@
                   TextTrimming="CharacterEllipsis"
                   ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
                   ContextRequested="OnPathContextRequested"
+                />
+                <ComboBox
+                  x:Name="HistoryBox"
+                  Grid.Column="2"
+                  Width="230"
+                  PlaceholderText="スキャン履歴"
+                  IsEnabled="False"
+                  SelectionChanged="OnHistoryChanged"
+                  AutomationProperties.Name="スキャン履歴"
+                  ToolTipService.ToolTip="保存済みのスキャン完了日時を選択"
                 />
               </Grid>
               <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
@@ -258,7 +268,7 @@
         />
         <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True" />
         <TextBlock
-          Text="フォルダはサブフォルダ込み。ハードリンクは名前ごとに計上し、リンク先はたどりません。結果はアプリ終了時に破棄されます。"
+          Text="フォルダはサブフォルダ込み。ハードリンクは名前ごとに計上し、リンク先はたどりません。履歴は直近24時間の全記録と、それ以前の各日の最終記録を保持します。"
           TextWrapping="Wrap"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
           FontSize="12"

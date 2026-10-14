@@ -35,6 +35,12 @@ public sealed partial class RankingRow(RankedFolder entry, string drive)
 
 internal sealed record FolderLocation(FileReference Reference, string Path);
 
+internal sealed record HistoryRow(ScanHistoryEntry Entry)
+{
+    public override string ToString() =>
+        Entry.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture);
+}
+
 internal sealed record FolderNode(
     string Name,
     FolderLocation Location,

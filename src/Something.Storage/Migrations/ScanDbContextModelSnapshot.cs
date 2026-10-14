@@ -192,6 +192,47 @@ namespace Something.Storage.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Something.Storage.HistorySnapshotEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CompletedUtcTicks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Drive")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ElapsedTicks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LocalDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Retired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UtcOffsetMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VolumeKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VolumeKey", "CompletedUtcTicks");
+
+                    b.ToTable("history_snapshot", null, t =>
+                        {
+                            t.HasCheckConstraint("history_identity", "length(VolumeKey) > 0 AND length(Drive) > 0 AND LocalDay BETWEEN 0 AND 3652058 AND Retired IN (0,1)");
+
+                            t.HasCheckConstraint("history_times", "CompletedUtcTicks >= 0 AND ElapsedTicks >= 0 AND UtcOffsetMinutes BETWEEN -840 AND 840");
+                        });
+                });
+
             modelBuilder.Entity("Something.Storage.ObservationEntity", b =>
                 {
                     b.Property<Guid>("ScanId")

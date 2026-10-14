@@ -13,6 +13,7 @@ public enum ScanPhase
     Aggregating,
     Saving,
     WritingSnapshot,
+    SavingHistory,
     Completed,
 }
 
@@ -24,7 +25,7 @@ public sealed record ScanProgress(
 );
 
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
-public sealed class DriveScanner
+public sealed class DriveScanner(ScanHistoryArchive? history = null)
 {
     private readonly ScanMemoryBudget memoryBudget = new(ReadAvailable);
 
@@ -51,7 +52,10 @@ public sealed class DriveScanner
             {
                 if (!OperatingSystem.IsWindows())
                     throw new PlatformNotSupportedException();
+                string volumeKey = history is null ? "" : WindowsVolumeIdentity.ReadKey(drive);
                 using var source = WindowsMftRecordSource.Open(drive);
+                if (history is not null && volumeKey != WindowsVolumeIdentity.ReadKey(drive))
+                    throw new IOException("Volume mount changed while opening scan.");
                 var watch = Stopwatch.StartNew();
                 progress?.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
                 // Observed slots include unused records. 1 KiB per slot is a conservative
@@ -64,7 +68,9 @@ public sealed class DriveScanner
                 var scope = Guid.NewGuid();
                 var buffer = new BufferedScan(
                     new(
-                        $"diagnostic:{scope:N}",
+                        history is null
+                            ? $"diagnostic:{scope:N}"
+                            : $"{volumeKey}:{source.Volume.SerialNumber:X16}",
                         scope,
                         source.Volume.SerialNumber,
                         new(0, source.Volume.ObservedRecordCount),
@@ -122,7 +128,7 @@ public sealed class DriveScanner
                 var watch = Stopwatch.StartNew();
                 using var reservation = await memoryBudget.ReserveAsync(64UL << 20, token);
                 var buffer = new BufferedScan(
-                    new("demo", Guid.NewGuid(), 1, new(0, 1000), DateTimeOffset.UtcNow)
+                    new($"demo:{drive}", Guid.NewGuid(), 1, new(0, 1000), DateTimeOffset.UtcNow)
                 );
                 var root = FileReference.Create(5, 1);
                 void Add(
@@ -180,7 +186,7 @@ public sealed class DriveScanner
             token
         );
 
-    private static ScanSession Publish(
+    private ScanSession Publish(
         BufferedScan buffer,
         string drive,
         bool demo,
@@ -204,7 +210,13 @@ public sealed class DriveScanner
         try
         {
             var id = database.Store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
-            if (selection.UseMemory)
+            ScanHistoryEntry? saved = null;
+            if (history is not null && !demo)
+            {
+                progress?.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
+                saved = history.Save(database.Store, id, drive, watch.Elapsed, token);
+            }
+            else if (selection.UseMemory)
             {
                 progress?.Report(new(ScanPhase.WritingSnapshot, candidates, null, watch.Elapsed));
                 database.ExportSnapshot(token);
@@ -220,7 +232,8 @@ public sealed class DriveScanner
                 aggregation.Metadata.UnresolvedCount,
                 selection,
                 demo,
-                watch.Elapsed
+                watch.Elapsed,
+                saved
             );
         }
         catch

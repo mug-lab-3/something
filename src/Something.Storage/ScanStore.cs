@@ -29,6 +29,9 @@ public sealed partial class ScanStore : IDisposable
         CancellationToken cancellationToken = default
     ) => new(SqliteDatabaseBootstrap.Open(path, cancellationToken));
 
+    internal static ScanStore OpenSnapshotReadOnly(string path, CancellationToken token) =>
+        new(SqliteDatabaseBootstrap.OpenSnapshotReadOnly(path, token));
+
     internal static ScanStore OpenInMemory(CancellationToken token) =>
         new(
             SqliteDatabaseBootstrap.Open(":memory:", token, SqliteDatabaseProfile.DiagnosticMemory)

@@ -15,6 +15,7 @@ internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : D
     internal DbSet<FolderSampleEntity> Folders => Set<FolderSampleEntity>();
     internal DbSet<VolumeSampleEntity> Volumes => Set<VolumeSampleEntity>();
     internal DbSet<PublishedGenerationEntity> Published => Set<PublishedGenerationEntity>();
+    internal DbSet<HistorySnapshotEntity> HistorySnapshots => Set<HistorySnapshotEntity>();
 
     private static readonly ValueConverter<UInt128, byte[]> Capacity = new(
         v => StorageEncoding.Unsigned128(v),
@@ -31,6 +32,23 @@ internal sealed class ScanDbContext(DbContextOptions<ScanDbContext> options) : D
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        var snapshots = model.Entity<HistorySnapshotEntity>();
+        snapshots.ToTable(
+            "history_snapshot",
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "history_times",
+                    "CompletedUtcTicks >= 0 AND ElapsedTicks >= 0 AND UtcOffsetMinutes BETWEEN -840 AND 840"
+                );
+                table.HasCheckConstraint(
+                    "history_identity",
+                    "length(VolumeKey) > 0 AND length(Drive) > 0 AND LocalDay BETWEEN 0 AND 3652058 AND Retired IN (0,1)"
+                );
+            }
+        );
+        snapshots.HasKey(row => row.Id);
+        snapshots.HasIndex(row => new { row.VolumeKey, row.CompletedUtcTicks });
         var scan = model.Entity<ScanEntity>();
         scan.ToTable(
             "scan",

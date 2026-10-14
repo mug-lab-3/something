@@ -142,6 +142,38 @@ public sealed partial class ScanStore
             UnknownAttribution = result.HasUnknownAttribution,
         };
 
+    public (FolderCapacitySample Root, ulong MetadataUnresolved) ReadSnapshotSummary(
+        Guid scanId,
+        CancellationToken token = default
+    )
+    {
+        token.ThrowIfCancellationRequested();
+        RequireCompleted(scanId);
+        var root = context
+            .Folders.AsNoTracking()
+            .Single(row => row.ScanId == scanId && row.RecordIndex == 5);
+        var volume = context.Volumes.AsNoTracking().Single(row => row.ScanId == scanId);
+        return (ReadFolderSample(root), checked((ulong)volume.MetadataUnresolved));
+    }
+
+    private static FolderCapacitySample ReadFolderSample(FolderSampleEntity row) =>
+        new(
+            FileReference.Create(checked((ulong)row.RecordIndex), row.Sequence),
+            new(row.DirectLogical, row.DirectAllocated),
+            new(row.SharedLogical, row.SharedAllocated),
+            new(row.DirectoryLogical, row.DirectoryAllocated),
+            new(row.SubtreeLogical, row.SubtreeAllocated),
+            checked((ulong)row.AssignedCount),
+            checked((ulong)row.SubtreeCount),
+            checked((ulong)row.DirectUnresolved),
+            checked((ulong)row.SubtreeUnresolved),
+            row.DirectoryObserved,
+            checked((ulong)row.UnobservedDirectories)
+        )
+        {
+            Entries = ReadEntrySample(row),
+        };
+
     public FolderAggregationResult ReadAggregation(
         Guid scanId,
         CancellationToken cancellationToken = default
@@ -156,25 +188,7 @@ public sealed partial class ScanStore
         {
             cancellationToken.ThrowIfCancellationRequested();
             var reference = FileReference.Create(checked((ulong)row.RecordIndex), row.Sequence);
-            folders.Add(
-                reference,
-                new(
-                    reference,
-                    new(row.DirectLogical, row.DirectAllocated),
-                    new(row.SharedLogical, row.SharedAllocated),
-                    new(row.DirectoryLogical, row.DirectoryAllocated),
-                    new(row.SubtreeLogical, row.SubtreeAllocated),
-                    checked((ulong)row.AssignedCount),
-                    checked((ulong)row.SubtreeCount),
-                    checked((ulong)row.DirectUnresolved),
-                    checked((ulong)row.SubtreeUnresolved),
-                    row.DirectoryObserved,
-                    checked((ulong)row.UnobservedDirectories)
-                )
-                {
-                    Entries = ReadEntrySample(row),
-                }
-            );
+            folders.Add(reference, ReadFolderSample(row));
         }
         var summary =
             context.Volumes.AsNoTracking().SingleOrDefault(v => v.ScanId == scanId)

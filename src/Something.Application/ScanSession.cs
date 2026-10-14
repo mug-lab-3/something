@@ -7,7 +7,8 @@ namespace Something.Application;
 /// <summary>Owns one ephemeral scan generation. Serializes every SQLite operation on workers.</summary>
 public sealed class ScanSession : IAsyncDisposable
 {
-    private readonly TemporaryScanDatabase database;
+    private readonly IDisposable database;
+    private readonly ScanStore store;
     private readonly SemaphoreSlim gate = new(1);
     private bool disposed;
     public Guid ScanId { get; }
@@ -18,6 +19,29 @@ public sealed class ScanSession : IAsyncDisposable
     public DiagnosticDatabaseSelection Selection { get; }
     public bool IsDemo { get; }
     public TimeSpan Elapsed { get; }
+    public ScanHistoryEntry? History { get; private set; }
+
+    public async Task<ScanHistoryEntry> SaveHistoryAsync(
+        ScanHistoryArchive archive,
+        CancellationToken token
+    )
+    {
+        await gate.WaitAsync(token);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            var entry = await Task.Run(
+                () => archive.Save(store, ScanId, Drive, Elapsed, token),
+                token
+            );
+            History = entry;
+            return entry;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
 
     internal ScanSession(
         TemporaryScanDatabase database,
@@ -28,10 +52,40 @@ public sealed class ScanSession : IAsyncDisposable
         ulong metadataUnresolved,
         DiagnosticDatabaseSelection selection,
         bool demo,
-        TimeSpan elapsed
+        TimeSpan elapsed,
+        ScanHistoryEntry? history = null
+    )
+        : this(
+            database,
+            database.Store,
+            id,
+            drive,
+            root,
+            rootSample,
+            metadataUnresolved,
+            selection,
+            demo,
+            elapsed,
+            history
+        ) { }
+
+    private ScanSession(
+        IDisposable database,
+        ScanStore store,
+        Guid id,
+        string drive,
+        FileReference root,
+        FolderCapacitySample rootSample,
+        ulong metadataUnresolved,
+        DiagnosticDatabaseSelection selection,
+        bool demo,
+        TimeSpan elapsed,
+        ScanHistoryEntry? history
     )
     {
         this.database = database;
+        this.store = store;
+        History = history;
         ScanId = id;
         Drive = drive;
         Root = root;
@@ -41,6 +95,46 @@ public sealed class ScanSession : IAsyncDisposable
         IsDemo = demo;
         Elapsed = elapsed;
     }
+
+    public static Task<ScanSession> OpenHistoryAsync(
+        ScanHistoryArchive archive,
+        Guid id,
+        string drive,
+        CancellationToken token
+    ) =>
+        Task.Run(
+            () =>
+            {
+                var snapshot = archive.Open(id, token);
+                try
+                {
+                    var summary = snapshot.Store.ReadSnapshotSummary(id, token);
+                    return new ScanSession(
+                        snapshot,
+                        snapshot.Store,
+                        id,
+                        drive,
+                        summary.Root.Reference,
+                        summary.Root,
+                        summary.MetadataUnresolved,
+                        DiagnosticDatabaseSelector.Select(
+                            snapshot.SizeBytes,
+                            null,
+                            DiagnosticDatabasePreference.File
+                        ),
+                        false,
+                        snapshot.Entry.Elapsed,
+                        snapshot.Entry
+                    );
+                }
+                catch
+                {
+                    snapshot.Dispose();
+                    throw;
+                }
+            },
+            token
+        );
 
     public async Task<FileReference?> ReadParentAsync(
         FileReference folder,
@@ -53,7 +147,7 @@ public sealed class ScanSession : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
-                () => database.Store.ReadParentFolder(ScanId, folder, visibleName, token),
+                () => store.ReadParentFolder(ScanId, folder, visibleName, token),
                 token
             );
         }
@@ -78,7 +172,7 @@ public sealed class ScanSession : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
                 () =>
-                    database.Store.ReadFolderEntries(
+                    store.ReadFolderEntries(
                         ScanId,
                         parent,
                         page,
@@ -108,8 +202,8 @@ public sealed class ScanSession : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
                 () =>
-                    database
-                        .Store.ReadLargestFolders(ScanId, 20, token, filter: filter, sort: sort)
+                    store
+                        .ReadLargestFolders(ScanId, 20, token, filter: filter, sort: sort)
                         .ToArray(),
                 token
             );

@@ -1147,7 +1147,7 @@ public sealed class ScanStoreTests
         using var fixture = new DatabaseFixture();
         using var context = new ScanDbContextFactory().CreateDbContext([]);
         Assert.False(context.Database.HasPendingModelChanges());
-        Assert.Equal(2, context.Database.GetMigrations().Count());
+        Assert.Equal(3, context.Database.GetMigrations().Count());
         fixture.Reopen();
         var id = fixture.Store.BeginScan(Descriptor(), TestContext.Current.CancellationToken);
         Assert.Equal(StoredScanState.Running, fixture.Store.GetScan(id).State);

@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Something.Application;
 using Something.Ntfs;
 using Something.Storage;
+using Something.Windows;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics.Imaging;
 
@@ -17,7 +18,17 @@ namespace Something.App;
 public sealed partial class MainWindow : Window
 {
     private readonly CancellationTokenSource lifetime = new();
-    private readonly DriveScanner scanner = new();
+    private readonly DriveScanner scanner;
+    private readonly ScanHistoryArchive? history;
+    private readonly Dictionary<DriveCard, string> volumeKeys = [];
+    private ScanSession? historicalSession;
+    private int historyVersion;
+    private bool updatingHistoryChoices;
+    private bool maintainingHistory;
+    private Task startupTask = Task.CompletedTask;
+    private Task maintenanceTask = Task.CompletedTask;
+    private readonly HashSet<Task> historyTasks = [];
+    private readonly DispatcherTimer historyTimer = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly Stack<FolderLocation> navigation = [];
     private readonly Stack<FolderLocation> forwardHistory = [];
     private FolderLocation? parentLocation;
@@ -57,6 +68,16 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        var arguments = Environment.GetCommandLineArgs();
+        int demoHistory = Array.IndexOf(arguments, "--demo-history");
+        history = demo
+            ? demoHistory >= 0 && demoHistory + 1 < arguments.Length
+                ? new ScanHistoryArchive(arguments[demoHistory + 1])
+                : null
+            : ScanHistoryArchive.CreateDefault();
+        scanner = new(history);
+        if (demo && history is null)
+            HistoryBox.Visibility = Visibility.Collapsed;
         Title = "Something";
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -111,6 +132,31 @@ public sealed partial class MainWindow : Window
             DriveCards.Children.Add(card);
         UpdateDriveCards();
         AppWindow.Closing += OnClosing;
+        if (!demo)
+        {
+            RootLayout.Loaded += async (_, _) =>
+            {
+                startupTask = InitializeHistoryAsync();
+                await startupTask;
+                if (!closed)
+                    historyTimer.Start();
+            };
+            historyTimer.Tick += async (_, _) =>
+            {
+                if (maintainingHistory || closed)
+                    return;
+                maintainingHistory = true;
+                try
+                {
+                    maintenanceTask = MaintainHistoryAsync();
+                    await maintenanceTask;
+                }
+                finally
+                {
+                    maintainingHistory = false;
+                }
+            };
+        }
         if (demo)
         {
             StatusText.Text = "デモモード。実ディスクやファイルは読み取りません。";
@@ -223,6 +269,8 @@ public sealed partial class MainWindow : Window
                     "Concurrent drive result could not be browsed."
                 );
             await SelectDriveAsync(cards[0]);
+            if (history is not null)
+                await VerifyHistorySelectionAsync();
             projects = Folders
                 .RootNodes[0]
                 .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
@@ -287,7 +335,7 @@ public sealed partial class MainWindow : Window
             await encoder.FlushAsync();
             File.WriteAllText(
                 path + ".result",
-                "UI loaded; root entries=3; ranking=3; back/forward/parent navigation, lazy tree, filters, concurrent drive scans, 600-row incremental scrolling and cancellation passed; synthetic data only."
+                "UI loaded; root entries=3; ranking=3; back/forward/parent navigation, lazy tree, filters, concurrent drive scans, 600-row incremental scrolling, cancellation and optional history selection passed; synthetic data only."
             );
         }
         catch (Exception error)
@@ -337,11 +385,274 @@ public sealed partial class MainWindow : Window
             card.SetSelected(card == selectedCard);
     }
 
+    private async Task VerifyHistorySelectionAsync()
+    {
+        var original = session ?? throw new InvalidOperationException("No demo session.");
+        await StartScanAsync(cards[0]);
+        var latest = session ?? throw new InvalidOperationException("No rescanned session.");
+        if (original.ScanId == latest.ScanId || HistoryBox.Items.Count < 2 || !HistoryBox.IsEnabled)
+            throw new InvalidOperationException("Completed scan was not added to history.");
+        var oldRow = HistoryBox
+            .Items.Cast<HistoryRow>()
+            .Single(row => row.Entry.Id == original.ScanId);
+        await ChangeHistoryAsync(oldRow);
+        if (
+            session?.ScanId != original.ScanId
+            || historicalSession is null
+            || Entries.Items.Count != 3
+        )
+            throw new InvalidOperationException("Saved history could not be browsed.");
+        var newRow = HistoryBox
+            .Items.Cast<HistoryRow>()
+            .Single(row => row.Entry.Id == latest.ScanId);
+        await ChangeHistoryAsync(newRow);
+        if (session != latest || historicalSession is not null)
+            throw new InvalidOperationException("Latest scan could not be restored from history.");
+        var foreign = await Task.Run(
+            () => history!.List($"demo:{cards[1].Choice.Drive}", lifetime.Token),
+            lifetime.Token
+        );
+        await ChangeHistoryAsync(new(foreign[0]));
+        if (session != latest)
+            throw new InvalidOperationException("History selection crossed volume identities.");
+        foreach (var current in sessions.Values)
+            await current.DisposeAsync();
+        sessions.Clear();
+        session = null;
+        await InitializeHistoryAsync();
+        if (sessions.Count != 3 || session?.ScanId != latest.ScanId || !HistoryBox.IsEnabled)
+            throw new InvalidOperationException(
+                "Latest histories did not reload after releasing all sessions."
+            );
+    }
+
+    private async Task InitializeHistoryAsync()
+    {
+        if (history is null)
+            return;
+        try
+        {
+            await Task.Run(() => history.Maintain(lifetime.Token), lifetime.Token);
+            foreach (var card in cards)
+            {
+                string key = demo
+                    ? $"demo:{card.Choice.Drive}"
+                    : await Task.Run(
+                        () => WindowsVolumeIdentity.ReadHistoryKey(card.Choice.Drive),
+                        lifetime.Token
+                    );
+                if (closed)
+                    return;
+                volumeKeys[card] = key;
+                var rows = await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token);
+                if (
+                    rows.Length > 0
+                    && !sessions.ContainsKey(card.Choice.Drive)
+                    && !scans.ContainsKey(card)
+                )
+                {
+                    int viewingVersion = historyVersion;
+                    var latest = await ScanSession.OpenHistoryAsync(
+                        history,
+                        rows[0].Id,
+                        card.Choice.Drive,
+                        lifetime.Token
+                    );
+                    if (
+                        closed
+                        || sessions.ContainsKey(card.Choice.Drive)
+                        || scans.ContainsKey(card)
+                    )
+                        await latest.DisposeAsync();
+                    else
+                    {
+                        sessions[card.Choice.Drive] = latest;
+                        card.SetResult(latest);
+                        if (
+                            selectedCard == card
+                            && viewingVersion == historyVersion
+                            && historicalSession is null
+                        )
+                        {
+                            session = latest;
+                            await ShowSessionAsync(latest);
+                            if (selectedCard == card)
+                                StatusText.Text =
+                                    $"保存済みの履歴 · {rows[0].CompletedLocal:yyyy/MM/dd HH:mm:ss} · 取得時点の観測";
+                        }
+                    }
+                }
+                await RefreshHistoryChoicesAsync(card);
+            }
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+    }
+
+    private async Task MaintainHistoryAsync()
+    {
+        if (history is null)
+            return;
+        try
+        {
+            await Task.Run(() => history.Maintain(lifetime.Token), lifetime.Token);
+            if (selectedCard is { } card)
+                await RefreshHistoryChoicesAsync(card);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+    }
+
+    private async Task RefreshHistoryChoicesAsync(DriveCard card)
+    {
+        if (history is null || closed || selectedCard != card)
+            return;
+        try
+        {
+            if (sessions.GetValueOrDefault(card.Choice.Drive)?.History is { } saved)
+                volumeKeys[card] = saved.VolumeKey;
+            var entries = volumeKeys.TryGetValue(card, out var key)
+                ? await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token)
+                : [];
+            if (closed || selectedCard != card)
+                return;
+            var rows = entries.Select(entry => new HistoryRow(entry)).ToList();
+            if (
+                historicalSession?.History is { } viewing
+                && rows.All(row => row.Entry.Id != viewing.Id)
+            )
+                rows.Add(new(viewing)); // A retired snapshot stays readable until this view releases it.
+            updatingHistoryChoices = true;
+            try
+            {
+                HistoryBox.ItemsSource = rows;
+                HistoryBox.SelectedItem = rows.FirstOrDefault(row =>
+                    row.Entry.Id == session?.ScanId
+                );
+                HistoryBox.IsEnabled = rows.Count > 0;
+            }
+            finally
+            {
+                updatingHistoryChoices = false;
+            }
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+    }
+
+    private async void OnHistoryChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!updatingHistoryChoices && HistoryBox.SelectedItem is HistoryRow row)
+            await ChangeHistoryAsync(row);
+    }
+
+    private async Task ChangeHistoryAsync(HistoryRow row)
+    {
+        var task = LoadHistorySelectionAsync(row);
+        historyTasks.Add(task);
+        try
+        {
+            await task;
+        }
+        finally
+        {
+            historyTasks.Remove(task);
+        }
+    }
+
+    private async Task LoadHistorySelectionAsync(HistoryRow row)
+    {
+        if (
+            history is null
+            || closed
+            || selectedCard is not { } card
+            || session?.ScanId == row.Entry.Id
+        )
+            return;
+        string? currentVolume =
+            sessions.GetValueOrDefault(card.Choice.Drive)?.History?.VolumeKey
+            ?? volumeKeys.GetValueOrDefault(card);
+        if (currentVolume is not null && row.Entry.VolumeKey != currentVolume)
+            return;
+        int version = ++historyVersion;
+        ScanSession? owned = null;
+        try
+        {
+            var latest = sessions.GetValueOrDefault(card.Choice.Drive);
+            var next =
+                latest?.ScanId == row.Entry.Id
+                    ? latest
+                    : owned = await ScanSession.OpenHistoryAsync(
+                        history,
+                        row.Entry.Id,
+                        card.Choice.Drive,
+                        lifetime.Token
+                    );
+            if (closed || selectedCard != card || version != historyVersion)
+                return;
+            var previous = historicalSession;
+            historicalSession = owned;
+            owned = null;
+            session = next;
+            try
+            {
+                await ShowSessionAsync(next);
+                if (selectedCard == card && session == next)
+                {
+                    StatusText.Text =
+                        $"履歴 · {row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
+                    await RefreshHistoryChoicesAsync(card);
+                }
+            }
+            finally
+            {
+                if (previous is not null)
+                    await previous.DisposeAsync();
+            }
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            if (!closed && selectedCard == card && version == historyVersion)
+            {
+                ShowError(error);
+                await RefreshHistoryChoicesAsync(card);
+            }
+        }
+        finally
+        {
+            if (owned is not null)
+                await owned.DisposeAsync();
+        }
+    }
+
     private async Task SelectDriveAsync(DriveCard card)
     {
         if (closed || card == selectedCard)
             return;
         selectedCard = card;
+        updatingHistoryChoices = true;
+        try
+        {
+            HistoryBox.ItemsSource = null;
+            HistoryBox.IsEnabled = false;
+        }
+        finally
+        {
+            updatingHistoryChoices = false;
+        }
+        historyVersion++;
+        var oldHistory = historicalSession;
+        historicalSession = null;
         listingCancellation?.Cancel();
         navigationVersion++;
         rankingVersion++;
@@ -357,6 +668,10 @@ public sealed partial class MainWindow : Window
         Ranking.ItemsSource = null;
         location = null;
         session = sessions.GetValueOrDefault(card.Choice.Drive);
+        if (oldHistory is not null)
+            await oldHistory.DisposeAsync();
+        if (selectedCard != card || closed)
+            return;
         if (session is { } current)
         {
             await ShowSessionAsync(current);
@@ -377,6 +692,7 @@ public sealed partial class MainWindow : Window
             && running.Progress is { } progress
         )
             DisplayProgress(card, progress);
+        await RefreshHistoryChoicesAsync(card);
     }
 
     private async Task ShowSessionAsync(ScanSession current)
@@ -441,6 +757,18 @@ public sealed partial class MainWindow : Window
             var next = demo
                 ? await scanner.CreateDemoAsync(progress, operation.Cancellation.Token, drive)
                 : await scanner.ScanAsync(drive, progress, operation.Cancellation.Token);
+            if (demo && history is not null)
+            {
+                try
+                {
+                    await next.SaveHistoryAsync(history, operation.Cancellation.Token);
+                }
+                catch
+                {
+                    await next.DisposeAsync();
+                    throw;
+                }
+            }
             operation.Finished = true;
             if (closed)
             {
@@ -456,12 +784,32 @@ public sealed partial class MainWindow : Window
             {
                 if (selectedCard == card)
                 {
+                    historyVersion++;
+                    var oldHistory = historicalSession;
+                    historicalSession = null;
                     session = next;
                     navigationVersion++;
                     rankingVersion++;
                     StatusText.Text =
                         $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
-                    await ShowSessionAsync(next);
+                    try
+                    {
+                        await ShowSessionAsync(next);
+                    }
+                    finally
+                    {
+                        if (oldHistory is not null)
+                            await oldHistory.DisposeAsync();
+                    }
+                    await RefreshHistoryChoicesAsync(card);
+                    if (history?.MaintenanceError is { } cleanupError)
+                    {
+                        MessageBar.Title =
+                            "履歴は保存済みですが、古い履歴の整理を完了できませんでした";
+                        MessageBar.Message = cleanupError;
+                        MessageBar.Severity = InfoBarSeverity.Warning;
+                        MessageBar.IsOpen = true;
+                    }
                 }
             }
             finally
@@ -502,6 +850,7 @@ public sealed partial class MainWindow : Window
         card.SetProgress(true);
         string phase = progress.Phase switch
         {
+            ScanPhase.SavingHistory => "履歴を保存中",
             ScanPhase.WaitingForMemory => "メモリ予算の空きを待機中",
             ScanPhase.Reading => "メタデータを取得中",
             ScanPhase.Aggregating => "フォルダ容量を集計中",
@@ -515,6 +864,7 @@ public sealed partial class MainWindow : Window
         card.SetState(
             progress.Phase switch
             {
+                ScanPhase.SavingHistory => "履歴保存中",
                 ScanPhase.WaitingForMemory => "メモリ待ち",
                 ScanPhase.Reading when progress.Fraction is { } fraction =>
                     $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
@@ -1000,8 +1350,13 @@ public sealed partial class MainWindow : Window
     {
         closed = true;
         lifetime.Cancel();
+        historyTimer.Stop();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
+        await Task.WhenAll(startupTask, maintenanceTask);
+        await Task.WhenAll(historyTasks.ToArray());
+        if (historicalSession is not null)
+            await historicalSession.DisposeAsync();
         foreach (var current in sessions.Values)
             await current.DisposeAsync();
         listingCancellation?.Dispose();

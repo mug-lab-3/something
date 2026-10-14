@@ -15,6 +15,47 @@ internal enum SqliteDatabaseProfile
 // Application queries and updates use EF; prepared append inserts also derive from its model.
 internal static class SqliteDatabaseBootstrap
 {
+    internal static ScanDbContext OpenSnapshotReadOnly(string path, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.GetFullPath(path),
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+                DefaultTimeout = 5,
+            }.ToString()
+        );
+        ScanDbContext? context = null;
+        try
+        {
+            connection.Open();
+            if (
+                ScalarLong(connection, "PRAGMA application_id") != ApplicationId
+                || ScalarLong(connection, "PRAGMA user_version") != Version
+            )
+                throw new InvalidDataException("Snapshot database identity is unsupported.");
+            context = new(
+                new DbContextOptionsBuilder<ScanDbContext>()
+                    .UseSqlite(connection, contextOwnsConnection: true)
+                    .Options
+            );
+            var applied = context.Database.GetAppliedMigrations().ToArray();
+            var known = context.Database.GetMigrations().ToArray();
+            if (!applied.SequenceEqual(known))
+                throw new InvalidDataException("Snapshot database schema is unsupported.");
+            token.ThrowIfCancellationRequested();
+            return context;
+        }
+        catch
+        {
+            context?.Dispose();
+            connection.Dispose();
+            throw;
+        }
+    }
+
     internal const int ApplicationId = 0x534F4D45;
     internal const int Version = 1;
 
