@@ -48,6 +48,19 @@ public sealed partial class ScanStore
                     source.context.Volumes.AsNoTracking().Where(row => row.ScanId == scan.Id),
                     token
                 );
+                if (source.context is DuckScanDbContext)
+                {
+                    Copy(
+                        source.context.Timings.AsNoTracking().Where(row => row.ScanId == scan.Id),
+                        token
+                    );
+                    Copy(
+                        source
+                            .context.StepTimings.AsNoTracking()
+                            .Where(row => row.ScanId == scan.Id),
+                        token
+                    );
+                }
                 context.HistorySnapshots.Add(metadata);
                 SetPublishedGeneration(scan.Id, source.GetScan(scan.Id).Descriptor);
                 SqliteDatabaseBootstrap.OptimizeForBrowsing(context, token);
@@ -71,6 +84,8 @@ public sealed partial class ScanStore
         context.Published.Where(row => row.ScanId == id).ExecuteDelete();
         if (context is DuckScanDbContext)
         {
+            context.StepTimings.Where(row => row.ScanId == id).ExecuteDelete();
+            context.Timings.Where(row => row.ScanId == id).ExecuteDelete();
             context.Browser.Where(row => row.ScanId == id).ExecuteDelete();
             context.FolderNames.Where(row => row.ScanId == id).ExecuteDelete();
             context.Names.Where(row => row.ScanId == id).ExecuteDelete();

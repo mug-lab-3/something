@@ -22,7 +22,7 @@ public sealed partial class ScanStore : IDisposable
             throw new InvalidOperationException("Application data directory is unavailable.");
         string directory = Path.Combine(root, "Something");
         Directory.CreateDirectory(directory);
-        return OpenDuckPath(Path.Combine(directory, "history.duckdb"), cancellationToken);
+        return OpenDuckPath(Path.Combine(directory, "history-v2.duckdb"), cancellationToken);
     }
 
     internal static ScanStore OpenTrustedPath(

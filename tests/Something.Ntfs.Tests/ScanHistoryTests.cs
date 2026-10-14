@@ -188,7 +188,7 @@ public sealed class ScanHistoryTests
         reader.Dispose();
         fixture.Archive.Maintain(Token);
         using var stored = ScanStore.OpenDuckPath(
-            Path.Combine(fixture.Root, "catalog.duckdb"),
+            Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );
         Assert.Throws<KeyNotFoundException>(() => stored.GetScan(first.Id));
@@ -272,7 +272,7 @@ public sealed class ScanHistoryTests
         other.Maintain(Token);
 
         using var remaining = ScanStore.OpenDuckPath(
-            Path.Combine(fixture.Root, "catalog.duckdb"),
+            Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );
         Assert.Throws<KeyNotFoundException>(() => remaining.GetScan(first.Id));

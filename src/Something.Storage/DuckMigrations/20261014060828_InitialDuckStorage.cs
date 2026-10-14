@@ -15,7 +15,7 @@ namespace Something.Storage.DuckMigrations
             // This schema uses logical EF relationships, validated with set operations
             // before publication. Native foreign keys/cascades are intentionally omitted.
             migrationBuilder.Sql(
-                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY, Version INTEGER NOT NULL CHECK(Version=1)); INSERT INTO something_format VALUES ('Something',1);"
+                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY, Version INTEGER NOT NULL CHECK(Version=2)); INSERT INTO something_format VALUES ('Something',2);"
             );
             migrationBuilder.CreateTable(
                 name: "browser",

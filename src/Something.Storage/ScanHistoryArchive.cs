@@ -13,7 +13,21 @@ public sealed partial class ScanHistoryArchive
     private readonly TimeProvider clock;
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
-    private string DatabasePath => Path.Combine(root, "catalog.duckdb");
+    internal const string DatabaseFileName = "catalog-v2.duckdb";
+    private string DatabasePath => Path.Combine(root, DatabaseFileName);
+
+    public void SaveTimings(
+        Guid scanId,
+        ScanTimingSnapshot timing,
+        CancellationToken token = default
+    )
+    {
+        lock (sync)
+        {
+            using var store = OpenDatabase(token);
+            store.SaveTimings(scanId, timing, token);
+        }
+    }
 
     private string LeasePath(Guid id) => Path.Combine(root, "leases", $"{id:N}.lock");
 

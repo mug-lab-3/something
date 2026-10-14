@@ -145,7 +145,7 @@ public sealed class FolderChangeTests
         fixture.Save(Now, [new(20, "folder", 0)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.duckdb"),
+                Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
             )
@@ -217,7 +217,7 @@ public sealed class FolderChangeTests
         fixture.Save(Now, [new(20, "folder", 200)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.duckdb"),
+                Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
             )
@@ -253,7 +253,7 @@ public sealed class FolderChangeTests
         var previous = fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 100)]);
         using (
             var writer = ScanStore.OpenHistoryWriter(
-                Path.Combine(fixture.Root, "catalog.duckdb"),
+                Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
                 null,
                 Token
             )
@@ -290,7 +290,7 @@ public sealed class FolderChangeTests
 
         Assert.Equal(previous.Id, Assert.Single(fixture.Archive.List("volume:A", Token)).Id);
         using var stored = ScanStore.OpenDuckPath(
-            Path.Combine(fixture.Root, "catalog.duckdb"),
+            Path.Combine(fixture.Root, ScanHistoryArchive.DatabaseFileName),
             Token
         );
         Assert.Equal(previous.Id, Assert.Single(stored.HistoryContext.Scans).Id);

@@ -413,6 +413,56 @@ namespace Something.Storage.DuckMigrations
                         });
                 });
 
+            modelBuilder.Entity("Something.Storage.ScanStepTimingEntity", b =>
+                {
+                    b.Property<Guid>("ScanId")
+                        .HasColumnType("UUID");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ElapsedTicks")
+                        .HasColumnType("BIGINT");
+
+                    b.Property<int>("Step")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Work")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ScanId", "Ordinal");
+
+                    b.ToTable("scan_step_timing", null, t =>
+                        {
+                            t.HasCheckConstraint("step_timing_values", "Ordinal >= 0 AND Step BETWEEN 0 AND 100 AND Attempt >= 0 AND ElapsedTicks >= 0 AND (Work IS NULL OR Work BETWEEN 0 AND 12)");
+                        });
+                });
+
+            modelBuilder.Entity("Something.Storage.ScanTimingEntity", b =>
+                {
+                    b.Property<Guid>("ScanId")
+                        .HasColumnType("UUID");
+
+                    b.Property<int>("PlanVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalSteps")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("TotalTicks")
+                        .HasColumnType("BIGINT");
+
+                    b.HasKey("ScanId");
+
+                    b.ToTable("scan_timing", null, t =>
+                        {
+                            t.HasCheckConstraint("timing_values", "PlanVersion = 1 AND TotalSteps BETWEEN 1 AND 100 AND TotalTicks >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Something.Storage.StreamEntity", b =>
                 {
                     b.Property<Guid>("ScanId")
@@ -525,6 +575,20 @@ namespace Something.Storage.DuckMigrations
                         .WithMany()
                         .HasForeignKey("ScanId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Something.Storage.ScanStepTimingEntity", b =>
+                {
+                    b.HasOne("Something.Storage.ScanTimingEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ScanId");
+                });
+
+            modelBuilder.Entity("Something.Storage.ScanTimingEntity", b =>
+                {
+                    b.HasOne("Something.Storage.ScanEntity", null)
+                        .WithOne()
+                        .HasForeignKey("Something.Storage.ScanTimingEntity", "ScanId");
                 });
 
             modelBuilder.Entity("Something.Storage.StreamEntity", b =>

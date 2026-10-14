@@ -18,8 +18,17 @@ public sealed class ScanSession : IAsyncDisposable
     public ulong MetadataUnresolved { get; }
     public DiagnosticDatabaseSelection Selection { get; }
     public bool IsDemo { get; }
-    public TimeSpan Elapsed { get; }
+    public TimeSpan Elapsed { get; private set; }
+    public ScanTimingSnapshot? Timings { get; private set; }
     public ScanHistoryEntry? History { get; private set; }
+
+    internal void SetTimings(ScanTimingSnapshot timing, ScanHistoryEntry? history = null)
+    {
+        Timings = timing;
+        Elapsed = timing.TotalElapsed;
+        if (history is not null)
+            History = history;
+    }
 
     public async Task<ScanHistoryEntry> SaveHistoryAsync(
         ScanHistoryArchive archive,
@@ -112,7 +121,7 @@ public sealed class ScanSession : IAsyncDisposable
         try
         {
             var summary = snapshot.Store.ReadSnapshotSummary(snapshot.Entry.Id, token);
-            return new ScanSession(
+            var session = new ScanSession(
                 snapshot,
                 snapshot.Store,
                 snapshot.Entry.Id,
@@ -129,6 +138,9 @@ public sealed class ScanSession : IAsyncDisposable
                 snapshot.Entry.Elapsed,
                 snapshot.Entry
             );
+            if (snapshot.Store.ReadTimings(snapshot.Entry.Id, token) is { } timing)
+                session.SetTimings(timing);
+            return session;
         }
         catch
         {

@@ -37,6 +37,8 @@ internal static class DuckReadModel
                     ),
                     ("volume_sample", "scan", "p.Id=c.ScanId"),
                     ("published_generation", "scan", "p.Id=c.ScanId"),
+                    ("scan_timing", "scan", "p.Id=c.ScanId"),
+                    ("scan_step_timing", "scan_timing", "p.ScanId=c.ScanId"),
                 }
             )
             {

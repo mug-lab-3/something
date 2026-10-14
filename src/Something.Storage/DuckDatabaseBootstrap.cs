@@ -107,7 +107,7 @@ internal static class DuckDatabaseBootstrap
             {
                 identity.CommandText =
                     "SELECT Version FROM something_format WHERE Application='Something';";
-                if (Convert.ToInt64(identity.ExecuteScalar()) != 1)
+                if (Convert.ToInt64(identity.ExecuteScalar()) != 2)
                     throw new InvalidDataException("DuckDB database identity is unsupported.");
             }
             RegisterMemory(context, path, budget);

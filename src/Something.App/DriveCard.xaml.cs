@@ -104,7 +104,7 @@ public sealed partial class DriveCard : UserControl
     {
         ScanStateText.Text = result is null
             ? "未スキャン"
-            : $"✓ スキャン済み · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件";
+            : $"✓ スキャン済み ({result.Elapsed.TotalSeconds:F1}秒) · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件";
         ToolTipService.SetToolTip(
             ScanStateText,
             result is null ? "未スキャン" : $"スキャン完了 · {result.Elapsed.TotalSeconds:F1}秒"

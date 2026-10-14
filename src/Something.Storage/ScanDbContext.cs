@@ -17,6 +17,8 @@ internal class ScanDbContext(DbContextOptions options) : DbContext(options)
     internal DbSet<PublishedGenerationEntity> Published => Set<PublishedGenerationEntity>();
     internal DbSet<HistorySnapshotEntity> HistorySnapshots => Set<HistorySnapshotEntity>();
     internal DbSet<BrowserEntity> Browser => Set<BrowserEntity>();
+    internal DbSet<ScanTimingEntity> Timings => Set<ScanTimingEntity>();
+    internal DbSet<ScanStepTimingEntity> StepTimings => Set<ScanStepTimingEntity>();
 
     private static readonly ValueConverter<UInt128, byte[]> Capacity = new(
         v => StorageEncoding.Unsigned128(v),
@@ -255,6 +257,31 @@ internal class ScanDbContext(DbContextOptions options) : DbContext(options)
             .OnDelete(DeleteBehavior.Restrict);
         if (this is DuckScanDbContext)
         {
+            var timings = model.Entity<ScanTimingEntity>();
+            timings.ToTable(
+                "scan_timing",
+                t =>
+                    t.HasCheckConstraint(
+                        "timing_values",
+                        "PlanVersion = 1 AND TotalSteps BETWEEN 1 AND 100 AND TotalTicks >= 0"
+                    )
+            );
+            timings.HasKey(row => row.ScanId);
+            timings
+                .HasOne<ScanEntity>()
+                .WithOne()
+                .HasForeignKey<ScanTimingEntity>(row => row.ScanId);
+            var steps = model.Entity<ScanStepTimingEntity>();
+            steps.ToTable(
+                "scan_step_timing",
+                t =>
+                    t.HasCheckConstraint(
+                        "step_timing_values",
+                        "Ordinal >= 0 AND Step BETWEEN 0 AND 100 AND Attempt >= 0 AND ElapsedTicks >= 0 AND (Work IS NULL OR Work BETWEEN 0 AND 12)"
+                    )
+            );
+            steps.HasKey(row => new { row.ScanId, row.Ordinal });
+            steps.HasOne<ScanTimingEntity>().WithMany().HasForeignKey(row => row.ScanId);
             var browser = model.Entity<BrowserEntity>();
             browser.ToTable("browser");
             browser.HasKey(x => new
@@ -270,7 +297,11 @@ internal class ScanDbContext(DbContextOptions options) : DbContext(options)
             DuckModel.Configure(model);
         }
         else
+        {
+            model.Ignore<ScanTimingEntity>();
+            model.Ignore<ScanStepTimingEntity>();
             model.Ignore<BrowserEntity>();
+        }
     }
 
     private static void NameChecks<TEntity>(TableBuilder<TEntity> table)
