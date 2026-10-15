@@ -18,6 +18,9 @@
     </LinearGradientBrush>
   </UserControl.Resources>
   <Canvas>
+    <Canvas.Clip>
+      <RectangleGeometry Rect="0,0,300,170" />
+    </Canvas.Clip>
     <Canvas.Resources>
       <Storyboard x:Name="Cycle" Completed="OnCycleCompleted">
         <DoubleAnimationUsingKeyFrames
@@ -28,8 +31,7 @@
           <SplineDoubleKeyFrame KeyTime="0:0:0.24" Value="0" KeySpline="0.2,0,0.2,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="106" KeySpline="0.2,0,0.2,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="106" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.08" Value="0" KeySpline="0.4,0,0.2,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="260" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
@@ -40,9 +42,12 @@
           <SplineDoubleKeyFrame KeyTime="0:0:0.36" Value="-38" KeySpline="0.2,0,0.6,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="22" KeySpline="0.4,0,0.8,1" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="22" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.95" Value="-38" KeySpline="0.2,0,0.6,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.08" Value="-16" KeySpline="0.4,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.2" Value="35" KeySpline="0.4,0,1,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.88" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.94" Value="22" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.06" Value="22" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.12" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.2" Value="22" KeySpline="0.2,0,0.8,1" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
@@ -52,6 +57,11 @@
           <LinearDoubleKeyFrame KeyTime="0:0:0.52" Value="0" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.67" Value="-10" KeySpline="0.2,0,0.2,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.82" Value="0" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="-3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="3" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
@@ -60,7 +70,33 @@
         >
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.12" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.08" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.19" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="LeftFootMotion"
+          Storyboard.TargetProperty="Angle"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="RightFootMotion"
+          Storyboard.TargetProperty="Angle"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
@@ -121,14 +157,29 @@
         StrokeEndLineCap="Round"
       />
       <Path
-        Data="M 17,60 L 17,65 M 17,63 L 13,66 M 17,63 L 21,66 M 37,60 L 37,65 M 37,63 L 33,66 M 37,63 L 41,66"
+        Data="M 17,60 L 17,65 M 17,63 L 13,66 M 17,63 L 21,66"
         Stroke="#FFDBA9"
         StrokeThickness="3"
         StrokeStartLineCap="Round"
         StrokeEndLineCap="Round"
-      />
+      >
+        <Path.RenderTransform>
+          <RotateTransform x:Name="LeftFootMotion" CenterX="17" CenterY="60" />
+        </Path.RenderTransform>
+      </Path>
+      <Path
+        Data="M 37,60 L 37,65 M 37,63 L 33,66 M 37,63 L 41,66"
+        Stroke="#FFDBA9"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      >
+        <Path.RenderTransform>
+          <RotateTransform x:Name="RightFootMotion" CenterX="37" CenterY="60" />
+        </Path.RenderTransform>
+      </Path>
     </Canvas>
-    <!-- The front rim hides the chick as it sinks back into its database nest. -->
+    <!-- The front of the database hides the next chick until it emerges from the nest. -->
     <Path
       Data="M 38,82 C 38,103 138,103 138,82 L 138,134 C 138,154 38,154 38,134 Z"
       Fill="{StaticResource DatabaseBrush}"
