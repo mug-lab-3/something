@@ -192,6 +192,7 @@ public sealed partial class MainWindow : Window
                     $"Demo UI did not load: session={session is not null}; entries={Entries.Items.Count}; ranking={Ranking.Items.Count}; error={MessageBar.Title}: {MessageBar.Message}"
                 );
             var rootLocation = location!;
+            await VerifyTreeHorizontalScrollingAsync();
             var projects = Folders
                 .RootNodes[0]
                 .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
@@ -1256,14 +1257,18 @@ public sealed partial class MainWindow : Window
 
     private async void OnExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
+        var selected = Folders.SelectedNode;
         if (args.Node.HasUnrealizedChildren)
             await LoadChildrenAsync(args.Node, 0);
+        if (Folders.SelectedNode == selected)
+            QueueTreeVisibility(args.Node);
     }
 
     private async void OnFolderInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         if (args.InvokedItem is not TreeViewNode node || node.Content is not FolderNode folder)
             return;
+        QueueTreeVisibility(node);
         if (folder.LoadMore && node.Parent is { } parent)
             await LoadChildrenAsync(parent, folder.NextPage);
         else

@@ -131,6 +131,9 @@
                   x:Name="Folders"
                   Grid.Row="1"
                   SelectionMode="Single"
+                  Loaded="OnTreeLoaded"
+                  SelectionChanged="OnTreeSelectionChanged"
+                  SizeChanged="OnTreeSizeChanged"
                   Expanding="OnExpanding"
                   ItemInvoked="OnFolderInvoked"
                   ContextRequested="OnTreeContextRequested"
@@ -148,7 +151,7 @@
                       >
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="{Binding Content.ChangeWidth}" />
-                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <FontIcon
