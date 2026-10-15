@@ -1,0 +1,161 @@
+<UserControl
+  x:Class="Something.App.RecordLoadingAnimation"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Width="300"
+  Height="170"
+  IsHitTestVisible="False"
+  AutomationProperties.AccessibilityView="Raw"
+>
+  <UserControl.Resources>
+    <LinearGradientBrush x:Key="DatabaseBrush" StartPoint="0,0" EndPoint="1,1">
+      <GradientStop Color="#BD619E" Offset="0" />
+      <GradientStop Color="#743E80" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ChickBrush" StartPoint="0,0" EndPoint="1,1">
+      <GradientStop Color="#E58CBF" Offset="0" />
+      <GradientStop Color="#AB4D94" Offset="1" />
+    </LinearGradientBrush>
+  </UserControl.Resources>
+  <Canvas>
+    <Canvas.Resources>
+      <Storyboard x:Name="Cycle" Completed="OnCycleCompleted">
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="ChickMotion"
+          Storyboard.TargetProperty="TranslateX"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.24" Value="0" KeySpline="0.2,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="106" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="106" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.08" Value="0" KeySpline="0.4,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="ChickMotion"
+          Storyboard.TargetProperty="TranslateY"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="35" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="-16" KeySpline="0.2,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.36" Value="-38" KeySpline="0.2,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="22" KeySpline="0.4,0,0.8,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="22" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.95" Value="-38" KeySpline="0.2,0,0.6,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.08" Value="-16" KeySpline="0.4,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.2" Value="35" KeySpline="0.4,0,1,1" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="ChickMotion"
+          Storyboard.TargetProperty="Rotation"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.52" Value="0" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.67" Value="-10" KeySpline="0.2,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.82" Value="0" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="Chick"
+          Storyboard.TargetProperty="Opacity"
+        >
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.12" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.08" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+      </Storyboard>
+    </Canvas.Resources>
+    <!-- Stacked cylinders keep the database metaphor; the recessed top is the nest. -->
+    <Rectangle
+      Canvas.Left="38"
+      Canvas.Top="83"
+      Width="100"
+      Height="53"
+      Fill="{StaticResource DatabaseBrush}"
+    />
+    <Ellipse
+      Canvas.Left="38"
+      Canvas.Top="119"
+      Width="100"
+      Height="30"
+      Fill="{StaticResource DatabaseBrush}"
+    />
+    <Path
+      Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
+      Stroke="#D998C8"
+      StrokeThickness="2"
+      Opacity="0.7"
+    />
+    <Ellipse
+      Canvas.Left="38"
+      Canvas.Top="65"
+      Width="100"
+      Height="35"
+      Fill="#65365F"
+      Stroke="#E6ACD5"
+      StrokeThickness="3"
+    />
+    <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
+    <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
+      <Canvas.RenderTransform>
+        <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />
+      </Canvas.RenderTransform>
+      <Ellipse Canvas.Left="-4" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
+      <Ellipse Canvas.Left="45" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
+      <Rectangle
+        Width="54"
+        Height="60"
+        RadiusX="20"
+        RadiusY="20"
+        Fill="{StaticResource ChickBrush}"
+      />
+      <Path Data="M 23,3 Q 20,-7 25,-3 Q 29,-10 30,3" Fill="#E58CBF" />
+      <Ellipse Canvas.Left="13" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+      <Ellipse Canvas.Left="36" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+      <Path Data="M 23,23 Q 27,20 31,23 L 27,28 Z" Fill="#FFDBA9" />
+      <Path
+        Data="M 16,38 Q 20,43 24,38 M 29,38 Q 33,43 37,38 M 22,46 Q 27,51 32,46"
+        Stroke="#EDAFD0"
+        StrokeThickness="2"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 17,60 L 17,65 M 17,63 L 13,66 M 17,63 L 21,66 M 37,60 L 37,65 M 37,63 L 33,66 M 37,63 L 41,66"
+        Stroke="#FFDBA9"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+    </Canvas>
+    <!-- The front rim hides the chick as it sinks back into its database nest. -->
+    <Path
+      Data="M 38,82 C 38,103 138,103 138,82 L 138,134 C 138,154 38,154 38,134 Z"
+      Fill="{StaticResource DatabaseBrush}"
+    />
+    <Path Data="M 38,82 C 38,103 138,103 138,82" Stroke="#E6ACD5" StrokeThickness="3" />
+    <Path
+      Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
+      Stroke="#D998C8"
+      StrokeThickness="2"
+      Opacity="0.7"
+    />
+    <Canvas Canvas.Left="184" Canvas.Top="72">
+      <Path
+        Data="M 37,37 L 59,59"
+        Stroke="#AC8DC8"
+        StrokeThickness="12"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Ellipse Width="46" Height="46" Fill="#107F619A" Stroke="#DCC7F3" StrokeThickness="5" />
+      <Path
+        Data="M 9,19 Q 10,10 19,9"
+        Stroke="#F2E7FF"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        Opacity="0.8"
+      />
+    </Canvas>
+  </Canvas>
+</UserControl>

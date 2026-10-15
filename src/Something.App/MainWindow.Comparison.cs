@@ -112,7 +112,7 @@ public sealed partial class MainWindow
 
     private async Task TrackComparisonAsync()
     {
-        using var viewUpdate = BeginViewUpdate("比較条件を反映しています…");
+        await using var viewUpdate = BeginViewUpdate("比較条件を反映しています…");
         var task = RefreshComparisonAsync();
         historyTasks.Add(task);
         try

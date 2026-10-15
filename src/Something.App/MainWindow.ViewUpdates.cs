@@ -8,7 +8,9 @@ public sealed partial class MainWindow
     // covered until every active operation has unwound, including cancelled older work.
     private readonly List<ViewUpdate> viewUpdates = [];
 
-    private sealed class ViewUpdate(MainWindow window, string message) : IDisposable
+    private sealed class ViewUpdate(MainWindow window, string message)
+        : IDisposable,
+            IAsyncDisposable
     {
         private MainWindow? owner = window;
         public string Message { get; } = message;
@@ -21,6 +23,14 @@ public sealed partial class MainWindow
                 return;
             current.viewUpdates.Remove(this);
             current.UpdateViewLoadingPresentation();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            var current = owner;
+            Dispose();
+            if (current is { closed: false } && current.viewUpdates.Count == 0)
+                await current.ViewLoadingAnimation.WaitForSettledAsync();
         }
     }
 
@@ -42,11 +52,27 @@ public sealed partial class MainWindow
             RootLayout.UpdateLayout(); // Lay out the complete result while it is still covered.
             loading = viewUpdates.Count != 0;
         }
-        ViewLoadingText.Text = viewUpdates.LastOrDefault()?.Message ?? "";
-        ViewLoadingRing.IsActive = loading;
-        ViewLoadingOverlay.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
-        ViewHost.IsEnabled = !loading;
-        ViewControls.Opacity = ResultsContent.Opacity = ViewFooter.Opacity = loading ? 0 : 1;
+        if (viewUpdates.LastOrDefault() is { } latest)
+            ViewLoadingText.Text = latest.Message;
+        if (loading)
+            ViewLoadingOverlay.Visibility = Visibility.Visible;
+        ViewLoadingAnimation.SetBusy(loading);
+        bool covered = loading || ViewLoadingAnimation.IsPlaying;
+        ViewLoadingOverlay.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;
+        ViewHost.IsEnabled = !covered;
+        ViewControls.Opacity = ResultsContent.Opacity = ViewFooter.Opacity = covered ? 0 : 1;
+    }
+
+    private async Task PreviewLoadingAnimationAsync()
+    {
+        await using var preview = BeginViewUpdate(
+            "レコードを確認しています · アニメーションのプレビュー"
+        );
+        try
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, lifetime.Token);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
     }
 
     private async Task VerifyViewUpdatesAsync()
@@ -56,7 +82,6 @@ public sealed partial class MainWindow
             if (
                 ViewLoadingOverlay.Visibility
                     != (loading ? Visibility.Visible : Visibility.Collapsed)
-                || ViewLoadingRing.IsActive != loading
                 || new[] { ViewControls, (FrameworkElement)ResultsContent, ViewFooter }.Any(
                     element => element.Opacity != (loading ? 0 : 1)
                 )
@@ -67,7 +92,31 @@ public sealed partial class MainWindow
                 );
         }
 
+        await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
+        var reducedMotion = new RecordLoadingAnimation();
+        reducedMotion.SetBusy(true, animationsEnabled: false);
+        reducedMotion.SetBusy(false, animationsEnabled: false);
+        if (reducedMotion.IsPlaying || !reducedMotion.WaitForSettledAsync().IsCompleted)
+            throw new InvalidOperationException("Reduced motion added an animation wait.");
+        var closingAnimation = new RecordLoadingAnimation();
+        closingAnimation.SetBusy(true, animationsEnabled: true);
+        var closingWait = closingAnimation.WaitForSettledAsync();
+        closingAnimation.Cancel();
+        if (closingAnimation.IsPlaying || !closingWait.IsCompleted)
+            throw new InvalidOperationException("Closing left an animation waiter blocked.");
+        int completedCycles = ViewLoadingAnimation.CompletedCycles;
+        var quick = BeginViewUpdate("Instant completion");
+        bool animated = ViewLoadingAnimation.IsPlaying;
+        quick.Dispose();
+        if (animated)
+            Verify(true);
+        await ViewLoadingAnimation.WaitForSettledAsync();
+        Verify(false);
+        if (animated && ViewLoadingAnimation.CompletedCycles != completedCycles + 1)
+            throw new InvalidOperationException(
+                "Instant work did not finish exactly one animation cycle."
+            );
         using (var older = BeginViewUpdate("Earlier request"))
         {
             Verify(true);
@@ -84,6 +133,7 @@ public sealed partial class MainWindow
                 Verify(true);
             Verify(true);
         }
+        await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
         try
         {
@@ -92,6 +142,7 @@ public sealed partial class MainWindow
             throw new OperationCanceledException();
         }
         catch (OperationCanceledException) { }
+        await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
         using (BeginViewUpdate("Refresh all results"))
         {
@@ -108,6 +159,7 @@ public sealed partial class MainWindow
                     "Result refresh did not prepare every result section."
                 );
         }
+        await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
         var otherDrive = SelectDriveAsync(cards[1]);
         if (!otherDrive.IsCompleted)
