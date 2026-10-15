@@ -973,7 +973,8 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || closed)
             return;
-        await using var viewUpdate = BeginViewUpdate("フォルダーの内容を読み込んでいます…");
+        await using var viewUpdate =
+            viewUpdates.Count == 0 ? EntryLoadingRegion.BeginUpdate() : null;
         int version = ++navigationVersion;
         listingCancellation?.Cancel();
         listingCancellation?.Dispose();
@@ -1013,27 +1014,6 @@ public sealed partial class MainWindow : Window
             }
             if (closed || version != navigationVersion || session != current)
                 return;
-            if (location is { } previous && previous != target)
-            {
-                switch (action)
-                {
-                    case NavigationAction.New:
-                        navigation.Push(previous);
-                        forwardHistory.Clear();
-                        break;
-                    case NavigationAction.Back:
-                        navigation.Pop();
-                        forwardHistory.Push(previous);
-                        break;
-                    case NavigationAction.Forward:
-                        forwardHistory.Pop();
-                        navigation.Push(previous);
-                        break;
-                }
-            }
-            location = target;
-            parentLocation = parent;
-            PathText.Text = DisplayText.Escape(target.Path);
             Func<FolderEntry, EntryRow>? createRow = Comparing
                 ? entry => new(entry, comparing: true)
                 : null;
@@ -1072,6 +1052,27 @@ public sealed partial class MainWindow : Window
                 token,
                 createRow
             );
+            if (location is { } previous && previous != target)
+            {
+                switch (action)
+                {
+                    case NavigationAction.New:
+                        navigation.Push(previous);
+                        forwardHistory.Clear();
+                        break;
+                    case NavigationAction.Back:
+                        navigation.Pop();
+                        forwardHistory.Push(previous);
+                        break;
+                    case NavigationAction.Forward:
+                        forwardHistory.Pop();
+                        navigation.Push(previous);
+                        break;
+                }
+            }
+            location = target;
+            parentLocation = parent;
+            PathText.Text = DisplayText.Escape(target.Path);
             Entries.ItemsSource = rows;
             EntryCountText.DataContext = rows;
             BackButton.IsEnabled = navigation.Count > 0;
@@ -1174,6 +1175,11 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || parent.Content is not FolderNode folder || closed)
             return;
+        if (treeLoads.ContainsKey(parent))
+            return;
+        using var indicator = new DelayedActivity((_, visible) => folder.IsLoading = visible);
+        using var pending = indicator.Begin();
+        treeLoads.Add(parent, indicator);
         int requestVersion = comparisonVersion;
         parent.HasUnrealizedChildren = false;
         try
@@ -1241,6 +1247,10 @@ public sealed partial class MainWindow : Window
                 return;
             parent.HasUnrealizedChildren = true;
             ShowError(error);
+        }
+        finally
+        {
+            treeLoads.Remove(parent);
         }
     }
 
@@ -1417,7 +1427,8 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || closed)
             return;
-        await using var viewUpdate = BeginViewUpdate("ランキングを読み込んでいます…");
+        await using var viewUpdate =
+            viewUpdates.Count == 0 ? RankingLoadingRegion.BeginUpdate() : null;
         int version = ++rankingVersion;
         try
         {
@@ -1522,6 +1533,10 @@ public sealed partial class MainWindow : Window
     {
         closed = true;
         ViewLoadingAnimation.Cancel();
+        EntryLoadingRegion.Cancel();
+        RankingLoadingRegion.Cancel();
+        foreach (var indicator in treeLoads.Values)
+            indicator.Dispose();
         lifetime.Cancel();
         historyTimer.Stop();
         listingCancellation?.Cancel();

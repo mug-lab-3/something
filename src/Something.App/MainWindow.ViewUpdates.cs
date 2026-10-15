@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Something.App;
 
@@ -7,6 +8,7 @@ public sealed partial class MainWindow
     // Operations can nest (history -> comparison -> folder/ranking). Keep the whole view
     // covered until every active operation has unwound, including cancelled older work.
     private readonly List<ViewUpdate> viewUpdates = [];
+    private readonly Dictionary<TreeViewNode, DelayedActivity> treeLoads = [];
 
     private sealed class ViewUpdate(MainWindow window, string message)
         : IDisposable,
@@ -94,6 +96,7 @@ public sealed partial class MainWindow
 
         await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
+        await VerifyDelayedUpdatesAsync();
         var reducedMotion = new RecordLoadingAnimation();
         reducedMotion.SetBusy(true, animationsEnabled: false);
         reducedMotion.SetBusy(false, animationsEnabled: false);
@@ -179,5 +182,98 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "An obsolete drive switch replaced the current drive."
             );
+    }
+
+    private async Task VerifyDelayedUpdatesAsync()
+    {
+        int cycles = ViewLoadingAnimation.CompletedCycles;
+        void VerifyRegion(bool pending, bool visible)
+        {
+            if (
+                EntryLoadingRegion.IsPending != pending
+                || EntryLoadingRegion.IsIndicatorVisible != visible
+                || ViewLoadingOverlay.Visibility != Visibility.Collapsed
+                || ViewLoadingAnimation.CompletedCycles != cycles
+            )
+                throw new InvalidOperationException(
+                    "A local update used the wrong loading presentation."
+                );
+        }
+
+        using (EntryLoadingRegion.BeginUpdate())
+            VerifyRegion(true, false);
+        VerifyRegion(false, false);
+        await Task.Delay(400, lifetime.Token);
+        VerifyRegion(false, false); // A completed fast read must not flash later.
+        var first = EntryLoadingRegion.BeginUpdate();
+        VerifyRegion(true, false);
+        await Task.Delay(400, lifetime.Token);
+        VerifyRegion(true, true);
+        bool localAnimated = EntryLoadingRegion.IsPlaying;
+        int localCycles = EntryLoadingRegion.CompletedCycles;
+        var second = EntryLoadingRegion.BeginUpdate();
+        first.Dispose();
+        VerifyRegion(true, true);
+        second.Dispose();
+        if (localAnimated)
+            VerifyRegion(true, true);
+        await EntryLoadingRegion.WaitForSettledAsync();
+        VerifyRegion(false, false);
+        if (localAnimated && EntryLoadingRegion.CompletedCycles != localCycles + 1)
+            throw new InvalidOperationException(
+                "Local loading did not finish its current chick cycle."
+            );
+
+        var cancelled = EntryLoadingRegion.BeginUpdate();
+        EntryLoadingRegion.Cancel();
+        using (EntryLoadingRegion.BeginUpdate())
+        {
+            cancelled.Dispose();
+            VerifyRegion(true, false);
+        }
+        VerifyRegion(false, false);
+
+        var folder = (FolderNode)Folders.RootNodes[0].Content;
+        using (var tree = new DelayedActivity((_, visible) => folder.IsLoading = visible))
+        {
+            using (tree.Begin())
+            {
+                if (folder.IsLoading)
+                    throw new InvalidOperationException(
+                        "Tree loading appeared before the threshold."
+                    );
+                await Task.Delay(400, lifetime.Token);
+                if (
+                    !folder.IsLoading
+                    || folder.LoadingVisibility != Visibility.Visible
+                    || ViewLoadingOverlay.Visibility != Visibility.Collapsed
+                )
+                    throw new InvalidOperationException(
+                        "Slow tree expansion did not show its row indicator."
+                    );
+                RootLayout.UpdateLayout();
+                var container = Folders.ContainerFromNode(Folders.RootNodes[0]);
+                var ring = container is null
+                    ? null
+                    : FindTreePart<ProgressRing>(container, "TreeLoadingRing");
+                if (ring is not { IsActive: true, Visibility: Visibility.Visible })
+                    throw new InvalidOperationException(
+                        "The tree row did not bind its loading indicator."
+                    );
+            }
+            if (folder.IsLoading)
+                throw new InvalidOperationException("Tree loading remained after completion.");
+        }
+        if (location is not { } currentLocation)
+            throw new InvalidOperationException("Delayed loading smoke needs a selected folder.");
+        await LoadFolderAsync(currentLocation, false);
+        await LoadRankingAsync();
+        VerifyRegion(false, false);
+        if (
+            RankingLoadingRegion.IsPending
+            || RankingLoadingRegion.IsIndicatorVisible
+            || ViewLoadingAnimation.IsPlaying
+        )
+            throw new InvalidOperationException("Local navigation started a global animation.");
     }
 }

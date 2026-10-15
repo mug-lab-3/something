@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Numerics;
 using Microsoft.UI.Xaml;
@@ -124,8 +125,23 @@ internal sealed record FolderNode(
     FolderChange? Comparison = null,
     UInt128? AllocatedBytes = null,
     bool CapacityIncomplete = false
-)
+) : INotifyPropertyChanged
 {
+    private bool isLoading;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public bool IsLoading
+    {
+        get => isLoading;
+        internal set
+        {
+            if (isLoading == value)
+                return;
+            isLoading = value;
+            PropertyChanged?.Invoke(this, new(nameof(IsLoading)));
+            PropertyChanged?.Invoke(this, new(nameof(LoadingVisibility)));
+        }
+    }
+    public Visibility LoadingVisibility => IsLoading ? Visibility.Visible : Visibility.Collapsed;
     public string DisplayName => DisplayText.Escape(Name);
     public string? Change =>
         Comparing ? DisplayText.Change(Comparison?.AllocatedDelta, Comparison?.Status) : null;

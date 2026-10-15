@@ -1,0 +1,34 @@
+<UserControl
+  x:Class="Something.App.DelayedLoadingRegion"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
+>
+  <Grid>
+    <ContentControl
+      x:Name="BodyHost"
+      Content="{x:Bind Body, Mode=OneWay}"
+      HorizontalContentAlignment="Stretch"
+      VerticalContentAlignment="Stretch"
+    />
+    <Border x:Name="Indicator" Visibility="Collapsed" Background="Transparent">
+      <Border
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Padding="20,14"
+        CornerRadius="8"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+      >
+        <StackPanel Spacing="8">
+          <local:RecordLoadingAnimation x:Name="Animation" />
+          <TextBlock
+            Text="読み込んでいます…"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            AutomationProperties.LiveSetting="Polite"
+          />
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

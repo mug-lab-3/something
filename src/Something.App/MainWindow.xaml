@@ -149,6 +149,7 @@
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="{Binding Content.ChangeWidth}" />
                           <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <FontIcon
                           x:Name="TreeChangeIcon"
@@ -162,6 +163,15 @@
                           Grid.Column="1"
                           Text="{Binding Content.DisplayName}"
                           TextTrimming="CharacterEllipsis"
+                        />
+                        <ProgressRing
+                          x:Name="TreeLoadingRing"
+                          Grid.Column="2"
+                          Width="14"
+                          Height="14"
+                          IsActive="{Binding Content.IsLoading}"
+                          Visibility="{Binding Content.LoadingVisibility}"
+                          AutomationProperties.Name="子フォルダーを読み込み中"
                         />
                       </Grid>
                     </DataTemplate>
@@ -182,229 +192,250 @@
                     />
                   </StackPanel>
                 </TabViewItem.Header>
-                <Grid Padding="12" RowSpacing="12">
-                  <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                  </Grid.RowDefinitions>
-                  <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="Auto" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                      <StackPanel.Resources>
-                        <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
-                        <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-                          <Setter Property="Width" Value="32" />
-                          <Setter Property="Height" Value="32" />
-                          <Setter Property="Padding" Value="0" />
-                          <Setter Property="Background" Value="Transparent" />
-                          <Setter Property="BorderThickness" Value="0" />
-                          <Setter Property="CornerRadius" Value="4" />
-                        </Style>
-                      </StackPanel.Resources>
-                      <Button
-                        x:Name="BackButton"
-                        Click="OnBack"
-                        IsEnabled="False"
-                        ToolTipService.ToolTip="戻る"
-                        AutomationProperties.Name="戻る"
+                <local:DelayedLoadingRegion x:Name="EntryLoadingRegion">
+                  <local:DelayedLoadingRegion.Body>
+                    <Grid Padding="12" RowSpacing="12">
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                      </Grid.RowDefinitions>
+                      <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <StackPanel.Resources>
+                            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                            <Style
+                              TargetType="Button"
+                              BasedOn="{StaticResource DefaultButtonStyle}"
+                            >
+                              <Setter Property="Width" Value="32" />
+                              <Setter Property="Height" Value="32" />
+                              <Setter Property="Padding" Value="0" />
+                              <Setter Property="Background" Value="Transparent" />
+                              <Setter Property="BorderThickness" Value="0" />
+                              <Setter Property="CornerRadius" Value="4" />
+                            </Style>
+                          </StackPanel.Resources>
+                          <Button
+                            x:Name="BackButton"
+                            Click="OnBack"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="戻る"
+                            AutomationProperties.Name="戻る"
+                          >
+                            <FontIcon Glyph="&#xE72B;" FontSize="16" />
+                          </Button>
+                          <Button
+                            x:Name="ForwardButton"
+                            Click="OnForward"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="進む"
+                            AutomationProperties.Name="進む"
+                          >
+                            <FontIcon Glyph="&#xE72A;" FontSize="16" />
+                          </Button>
+                          <Button
+                            x:Name="UpButton"
+                            Click="OnUp"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="上へ（親フォルダ）"
+                            AutomationProperties.Name="親フォルダへ移動"
+                          >
+                            <FontIcon Glyph="&#xE74A;" FontSize="16" />
+                          </Button>
+                        </StackPanel>
+                        <TextBlock
+                          x:Name="PathText"
+                          Grid.Column="1"
+                          Text="未スキャン"
+                          VerticalAlignment="Center"
+                          TextTrimming="CharacterEllipsis"
+                          ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
+                          ContextRequested="OnPathContextRequested"
+                        />
+                      </Grid>
+                      <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="24" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="140" />
+                          <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="名前" />
+                        <TextBlock
+                          Grid.Column="2"
+                          x:Name="SizeColumnText"
+                          Text="サイズ"
+                          ToolTipService.ToolTip="ディスク上の割り当て容量"
+                        />
+                        <TextBlock
+                          x:Name="ChangeHeader"
+                          Grid.Column="3"
+                          Text="増減"
+                          Visibility="Collapsed"
+                        />
+                      </Grid>
+                      <ListView
+                        x:Name="Entries"
+                        Grid.Row="2"
+                        DoubleTapped="OnEntryInvoked"
+                        ContextRequested="OnEntryContextRequested"
+                        SelectionMode="Single"
                       >
-                        <FontIcon Glyph="&#xE72B;" FontSize="16" />
-                      </Button>
-                      <Button
-                        x:Name="ForwardButton"
-                        Click="OnForward"
-                        IsEnabled="False"
-                        ToolTipService.ToolTip="進む"
-                        AutomationProperties.Name="進む"
-                      >
-                        <FontIcon Glyph="&#xE72A;" FontSize="16" />
-                      </Button>
-                      <Button
-                        x:Name="UpButton"
-                        Click="OnUp"
-                        IsEnabled="False"
-                        ToolTipService.ToolTip="上へ（親フォルダ）"
-                        AutomationProperties.Name="親フォルダへ移動"
-                      >
-                        <FontIcon Glyph="&#xE74A;" FontSize="16" />
-                      </Button>
-                    </StackPanel>
-                    <TextBlock
-                      x:Name="PathText"
-                      Grid.Column="1"
-                      Text="未スキャン"
-                      VerticalAlignment="Center"
-                      TextTrimming="CharacterEllipsis"
-                      ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
-                      ContextRequested="OnPathContextRequested"
-                    />
-                  </Grid>
-                  <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="24" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="140" />
-                      <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="名前" />
-                    <TextBlock
-                      Grid.Column="2"
-                      x:Name="SizeColumnText"
-                      Text="サイズ"
-                      ToolTipService.ToolTip="ディスク上の割り当て容量"
-                    />
-                    <TextBlock
-                      x:Name="ChangeHeader"
-                      Grid.Column="3"
-                      Text="増減"
-                      Visibility="Collapsed"
-                    />
-                  </Grid>
-                  <ListView
-                    x:Name="Entries"
-                    Grid.Row="2"
-                    DoubleTapped="OnEntryInvoked"
-                    ContextRequested="OnEntryContextRequested"
-                    SelectionMode="Single"
-                  >
-                    <ListView.ItemTemplate>
-                      <DataTemplate x:DataType="local:EntryRow" xmlns:local="using:Something.App">
-                        <Grid ColumnSpacing="12" Padding="0,8">
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="24" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="140" />
-                            <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
-                          </Grid.ColumnDefinitions>
-                          <SymbolIcon
-                            Symbol="{x:Bind Icon}"
-                            VerticalAlignment="Center"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            ToolTipService.ToolTip="{x:Bind Kind}"
-                            AutomationProperties.Name="{x:Bind Kind}"
-                          />
-                          <TextBlock
-                            Grid.Column="1"
-                            Text="{x:Bind Name}"
-                            TextTrimming="CharacterEllipsis"
-                            ToolTipService.ToolTip="{x:Bind NameDescription}"
-                          />
-                          <TextBlock
-                            Grid.Column="2"
-                            Text="{x:Bind Size}"
-                            ToolTipService.ToolTip="{x:Bind SizeDescription}"
-                          />
-                          <TextBlock
-                            Grid.Column="3"
-                            Text="{x:Bind Delta}"
-                            ToolTipService.ToolTip="{x:Bind SizeDescription}"
-                          />
-                        </Grid>
-                      </DataTemplate>
-                    </ListView.ItemTemplate>
-                  </ListView>
-                </Grid>
+                        <ListView.ItemTemplate>
+                          <DataTemplate
+                            x:DataType="local:EntryRow"
+                            xmlns:local="using:Something.App"
+                          >
+                            <Grid ColumnSpacing="12" Padding="0,8">
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
+                              </Grid.ColumnDefinitions>
+                              <SymbolIcon
+                                Symbol="{x:Bind Icon}"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                ToolTipService.ToolTip="{x:Bind Kind}"
+                                AutomationProperties.Name="{x:Bind Kind}"
+                              />
+                              <TextBlock
+                                Grid.Column="1"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTipService.ToolTip="{x:Bind NameDescription}"
+                              />
+                              <TextBlock
+                                Grid.Column="2"
+                                Text="{x:Bind Size}"
+                                ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                              />
+                              <TextBlock
+                                Grid.Column="3"
+                                Text="{x:Bind Delta}"
+                                ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                              />
+                            </Grid>
+                          </DataTemplate>
+                        </ListView.ItemTemplate>
+                      </ListView>
+                    </Grid>
+                  </local:DelayedLoadingRegion.Body>
+                </local:DelayedLoadingRegion>
               </TabViewItem>
               <TabViewItem x:Name="RankingTab" Header="ランキング" IsClosable="False">
-                <Grid Padding="12" RowSpacing="12">
-                  <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                  </Grid.RowDefinitions>
-                  <StackPanel Orientation="Horizontal" Spacing="12">
-                    <ComboBox
-                      x:Name="ChangeOrderBox"
-                      Header="並び順"
-                      SelectionChanged="OnRankingFilterChanged"
-                      SelectedIndex="0"
-                    >
-                      <ComboBoxItem Content="サイズ順" />
-                      <ComboBoxItem x:Name="GrowthOrderItem" Content="増加順" IsEnabled="False" />
-                      <ComboBoxItem
-                        x:Name="ShrinkageOrderItem"
-                        Content="減少順"
-                        IsEnabled="False"
-                      />
-                      <ComboBoxItem
-                        x:Name="MagnitudeOrderItem"
-                        Content="増減の大きさ順"
-                        IsEnabled="False"
-                      />
-                    </ComboBox>
-                    <ComboBox
-                      x:Name="DepthBox"
-                      Header="深さ"
-                      SelectionChanged="OnRankingFilterChanged"
-                      SelectedIndex="0"
-                    >
-                      <ComboBoxItem Content="すべて" />
-                      <ComboBoxItem Content="直下（1）" />
-                      <ComboBoxItem Content="2" />
-                      <ComboBoxItem Content="3" />
-                    </ComboBox>
-                    <CheckBox
-                      x:Name="LeafBox"
-                      Content="最下位フォルダのみ"
-                      Checked="OnLeafChanged"
-                      Unchecked="OnLeafChanged"
-                      VerticalAlignment="Bottom"
-                    />
-                  </StackPanel>
-                  <Grid Grid.Row="1" ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="140" />
-                      <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="フォルダ" />
-                    <TextBlock
-                      x:Name="RankingChangeHeader"
-                      Grid.Column="2"
-                      Text="増減"
-                      Visibility="Collapsed"
-                    />
-                    <TextBlock Grid.Column="1" Text="サイズ" />
-                  </Grid>
-                  <ListView
-                    x:Name="Ranking"
-                    Grid.Row="2"
-                    DoubleTapped="OnRankInvoked"
-                    ContextRequested="OnRankContextRequested"
-                  >
-                    <ListView.ItemTemplate>
-                      <DataTemplate x:DataType="local:RankingRow" xmlns:local="using:Something.App">
-                        <Grid Padding="0,8" ColumnSpacing="16">
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="140" />
-                            <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
-                          </Grid.ColumnDefinitions>
-                          <TextBlock
-                            Text="{x:Bind Path}"
-                            TextTrimming="CharacterEllipsis"
-                            ToolTipService.ToolTip="{x:Bind Path}"
+                <local:DelayedLoadingRegion x:Name="RankingLoadingRegion">
+                  <local:DelayedLoadingRegion.Body>
+                    <Grid Padding="12" RowSpacing="12">
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                      </Grid.RowDefinitions>
+                      <StackPanel Orientation="Horizontal" Spacing="12">
+                        <ComboBox
+                          x:Name="ChangeOrderBox"
+                          Header="並び順"
+                          SelectionChanged="OnRankingFilterChanged"
+                          SelectedIndex="0"
+                        >
+                          <ComboBoxItem Content="サイズ順" />
+                          <ComboBoxItem
+                            x:Name="GrowthOrderItem"
+                            Content="増加順"
+                            IsEnabled="False"
                           />
-                          <TextBlock
-                            Grid.Column="1"
-                            Text="{x:Bind Size}"
-                            ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                          <ComboBoxItem
+                            x:Name="ShrinkageOrderItem"
+                            Content="減少順"
+                            IsEnabled="False"
                           />
-                          <TextBlock
-                            Grid.Column="2"
-                            Text="{x:Bind Delta}"
-                            ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                          <ComboBoxItem
+                            x:Name="MagnitudeOrderItem"
+                            Content="増減の大きさ順"
+                            IsEnabled="False"
                           />
-                        </Grid>
-                      </DataTemplate>
-                    </ListView.ItemTemplate>
-                  </ListView>
-                </Grid>
+                        </ComboBox>
+                        <ComboBox
+                          x:Name="DepthBox"
+                          Header="深さ"
+                          SelectionChanged="OnRankingFilterChanged"
+                          SelectedIndex="0"
+                        >
+                          <ComboBoxItem Content="すべて" />
+                          <ComboBoxItem Content="直下（1）" />
+                          <ComboBoxItem Content="2" />
+                          <ComboBoxItem Content="3" />
+                        </ComboBox>
+                        <CheckBox
+                          x:Name="LeafBox"
+                          Content="最下位フォルダのみ"
+                          Checked="OnLeafChanged"
+                          Unchecked="OnLeafChanged"
+                          VerticalAlignment="Bottom"
+                        />
+                      </StackPanel>
+                      <Grid Grid.Row="1" ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="140" />
+                          <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="フォルダ" />
+                        <TextBlock
+                          x:Name="RankingChangeHeader"
+                          Grid.Column="2"
+                          Text="増減"
+                          Visibility="Collapsed"
+                        />
+                        <TextBlock Grid.Column="1" Text="サイズ" />
+                      </Grid>
+                      <ListView
+                        x:Name="Ranking"
+                        Grid.Row="2"
+                        DoubleTapped="OnRankInvoked"
+                        ContextRequested="OnRankContextRequested"
+                      >
+                        <ListView.ItemTemplate>
+                          <DataTemplate
+                            x:DataType="local:RankingRow"
+                            xmlns:local="using:Something.App"
+                          >
+                            <Grid Padding="0,8" ColumnSpacing="16">
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
+                              </Grid.ColumnDefinitions>
+                              <TextBlock
+                                Text="{x:Bind Path}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTipService.ToolTip="{x:Bind Path}"
+                              />
+                              <TextBlock
+                                Grid.Column="1"
+                                Text="{x:Bind Size}"
+                                ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                              />
+                              <TextBlock
+                                Grid.Column="2"
+                                Text="{x:Bind Delta}"
+                                ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                              />
+                            </Grid>
+                          </DataTemplate>
+                        </ListView.ItemTemplate>
+                      </ListView>
+                    </Grid>
+                  </local:DelayedLoadingRegion.Body>
+                </local:DelayedLoadingRegion>
               </TabViewItem>
             </TabView>
           </Grid>
