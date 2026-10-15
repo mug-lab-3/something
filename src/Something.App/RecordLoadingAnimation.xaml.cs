@@ -31,6 +31,9 @@ public sealed partial class RecordLoadingAnimation : UserControl
             Chick.Opacity = 1;
             ChickMotion.TranslateX = 106;
             ChickMotion.TranslateY = 22;
+            FrontSprite.Opacity = 1;
+            SideSprite.Opacity = 0;
+            GateReady.Opacity = 1;
             return;
         }
         settling = new(TaskCreationOptions.RunContinuationsAsynchronously);

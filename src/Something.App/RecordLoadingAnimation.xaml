@@ -24,13 +24,29 @@
     <Canvas.Resources>
       <Storyboard x:Name="Cycle" Completed="OnCycleCompleted">
         <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="FrontSprite"
+          Storyboard.TargetProperty="Opacity"
+        >
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="SideSprite"
+          Storyboard.TargetProperty="Opacity"
+        >
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0.84" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="1" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
           Storyboard.TargetProperty="TranslateX"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.24" Value="0" KeySpline="0.2,0,0.2,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="106" KeySpline="0.2,0,0.2,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="106" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="106" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="260" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
@@ -41,7 +57,7 @@
           <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="-16" KeySpline="0.2,0,0.2,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.36" Value="-38" KeySpline="0.2,0,0.6,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="22" KeySpline="0.4,0,0.8,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="22" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="22" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.88" Value="19" KeySpline="0.2,0,0.8,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.94" Value="22" KeySpline="0.2,0,0.8,1" />
           <SplineDoubleKeyFrame KeyTime="0:0:1" Value="19" KeySpline="0.2,0,0.8,1" />
@@ -55,8 +71,7 @@
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.52" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.67" Value="-10" KeySpline="0.2,0,0.2,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.82" Value="0" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="3" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-3" />
           <LinearDoubleKeyFrame KeyTime="0:0:1" Value="3" />
@@ -78,7 +93,7 @@
           Storyboard.TargetProperty="Angle"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="-25" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1" Value="-25" />
@@ -91,13 +106,41 @@
           Storyboard.TargetProperty="Angle"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="25" />
           <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1" Value="25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="-25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="25" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="ScanBeamMotion"
+          Storyboard.TargetProperty="Y"
+        >
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.5" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="64" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="64" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="ScanBeam"
+          Storyboard.TargetProperty="Opacity"
+        >
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0.5" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.8" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames
+          Storyboard.TargetName="GateReady"
+          Storyboard.TargetProperty="Opacity"
+        >
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:0.82" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.19" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
     </Canvas.Resources>
@@ -132,30 +175,69 @@
       StrokeThickness="3"
     />
     <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
+    <!-- The scanner stays still while each record walks through its open arch. -->
+    <Path
+      Data="M 158,132 L 158,50 Q 158,40 168,40 L 232,40 Q 242,40 242,50 L 242,132"
+      Stroke="#C9B0E5"
+      StrokeThickness="8"
+      StrokeLineJoin="Round"
+    />
+    <Ellipse Canvas.Left="226" Canvas.Top="43" Width="7" Height="7" Fill="#8B709F" />
+    <Ellipse
+      x:Name="GateReady"
+      Canvas.Left="226"
+      Canvas.Top="43"
+      Width="7"
+      Height="7"
+      Fill="#8CE4AD"
+      Opacity="0"
+    />
     <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
       <Canvas.RenderTransform>
         <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />
       </Canvas.RenderTransform>
-      <Ellipse Canvas.Left="-4" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
-      <Ellipse Canvas.Left="45" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
-      <Rectangle
-        Width="54"
-        Height="60"
-        RadiusX="20"
-        RadiusY="20"
-        Fill="{StaticResource ChickBrush}"
-      />
-      <Path Data="M 23,3 Q 20,-7 25,-3 Q 29,-10 30,3" Fill="#E58CBF" />
-      <Ellipse Canvas.Left="13" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
-      <Ellipse Canvas.Left="36" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
-      <Path Data="M 23,23 Q 27,20 31,23 L 27,28 Z" Fill="#FFDBA9" />
-      <Path
-        Data="M 16,38 Q 20,43 24,38 M 29,38 Q 33,43 37,38 M 22,46 Q 27,51 32,46"
-        Stroke="#EDAFD0"
-        StrokeThickness="2"
-        StrokeStartLineCap="Round"
-        StrokeEndLineCap="Round"
-      />
+      <Canvas x:Name="FrontSprite">
+        <Ellipse Canvas.Left="-4" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
+        <Ellipse Canvas.Left="45" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
+        <Rectangle
+          Width="54"
+          Height="60"
+          RadiusX="20"
+          RadiusY="20"
+          Fill="{StaticResource ChickBrush}"
+        />
+        <Path Data="M 23,3 Q 20,-7 25,-3 Q 29,-10 30,3" Fill="#E58CBF" />
+        <Ellipse Canvas.Left="13" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+        <Ellipse Canvas.Left="36" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+        <Path Data="M 23,23 Q 27,20 31,23 L 27,28 Z" Fill="#FFDBA9" />
+        <Path
+          Data="M 16,38 Q 20,43 24,38 M 29,38 Q 33,43 37,38 M 22,46 Q 27,51 32,46"
+          Stroke="#EDAFD0"
+          StrokeThickness="2"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+      </Canvas>
+      <!-- A separate silhouette makes the walking direction readable even at small sizes. -->
+      <Canvas x:Name="SideSprite" Opacity="0">
+        <Path Data="M 6,39 Q -12,28 -9,39 Q -7,48 9,48 Z" Fill="#B75B9B" />
+        <Path
+          Data="M 8,29 C 6,12 17,1 34,1 C 48,1 54,12 53,27 C 61,41 54,59 35,60 L 21,60 C 5,60 -1,43 8,29 Z"
+          Fill="{StaticResource ChickBrush}"
+        />
+        <Path Data="M 26,4 Q 16,-7 23,-3 Q 27,-10 31,2" Fill="#E58CBF" />
+        <Ellipse Canvas.Left="39" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+        <Ellipse Canvas.Left="40" Canvas.Top="17" Width="1.5" Height="1.5" Fill="#F7DBEC" />
+        <Path Data="M 51,22 Q 57,21 63,25 L 52,30 Z" Fill="#FFDBA9" />
+        <Path Data="M 10,31 Q 27,27 32,39 Q 22,49 8,43 Z" Fill="#B75B9B" />
+        <Path
+          Data="M 36,40 Q 40,45 44,40 M 33,49 Q 37,54 41,49"
+          Stroke="#EDAFD0"
+          StrokeThickness="2"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+      </Canvas>
       <Path
         Data="M 17,60 L 17,65 M 17,63 L 13,66 M 17,63 L 21,66"
         Stroke="#FFDBA9"
@@ -191,22 +273,12 @@
       StrokeThickness="2"
       Opacity="0.7"
     />
-    <Canvas Canvas.Left="184" Canvas.Top="72">
-      <Path
-        Data="M 37,37 L 59,59"
-        Stroke="#AC8DC8"
-        StrokeThickness="12"
-        StrokeStartLineCap="Round"
-        StrokeEndLineCap="Round"
-      />
-      <Ellipse Width="46" Height="46" Fill="#107F619A" Stroke="#DCC7F3" StrokeThickness="5" />
-      <Path
-        Data="M 9,19 Q 10,10 19,9"
-        Stroke="#F2E7FF"
-        StrokeThickness="3"
-        StrokeStartLineCap="Round"
-        Opacity="0.8"
-      />
+    <Canvas x:Name="ScanBeam" Canvas.Left="163" Canvas.Top="55" Opacity="0">
+      <Canvas.RenderTransform>
+        <TranslateTransform x:Name="ScanBeamMotion" />
+      </Canvas.RenderTransform>
+      <Rectangle Width="74" Height="6" RadiusX="3" RadiusY="3" Fill="#309DE4E3" Canvas.Top="-2" />
+      <Rectangle Width="74" Height="2" RadiusX="1" RadiusY="1" Fill="#B8F1ED" />
     </Canvas>
   </Canvas>
 </UserControl>
