@@ -197,6 +197,60 @@ public sealed class ComparisonSelectionTests
         );
     }
 
+    [Fact]
+    public void PresetsAnchorToSelectedHistoryRatherThanTheNewestScanOrWallClock()
+    {
+        var before = History(Now.AddDays(-8));
+        var selected = History(Now.AddDays(-1));
+        var latest = History(Now);
+
+        var comparison = ComparisonSelection.ResolveAtScan(
+            [latest, before, selected],
+            FolderChangePeriod.Last7Days,
+            selected,
+            Japan
+        );
+
+        Assert.Equal(selected, comparison.After);
+        Assert.Equal(before, comparison.Before);
+        Assert.Equal(selected.CompletedUtc.ToUniversalTime(), comparison.RequestedAfterUtc);
+        Assert.Equal(
+            selected.CompletedUtc.AddDays(-7).ToUniversalTime(),
+            comparison.RequestedBeforeUtc
+        );
+        Assert.False(comparison.IsPartial);
+    }
+
+    [Fact]
+    public void SelectedEndpointExcludesLaterIdsAtCoincidentCompletionTimes()
+    {
+        var first = History(Now) with { Id = Guid.Parse("00000000-0000-0000-0000-000000000001") };
+        var selected = first with { Id = Guid.Parse("00000000-0000-0000-0000-000000000002") };
+        var latest = first with { Id = Guid.Parse("00000000-0000-0000-0000-000000000003") };
+
+        var comparison = ComparisonSelection.ResolveAtScan(
+            [latest, selected, first],
+            FolderChangePeriod.Last24Hours,
+            selected,
+            Japan
+        );
+
+        Assert.Equal(first, comparison.Before);
+        Assert.Equal(selected, comparison.After);
+        Assert.True(comparison.IsPartial);
+        Assert.Throws<ArgumentException>(() =>
+            ComparisonSelection.ResolveAtScan([first], FolderChangePeriod.Today, selected, Japan)
+        );
+        Assert.Throws<ArgumentException>(() =>
+            ComparisonSelection.ResolveAtScan(
+                [selected, first with { VolumeKey = "other" }],
+                FolderChangePeriod.Today,
+                selected,
+                Japan
+            )
+        );
+    }
+
     [Theory]
     [InlineData(3, 8, 3, 8, 0)]
     [InlineData(9, 8, 9, 7, 23)]

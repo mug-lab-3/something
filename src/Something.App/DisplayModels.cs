@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Something.Ntfs;
 using Something.Storage;
 
@@ -22,15 +23,16 @@ public sealed partial class EntryRow(
     public string Kind => Entry.IsDirectory ? "フォルダ" : "ファイル";
     public Symbol Icon => Entry.IsDirectory ? Symbol.Folder : Symbol.Document;
     public string Size =>
-        comparing
-            ? DisplayText.Change(change?.Delta, change?.Status)
+        comparing && change is { After: null }
+            ? "—"
             : DisplayText.Bytes(Entry.Data?.AllocatedBytes)
                 + (
                     Entry.Data is not null && (Entry.CapacityIncomplete || !Entry.NamesComplete)
                         ? " *"
                         : ""
                 );
-    public GridLength ComparisonWidth => new(comparing ? 120 : 0);
+    public string Delta => comparing ? DisplayText.Change(change?.Delta, change?.Status) : "";
+    public GridLength ComparisonWidth => new(comparing ? 140 : 0);
     public string BeforeSize =>
         comparing ? DisplayText.Endpoint(change?.BeforeBytes, change?.Before is not null) : "";
     public string AfterSize =>
@@ -38,7 +40,7 @@ public sealed partial class EntryRow(
     public string SizeDescription =>
         (
             comparing
-                ? "比較後 − 比較前。" + DisplayText.Change(change?.Delta, change?.Status)
+                ? $"比較前：{BeforeSize}\nサイズ：{Size}\n増減：{Delta}（比較後 − 比較前）"
                 : "ディスク上の割り当て容量"
         )
         + (
@@ -53,14 +55,22 @@ public sealed partial class RankingRow
 {
     private readonly FolderChange? change;
     private readonly string drive;
-    private readonly UInt128 allocated;
+    private readonly UInt128? allocated;
+    private readonly bool comparing;
 
-    public RankingRow(RankedFolder entry, string drive)
+    public RankingRow(
+        RankedFolder entry,
+        string drive,
+        FolderChange? change = null,
+        bool comparing = false
+    )
     {
         Reference = entry.Sample.Reference;
         RelativePath = entry.RelativePath;
         allocated = entry.Data.AllocatedBytes;
         this.drive = drive;
+        this.change = change;
+        this.comparing = comparing;
     }
 
     public RankingRow(FolderChange change, string drive)
@@ -69,19 +79,26 @@ public sealed partial class RankingRow
         RelativePath = change.AfterPath ?? change.BeforePath ?? "";
         this.change = change;
         this.drive = drive;
+        allocated = change.AfterAllocatedBytes;
+        comparing = true;
     }
 
     public FileReference Reference { get; }
     public string RelativePath { get; }
     public string Path => $"{drive}\\{DisplayText.Escape(RelativePath)}";
-    public string Size =>
-        change is null
-            ? DisplayText.Bytes(allocated)
-            : DisplayText.Change(change.AllocatedDelta, change.Status);
-    public GridLength ComparisonWidth => new(change is null ? 0 : 120);
+    public string Size => DisplayText.Bytes(allocated);
+    public string Delta =>
+        comparing ? DisplayText.Change(change?.AllocatedDelta, change?.Status) : "";
+    public GridLength ComparisonWidth => new(comparing ? 140 : 0);
+    public string SizeDescription =>
+        comparing
+            ? $"比較前：{BeforeSize}\nサイズ：{Size}\n増減：{Delta}（比較後 − 比較前）"
+            : "ディスク上の割り当て容量";
     public string BeforeSize =>
         change is null
-            ? ""
+            ? comparing
+                ? "—"
+                : ""
             : DisplayText.Endpoint(change.BeforeAllocatedBytes, change.BeforePath is not null);
     public string AfterSize =>
         change is null
@@ -91,10 +108,11 @@ public sealed partial class RankingRow
 
 internal sealed record FolderLocation(FileReference Reference, string Path);
 
-internal sealed record HistoryRow(ScanHistoryEntry Entry)
+internal sealed record HistoryRow(ScanHistoryEntry Entry, bool IsLatest = false)
 {
     public override string ToString() =>
-        Entry.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture);
+        (IsLatest ? "最新 · " : "")
+        + Entry.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture);
 }
 
 internal sealed record FolderNode(
@@ -102,11 +120,62 @@ internal sealed record FolderNode(
     FolderLocation Location,
     int NextPage = 0,
     bool LoadMore = false,
-    string? Change = null
+    bool Comparing = false,
+    FolderChange? Comparison = null,
+    UInt128? AllocatedBytes = null,
+    bool CapacityIncomplete = false
 )
 {
-    public override string ToString() =>
-        DisplayText.Escape(Name) + (Change is null ? "" : "  " + Change);
+    public string DisplayName => DisplayText.Escape(Name);
+    public string? Change =>
+        Comparing ? DisplayText.Change(Comparison?.AllocatedDelta, Comparison?.Status) : null;
+    public GridLength ChangeWidth => new(Comparing && !LoadMore ? 18 : 0);
+    public string ChangeGlyph =>
+        !Comparing || LoadMore ? ""
+        : Comparison?.AllocatedDelta is { } delta
+            ? delta.Sign switch
+            {
+                > 0 => "\uE74A",
+                < 0 => "\uE74B",
+                _ => "",
+            }
+        : "\uE897";
+    public Brush ChangeBrush =>
+        new SolidColorBrush(
+            Comparison?.AllocatedDelta is { } delta
+                ? delta.Sign switch
+                {
+                    > 0 => Microsoft.UI.ColorHelper.FromArgb(255, 198, 106, 0),
+                    < 0 => Microsoft.UI.ColorHelper.FromArgb(255, 28, 150, 72),
+                    _ => Microsoft.UI.Colors.Gray,
+                }
+                : Microsoft.UI.Colors.Gray
+        );
+    public string ChangeDescription =>
+        !Comparing ? ""
+        : Comparison?.AllocatedDelta is { } delta
+            ? delta.Sign switch
+            {
+                > 0 => "容量が増加",
+                < 0 => "容量が減少",
+                _ => "変化なし",
+            }
+        : Change ?? "比較不能";
+    public string Description =>
+        DisplayName
+        + (
+            LoadMore
+                ? ""
+                : $"\nサイズ：{(Comparing && Comparison is { AfterPath: null } ? "—" : DisplayText.Bytes(AllocatedBytes))}"
+        )
+        + (CapacityIncomplete ? "（既知分。未解決容量を含みません）" : "")
+        + (
+            Comparing
+                ? $"\n比較前：{DisplayText.Endpoint(Comparison?.BeforeAllocatedBytes, Comparison?.BeforePath is not null)}\n増減：{Change}"
+                : ""
+        );
+
+    public override string ToString() => DisplayName;
 }
 
 internal static class DisplayText

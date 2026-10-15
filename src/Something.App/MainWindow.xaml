@@ -43,15 +43,18 @@
       <StackPanel Grid.Row="1" Spacing="8">
         <StackPanel Orientation="Horizontal" Spacing="12">
           <ComboBox
-            x:Name="ComparisonModeBox"
-            Width="120"
-            SelectionChanged="OnComparisonOptionsChanged"
-            AutomationProperties.Name="表示モード"
+            x:Name="HistoryBox"
+            Header="表示する記録"
+            Width="250"
+            PlaceholderText="最新のスキャン"
+            IsEnabled="False"
+            SelectionChanged="OnHistoryChanged"
+            AutomationProperties.Name="表示するスキャン"
           />
           <ComboBox
             x:Name="ComparisonPeriodBox"
+            Header="比較"
             Width="150"
-            Visibility="Collapsed"
             SelectionChanged="OnComparisonOptionsChanged"
             AutomationProperties.Name="比較期間"
           />
@@ -63,18 +66,11 @@
           >
             <ComboBox
               x:Name="ComparisonBeforeBox"
-              Width="205"
+              Header="比較元のスキャン"
+              Width="250"
               PlaceholderText="比較前"
               SelectionChanged="OnComparisonOptionsChanged"
               AutomationProperties.Name="比較前のスキャン"
-            />
-            <TextBlock Text="→" VerticalAlignment="Center" />
-            <ComboBox
-              x:Name="ComparisonAfterBox"
-              Width="205"
-              PlaceholderText="比較後"
-              SelectionChanged="OnComparisonOptionsChanged"
-              AutomationProperties.Name="比較後のスキャン"
             />
           </StackPanel>
         </StackPanel>
@@ -124,7 +120,36 @@
               Expanding="OnExpanding"
               ItemInvoked="OnFolderInvoked"
               ContextRequested="OnTreeContextRequested"
-            />
+            >
+              <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+              </TreeView.ItemContainerStyle>
+              <TreeView.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnSpacing="4" ToolTipService.ToolTip="{Binding Content.Description}">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="{Binding Content.ChangeWidth}" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon
+                      x:Name="TreeChangeIcon"
+                      Glyph="{Binding Content.ChangeGlyph}"
+                      Foreground="{Binding Content.ChangeBrush}"
+                      FontSize="14"
+                      AutomationProperties.Name="{Binding Content.ChangeDescription}"
+                    />
+                    <TextBlock
+                      x:Name="FolderNameText"
+                      Grid.Column="1"
+                      Text="{Binding Content.DisplayName}"
+                      TextTrimming="CharacterEllipsis"
+                    />
+                  </Grid>
+                </DataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
           </Grid>
         </Border>
         <TabView Grid.Column="1" IsAddTabButtonVisible="False">
@@ -201,43 +226,26 @@
                   ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
                   ContextRequested="OnPathContextRequested"
                 />
-                <ComboBox
-                  x:Name="HistoryBox"
-                  Grid.Column="2"
-                  Width="230"
-                  PlaceholderText="スキャン履歴"
-                  IsEnabled="False"
-                  SelectionChanged="OnHistoryChanged"
-                  AutomationProperties.Name="スキャン履歴"
-                  ToolTipService.ToolTip="保存済みのスキャン完了日時を選択"
-                />
               </Grid>
               <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="24" />
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition x:Name="BeforeSizeHeaderColumn" Width="0" />
-                  <ColumnDefinition x:Name="AfterSizeHeaderColumn" Width="0" />
                   <ColumnDefinition Width="140" />
+                  <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="1" Text="名前" />
                 <TextBlock
                   Grid.Column="2"
-                  x:Name="BeforeSizeHeader"
-                  Text="比較前"
-                  Visibility="Collapsed"
-                />
-                <TextBlock
-                  Grid.Column="3"
-                  x:Name="AfterSizeHeader"
-                  Text="比較後"
-                  Visibility="Collapsed"
-                />
-                <TextBlock
                   x:Name="SizeColumnText"
-                  Grid.Column="4"
                   Text="サイズ"
                   ToolTipService.ToolTip="ディスク上の割り当て容量"
+                />
+                <TextBlock
+                  x:Name="ChangeHeader"
+                  Grid.Column="3"
+                  Text="増減"
+                  Visibility="Collapsed"
                 />
               </Grid>
               <ListView
@@ -253,9 +261,8 @@
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
-                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                         <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                       </Grid.ColumnDefinitions>
                       <SymbolIcon
                         Symbol="{x:Bind Icon}"
@@ -270,11 +277,14 @@
                         TextTrimming="CharacterEllipsis"
                         ToolTipService.ToolTip="{x:Bind NameDescription}"
                       />
-                      <TextBlock Grid.Column="2" Text="{x:Bind BeforeSize}" />
-                      <TextBlock Grid.Column="3" Text="{x:Bind AfterSize}" />
                       <TextBlock
-                        Grid.Column="4"
+                        Grid.Column="2"
                         Text="{x:Bind Size}"
+                        ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                      />
+                      <TextBlock
+                        Grid.Column="3"
+                        Text="{x:Bind Delta}"
                         ToolTipService.ToolTip="{x:Bind SizeDescription}"
                       />
                     </Grid>
@@ -283,7 +293,7 @@
               </ListView>
             </Grid>
           </TabViewItem>
-          <TabViewItem x:Name="RankingTab" Header="容量ランキング" IsClosable="False">
+          <TabViewItem x:Name="RankingTab" Header="ランキング" IsClosable="False">
             <Grid Padding="12" RowSpacing="12">
               <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -294,13 +304,17 @@
                 <ComboBox
                   x:Name="ChangeOrderBox"
                   Header="並び順"
-                  Visibility="Collapsed"
                   SelectionChanged="OnRankingFilterChanged"
                   SelectedIndex="0"
                 >
-                  <ComboBoxItem Content="増加順" />
-                  <ComboBoxItem Content="減少順" />
-                  <ComboBoxItem Content="増減の大きさ順" />
+                  <ComboBoxItem Content="サイズ順" />
+                  <ComboBoxItem x:Name="GrowthOrderItem" Content="増加順" IsEnabled="False" />
+                  <ComboBoxItem x:Name="ShrinkageOrderItem" Content="減少順" IsEnabled="False" />
+                  <ComboBoxItem
+                    x:Name="MagnitudeOrderItem"
+                    Content="増減の大きさ順"
+                    IsEnabled="False"
+                  />
                 </ComboBox>
                 <ComboBox
                   x:Name="DepthBox"
@@ -324,24 +338,17 @@
               <Grid Grid.Row="1" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition x:Name="RankingBeforeColumn" Width="0" />
-                  <ColumnDefinition x:Name="RankingAfterColumn" Width="0" />
                   <ColumnDefinition Width="140" />
+                  <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="フォルダ" />
                 <TextBlock
-                  x:Name="RankingBeforeHeader"
-                  Grid.Column="1"
-                  Text="比較前"
-                  Visibility="Collapsed"
-                />
-                <TextBlock
-                  x:Name="RankingAfterHeader"
+                  x:Name="RankingChangeHeader"
                   Grid.Column="2"
-                  Text="比較後"
+                  Text="増減"
                   Visibility="Collapsed"
                 />
-                <TextBlock x:Name="RankingSizeHeader" Grid.Column="3" Text="サイズ" />
+                <TextBlock Grid.Column="1" Text="サイズ" />
               </Grid>
               <ListView
                 x:Name="Ranking"
@@ -354,18 +361,24 @@
                     <Grid Padding="0,8" ColumnSpacing="16">
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
-                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                         <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                       </Grid.ColumnDefinitions>
                       <TextBlock
                         Text="{x:Bind Path}"
                         TextTrimming="CharacterEllipsis"
                         ToolTipService.ToolTip="{x:Bind Path}"
                       />
-                      <TextBlock Grid.Column="1" Text="{x:Bind BeforeSize}" />
-                      <TextBlock Grid.Column="2" Text="{x:Bind AfterSize}" />
-                      <TextBlock Grid.Column="3" Text="{x:Bind Size}" />
+                      <TextBlock
+                        Grid.Column="1"
+                        Text="{x:Bind Size}"
+                        ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                      />
+                      <TextBlock
+                        Grid.Column="2"
+                        Text="{x:Bind Delta}"
+                        ToolTipService.ToolTip="{x:Bind SizeDescription}"
+                      />
                     </Grid>
                   </DataTemplate>
                 </ListView.ItemTemplate>

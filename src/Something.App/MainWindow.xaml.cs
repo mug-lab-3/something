@@ -525,7 +525,7 @@ public sealed partial class MainWindow : Window
                 : [];
             if (closed || selectedCard != card)
                 return;
-            var rows = entries.Select(entry => new HistoryRow(entry)).ToList();
+            var rows = entries.Select((entry, index) => new HistoryRow(entry, index == 0)).ToList();
             if (
                 historicalSession?.History is { } viewing
                 && rows.All(row => row.Entry.Id != viewing.Id)
@@ -591,6 +591,10 @@ public sealed partial class MainWindow : Window
         if (currentVolume is not null && row.Entry.VolumeKey != currentVolume)
             return;
         int version = ++historyVersion;
+        if (Comparing && !applyingComparison)
+            await ClearComparisonAsync();
+        if (closed || selectedCard != card || version != historyVersion)
+            return;
         ScanSession? owned = null;
         try
         {
@@ -718,7 +722,12 @@ public sealed partial class MainWindow : Window
             Content = new FolderNode(
                 current.Drive,
                 location,
-                Change: FolderChangeLabel(current.Root)
+                Comparing: Comparing,
+                Comparison: GetFolderComparison(current.Root),
+                AllocatedBytes: current.RootSample.Entries?.SubtreeData.AllocatedBytes,
+                CapacityIncomplete: !current.RootSample.DirectoryCapacityObserved
+                    || current.RootSample.SubtreeUnobservedDirectoryCount != 0
+                    || current.RootSample.Entries?.SubtreeUnresolvedCount != 0
             ),
             HasUnrealizedChildren = true,
         };
@@ -1170,7 +1179,10 @@ public sealed partial class MainWindow : Window
                                 entry.Reference,
                                 folder.Location.Path.TrimEnd('\\') + "\\" + entry.Name
                             ),
-                            Change: FolderChangeLabel(entry.Reference)
+                            Comparing: Comparing,
+                            Comparison: GetFolderComparison(entry.Reference),
+                            AllocatedBytes: entry.Data?.AllocatedBytes,
+                            CapacityIncomplete: entry.CapacityIncomplete || !entry.NamesComplete
                         ),
                         HasUnrealizedChildren = true,
                     }
@@ -1358,7 +1370,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnRankingFilterChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (session is not null)
+        if (session is not null && !updatingComparisonChoices)
             await LoadRankingAsync();
     }
 
@@ -1375,15 +1387,15 @@ public sealed partial class MainWindow : Window
         int version = ++rankingVersion;
         try
         {
-            if (Comparing)
+            if (Comparing && ChangeOrderBox.SelectedIndex > 0)
             {
                 var report = comparisonReport;
                 int depth = DepthBox.SelectedIndex;
                 bool leafOnly = LeafBox.IsChecked == true;
                 var order = ChangeOrderBox.SelectedIndex switch
                 {
-                    1 => FolderChangeRanking.Shrinkage,
-                    2 => FolderChangeRanking.Magnitude,
+                    2 => FolderChangeRanking.Shrinkage,
+                    3 => FolderChangeRanking.Magnitude,
                     _ => FolderChangeRanking.Growth,
                 };
                 var changed = report is null
@@ -1410,7 +1422,13 @@ public sealed partial class MainWindow : Window
             );
             if (closed || version != rankingVersion || current != session)
                 return;
-            Ranking.ItemsSource = rows.Select(r => new RankingRow(r, current.Drive)).ToArray();
+            Ranking.ItemsSource = rows.Select(r => new RankingRow(
+                    r,
+                    current.Drive,
+                    Comparing ? GetFolderComparison(r.Sample.Reference) : null,
+                    Comparing
+                ))
+                .ToArray();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)

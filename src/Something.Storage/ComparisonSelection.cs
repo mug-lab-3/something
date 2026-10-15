@@ -10,6 +10,37 @@ public sealed record ComparisonSelection(
     public bool Available => Before is not null && After is not null && Before.Id != After.Id;
     public bool IsPartial => Available && Before!.CompletedUtc > RequestedBeforeUtc;
 
+    /// <summary>Anchor presets to the selected observation, excluding all later observations.
+    /// Equal completion times use the same deterministic ID ordering as history selection.</summary>
+    public static ComparisonSelection ResolveAtScan(
+        IEnumerable<ScanHistoryEntry> entries,
+        FolderChangePeriod period,
+        ScanHistoryEntry endpoint,
+        TimeZoneInfo zone
+    )
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        ArgumentNullException.ThrowIfNull(endpoint);
+        var rows = entries.ToArray();
+        if (
+            rows.Any(row => row.VolumeKey != endpoint.VolumeKey)
+            || !rows.Any(row => row.Id == endpoint.Id)
+        )
+            throw new ArgumentException(
+                "The endpoint must be retained in the selected volume.",
+                nameof(endpoint)
+            );
+        return Resolve(
+            rows.Where(row =>
+                row.CompletedUtc < endpoint.CompletedUtc
+                || row.CompletedUtc == endpoint.CompletedUtc && row.Id.CompareTo(endpoint.Id) <= 0
+            ),
+            period,
+            endpoint.CompletedUtc,
+            zone
+        );
+    }
+
     public static ComparisonSelection Resolve(
         IEnumerable<ScanHistoryEntry> entries,
         FolderChangePeriod period,

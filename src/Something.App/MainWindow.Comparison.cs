@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Something.Application;
 using Something.Ntfs;
 using Something.Storage;
@@ -9,7 +10,7 @@ namespace Something.App;
 
 public sealed partial class MainWindow
 {
-    private sealed record PeriodChoice(string Label, FolderChangePeriod Period)
+    private sealed record PeriodChoice(string Label, FolderChangePeriod? Period)
     {
         public override string ToString() => Label;
     }
@@ -23,7 +24,7 @@ public sealed partial class MainWindow
     private Dictionary<FileReference, FolderChange> comparisonFolders = [];
     private FileReference? cachedComparisonFolder;
     private ImmutableArray<EntryChange> cachedComparisonEntries = [];
-    private bool Comparing => ComparisonModeBox.SelectedIndex == 1;
+    private bool Comparing => ComparisonPeriodBox.SelectedItem is PeriodChoice { Period: not null };
     private (
         FolderChangePeriod Period,
         Guid? Before,
@@ -38,28 +39,23 @@ public sealed partial class MainWindow
             (ComparisonPeriodBox.SelectedItem as PeriodChoice)?.Period
             ?? FolderChangePeriod.Last24Hours;
         Guid? before;
-        Guid? after;
+        var endpoint = session?.History;
+        Guid? after = endpoint?.Id;
         bool partial = false;
         if (period == FolderChangePeriod.Custom)
         {
             before = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry.Id;
-            after = (ComparisonAfterBox.SelectedItem as HistoryRow)?.Entry.Id;
         }
         else
         {
             var rows =
-                (ComparisonAfterBox.ItemsSource as IEnumerable<HistoryRow>)?.Select(row =>
-                    row.Entry
-                ) ?? [];
-            var selected = ComparisonSelection.Resolve(
-                rows,
-                period,
-                DateTimeOffset.UtcNow,
-                TimeZoneInfo.Local
-            );
-            before = selected.Before?.Id;
-            after = selected.After?.Id;
-            partial = selected.IsPartial;
+                (HistoryBox.ItemsSource as IEnumerable<HistoryRow>)?.Select(row => row.Entry) ?? [];
+            var selected = endpoint is null
+                ? null
+                : ComparisonSelection.ResolveAtScan(rows, period, endpoint, TimeZoneInfo.Local);
+            before = selected?.Before?.Id;
+            after = selected?.After?.Id;
+            partial = selected?.IsPartial == true;
         }
         return comparisonSelectionKey
             != (period, before, after, selectedCard?.Choice.Drive, partial);
@@ -70,10 +66,9 @@ public sealed partial class MainWindow
         updatingComparisonChoices = true;
         try
         {
-            ComparisonModeBox.ItemsSource = new[] { "通常", "差分" };
-            ComparisonModeBox.SelectedIndex = 0;
             ComparisonPeriodBox.ItemsSource = new PeriodChoice[]
             {
+                new("なし", null),
                 new("24時間", FolderChangePeriod.Last24Hours),
                 new("7日間", FolderChangePeriod.Last7Days),
                 new("30日間", FolderChangePeriod.Last30Days),
@@ -82,7 +77,7 @@ public sealed partial class MainWindow
                 new("今週", FolderChangePeriod.ThisWeek),
                 new("今月", FolderChangePeriod.ThisMonth),
                 new("今年", FolderChangePeriod.ThisYear),
-                new("任意の2スキャン", FolderChangePeriod.Custom),
+                new("任意のスキャン", FolderChangePeriod.Custom),
             };
             ComparisonPeriodBox.SelectedIndex = 0;
         }
@@ -95,18 +90,13 @@ public sealed partial class MainWindow
     private void UpdateComparisonChoices(IReadOnlyList<HistoryRow> rows)
     {
         var beforeId = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry.Id;
-        var afterId = (ComparisonAfterBox.SelectedItem as HistoryRow)?.Entry.Id;
         updatingComparisonChoices = true;
         try
         {
             ComparisonBeforeBox.ItemsSource = rows;
-            ComparisonAfterBox.ItemsSource = rows;
             ComparisonBeforeBox.SelectedItem = beforeId is null
                 ? rows.LastOrDefault()
                 : rows.FirstOrDefault(row => row.Entry.Id == beforeId);
-            ComparisonAfterBox.SelectedItem = afterId is null
-                ? rows.FirstOrDefault()
-                : rows.FirstOrDefault(row => row.Entry.Id == afterId);
         }
         finally
         {
@@ -161,26 +151,30 @@ public sealed partial class MainWindow
     {
         bool custom =
             ComparisonPeriodBox.SelectedItem is PeriodChoice { Period: FolderChangePeriod.Custom };
-        ComparisonPeriodBox.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         CustomComparisonPanel.Visibility =
             Comparing && custom ? Visibility.Visible : Visibility.Collapsed;
         ComparisonStatusText.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         ComparisonRangePanel.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
-        ChangeOrderBox.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
-        BeforeSizeHeader.Visibility = AfterSizeHeader.Visibility = Comparing
+        ChangeHeader.Visibility = RankingChangeHeader.Visibility = Comparing
             ? Visibility.Visible
             : Visibility.Collapsed;
-        BeforeSizeHeaderColumn.Width = AfterSizeHeaderColumn.Width = new(Comparing ? 120 : 0);
-        SizeColumnText.Text = Comparing ? "増減" : "サイズ";
-        RankingTab.Header = Comparing ? "変動ランキング" : "容量ランキング";
-        RankingBeforeColumn.Width = RankingAfterColumn.Width = new(Comparing ? 120 : 0);
-        RankingBeforeHeader.Visibility = RankingAfterHeader.Visibility = Comparing
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        RankingSizeHeader.Text = Comparing ? "増減" : "サイズ";
-        HistoryBox.IsEnabled = !Comparing && HistoryBox.Items.Count > 0;
-        HistoryBox.Visibility =
-            Comparing || demo && history is null ? Visibility.Collapsed : Visibility.Visible;
+        ChangeHeaderColumn.Width = RankingChangeColumn.Width = new(Comparing ? 140 : 0);
+        GrowthOrderItem.IsEnabled =
+            ShrinkageOrderItem.IsEnabled =
+            MagnitudeOrderItem.IsEnabled =
+                Comparing;
+        bool updating = updatingComparisonChoices;
+        updatingComparisonChoices = true;
+        try
+        {
+            if (!Comparing)
+                ChangeOrderBox.SelectedIndex = 0;
+        }
+        finally
+        {
+            updatingComparisonChoices = updating;
+        }
+        HistoryBox.IsEnabled = HistoryBox.Items.Count > 0;
     }
 
     private async Task RefreshComparisonAsync()
@@ -209,7 +203,7 @@ public sealed partial class MainWindow
         try
         {
             var rows =
-                (ComparisonAfterBox.ItemsSource as IEnumerable<HistoryRow>)
+                (HistoryBox.ItemsSource as IEnumerable<HistoryRow>)
                     ?.Select(row => row.Entry)
                     .ToArray()
                 ?? [];
@@ -217,23 +211,19 @@ public sealed partial class MainWindow
                 (ComparisonPeriodBox.SelectedItem as PeriodChoice)?.Period
                 ?? FolderChangePeriod.Last24Hours;
             ScanHistoryEntry? before;
-            ScanHistoryEntry? after;
+            ScanHistoryEntry? after = displayed.History;
             ComparisonSelection? selectedRange = null;
             if (period == FolderChangePeriod.Custom)
             {
                 before = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry;
-                after = (ComparisonAfterBox.SelectedItem as HistoryRow)?.Entry;
             }
             else
             {
-                var selection = ComparisonSelection.Resolve(
-                    rows,
-                    period,
-                    DateTimeOffset.UtcNow,
-                    TimeZoneInfo.Local
-                );
-                before = selection.Before;
-                after = selection.After;
+                var selection = after is null
+                    ? null
+                    : ComparisonSelection.ResolveAtScan(rows, period, after, TimeZoneInfo.Local);
+                before = selection?.Before;
+                after = selection?.After;
                 selectedRange = selection;
             }
             SelectedBeforeText.Text = before is null
@@ -286,8 +276,6 @@ public sealed partial class MainWindow
             token.ThrowIfCancellationRequested();
             if (closed || version != comparisonVersion || selectedCard != card)
                 return;
-            if (session?.ScanId != after.Id)
-                await ChangeHistoryAsync(new(after));
             token.ThrowIfCancellationRequested();
             if (
                 closed
@@ -402,15 +390,15 @@ public sealed partial class MainWindow
         }
     }
 
-    private string? FolderChangeLabel(FileReference reference)
+    private FolderChange? GetFolderComparison(FileReference reference)
     {
         if (!Comparing)
             return null;
         if (comparisonFolders.TryGetValue(reference, out var change))
-            return DisplayText.Change(change.AllocatedDelta, change.Status);
+            return change;
         if (comparisonReport?.Root is { } root && root.Reference == reference)
-            return DisplayText.Change(root.AllocatedDelta, root.Status);
-        return "比較不能";
+            return root;
+        return null;
     }
 
     private async Task VerifyComparisonModeAsync()
@@ -418,22 +406,26 @@ public sealed partial class MainWindow
         if (history is null)
             throw new InvalidOperationException("Comparison smoke requires --demo-history.");
         updatingComparisonChoices = true;
-        ComparisonModeBox.SelectedIndex = 1;
-        ComparisonPeriodBox.SelectedIndex = 8;
+        ComparisonPeriodBox.SelectedIndex = 9;
         ComparisonBeforeBox.SelectedIndex = ComparisonBeforeBox.Items.Count - 1;
-        ComparisonAfterBox.SelectedIndex = 0;
         updatingComparisonChoices = false;
         await TrackComparisonAsync();
         if (
             comparisonReport is null
             || Entries.Items.Count != 3
-            || Entries.Items.Cast<EntryRow>().Any(row => !row.Size.StartsWith('±'))
+            || Entries.Items.Cast<EntryRow>().Any(row => !row.Delta.StartsWith('±'))
             || Folders.RootNodes[0].Content is not FolderNode { Change: not null } root
             || !root.Change.StartsWith('±')
         )
             throw new InvalidOperationException(
                 "Two retained scans did not show unchanged size deltas."
             );
+        if (
+            Entries.Items.Cast<EntryRow>().Any(row => row.Size.StartsWith('±') || row.Size == "—")
+            || ChangeHeader.Visibility != Visibility.Visible
+        )
+            throw new InvalidOperationException("Comparison replaced the current size column.");
+        await VerifyTreeIndicatorsAsync();
         var projects = Folders
             .RootNodes[0]
             .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
@@ -443,7 +435,7 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "Unchanged history refresh restarted the comparison."
             );
-        var retainedChoices = ((IEnumerable<HistoryRow>)ComparisonAfterBox.ItemsSource).ToArray();
+        var retainedChoices = ((IEnumerable<HistoryRow>)HistoryBox.ItemsSource).ToArray();
         UpdateComparisonChoices([retainedChoices[0]]);
         if (ComparisonBeforeBox.SelectedItem is not null)
             throw new InvalidOperationException(
@@ -451,12 +443,12 @@ public sealed partial class MainWindow
             );
         UpdateComparisonChoices(retainedChoices);
         await LoadFolderAsync(((FolderNode)projects.Content).Location, true);
-        if (Entries.Items.Cast<EntryRow>().Any(row => !row.Size.StartsWith('±')))
+        if (Entries.Items.Cast<EntryRow>().Any(row => !row.Delta.StartsWith('±')))
             throw new InvalidOperationException("Child folder comparison did not load.");
         for (int preset = 0; preset < 8; preset++)
         {
             updatingComparisonChoices = true;
-            ComparisonPeriodBox.SelectedIndex = preset;
+            ComparisonPeriodBox.SelectedIndex = preset + 1;
             updatingComparisonChoices = false;
             await TrackComparisonAsync();
             if (
@@ -476,20 +468,40 @@ public sealed partial class MainWindow
                     $"Preset {preset} did not show selected endpoints and coverage."
                 );
         }
-        UpdateComparisonChoices([retainedChoices[0]]);
+        updatingComparisonChoices = true;
+        ComparisonPeriodBox.SelectedIndex = 1;
+        updatingComparisonChoices = false;
+        await ChangeHistoryAsync(retainedChoices[^1]);
+        if (session?.ScanId != retainedChoices[^1].Entry.Id || comparisonReport is not null)
+            throw new InvalidOperationException(
+                "Preset comparison ignored the selected historical endpoint."
+            );
+        await ChangeHistoryAsync(retainedChoices[0]);
+        if (comparisonReport?.Latest?.Id != retainedChoices[0].Entry.Id)
+            throw new InvalidOperationException(
+                "Comparison did not follow history navigation back to latest."
+            );
+        updatingHistoryChoices = true;
+        HistoryBox.ItemsSource = new[] { retainedChoices[0] };
+        HistoryBox.SelectedItem = retainedChoices[0];
+        updatingHistoryChoices = false;
         await TrackComparisonAsync();
         if (comparisonReport is not null || !ComparisonStatusText.Text.StartsWith("履歴不足"))
             throw new InvalidOperationException(
                 "One retained snapshot must not produce a zero change."
             );
+        updatingHistoryChoices = true;
+        HistoryBox.ItemsSource = retainedChoices;
+        HistoryBox.SelectedItem = retainedChoices.Single(row => row.Entry.Id == session!.ScanId);
+        updatingHistoryChoices = false;
         UpdateComparisonChoices(retainedChoices);
         updatingComparisonChoices = true;
-        ComparisonPeriodBox.SelectedIndex = 8;
+        ComparisonPeriodBox.SelectedIndex = 9;
         updatingComparisonChoices = false;
         await TrackComparisonAsync();
         var stale = TrackComparisonAsync();
         updatingComparisonChoices = true;
-        ComparisonModeBox.SelectedIndex = 0;
+        ComparisonPeriodBox.SelectedIndex = 0;
         updatingComparisonChoices = false;
         await TrackComparisonAsync();
         await stale;
@@ -502,11 +514,87 @@ public sealed partial class MainWindow
         if (Environment.GetCommandLineArgs().Contains("--smoke-comparison-image"))
         {
             updatingComparisonChoices = true;
-            ComparisonModeBox.SelectedIndex = 1;
-            ComparisonPeriodBox.SelectedIndex = 0;
+            ComparisonPeriodBox.SelectedIndex = 1;
             updatingComparisonChoices = false;
             await TrackComparisonAsync();
         }
+    }
+
+    private async Task VerifyTreeIndicatorsAsync()
+    {
+        var parent = Folders.RootNodes[0];
+        var location = ((FolderNode)parent.Content).Location;
+        System.Numerics.BigInteger?[] deltas = [1, -1, 0, null];
+        var nodes = deltas
+            .Select(
+                (delta, index) =>
+                    new TreeViewNode
+                    {
+                        Content = new FolderNode(
+                            $"表示確認 {index}",
+                            location,
+                            Comparing: true,
+                            Comparison: new(
+                                location.Reference,
+                                "before",
+                                "after",
+                                10,
+                                10,
+                                delta,
+                                delta is null
+                                    ? FolderChangeStatus.UncertainCapacity
+                                    : FolderChangeStatus.Comparable
+                            ),
+                            AllocatedBytes: 10
+                        ),
+                    }
+            )
+            .ToArray();
+        try
+        {
+            foreach (var node in nodes)
+                parent.Children.Add(node);
+            RootLayout.UpdateLayout();
+            await Task.Delay(100, lifetime.Token);
+            foreach (var node in nodes)
+            {
+                var model = (FolderNode)node.Content;
+                var container =
+                    Folders.ContainerFromNode(node)
+                    ?? throw new InvalidOperationException("Tree row not realized.");
+                var name = FindTreePart<TextBlock>(container, "FolderNameText");
+                var icon = FindTreePart<FontIcon>(container, "TreeChangeIcon");
+                if (
+                    name?.Text != model.DisplayName
+                    || icon?.Glyph != model.ChangeGlyph
+                    || icon?.Foreground is not SolidColorBrush brush
+                    || brush.Color != ((SolidColorBrush)model.ChangeBrush).Color
+                )
+                    throw new InvalidOperationException(
+                        "Tree name or colored indicator did not bind."
+                    );
+                if (model.ToString() != model.DisplayName || model.ChangeWidth.Value != 18)
+                    throw new InvalidOperationException(
+                        "Tree indicator changed label length or alignment."
+                    );
+            }
+        }
+        finally
+        {
+            foreach (var node in nodes)
+                parent.Children.Remove(node);
+        }
+    }
+
+    private static T? FindTreePart<T>(DependencyObject parent, string name)
+        where T : FrameworkElement
+    {
+        if (parent is T element && element.Name == name)
+            return element;
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+            if (FindTreePart<T>(VisualTreeHelper.GetChild(parent, index), name) is { } child)
+                return child;
+        return null;
     }
 
     private static IEnumerable<FolderChange> FilterChanges(
