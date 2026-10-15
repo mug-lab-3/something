@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -1308,10 +1309,33 @@ public sealed partial class MainWindow : Window
         FrameworkElement target,
         string path,
         ContextRequestedEventArgs args,
-        string? directoryPath = null
+        string? directoryPath = null,
+        bool isDirectory = true
     )
     {
         var menu = new MenuFlyout();
+        menu.Opened += (_, _) =>
+        {
+            MenuCursor.RestoreArrow();
+            // Let popup creation finish before correcting any late cursor update.
+            DispatcherQueue.TryEnqueue(
+                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                () =>
+                {
+                    if (!closed && menu.IsOpen)
+                        MenuCursor.RestoreArrow();
+                }
+            );
+        };
+        var open = new MenuFlyoutItem
+        {
+            Text = "開く",
+            Icon = new SymbolIcon(isDirectory ? Symbol.Folder : Symbol.OpenFile),
+        };
+        // Capture the clicked row's original path, independently of later selection changes.
+        open.Click += async (_, _) => await OpenPathAsync(path, isDirectory);
+        menu.Items.Add(open);
+        menu.Items.Add(new MenuFlyoutSeparator());
         void AddCopy(string label, string value)
         {
             var item = new MenuFlyoutItem { Text = label, Icon = new SymbolIcon(Symbol.Copy) };
@@ -1351,7 +1375,8 @@ public sealed partial class MainWindow : Window
                 Entries,
                 parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name,
                 args,
-                row.Entry.IsDirectory ? null : parent.Path
+                row.Entry.IsDirectory ? null : parent.Path,
+                isDirectory: row.Entry.IsDirectory
             );
     }
 
@@ -1383,12 +1408,67 @@ public sealed partial class MainWindow : Window
     {
         if (
             location is { } parent
-            && Entries.SelectedItem is EntryRow { Entry.CanBrowse: true } row
+            && FindContextRow(Entries, args.OriginalSource as DependencyObject) is EntryRow row
         )
-            await LoadFolderAsync(
-                new(row.Entry.Reference, parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name),
-                true
+        {
+            string path = parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name;
+            if (row.Entry.IsDirectory)
+            {
+                if (row.Entry.CanBrowse)
+                    await LoadFolderAsync(new(row.Entry.Reference, path), true);
+            }
+            else
+                await OpenPathAsync(path, isDirectory: false);
+            args.Handled = true;
+        }
+    }
+
+    private async Task OpenPathAsync(string path, bool isDirectory)
+    {
+        try
+        {
+            await Task.Run(
+                () =>
+                {
+                    // Paths are passed directly to the Windows shell, never through a command shell.
+                    if (!Path.IsPathFullyQualified(path))
+                        throw new IOException("開く対象の絶対パスを取得できませんでした。");
+                    ProcessStartInfo start;
+                    if (isDirectory)
+                    {
+                        if (!Directory.Exists(path))
+                            throw new DirectoryNotFoundException(
+                                "フォルダーが見つからないか、アクセスできません。"
+                            );
+                        start = new(
+                            Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                                "explorer.exe"
+                            )
+                        )
+                        {
+                            UseShellExecute = true,
+                        };
+                        start.ArgumentList.Add(path);
+                    }
+                    else
+                    {
+                        if (!File.Exists(path))
+                            throw new FileNotFoundException(
+                                "ファイルが見つからないか、アクセスできません。"
+                            );
+                        start = new(path) { UseShellExecute = true, Verb = "open" };
+                    }
+                    using var process = Process.Start(start);
+                },
+                lifetime.Token
             );
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
     }
 
     private async void OnBack(object sender, RoutedEventArgs args) => await NavigateBackAsync();
