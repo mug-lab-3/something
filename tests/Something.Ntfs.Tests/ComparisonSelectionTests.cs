@@ -62,7 +62,7 @@ public sealed class ComparisonSelectionTests
     }
 
     [Fact]
-    public void EndpointsUsePreviousRetainedScansWithoutSilentlyUsingLaterBaseline()
+    public void EndpointsPreferBoundaryBaselineAndExplicitlyMarkPartialCoverage()
     {
         var baseline = History(Now.AddDays(-7).AddHours(-3));
         var tooLate = History(Now.AddDays(-7).AddMinutes(1));
@@ -79,16 +79,75 @@ public sealed class ComparisonSelectionTests
         Assert.Equal(baseline, selection.Before);
         Assert.Equal(after, selection.After);
         Assert.True(selection.Available);
-        Assert.Null(
-            ComparisonSelection
-                .Resolve([tooLate, after], FolderChangePeriod.Last7Days, Now, Japan)
-                .Before
+        Assert.False(selection.IsPartial);
+        var partial = ComparisonSelection.Resolve(
+            [tooLate, after, future],
+            FolderChangePeriod.Last7Days,
+            Now,
+            Japan
         );
+        Assert.Equal(tooLate, partial.Before);
+        Assert.Equal(after, partial.After);
+        Assert.True(partial.IsPartial);
         Assert.False(
             ComparisonSelection
                 .Resolve([baseline], FolderChangePeriod.Last7Days, Now, Japan)
                 .Available
         );
+    }
+
+    [Theory]
+    [InlineData(FolderChangePeriod.Last24Hours)]
+    [InlineData(FolderChangePeriod.Last7Days)]
+    [InlineData(FolderChangePeriod.Last30Days)]
+    [InlineData(FolderChangePeriod.Last365Days)]
+    [InlineData(FolderChangePeriod.Today)]
+    [InlineData(FolderChangePeriod.ThisWeek)]
+    [InlineData(FolderChangePeriod.ThisMonth)]
+    [InlineData(FolderChangePeriod.ThisYear)]
+    public void RecentHistoryWorksForEveryPresetWithoutInventingMissingCapacity(
+        FolderChangePeriod period
+    )
+    {
+        var first = History(Now.AddMinutes(-3));
+        var last = History(Now.AddMinutes(-1));
+
+        var selected = ComparisonSelection.Resolve(
+            [last, first, History(Now.AddMinutes(1))],
+            period,
+            Now,
+            Japan
+        );
+
+        Assert.Equal(first, selected.Before);
+        Assert.Equal(last, selected.After);
+        Assert.True(selected.Available);
+        Assert.True(selected.IsPartial);
+        var single = ComparisonSelection.Resolve([last], period, Now, Japan);
+        Assert.False(single.Available);
+        Assert.False(single.IsPartial);
+        Assert.Null(single.Before);
+    }
+
+    [Fact]
+    public void CoincidentCompletionTimesUseDistinctRetainedScansDeterministically()
+    {
+        var first = History(Now.AddMinutes(-1)) with
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+        };
+        var last = first with { Id = Guid.Parse("00000000-0000-0000-0000-000000000002") };
+
+        var selected = ComparisonSelection.Resolve(
+            [last, first],
+            FolderChangePeriod.Last24Hours,
+            Now,
+            Japan
+        );
+
+        Assert.Equal(first, selected.Before);
+        Assert.Equal(last, selected.After);
+        Assert.True(selected.IsPartial);
     }
 
     [Fact]

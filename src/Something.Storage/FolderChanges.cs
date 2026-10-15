@@ -65,6 +65,10 @@ public sealed record FolderChangeReport(
 )
 {
     public FolderChange? Root { get; init; }
+    public bool IsPartial =>
+        Availability == FolderComparisonAvailability.Available
+        && Baseline is not null
+        && Baseline.CompletedUtc > RequestedBaselineUtc;
     public ImmutableArray<FolderChange> ChangedFolders =>
         [
             .. Folders.Where(row =>
@@ -156,7 +160,8 @@ public sealed partial class ScanHistoryArchive
     }
 
     /// <summary>Uses the latest retained completion at or before each requested endpoint.
-    /// Missing folders and unresolved capacities are never treated as zero or confirmed deletions.</summary>
+    /// When no baseline precedes the boundary, uses the earliest retained scan inside the range
+    /// and marks the report partial. Missing capacities never become zero or confirmed deletions.</summary>
     public FolderChangeReport ReadFolderChanges(
         string volumeKey,
         FolderChangePeriod period,
@@ -187,6 +192,16 @@ public sealed partial class ScanHistoryArchive
                 .OrderByDescending(row => row.CompletedUtcTicks)
                 .ThenByDescending(row => row.Id)
                 .FirstOrDefault();
+            if (baseline is null && latest is not null)
+                baseline = query
+                    .Where(row =>
+                        row.CompletedUtcTicks > start.UtcTicks
+                        && row.CompletedUtcTicks <= end.UtcTicks
+                        && row.Id != latest.Id
+                    )
+                    .OrderBy(row => row.CompletedUtcTicks)
+                    .ThenBy(row => row.Id)
+                    .FirstOrDefault();
             var availability =
                 latest is null ? FolderComparisonAvailability.NoLatestObservation
                 : latest.CompletedUtcTicks <= start.UtcTicks

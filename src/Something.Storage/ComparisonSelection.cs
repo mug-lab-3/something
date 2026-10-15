@@ -8,6 +8,7 @@ public sealed record ComparisonSelection(
 )
 {
     public bool Available => Before is not null && After is not null && Before.Id != After.Id;
+    public bool IsPartial => Available && Before!.CompletedUtc > RequestedBeforeUtc;
 
     public static ComparisonSelection Resolve(
         IEnumerable<ScanHistoryEntry> entries,
@@ -44,7 +45,16 @@ public sealed record ComparisonSelection(
                 .OrderByDescending(row => row.CompletedUtc)
                 .ThenByDescending(row => row.Id)
                 .FirstOrDefault();
-        return new(start, end, At(start), At(end));
+        var after = At(end);
+        var before = At(start);
+        if (before is null && after is not null)
+            before = rows.Where(row =>
+                    row.CompletedUtc > start && row.CompletedUtc <= end && row.Id != after.Id
+                )
+                .OrderBy(row => row.CompletedUtc)
+                .ThenBy(row => row.Id)
+                .FirstOrDefault();
+        return new(start, end, before, after);
     }
 
     private static DateTimeOffset Boundary(DateTime local, TimeZoneInfo zone)

@@ -78,6 +78,19 @@
             />
           </StackPanel>
         </StackPanel>
+        <Border
+          x:Name="ComparisonRangePanel"
+          Visibility="Collapsed"
+          Padding="12,8"
+          CornerRadius="6"
+          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        >
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <TextBlock x:Name="SelectedBeforeText" Text="比較前：—" FontWeight="SemiBold" />
+            <TextBlock Text="→" />
+            <TextBlock x:Name="SelectedAfterText" Text="比較後：—" FontWeight="SemiBold" />
+          </StackPanel>
+        </Border>
         <TextBlock
           x:Name="ComparisonStatusText"
           Visibility="Collapsed"

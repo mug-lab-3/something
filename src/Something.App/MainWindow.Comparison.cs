@@ -28,7 +28,8 @@ public sealed partial class MainWindow
         FolderChangePeriod Period,
         Guid? Before,
         Guid? After,
-        string? Drive
+        string? Drive,
+        bool Partial
     )? comparisonSelectionKey;
 
     private bool ComparisonNeedsRefresh()
@@ -38,6 +39,7 @@ public sealed partial class MainWindow
             ?? FolderChangePeriod.Last24Hours;
         Guid? before;
         Guid? after;
+        bool partial = false;
         if (period == FolderChangePeriod.Custom)
         {
             before = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry.Id;
@@ -57,8 +59,10 @@ public sealed partial class MainWindow
             );
             before = selected.Before?.Id;
             after = selected.After?.Id;
+            partial = selected.IsPartial;
         }
-        return comparisonSelectionKey != (period, before, after, selectedCard?.Choice.Drive);
+        return comparisonSelectionKey
+            != (period, before, after, selectedCard?.Choice.Drive, partial);
     }
 
     private void InitializeComparisonControls()
@@ -141,6 +145,8 @@ public sealed partial class MainWindow
         comparisonReport = null;
         comparisonSelectionKey = null;
         ComparisonStatusText.Text = "比較するにはスキャン履歴が必要です。";
+        SelectedBeforeText.Text = "比較前：—";
+        SelectedAfterText.Text = "比較後：—";
         comparisonFolders = [];
         cachedComparisonFolder = null;
         cachedComparisonEntries = [];
@@ -159,6 +165,7 @@ public sealed partial class MainWindow
         CustomComparisonPanel.Visibility =
             Comparing && custom ? Visibility.Visible : Visibility.Collapsed;
         ComparisonStatusText.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
+        ComparisonRangePanel.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         ChangeOrderBox.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         BeforeSizeHeader.Visibility = AfterSizeHeader.Visibility = Comparing
             ? Visibility.Visible
@@ -211,6 +218,7 @@ public sealed partial class MainWindow
                 ?? FolderChangePeriod.Last24Hours;
             ScanHistoryEntry? before;
             ScanHistoryEntry? after;
+            ComparisonSelection? selectedRange = null;
             if (period == FolderChangePeriod.Custom)
             {
                 before = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry;
@@ -226,8 +234,21 @@ public sealed partial class MainWindow
                 );
                 before = selection.Before;
                 after = selection.After;
+                selectedRange = selection;
             }
-            comparisonSelectionKey = (period, before?.Id, after?.Id, card.Choice.Drive);
+            SelectedBeforeText.Text = before is null
+                ? "比較前：記録なし"
+                : $"比較前：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+            SelectedAfterText.Text = after is null
+                ? "比較後：記録なし"
+                : $"比較後：{after.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+            comparisonSelectionKey = (
+                period,
+                before?.Id,
+                after?.Id,
+                card.Choice.Drive,
+                selectedRange?.IsPartial == true
+            );
             if (history is null || before is null || after is null || before.Id == after.Id)
             {
                 ComparisonStatusText.Text =
@@ -249,6 +270,13 @@ public sealed partial class MainWindow
                 after.Id,
                 token
             );
+            if (selectedRange is { } range)
+                report = report with
+                {
+                    Period = period,
+                    RequestedBaselineUtc = range.RequestedBeforeUtc,
+                    AsOfUtc = range.RequestedAfterUtc,
+                };
             owned = await ScanSession.OpenHistoryAsync(
                 history,
                 before.Id,
@@ -273,7 +301,13 @@ public sealed partial class MainWindow
             comparisonReport = report;
             comparisonFolders = report.Folders.ToDictionary(row => row.Reference);
             ComparisonStatusText.Text =
-                $"実際の比較：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss} → {after.CompletedLocal:yyyy/MM/dd HH:mm:ss} · 比較不能 {report.UncertainFolders.Length:N0} フォルダ · 増減は比較後 − 比較前";
+                (report.IsPartial ? "履歴がある範囲のみ · " : "")
+                + (
+                    selectedRange is { } requested
+                        ? $"指定範囲：{requested.RequestedBeforeUtc.ToLocalTime():yyyy/MM/dd HH:mm} ～ {requested.RequestedAfterUtc.ToLocalTime():yyyy/MM/dd HH:mm} · "
+                        : ""
+                )
+                + $"比較不能 {report.UncertainFolders.Length:N0} フォルダ · 増減は比較後 − 比較前";
             await ShowSessionAsync(session);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -419,16 +453,36 @@ public sealed partial class MainWindow
         await LoadFolderAsync(((FolderNode)projects.Content).Location, true);
         if (Entries.Items.Cast<EntryRow>().Any(row => !row.Size.StartsWith('±')))
             throw new InvalidOperationException("Child folder comparison did not load.");
-        updatingComparisonChoices = true;
-        ComparisonPeriodBox.SelectedIndex = 0;
-        updatingComparisonChoices = false;
+        for (int preset = 0; preset < 8; preset++)
+        {
+            updatingComparisonChoices = true;
+            ComparisonPeriodBox.SelectedIndex = preset;
+            updatingComparisonChoices = false;
+            await TrackComparisonAsync();
+            if (
+                comparisonReport
+                    is not {
+                        Baseline: { } selectedBefore,
+                        Latest: { } selectedAfter
+                    } selectedReport
+                || SelectedBeforeText.Text
+                    != $"比較前：{selectedBefore.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                || SelectedAfterText.Text
+                    != $"比較後：{selectedAfter.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                || ComparisonStatusText.Text.StartsWith("履歴がある範囲のみ")
+                    != selectedReport.IsPartial
+            )
+                throw new InvalidOperationException(
+                    $"Preset {preset} did not show selected endpoints and coverage."
+                );
+        }
+        UpdateComparisonChoices([retainedChoices[0]]);
         await TrackComparisonAsync();
-        if (
-            comparisonReport is not null
-            || !ComparisonStatusText.Text.StartsWith("履歴不足")
-            || Ranking.Items.Count != 0
-        )
-            throw new InvalidOperationException("Missing daily baseline was silently substituted.");
+        if (comparisonReport is not null || !ComparisonStatusText.Text.StartsWith("履歴不足"))
+            throw new InvalidOperationException(
+                "One retained snapshot must not produce a zero change."
+            );
+        UpdateComparisonChoices(retainedChoices);
         updatingComparisonChoices = true;
         ComparisonPeriodBox.SelectedIndex = 8;
         updatingComparisonChoices = false;
@@ -449,6 +503,7 @@ public sealed partial class MainWindow
         {
             updatingComparisonChoices = true;
             ComparisonModeBox.SelectedIndex = 1;
+            ComparisonPeriodBox.SelectedIndex = 0;
             updatingComparisonChoices = false;
             await TrackComparisonAsync();
         }

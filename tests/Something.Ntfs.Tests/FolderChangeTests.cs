@@ -311,6 +311,41 @@ public sealed class FolderChangeTests
         public override DateTimeOffset GetUtcNow() => Now;
     }
 
+    [Theory]
+    [InlineData(FolderChangePeriod.Last24Hours)]
+    [InlineData(FolderChangePeriod.Last7Days)]
+    [InlineData(FolderChangePeriod.Last30Days)]
+    [InlineData(FolderChangePeriod.Last365Days)]
+    [InlineData(FolderChangePeriod.Today)]
+    [InlineData(FolderChangePeriod.ThisWeek)]
+    [InlineData(FolderChangePeriod.ThisMonth)]
+    [InlineData(FolderChangePeriod.ThisYear)]
+    public void PresetsCompareAvailableHistoryAndExposePartialCoverage(FolderChangePeriod period)
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Now.AddMinutes(-5), [new(20, "folder", 100)]);
+        var last = fixture.Save(Now.AddMinutes(-1), [new(20, "folder", 300)]);
+        fixture.Save(Now.AddMinutes(1), [new(20, "folder", 999)]);
+
+        var report = fixture.Archive.ReadFolderChanges("volume:A", period, Now, Token);
+
+        Assert.Equal(FolderComparisonAvailability.Available, report.Availability);
+        Assert.True(report.IsPartial);
+        Assert.Equal(first.Id, report.Baseline!.Id);
+        Assert.Equal(last.Id, report.Latest!.Id);
+        Assert.True(report.RequestedBaselineUtc < first.CompletedUtc);
+        Assert.Equal(new BigInteger(200), Assert.Single(report.ChangedFolders).AllocatedDelta);
+        var selected = ComparisonSelection.Resolve(
+            fixture.Archive.List("volume:A", Token),
+            period,
+            Now,
+            TimeZoneInfo.Utc
+        );
+        Assert.Equal(selected.Before!.Id, report.Baseline.Id);
+        Assert.Equal(selected.After!.Id, report.Latest.Id);
+        Assert.Equal(selected.IsPartial, report.IsPartial);
+    }
+
     [Fact]
     public async Task ExplicitScansCompareSignedSizesAndRejectWrongVolumeOrOrder()
     {
