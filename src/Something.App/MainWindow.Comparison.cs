@@ -112,6 +112,7 @@ public sealed partial class MainWindow
 
     private async Task TrackComparisonAsync()
     {
+        using var viewUpdate = BeginViewUpdate("比較条件を反映しています…");
         var task = RefreshComparisonAsync();
         historyTasks.Add(task);
         try
@@ -405,6 +406,7 @@ public sealed partial class MainWindow
     {
         if (history is null)
             throw new InvalidOperationException("Comparison smoke requires --demo-history.");
+        await VerifyViewUpdatesAsync();
         updatingComparisonChoices = true;
         ComparisonPeriodBox.SelectedIndex = 9;
         ComparisonBeforeBox.SelectedIndex = ComparisonBeforeBox.Items.Count - 1;

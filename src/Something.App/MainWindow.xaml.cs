@@ -438,6 +438,12 @@ public sealed partial class MainWindow : Window
             await Task.Run(() => history.Maintain(lifetime.Token), lifetime.Token);
             foreach (var card in cards)
             {
+                using var viewUpdate =
+                    selectedCard == card
+                        ? BeginViewUpdate(
+                            $"{card.Choice.Drive} の保存済みの結果を読み込んでいます…"
+                        )
+                        : null;
                 string key = demo
                     ? $"demo:{card.Choice.Drive}"
                     : await Task.Run(
@@ -564,6 +570,9 @@ public sealed partial class MainWindow : Window
 
     private async Task ChangeHistoryAsync(HistoryRow row)
     {
+        using var viewUpdate = BeginViewUpdate(
+            $"{row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} の記録を読み込んでいます…"
+        );
         var task = LoadHistorySelectionAsync(row);
         historyTasks.Add(task);
         try
@@ -650,6 +659,7 @@ public sealed partial class MainWindow : Window
     {
         if (closed || card == selectedCard)
             return;
+        using var viewUpdate = BeginViewUpdate($"{card.Choice.Drive} の表示に切り替えています…");
         selectedCard = card;
         await ClearComparisonAsync();
         if (closed || selectedCard != card)
@@ -712,10 +722,14 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowSessionAsync(ScanSession current)
     {
+        using var viewUpdate = BeginViewUpdate($"{current.Drive} の結果を表示しています…");
         navigation.Clear();
         forwardHistory.Clear();
         parentLocation = null;
         Folders.RootNodes.Clear();
+        Entries.ItemsSource = null;
+        EntryCountText.DataContext = null;
+        Ranking.ItemsSource = null;
         location = new(current.Root, current.Drive + "\\");
         var root = new TreeViewNode
         {
@@ -808,6 +822,9 @@ public sealed partial class MainWindow : Window
             {
                 if (selectedCard == card)
                 {
+                    using var viewUpdate = BeginViewUpdate(
+                        $"{drive} のスキャン結果を反映しています…"
+                    );
                     historyVersion++;
                     var oldHistory = historicalSession;
                     historicalSession = null;
@@ -941,6 +958,7 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || closed)
             return;
+        using var viewUpdate = BeginViewUpdate("フォルダーの内容を読み込んでいます…");
         int version = ++navigationVersion;
         listingCancellation?.Cancel();
         listingCancellation?.Dispose();
@@ -1384,6 +1402,7 @@ public sealed partial class MainWindow : Window
     {
         if (session is not { } current || closed)
             return;
+        using var viewUpdate = BeginViewUpdate("ランキングを読み込んでいます…");
         int version = ++rankingVersion;
         try
         {
