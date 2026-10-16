@@ -210,10 +210,17 @@ public sealed partial class ScanHistoryArchive
             transaction.Commit();
         }
         context.ChangeTracker.Clear();
+        CollectRetiredCore(store, CancellationToken.None);
+    }
+
+    private void CollectRetiredCore(ScanStore store, CancellationToken token)
+    {
+        var context = store.HistoryContext;
         foreach (
             var row in context.HistorySnapshots.AsNoTracking().Where(row => row.Retired).ToArray()
         )
         {
+            token.ThrowIfCancellationRequested();
             if (readers.ContainsKey(row.Id))
                 continue;
             try
@@ -229,6 +236,7 @@ public sealed partial class ScanHistoryArchive
                         FileShare.None
                     );
                     store.DeleteHistoryGeneration(row.Id);
+                    token.ThrowIfCancellationRequested();
                     transaction.Commit();
                 }
                 File.Delete(LeasePath(row.Id));

@@ -79,6 +79,7 @@ public sealed partial class MainWindow : Window
             : ScanHistoryArchive.CreateDefault();
         scanner = new(history);
         InitializeComparisonControls();
+        InitializeHistoryManagement();
         if (demo && history is null)
             HistoryBox.Visibility = Visibility.Collapsed;
         Title = "Something";
@@ -334,6 +335,8 @@ public sealed partial class MainWindow : Window
                 : null;
             if (loadingPreview is not null)
                 await Task.Delay(660, lifetime.Token);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
+                await VerifyHistoryManagementAsync();
             await bitmap.RenderAsync(WindowLayout);
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");
@@ -569,6 +572,7 @@ public sealed partial class MainWindow : Window
             UpdateComparisonLayout();
             if (Comparing && !applyingComparison && ComparisonNeedsRefresh())
                 await TrackComparisonAsync();
+            await RefreshManagementIfVisibleAsync();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)

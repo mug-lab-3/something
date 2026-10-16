@@ -7,6 +7,83 @@ namespace Something.Ntfs.Tests;
 
 public sealed class SharedHistoryTests
 {
+    [Fact]
+    public void ManualDeletionPreservesOtherScansSharedFactsAndIndependentReaders()
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Buffer(), Now.AddMinutes(-3));
+        var second = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        var otherVolume = fixture.Save(Buffer(key: "volume:B"), Now.AddMinutes(-1));
+        var independent = new ScanHistoryArchive(fixture.RootPath, fixture.Clock, TimeZoneInfo.Utc);
+        using var reader = independent.Open(first.Id, Token);
+
+        Assert.Equal(
+            new[] { first.Id },
+            fixture.Archive.Delete([first.Id, first.Id, Guid.NewGuid()], Token)
+        );
+        Assert.Equal(
+            new[] { otherVolume.Id, second.Id },
+            fixture.Archive.ListAll(Token).Select(row => row.Id)
+        );
+        Assert.Throws<InvalidOperationException>(() => fixture.Archive.Open(first.Id, Token));
+        Assert.Equal(1, fixture.Archive.CollectRetired(Token));
+        Assert.NotEmpty(reader.Store.ReadFiles(first.Id, Token));
+        reader.Dispose();
+
+        Assert.Equal(0, fixture.Archive.CollectRetired(Token));
+        using (var remaining = fixture.Writer())
+        {
+            var db = Assert.IsType<SharedHistoryDbContext>(remaining.HistoryContext);
+            Assert.False(db.Scans.Any(row => row.Id == first.Id));
+            Assert.NotEmpty(remaining.ReadFiles(second.Id, Token));
+            Assert.NotEmpty(remaining.ReadFiles(otherVolume.Id, Token));
+            Assert.Equal(
+                ListingIds(db, second.Id).Length,
+                db.Listings.Count(row => row.ScanId == second.Id)
+            );
+        }
+        Assert.Empty(fixture.Archive.Delete([first.Id], Token));
+        fixture.Archive.Delete([second.Id, otherVolume.Id], Token);
+        Assert.Equal(0, fixture.Archive.CollectRetired(Token));
+        Assert.Empty(fixture.Archive.ListAll(Token));
+        using var empty = fixture.Writer();
+        var context = Assert.IsType<SharedHistoryDbContext>(empty.HistoryContext);
+        Assert.Empty(context.HistorySnapshots);
+        Assert.Empty(context.Scans);
+        Assert.Empty(context.States);
+        Assert.Empty(context.Samples);
+        Assert.Empty(context.Entries);
+        Assert.Empty(context.Listings);
+    }
+
+    [Fact]
+    public void ManualDeletionHandlesEmptyUnknownBatchedAndCancelledRequests()
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        var second = fixture.Save(Buffer("size"), Now.AddMinutes(-1));
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Archive.Delete([first.Id, second.Id], cancelled.Token)
+        );
+        Assert.Equal(2, fixture.Archive.ListAll(Token).Length);
+        Assert.Empty(fixture.Archive.Delete([], Token));
+        var batch = Enumerable.Range(0, 257).Select(_ => Guid.NewGuid()).Append(first.Id).ToArray();
+        Assert.Equal(new[] { first.Id }, fixture.Archive.Delete(batch, Token));
+        Assert.Equal(second.Id, Assert.Single(fixture.Archive.ListAll(Token)).Id);
+        fixture.Archive.CollectRetired(Token);
+        using var remaining = fixture.Archive.Open(second.Id, Token);
+        Assert.Equal(
+            8192,
+            remaining
+                .Store.ReadFiles(second.Id, Token)
+                .Single(row => row.Reference.RecordIndex == 1000)
+                .Streams[0]
+                .AllocatedBytes
+        );
+    }
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private static readonly DateTimeOffset Now = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
     private static readonly FileReference Root = FileReference.Create(5, 1);

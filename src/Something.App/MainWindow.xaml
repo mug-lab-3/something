@@ -41,10 +41,38 @@
       >
         <StackPanel x:Name="DriveCards" Margin="0,0,0,16" Orientation="Horizontal" Spacing="12" />
       </ScrollViewer>
+      <TabView
+        x:Name="WorkspaceTabs"
+        Grid.Row="1"
+        Height="44"
+        SelectedIndex="0"
+        IsAddTabButtonVisible="False"
+        CanDragTabs="False"
+        CanReorderTabs="False"
+        TabWidthMode="SizeToContent"
+        SelectionChanged="OnWorkspaceChanged"
+      >
+        <TabViewItem Header="ファイル" IsClosable="False">
+          <TabViewItem.IconSource>
+            <SymbolIconSource Symbol="Folder" />
+          </TabViewItem.IconSource>
+        </TabViewItem>
+        <TabViewItem x:Name="DatabaseWorkspaceTab" Header="DB管理" IsClosable="False">
+          <TabViewItem.IconSource>
+            <FontIconSource Glyph="&#xE1D3;" />
+          </TabViewItem.IconSource>
+        </TabViewItem>
+      </TabView>
+      <local:HistoryManagementView
+        x:Name="HistoryManagement"
+        Grid.Row="2"
+        Grid.RowSpan="2"
+        Visibility="Collapsed"
+      />
       <ContentControl
         x:Name="ViewHost"
-        Grid.Row="1"
-        Grid.RowSpan="3"
+        Grid.Row="2"
+        Grid.RowSpan="2"
         HorizontalContentAlignment="Stretch"
         VerticalContentAlignment="Stretch"
       >
@@ -462,8 +490,8 @@
       </ContentControl>
       <Border
         x:Name="ViewLoadingOverlay"
-        Grid.Row="1"
-        Grid.RowSpan="3"
+        Grid.Row="2"
+        Grid.RowSpan="2"
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
         Visibility="Collapsed"
       >
