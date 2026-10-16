@@ -364,65 +364,81 @@ public sealed partial class ScanStore : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         _ = GetScan(scanId);
-        long after = -1;
-        while (true)
+        // Three ordered readers, not thousands of page queries against shared history
+        // views. Merge by full scan membership and record index; retain one file at a time.
+        using var names = context
+            .Names.AsNoTracking()
+            .Where(n => n.ScanId == scanId)
+            .OrderBy(n => n.RecordIndex)
+            .ThenBy(n => n.Ordinal)
+            .AsEnumerable()
+            .GetEnumerator();
+        using var streams = context
+            .Streams.AsNoTracking()
+            .Where(s => s.ScanId == scanId)
+            .OrderBy(s => s.RecordIndex)
+            .ThenBy(s => s.Ordinal)
+            .AsEnumerable()
+            .GetEnumerator();
+        bool hasName = names.MoveNext();
+        bool hasStream = streams.MoveNext();
+        foreach (
+            var row in context
+                .Observations.AsNoTracking()
+                .Where(o => o.ScanId == scanId && o.Sequence != null)
+                .OrderBy(o => o.RecordIndex)
+                .AsEnumerable()
+        )
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var page = context
-                .Observations.AsNoTracking()
-                .Where(o => o.ScanId == scanId && o.Sequence != null && o.RecordIndex > after)
-                .OrderBy(o => o.RecordIndex)
-                .Take(MaximumBatchSize)
-                .ToArray();
-            if (page.Length == 0)
-                yield break;
-            long end = page[^1].RecordIndex;
-            var names = context
-                .Names.AsNoTracking()
-                .Where(n => n.ScanId == scanId && n.RecordIndex > after && n.RecordIndex <= end)
-                .AsEnumerable()
-                .ToLookup(n => n.RecordIndex);
-            cancellationToken.ThrowIfCancellationRequested();
-            var streams = context
-                .Streams.AsNoTracking()
-                .Where(s => s.ScanId == scanId && s.RecordIndex > after && s.RecordIndex <= end)
-                .AsEnumerable()
-                .ToLookup(s => s.RecordIndex);
-            foreach (var row in page)
+            var fileNames = ImmutableArray.CreateBuilder<NtfsFileName>();
+            var fileStreams = ImmutableArray.CreateBuilder<StreamCapacity>();
+            while (hasName && names.Current.RecordIndex < row.RecordIndex)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (
-                    row.Domain is not { } domain
-                    || !Enum.IsDefined(domain)
-                    || row.Resolution is not { } resolution
-                    || !Enum.IsDefined(resolution)
-                    || row.IsDirectory is not { } directory
-                    || row.LinksComplete is not { } complete
-                    || (
-                        resolution == CapacityResolution.Unresolved
-                        && streams[row.RecordIndex].Any()
-                    )
-                )
-                    throw new InvalidDataException("Stored file state or capacity is invalid.");
-                yield return new(
-                    FileReference.Create(checked((ulong)row.RecordIndex), row.Sequence!.Value),
-                    directory,
-                    domain,
-                    resolution,
-                    [.. names[row.RecordIndex].OrderBy(n => n.Ordinal).Select(ToName)],
-                    [
-                        .. streams[row.RecordIndex]
-                            .OrderBy(s => s.Ordinal)
-                            .Select(s => new StreamCapacity(s.Name, s.Logical, s.Allocated)),
-                    ],
-                    complete
-                )
-                {
-                    ObservedHardLinkCount = row.ObservedLinkCount,
-                    StandardFileAttributes = row.StandardFileAttributes,
-                };
+                hasName = names.MoveNext();
             }
-            after = page[^1].RecordIndex;
+            while (hasName && names.Current.RecordIndex == row.RecordIndex)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                fileNames.Add(ToName(names.Current));
+                hasName = names.MoveNext();
+            }
+            while (hasStream && streams.Current.RecordIndex < row.RecordIndex)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                hasStream = streams.MoveNext();
+            }
+            while (hasStream && streams.Current.RecordIndex == row.RecordIndex)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var stream = streams.Current;
+                fileStreams.Add(new(stream.Name, stream.Logical, stream.Allocated));
+                hasStream = streams.MoveNext();
+            }
+            if (
+                row.Domain is not { } domain
+                || !Enum.IsDefined(domain)
+                || row.Resolution is not { } resolution
+                || !Enum.IsDefined(resolution)
+                || row.IsDirectory is not { } directory
+                || row.LinksComplete is not { } complete
+                || (resolution == CapacityResolution.Unresolved && fileStreams.Count != 0)
+            )
+                throw new InvalidDataException("Stored file state or capacity is invalid.");
+            yield return new(
+                FileReference.Create(checked((ulong)row.RecordIndex), row.Sequence!.Value),
+                directory,
+                domain,
+                resolution,
+                fileNames.ToImmutable(),
+                fileStreams.ToImmutable(),
+                complete
+            )
+            {
+                ObservedHardLinkCount = row.ObservedLinkCount,
+                StandardFileAttributes = row.StandardFileAttributes,
+            };
         }
     }
 

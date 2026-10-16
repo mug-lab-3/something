@@ -7,6 +7,49 @@ namespace Something.Ntfs.Tests;
 
 public sealed class SharedHistoryTests
 {
+    [Fact]
+    public void SequentialFactsPreserveAllNamesAndStreamsAcrossSharedGenerationsAndEarlyDisposal()
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Save(Buffer(count: 2505, aliases: true), Now.AddMinutes(-3));
+        var after = fixture.Save(Buffer("size", count: 2505, aliases: true), Now.AddMinutes(-2));
+        using var store = fixture.Writer();
+        var baseline = store.ReadFiles(before.Id, Token).ToArray();
+        var current = store.ReadFiles(after.Id, Token).ToArray();
+
+        Assert.Equal(2508, baseline.Length);
+        Assert.Equal(baseline.Select(f => f.Reference), current.Select(f => f.Reference));
+        foreach (var file in current.Where(f => !f.IsDirectory))
+        {
+            Assert.Equal(3, file.Names.Length);
+            Assert.Equal(2, file.Streams.Length);
+            Assert.Contains(file.Names, n => n.Namespace == FileNameNamespace.Dos);
+        }
+        Assert.Equal(
+            4096,
+            baseline.Single(f => f.Reference.RecordIndex == 1000).Streams[0].AllocatedBytes
+        );
+        Assert.Equal(
+            8192,
+            current.Single(f => f.Reference.RecordIndex == 1000).Streams[0].AllocatedBytes
+        );
+        Assert.Single(store.ReadFiles(after.Id, Token).Take(1));
+        Assert.Equal(current.Length, store.ReadFiles(after.Id, Token).Count());
+        using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token))
+        using (var interrupted = store.ReadFiles(after.Id, cancellation.Token).GetEnumerator())
+        {
+            Assert.True(interrupted.MoveNext());
+            cancellation.Cancel();
+            Assert.ThrowsAny<OperationCanceledException>(() => interrupted.MoveNext());
+        }
+        Assert.Equal(current.Length, store.ReadFiles(after.Id, Token).Count());
+        var all = store.ReadAllFolderEntries(after.Id, Folder, Token);
+        Assert.Equal(2505, all.Length);
+        Assert.Equal(2505, all.Select(e => (e.Reference, e.NameOrdinal)).Distinct().Count());
+        Assert.Equal(8192UL, all[0].Data!.Value.AllocatedBytes);
+        Assert.Equal(3, store.ReadVisibilityFolders(after.Id, Token).Count());
+    }
+
     [Theory]
     [InlineData(0u)]
     [InlineData(2u)]

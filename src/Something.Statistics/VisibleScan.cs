@@ -3,6 +3,12 @@ using Something.Ntfs;
 
 namespace Something.Statistics;
 
+public sealed record FolderVisibilityObservation(
+    FileReference Reference,
+    ImmutableArray<FileReference> Parents,
+    uint? StandardFileAttributes
+);
+
 /// <summary>A replaceable read-time projection. Never changes acquired or persisted facts.</summary>
 public sealed class VisibleScan
 {
@@ -14,11 +20,26 @@ public sealed class VisibleScan
         FileReference root,
         Func<IEnumerable<FileCapacityObservation>> readFiles,
         FileVisibilityOptions options,
-        CancellationToken token = default
+        CancellationToken token = default,
+        IEnumerable<FolderVisibilityObservation>? directoryObservations = null
     )
     {
         token.ThrowIfCancellationRequested();
-        var directories = readFiles().Where(f => f.IsDirectory).ToArray();
+        var directories = (
+            directoryObservations
+            ?? readFiles()
+                .Where(f => f.IsDirectory)
+                .Select(f => new FolderVisibilityObservation(
+                    f.Reference,
+                    [
+                        .. f
+                            .Names.Where(n => n.Namespace != FileNameNamespace.Dos)
+                            .Select(n => n.Parent)
+                            .Distinct(),
+                    ],
+                    f.StandardFileAttributes
+                ))
+        ).ToArray();
         var graph = FolderGraph.Build(root, directories.Select(ToFolder), token);
         var excluded = directories
             .Where(f => f.Reference != root && !options.Includes(f.StandardFileAttributes))
@@ -71,14 +92,6 @@ public sealed class VisibleScan
         }
     }
 
-    private static FolderObservation ToFolder(FileCapacityObservation file) =>
-        new(
-            file.Reference,
-            [
-                .. file
-                    .Names.Where(n => n.Namespace != FileNameNamespace.Dos)
-                    .Select(n => n.Parent)
-                    .Distinct(),
-            ]
-        );
+    private static FolderObservation ToFolder(FolderVisibilityObservation folder) =>
+        new(folder.Reference, folder.Parents);
 }

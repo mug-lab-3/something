@@ -9,6 +9,20 @@ public sealed partial class ScanSession
 {
     private FileVisibilityOptions visibility = new();
     private VisibleScan? visibleScan;
+    private readonly Dictionary<FileVisibilityOptions, VisibleScan> visibilityCache = [];
+    private readonly Dictionary<FileVisibilityOptions, RankedFolder[]> analysisCache = [];
+    private FolderVisibilityObservation[]? visibilityFolders;
+    private FolderGraph? sourceFolderGraph;
+    private readonly Dictionary<RootPageKey, FolderEntryPage> rootPageCache = [];
+
+    private readonly record struct RootPageKey(
+        FileVisibilityOptions Options,
+        bool DirectoriesOnly,
+        FolderEntrySort Sort,
+        bool IncludeTotalCount,
+        bool Descending
+    );
+
     private FileReference? cachedVisibleParent;
     private FolderEntry[] cachedVisibleEntries = [];
     private (bool DirectoriesOnly, FolderEntrySort Sort, bool Descending)? cachedVisibleOrder;
@@ -24,13 +38,23 @@ public sealed partial class ScanSession
             ObjectDisposedException.ThrowIf(disposed, this);
             if (options == visibility)
                 return;
-            var projection = options.IncludesAll
-                ? null
-                : await Task.Run(
+            VisibleScan? projection = null;
+            if (!options.IncludesAll && !visibilityCache.TryGetValue(options, out projection))
+            {
+                projection = await Task.Run(
                     () =>
-                        new VisibleScan(Root, () => store.ReadFiles(ScanId, token), options, token),
+                        new VisibleScan(
+                            Root,
+                            () => store.ReadFiles(ScanId, token),
+                            options,
+                            token,
+                            ReadVisibilityFolders(token)
+                        ),
                     token
                 );
+                token.ThrowIfCancellationRequested();
+                visibilityCache.Add(options, projection);
+            }
             token.ThrowIfCancellationRequested();
             visibleScan = projection;
             visibility = options;
@@ -65,44 +89,30 @@ public sealed partial class ScanSession
         if (cachedVisibleParent != parent)
         {
             var rows = new List<FolderEntry>();
-            for (int sourcePage = 0; ; sourcePage = checked(sourcePage + 1))
+            foreach (var entry in store.ReadAllFolderEntries(ScanId, parent, token))
             {
                 token.ThrowIfCancellationRequested();
-                var source = store.ReadFolderEntries(
-                    ScanId,
-                    parent,
-                    sourcePage,
-                    cancellationToken: token
-                );
-                foreach (var entry in source.Entries)
-                {
-                    if (
-                        !visibility.Includes(entry.StandardFileAttributes)
-                        || projection.ExcludedFolders.Contains(entry.Reference)
-                    )
-                        continue;
-                    if (
-                        entry.IsDirectory
-                        && projection.Aggregation.Folders.TryGetValue(
-                            entry.Reference,
-                            out var folder
-                        )
-                    )
-                        rows.Add(
-                            entry with
-                            {
-                                Data = folder.Entries!.SubtreeData,
-                                CapacityIncomplete =
-                                    !folder.DirectoryCapacityObserved
-                                    || folder.SubtreeUnobservedDirectoryCount != 0
-                                    || folder.Entries.SubtreeUnresolvedCount != 0,
-                            }
-                        );
-                    else
-                        rows.Add(entry);
-                }
-                if (!source.HasMore)
-                    break;
+                if (
+                    !visibility.Includes(entry.StandardFileAttributes)
+                    || projection.ExcludedFolders.Contains(entry.Reference)
+                )
+                    continue;
+                if (
+                    entry.IsDirectory
+                    && projection.Aggregation.Folders.TryGetValue(entry.Reference, out var folder)
+                )
+                    rows.Add(
+                        entry with
+                        {
+                            Data = folder.Entries!.SubtreeData,
+                            CapacityIncomplete =
+                                !folder.DirectoryCapacityObserved
+                                || folder.SubtreeUnobservedDirectoryCount != 0
+                                || folder.Entries.SubtreeUnresolvedCount != 0,
+                        }
+                    );
+                else
+                    rows.Add(entry);
             }
             token.ThrowIfCancellationRequested();
             cachedVisibleEntries = rows.ToArray();
@@ -136,7 +146,16 @@ public sealed partial class ScanSession
         );
     }
 
-    private RankedFolder[] ReadVisibleAnalysis(
+    private FolderVisibilityObservation[] ReadVisibilityFolders(CancellationToken token)
+    {
+        if (visibilityFolders is { } cached)
+            return cached;
+        var folders = store.ReadVisibilityFolders(ScanId, token).ToArray();
+        token.ThrowIfCancellationRequested();
+        return visibilityFolders = folders;
+    }
+
+    private RankedFolder[] ReadAnalysis(
         FolderRankingFilter filter,
         CancellationToken token,
         FolderEntrySort sort
@@ -144,30 +163,78 @@ public sealed partial class ScanSession
     {
         if (filter.Depth is < 1)
             throw new ArgumentOutOfRangeException(nameof(filter));
-        // Read full paths using the same validated hierarchy as the unfiltered browser.
-        var rows = store
-            .ReadFolderAnalysis(ScanId, new(), token, sort)
-            .Where(r => !visibleScan!.ExcludedFolders.Contains(r.Sample.Reference))
-            .Select(r => r with { Sample = visibleScan!.Aggregation.Folders[r.Sample.Reference] })
-            .ToArray();
-        var graph = visibleScan!.Graph;
+        if (!Enum.IsDefined(sort))
+            throw new ArgumentOutOfRangeException(nameof(sort));
+        token.ThrowIfCancellationRequested();
+        if (!analysisCache.TryGetValue(visibility, out var rows))
+        {
+            var all = new FileVisibilityOptions();
+            if (!analysisCache.TryGetValue(all, out var source))
+            {
+                source = store.ReadFolderAnalysis(ScanId, new(), token).ToArray();
+                token.ThrowIfCancellationRequested();
+                analysisCache.Add(all, source);
+            }
+            if (visibleScan is { } projection)
+            {
+                rows = source
+                    .Where(r => !projection.ExcludedFolders.Contains(r.Sample.Reference))
+                    .Select(r =>
+                    {
+                        token.ThrowIfCancellationRequested();
+                        return r with
+                        {
+                            Sample = projection.Aggregation.Folders[r.Sample.Reference],
+                        };
+                    })
+                    .ToArray();
+                token.ThrowIfCancellationRequested();
+                analysisCache.Add(visibility, rows);
+            }
+            else
+                rows = source;
+        }
+        // Depth and leaf membership use validated identities, never split display paths.
+        var graph =
+            filter.LeafOnly || filter.Depth is not null
+                ? visibleScan?.Graph
+                    ?? (
+                        sourceFolderGraph ??= FolderGraph.Build(
+                            Root,
+                            ReadVisibilityFolders(token)
+                                .Select(f => new FolderObservation(f.Reference, f.Parents)),
+                            token
+                        )
+                    )
+                : null;
         var parents = filter.LeafOnly
-            ? graph
-                .Nodes.Values.Where(n =>
-                    n.Depth is not null && n.Parent is not null && n.Parent != n.Reference
-                )
-                .Select(n => n.Parent!.Value)
-                .ToHashSet()
+            ? rows.Select(r => graph!.Nodes[r.Sample.Reference].Parent!.Value).ToHashSet()
             : [];
-        return rows.Where(r =>
+        var result = rows.Where(r =>
                 (!filter.LeafOnly || !parents.Contains(r.Sample.Reference))
-                && (filter.Depth is null || graph.Nodes[r.Sample.Reference].Depth == filter.Depth)
+                && (filter.Depth is null || graph!.Nodes[r.Sample.Reference].Depth == filter.Depth)
             )
             .OrderByDescending(r =>
                 sort == FolderEntrySort.AllocatedBytes ? r.Data.AllocatedBytes : r.Data.LogicalBytes
             )
             .ThenBy(r => r.Sample.Reference.RecordIndex)
             .ToArray();
+        token.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private void ClearDisplayCaches()
+    {
+        visibilityCache.Clear();
+        analysisCache.Clear();
+        rootPageCache.Clear();
+        visibleScan = null;
+        visibilityFolders = null;
+        sourceFolderGraph = null;
+        cachedVisibleParent = null;
+        cachedVisibleEntries = [];
+        cachedVisibleOrder = null;
+        orderedVisibleEntries = [];
     }
 
     /// <summary>Recalculate both endpoints with the same read-time policy. Missing facts stay unknown.</summary>

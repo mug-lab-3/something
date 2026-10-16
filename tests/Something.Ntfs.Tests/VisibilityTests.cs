@@ -9,6 +9,42 @@ namespace Something.Ntfs.Tests;
 
 public sealed class VisibilityTests
 {
+    [Fact]
+    public void CompactDirectoryFactsAvoidASecondFullObservationRead()
+    {
+        var facts = Facts();
+        int fullReads = 0;
+        var directories = facts
+            .Where(f => f.IsDirectory)
+            .Select(f => new FolderVisibilityObservation(
+                f.Reference,
+                [
+                    .. f
+                        .Names.Where(n => n.Namespace != FileNameNamespace.Dos)
+                        .Select(n => n.Parent)
+                        .Distinct(),
+                ],
+                f.StandardFileAttributes
+            ));
+        var projection = new VisibleScan(
+            Root,
+            () =>
+            {
+                fullReads++;
+                return facts;
+            },
+            new(false, false),
+            TestContext.Current.CancellationToken,
+            directories
+        );
+
+        Assert.Equal(1, fullReads);
+        Assert.Equal(
+            (UInt128)160,
+            projection.Aggregation.Folders[Root].Entries!.SubtreeData.AllocatedBytes
+        );
+    }
+
     private static FileReference Ref(ulong index, ushort sequence = 1) =>
         FileReference.Create(index, sequence);
 
@@ -361,6 +397,119 @@ public sealed class VisibilityTests
             session.SetVisibilityAsync(new(), cancellation.Token)
         );
         Assert.Equal((UInt128)160, session.RootSample.Entries!.SubtreeData.AllocatedBytes);
+    }
+
+    [Fact]
+    public async Task ReturningToEachSettingReusesItsProjectionRootListingAndAnalysis()
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var session = await CreateSession(Facts(), token);
+        (FileVisibilityOptions Options, UInt128 Bytes)[] choices =
+        [
+            (new(), 440),
+            (new(false, true), 310),
+            (new(true, false), 250),
+            (new(false, false), 160),
+        ];
+        var cached =
+            new Dictionary<
+                FileVisibilityOptions,
+                (FolderCapacitySample Root, FolderEntryPage Page, RankedFolder[] Analysis)
+            >();
+        foreach (var (options, bytes) in choices)
+        {
+            await session.SetVisibilityAsync(options, token);
+            var page = await session.ReadFolderAsync(
+                Root,
+                0,
+                false,
+                token,
+                includeTotalCount: true
+            );
+            var analysis = await session.ReadFolderAnalysisAsync(new(), token);
+            Assert.Equal(bytes, session.RootSample.Entries!.SubtreeData.AllocatedBytes);
+            cached.Add(options, (session.RootSample, page, analysis));
+        }
+        foreach (var (options, bytes) in choices)
+        {
+            await session.SetVisibilityAsync(options, token);
+            Assert.Same(cached[options].Root, session.RootSample);
+            Assert.Equal(bytes, session.RootSample.Entries!.SubtreeData.AllocatedBytes);
+            Assert.Same(
+                cached[options].Page,
+                await session.ReadFolderAsync(Root, 0, false, token, includeTotalCount: true)
+            );
+            var analysis = await session.ReadFolderAnalysisAsync(new(), token);
+            Assert.NotSame(cached[options].Analysis, analysis);
+            Assert.All(
+                cached[options].Analysis.Zip(analysis),
+                pair => Assert.Same(pair.First, pair.Second)
+            );
+        }
+    }
+
+    [Fact]
+    public async Task DistinctScanSessionsNeverReuseAnotherScansCachedTotals()
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var first = await CreateSession(Facts(), token);
+        await using var second = await CreateSession(Facts(20, 40), token);
+        await first.SetVisibilityAsync(new(false, false), token);
+        var originalRoot = first.RootSample;
+        var originalPage = await first.ReadFolderAsync(Root, 0, false, token);
+        var originalAnalysis = await first.ReadFolderAnalysisAsync(new(), token);
+        await second.SetVisibilityAsync(new(false, false), token);
+        Assert.NotEqual(first.ScanId, second.ScanId);
+        Assert.NotSame(originalRoot, second.RootSample);
+        Assert.Equal((UInt128)170, second.RootSample.Entries!.SubtreeData.AllocatedBytes);
+        Assert.Equal(
+            (UInt128)170,
+            Assert.Single(await second.ReadFolderAnalysisAsync(new(), token)).Data.AllocatedBytes
+        );
+        Assert.Same(originalRoot, first.RootSample);
+        Assert.Same(originalPage, await first.ReadFolderAsync(Root, 0, false, token));
+        Assert.Same(
+            originalAnalysis[0],
+            Assert.Single(await first.ReadFolderAnalysisAsync(new(), token))
+        );
+        Assert.Equal((UInt128)160, first.RootSample.Entries!.SubtreeData.AllocatedBytes);
+    }
+
+    [Fact]
+    public async Task CachedAnalysisStillAppliesDepthLeafAndSortAndDoesNotExposeItsArray()
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var session = await CreateSession(Facts(), token);
+        var all = await session.ReadFolderAnalysisAsync(new(), token);
+        Array.Reverse(all);
+        Assert.Equal(
+            Ref(20),
+            (await session.ReadFolderAnalysisAsync(new(), token))[0].Sample.Reference
+        );
+        var leaves = await session.ReadFolderAnalysisAsync(new(LeafOnly: true), token);
+        Assert.Equal(
+            new[] { Ref(22), Ref(23) },
+            leaves.Select(r => r.Sample.Reference).OrderBy(r => r.RecordIndex)
+        );
+        Assert.Single(await session.ReadFolderAnalysisAsync(new(Depth: 1), token));
+        await session.SetVisibilityAsync(new(false, false), token);
+        Assert.Single(await session.ReadFolderAnalysisAsync(new(Depth: 1, LeafOnly: true), token));
+        Assert.Empty(await session.ReadFolderAnalysisAsync(new(Depth: 2), token));
+        await session.SetVisibilityAsync(new(), token);
+        var reversed = await session.ReadFolderAsync(Root, 0, false, token, descending: false);
+        Assert.Equal(Ref(20), Assert.Single(reversed.Entries).Reference);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            session.ReadFolderAsync(Root, 0, false, cancellation.Token)
+        );
+        await session.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            session.ReadFolderAsync(Root, 0, false, token)
+        );
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            session.ReadFolderAnalysisAsync(new(), token)
+        );
     }
 
     [Fact]

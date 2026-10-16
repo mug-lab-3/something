@@ -184,7 +184,17 @@ public sealed partial class ScanSession : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            return await Task.Run(
+            var cacheKey = new RootPageKey(
+                visibility,
+                directoriesOnly,
+                sort,
+                includeTotalCount,
+                descending
+            );
+            token.ThrowIfCancellationRequested();
+            if (parent == Root && page == 0 && rootPageCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+            var result = await Task.Run(
                 () =>
                     visibleScan is not null
                         ? ReadVisibleFolder(
@@ -208,6 +218,10 @@ public sealed partial class ScanSession : IAsyncDisposable
                         ),
                 token
             );
+            token.ThrowIfCancellationRequested();
+            if (parent == Root && page == 0)
+                rootPageCache[cacheKey] = result;
+            return result;
         }
         finally
         {
@@ -225,13 +239,7 @@ public sealed partial class ScanSession : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            return await Task.Run(
-                () =>
-                    visibleScan is not null
-                        ? ReadVisibleAnalysis(filter, token, sort)
-                        : store.ReadFolderAnalysis(ScanId, filter, token, sort).ToArray(),
-                token
-            );
+            return await Task.Run(() => ReadAnalysis(filter, token, sort), token);
         }
         finally
         {
@@ -247,6 +255,7 @@ public sealed partial class ScanSession : IAsyncDisposable
             if (disposed)
                 return;
             disposed = true;
+            ClearDisplayCaches();
             await Task.Run(database.Dispose);
         }
         finally

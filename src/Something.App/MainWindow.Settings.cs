@@ -143,10 +143,34 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "Display settings did not apply consistently to unknown attributes."
             );
+        var filteredRoot = current.RootSample;
+        var filteredPage = await current.ReadFolderAsync(current.Root, 0, false, lifetime.Token);
+        var filteredAnalysis = await current.ReadFolderAnalysisAsync(new(), lifetime.Token);
         await SelectDriveAsync(cards[1]);
         await SelectDriveAsync(cards[0]);
+        if (
+            session != current
+            || !ReferenceEquals(current.RootSample, filteredRoot)
+            || !ReferenceEquals(
+                filteredPage,
+                await current.ReadFolderAsync(current.Root, 0, false, lifetime.Token)
+            )
+            || !ReferenceEquals(
+                filteredAnalysis[0],
+                (await current.ReadFolderAnalysisAsync(new(), lifetime.Token))[0]
+            )
+        )
+            throw new InvalidOperationException(
+                "Drive navigation did not reuse its cached projection, root listing and analysis."
+            );
         if (IncludeSystemItem.IsChecked || IncludeHiddenItem.IsChecked || Entries.Items.Count != 3)
             throw new InvalidOperationException("Drive navigation lost the display settings.");
+        await ChangeVisibilityAsync(new());
+        await ChangeVisibilityAsync(new(false, false));
+        if (!ReferenceEquals(current.RootSample, filteredRoot))
+            throw new InvalidOperationException(
+                "Returning to a setting recalculated its projection."
+            );
         await ChangeVisibilityAsync(new());
         if (
             !IncludeSystemItem.IsChecked

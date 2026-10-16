@@ -25,6 +25,11 @@
       Padding="24"
       RowSpacing="16"
     >
+      <Grid.Resources>
+        <x:String x:Key="SizeAccountingDescription">
+          サイズはディスク上の割り当て容量（DATA）です。フォルダはサブフォルダ込みで集計し、ハードリンクは名前ごとに計上します。リンク先はたどりません。表示はスキャン取得時点の観測です。
+        </x:String>
+      </Grid.Resources>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
@@ -174,15 +179,6 @@
                   AutomationProperties.Name="比較前のスキャン"
                 />
               </StackPanel>
-              <Button
-                Background="Transparent"
-                BorderThickness="0"
-                VerticalAlignment="Bottom"
-                AutomationProperties.Name="サイズ集計について"
-                ToolTipService.ToolTip="サイズはディスク上のDATA容量です。フォルダはサブフォルダ込みで集計し、ハードリンクは名前ごとに計上します。リンク先はたどりません。表示はスキャン取得時点の観測です。"
-              >
-                <FontIcon Glyph="&#xE946;" FontSize="16" />
-              </Button>
             </StackPanel>
             <Border
               x:Name="ComparisonRangePanel"
@@ -376,11 +372,20 @@
                         Grid.Column="2"
                         x:Name="SizeColumnText"
                         Content="サイズ"
-                        ToolTipService.ToolTip="ディスク上の割り当て容量"
                         Tag="Size"
                         Click="OnEntrySort"
                         Style="{StaticResource ColumnHeaderButtonStyle}"
-                      />
+                      >
+                        <ToolTipService.ToolTip>
+                          <ToolTip>
+                            <TextBlock
+                              Text="{StaticResource SizeAccountingDescription}"
+                              TextWrapping="Wrap"
+                              MaxWidth="360"
+                            />
+                          </ToolTip>
+                        </ToolTipService.ToolTip>
+                      </Button>
                       <Button
                         x:Name="ChangeHeader"
                         Grid.Column="3"
@@ -499,7 +504,17 @@
                       Tag="Size"
                       Click="OnAnalysisSort"
                       Style="{StaticResource ColumnHeaderButtonStyle}"
-                    />
+                    >
+                      <ToolTipService.ToolTip>
+                        <ToolTip>
+                          <TextBlock
+                            Text="{StaticResource SizeAccountingDescription}"
+                            TextWrapping="Wrap"
+                            MaxWidth="360"
+                          />
+                        </ToolTip>
+                      </ToolTipService.ToolTip>
+                    </Button>
                   </Grid>
                   <ListView
                     x:Name="Ranking"

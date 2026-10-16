@@ -108,12 +108,56 @@ public sealed partial class ScanStore
         bool descending = true
     )
     {
+        if (page < 0 || pageSize is < 1 or > 1000)
+            throw new ArgumentOutOfRangeException(nameof(page));
+        return ReadFolderEntriesCore(
+            scanId,
+            parent,
+            page,
+            pageSize,
+            directoriesOnly,
+            cancellationToken,
+            sort,
+            includeTotalCount,
+            descending
+        );
+    }
+
+    /// <summary>Reads one folder once before in-memory filtering, sorting and pagination.
+    /// Does not repeat the same DB query for every 250 visible entries.</summary>
+    public ImmutableArray<FolderEntry> ReadAllFolderEntries(
+        Guid scanId,
+        FileReference parent,
+        CancellationToken cancellationToken = default
+    ) =>
+        ReadFolderEntriesCore(
+            scanId,
+            parent,
+            0,
+            null,
+            false,
+            cancellationToken,
+            FolderEntrySort.AllocatedBytes,
+            false,
+            true
+        ).Entries;
+
+    private FolderEntryPage ReadFolderEntriesCore(
+        Guid scanId,
+        FileReference parent,
+        int page,
+        int? pageSize,
+        bool directoriesOnly,
+        CancellationToken cancellationToken,
+        FolderEntrySort sort,
+        bool includeTotalCount,
+        bool descending
+    )
+    {
         cancellationToken.ThrowIfCancellationRequested();
         if (!Enum.IsDefined(sort))
             throw new ArgumentOutOfRangeException(nameof(sort));
-        if (page < 0 || pageSize is < 1 or > 1000)
-            throw new ArgumentOutOfRangeException(nameof(page));
-        int offset = checked(page * pageSize);
+        int offset = checked(page * (pageSize ?? 0));
         RequireCompleted(scanId);
         long parentIndex = checked((long)parent.RecordIndex);
         if (
@@ -243,14 +287,12 @@ public sealed partial class ScanStore
                     .OrderByDescending(r => r.IsDirectory)
                     .ThenByDescending(r => r.FolderLogical)
                     .ThenByDescending(r => r.StreamLogical);
-        var rows = ordered
-            .ThenBy(r => r.RecordIndex)
-            .ThenBy(r => r.Ordinal)
-            .Skip(offset)
-            .Take(pageSize + 1)
-            .ToArray();
+        var complete = ordered.ThenBy(r => r.RecordIndex).ThenBy(r => r.Ordinal);
+        var rows = (
+            pageSize is { } size ? complete.Skip(offset).Take(checked(size + 1)) : complete
+        ).ToArray();
         var entries = ImmutableArray.CreateBuilder<FolderEntry>();
-        foreach (var row in rows.Take(pageSize))
+        foreach (var row in rows.Take(pageSize ?? rows.Length))
         {
             cancellationToken.ThrowIfCancellationRequested();
             bool directory = row.IsDirectory!.Value;
@@ -284,6 +326,6 @@ public sealed partial class ScanStore
                 }
             );
         }
-        return new(entries.ToImmutable(), rows.Length > pageSize, totalCount);
+        return new(entries.ToImmutable(), pageSize is { } limit && rows.Length > limit, totalCount);
     }
 }
