@@ -20,73 +20,135 @@
     >
       <StackPanel x:Name="SelectionControls" Spacing="12">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <StackPanel Spacing="4">
-            <TextBlock Text="開始日時（指定なしなら最初から）" FontSize="12" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <CalendarDatePicker
-                x:Name="FromDate"
-                DateChanged="OnDateChanged"
-                Width="155"
-                PlaceholderText="指定なし"
+          <Border
+            CornerRadius="6"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+            Background="{ThemeResource ControlFillColorDefaultBrush}"
+            Padding="4"
+          >
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Button
+                x:Name="FromRangeButton"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="12,8"
+                AutomationProperties.Name="範囲の開始日時"
+                ToolTipService.ToolTip="範囲の開始日時を編集"
+              >
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <FontIcon Glyph="&#xE787;" FontSize="16" />
+                  <TextBlock x:Name="FromValueText" Text="最初の記録" MinWidth="160" />
+                </StackPanel>
+                <Button.Flyout>
+                  <Flyout Placement="Bottom">
+                    <StackPanel Spacing="12">
+                      <CalendarDatePicker
+                        x:Name="FromDate"
+                        DateChanged="OnDateChanged"
+                        Width="220"
+                        PlaceholderText="最初の記録"
+                        AutomationProperties.Name="開始日"
+                      />
+                      <TimePicker
+                        x:Name="FromTime"
+                        ClockIdentifier="24HourClock"
+                        TimeChanged="OnTimeChanged"
+                        AutomationProperties.Name="開始時刻"
+                      />
+                    </StackPanel>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <TextBlock
+                Text="–"
+                VerticalAlignment="Center"
+                Margin="4,0"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
               />
-              <TimePicker
-                x:Name="FromTime"
-                ClockIdentifier="24HourClock"
-                TimeChanged="OnTimeChanged"
-              />
+              <Button
+                x:Name="EndRangeButton"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="12,8"
+                AutomationProperties.Name="範囲の終了日時"
+                ToolTipService.ToolTip="範囲の終了日時を編集"
+              >
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock x:Name="EndValueText" Text="最新の記録" MinWidth="160" />
+                  <FontIcon Glyph="&#xE787;" FontSize="16" />
+                </StackPanel>
+                <Button.Flyout>
+                  <Flyout Placement="Bottom">
+                    <StackPanel Spacing="12">
+                      <CalendarDatePicker
+                        x:Name="EndDate"
+                        DateChanged="OnDateChanged"
+                        Width="220"
+                        PlaceholderText="最新の記録"
+                        AutomationProperties.Name="終了日"
+                      />
+                      <TimePicker
+                        x:Name="EndTime"
+                        ClockIdentifier="24HourClock"
+                        TimeChanged="OnTimeChanged"
+                        AutomationProperties.Name="終了時刻"
+                      />
+                    </StackPanel>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <Button
+                x:Name="ClearRangeButton"
+                Click="OnClearRange"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="8"
+                VerticalAlignment="Center"
+                ToolTipService.ToolTip="範囲の入力をクリア"
+                AutomationProperties.Name="範囲の入力をクリア"
+              >
+                <FontIcon Glyph="&#xE711;" FontSize="12" />
+              </Button>
             </StackPanel>
-          </StackPanel>
-          <StackPanel Spacing="4">
-            <TextBlock Text="終了日時（指定なしなら最新まで）" FontSize="12" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <CalendarDatePicker
-                x:Name="EndDate"
-                DateChanged="OnDateChanged"
-                Width="155"
-                PlaceholderText="指定なし"
-              />
-              <TimePicker
-                x:Name="EndTime"
-                ClockIdentifier="24HourClock"
-                TimeChanged="OnTimeChanged"
-              />
-            </StackPanel>
-          </StackPanel>
+          </Border>
+          <Button
+            x:Name="ApplyRangeButton"
+            Content="範囲で選択"
+            Click="OnApplyRange"
+            VerticalAlignment="Center"
+          />
         </StackPanel>
         <Grid ColumnSpacing="12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
-          <ComboBox
-            x:Name="PresetBox"
-            Width="190"
-            PlaceholderText="簡易プリセット"
-            SelectionChanged="OnPresetChanged"
-          >
-            <ComboBoxItem Content="1か月前以前" Tag="1" />
-            <ComboBoxItem Content="3か月前以前" Tag="3" />
-            <ComboBoxItem Content="半年前以前" Tag="6" />
-            <ComboBoxItem Content="1年前以前" Tag="12" />
-          </ComboBox>
-          <Button
-            x:Name="SelectAllButton"
-            Grid.Column="1"
-            Content="すべて選択"
-            Click="OnSelectAll"
-          />
-          <Button
-            x:Name="ClearSelectionButton"
-            Grid.Column="2"
-            Content="選択解除"
-            Click="OnClearSelection"
-          />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button
+              x:Name="MonthPresetButton"
+              Content="1か月前以前"
+              Tag="1"
+              Click="OnPresetClick"
+            />
+            <Button
+              x:Name="ThreeMonthsPresetButton"
+              Content="3か月前以前"
+              Tag="3"
+              Click="OnPresetClick"
+            />
+            <Button
+              x:Name="HalfYearPresetButton"
+              Content="半年前以前"
+              Tag="6"
+              Click="OnPresetClick"
+            />
+            <Button x:Name="YearPresetButton" Content="1年前以前" Tag="12" Click="OnPresetClick" />
+          </StackPanel>
           <TextBlock
             x:Name="SelectionCountText"
-            Grid.Column="3"
+            Grid.Column="1"
             VerticalAlignment="Center"
             HorizontalAlignment="Right"
             Text="選択中 0件"
@@ -95,7 +157,7 @@
           />
           <Button
             x:Name="DeleteButton"
-            Grid.Column="4"
+            Grid.Column="2"
             Click="OnDelete"
             IsEnabled="False"
             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
@@ -107,7 +169,7 @@
           </Button>
         </Grid>
         <TextBlock
-          Text="日時範囲やプリセットでチェックを付け、一覧で個別に調整できます。境界を含み、入力時刻の秒は00として扱います。"
+          Text="「範囲で選択」を押すと、その範囲の履歴にチェックを付け直します。日時の編集や期間ボタンだけではチェックは変わりません。"
           FontSize="12"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
           TextWrapping="Wrap"
@@ -185,15 +247,42 @@
             <FontIcon Glyph="&#xE72C;" FontSize="16" />
           </Button>
         </Grid>
-        <Grid Grid.Row="1" ColumnSpacing="12" Padding="44,0,12,0">
+        <Grid Grid.Row="1" ColumnSpacing="12" Padding="12,0,12,0">
           <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="100" />
             <ColumnDefinition Width="120" />
           </Grid.ColumnDefinitions>
-          <TextBlock Text="スキャン完了日時" FontWeight="SemiBold" />
-          <TextBlock Grid.Column="1" Text="ドライブ" FontWeight="SemiBold" />
-          <TextBlock Grid.Column="2" Text="処理時間" FontWeight="SemiBold" />
+          <CheckBox
+            x:Name="SelectAllCheckBox"
+            MinWidth="0"
+            Width="20"
+            MinHeight="0"
+            IsEnabled="False"
+            IsThreeState="False"
+            Click="OnToggleAll"
+            ToolTipService.ToolTip="すべて選択"
+            AutomationProperties.Name="すべて選択"
+          />
+          <TextBlock
+            Grid.Column="1"
+            Text="スキャン完了日時"
+            FontWeight="SemiBold"
+            VerticalAlignment="Center"
+          />
+          <TextBlock
+            Grid.Column="2"
+            Text="ドライブ"
+            FontWeight="SemiBold"
+            VerticalAlignment="Center"
+          />
+          <TextBlock
+            Grid.Column="3"
+            Text="処理時間"
+            FontWeight="SemiBold"
+            VerticalAlignment="Center"
+          />
         </Grid>
         <ListView
           x:Name="HistoryList"
