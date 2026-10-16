@@ -62,6 +62,7 @@ public sealed partial class MainWindow
         bool covered = loading || ViewLoadingAnimation.IsPlaying;
         ViewLoadingOverlay.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;
         ViewHost.IsEnabled = !covered;
+        SettingsButton.IsEnabled = !covered && !historyMaintenance && !changingVisibility;
         ViewControls.Opacity = ResultsContent.Opacity = EmptyScanText.Opacity = covered ? 0 : 1;
     }
 

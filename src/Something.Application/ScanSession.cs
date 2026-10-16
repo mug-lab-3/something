@@ -4,8 +4,8 @@ using Something.Storage;
 
 namespace Something.Application;
 
-/// <summary>Owns one ephemeral scan generation. Serializes every SQLite operation on workers.</summary>
-public sealed class ScanSession : IAsyncDisposable
+/// <summary>Owns one scan generation and its display projection. Serializes database operations on workers.</summary>
+public sealed partial class ScanSession : IAsyncDisposable
 {
     private readonly IDisposable database;
     private readonly ScanStore store;
@@ -14,7 +14,7 @@ public sealed class ScanSession : IAsyncDisposable
     public Guid ScanId { get; }
     public string Drive { get; }
     public FileReference Root { get; }
-    public FolderCapacitySample RootSample { get; }
+    public FolderCapacitySample RootSample { get; private set; }
     public ulong MetadataUnresolved { get; }
     public DiagnosticDatabaseSelection Selection { get; }
     public bool IsDemo { get; }
@@ -98,7 +98,7 @@ public sealed class ScanSession : IAsyncDisposable
         ScanId = id;
         Drive = drive;
         Root = root;
-        RootSample = rootSample;
+        RootSample = unfilteredRootSample = rootSample;
         MetadataUnresolved = metadataUnresolved;
         Selection = selection;
         IsDemo = demo;
@@ -186,16 +186,26 @@ public sealed class ScanSession : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
                 () =>
-                    store.ReadFolderEntries(
-                        ScanId,
-                        parent,
-                        page,
-                        directoriesOnly: directoriesOnly,
-                        cancellationToken: token,
-                        sort: sort,
-                        includeTotalCount: includeTotalCount,
-                        descending: descending
-                    ),
+                    visibleScan is not null
+                        ? ReadVisibleFolder(
+                            parent,
+                            page,
+                            directoriesOnly,
+                            token,
+                            sort,
+                            includeTotalCount,
+                            descending
+                        )
+                        : store.ReadFolderEntries(
+                            ScanId,
+                            parent,
+                            page,
+                            directoriesOnly: directoriesOnly,
+                            cancellationToken: token,
+                            sort: sort,
+                            includeTotalCount: includeTotalCount,
+                            descending: descending
+                        ),
                 token
             );
         }
@@ -216,7 +226,10 @@ public sealed class ScanSession : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
-                () => store.ReadFolderAnalysis(ScanId, filter, token, sort).ToArray(),
+                () =>
+                    visibleScan is not null
+                        ? ReadVisibleAnalysis(filter, token, sort)
+                        : store.ReadFolderAnalysis(ScanId, filter, token, sort).ToArray(),
                 token
             );
         }

@@ -276,6 +276,13 @@ public sealed partial class MainWindow
                 card.Choice.Drive,
                 token
             );
+            report = await ScanSession.ApplyVisibilityToComparisonAsync(
+                report,
+                owned,
+                displayed,
+                visibilityOptions,
+                token
+            );
             token.ThrowIfCancellationRequested();
             if (closed || version != comparisonVersion || selectedCard != card)
                 return;

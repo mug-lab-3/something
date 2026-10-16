@@ -66,6 +66,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeDisplaySettings();
         UpdateSortHeaders();
         InitializeNotifications();
         ViewLoadingAnimation.Settled += (_, _) => UpdateViewLoadingPresentation();
@@ -261,6 +262,7 @@ public sealed partial class MainWindow : Window
             await SelectDriveAsync(cards[0]);
             if (history is not null)
                 await VerifyHistorySelectionAsync();
+            await VerifyDisplaySettingsAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-comparison"))
                 await VerifyComparisonModeAsync();
             projects = Folders
@@ -712,6 +714,7 @@ public sealed partial class MainWindow : Window
     private async Task ShowSessionAsync(ScanSession current)
     {
         await using var viewUpdate = BeginViewUpdate($"{current.Drive} の結果を表示しています…");
+        await current.SetVisibilityAsync(visibilityOptions, lifetime.Token);
         EmptyScanText.Visibility = Visibility.Collapsed;
         ToolTipService.SetToolTip(
             HistoryBox,

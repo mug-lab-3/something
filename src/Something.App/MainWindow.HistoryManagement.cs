@@ -25,8 +25,9 @@ public sealed partial class MainWindow
         {
             historyMaintenance = deleting;
             foreach (var card in cards)
-                card.IsEnabled = !deleting;
-            WorkspaceTabs.IsEnabled = !deleting;
+                card.IsEnabled = !deleting && !changingVisibility;
+            WorkspaceTabs.IsEnabled = !deleting && !changingVisibility;
+            SettingsButton.IsEnabled = !deleting && !changingVisibility && viewUpdates.Count == 0;
         };
     }
 
