@@ -44,7 +44,6 @@
       <TabView
         x:Name="WorkspaceTabs"
         Grid.Row="1"
-        Height="44"
         SelectedIndex="0"
         IsAddTabButtonVisible="False"
         CanDragTabs="False"
@@ -52,15 +51,30 @@
         TabWidthMode="SizeToContent"
         SelectionChanged="OnWorkspaceChanged"
       >
-        <TabViewItem Header="ファイル" IsClosable="False">
-          <TabViewItem.IconSource>
-            <SymbolIconSource Symbol="Folder" />
-          </TabViewItem.IconSource>
+        <TabViewItem
+          Style="{StaticResource UnderlineTabStyle}"
+          IsClosable="False"
+          AutomationProperties.Name="ファイル"
+        >
+          <TabViewItem.Header>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <FontIcon Glyph="&#xE8B7;" FontSize="18" />
+              <TextBlock Text="ファイル" />
+            </StackPanel>
+          </TabViewItem.Header>
         </TabViewItem>
-        <TabViewItem x:Name="DatabaseWorkspaceTab" Header="DB管理" IsClosable="False">
-          <TabViewItem.IconSource>
-            <FontIconSource Glyph="&#xE1D3;" />
-          </TabViewItem.IconSource>
+        <TabViewItem
+          x:Name="DatabaseWorkspaceTab"
+          Style="{StaticResource UnderlineTabStyle}"
+          IsClosable="False"
+          AutomationProperties.Name="DB管理"
+        >
+          <TabViewItem.Header>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <FontIcon Glyph="&#xE1D3;" FontSize="18" />
+              <TextBlock Text="DB管理" />
+            </StackPanel>
+          </TabViewItem.Header>
         </TabViewItem>
       </TabView>
       <local:HistoryManagementView
@@ -219,8 +233,19 @@
                 </TreeView>
               </Grid>
             </Border>
-            <TabView Grid.Column="1" IsAddTabButtonVisible="False">
-              <TabViewItem IsClosable="False">
+            <TabView
+              x:Name="ResultTabs"
+              Grid.Column="1"
+              IsAddTabButtonVisible="False"
+              CanDragTabs="False"
+              CanReorderTabs="False"
+              TabWidthMode="SizeToContent"
+            >
+              <TabViewItem
+                Style="{StaticResource UnderlineTabStyle}"
+                IsClosable="False"
+                AutomationProperties.Name="フォルダ内"
+              >
                 <TabViewItem.Header>
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="フォルダ内" />
@@ -370,7 +395,12 @@
                   </local:DelayedLoadingRegion.Body>
                 </local:DelayedLoadingRegion>
               </TabViewItem>
-              <TabViewItem x:Name="RankingTab" Header="ランキング" IsClosable="False">
+              <TabViewItem
+                x:Name="RankingTab"
+                Style="{StaticResource UnderlineTabStyle}"
+                Header="ランキング"
+                IsClosable="False"
+              >
                 <local:DelayedLoadingRegion x:Name="RankingLoadingRegion">
                   <local:DelayedLoadingRegion.Body>
                     <Grid Padding="12" RowSpacing="12">

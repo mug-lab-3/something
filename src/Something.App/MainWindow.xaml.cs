@@ -319,6 +319,7 @@ public sealed partial class MainWindow : Window
                 : null;
             if (loadingPreview is not null)
                 await Task.Delay(660, lifetime.Token);
+            await VerifyTabPresentationAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
