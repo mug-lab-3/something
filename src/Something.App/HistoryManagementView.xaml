@@ -272,17 +272,21 @@
             ToolTipService.ToolTip="すべて選択"
             AutomationProperties.Name="すべて選択"
           />
-          <TextBlock
+          <Button
+            x:Name="CompletedHeader"
             Grid.Column="1"
-            Text="スキャン完了日時"
-            FontWeight="SemiBold"
-            VerticalAlignment="Center"
+            Content="スキャン完了日時 ▼"
+            Tag="Completed"
+            Click="OnHistorySort"
+            Style="{StaticResource ColumnHeaderButtonStyle}"
           />
-          <TextBlock
+          <Button
+            x:Name="RecordCountHeader"
             Grid.Column="2"
-            Text="記録数"
-            FontWeight="SemiBold"
-            VerticalAlignment="Center"
+            Content="記録数"
+            Tag="Count"
+            Click="OnHistorySort"
+            Style="{StaticResource ColumnHeaderButtonStyle}"
             HorizontalAlignment="Right"
             ToolTipService.ToolTip="保存したMFT観測レコード数。未解決・拡張レコードを含み、内部テーブルの行数合計ではありません。"
           />

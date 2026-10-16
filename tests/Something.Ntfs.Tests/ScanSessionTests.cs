@@ -87,7 +87,7 @@ public sealed class ScanSessionTests
                 .Range(0, 4)
                 .Select(_ => session.ReadFolderAsync(session.Root, 0, false, token))
         );
-        var ranking = await session.ReadLargestAsync(new(1), token);
+        var ranking = await session.ReadFolderAnalysisAsync(new(1), token);
 
         Assert.True(session.IsDemo);
         Assert.All(

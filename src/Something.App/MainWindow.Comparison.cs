@@ -160,16 +160,18 @@ public sealed partial class MainWindow
             ? Visibility.Visible
             : Visibility.Collapsed;
         ChangeHeaderColumn.Width = RankingChangeColumn.Width = new(Comparing ? 140 : 0);
-        GrowthOrderItem.IsEnabled =
-            ShrinkageOrderItem.IsEnabled =
-            MagnitudeOrderItem.IsEnabled =
-                Comparing;
         bool updating = updatingComparisonChoices;
         updatingComparisonChoices = true;
         try
         {
             if (!Comparing)
-                ChangeOrderBox.SelectedIndex = 0;
+            {
+                if (entryOrder.Column == BrowserColumn.Change)
+                    entryOrder = new(BrowserColumn.Size, true);
+                if (analysisOrder.Column == BrowserColumn.Change)
+                    analysisOrder = new(BrowserColumn.Size, true);
+                UpdateSortHeaders();
+            }
         }
         finally
         {
@@ -509,7 +511,7 @@ public sealed partial class MainWindow
         await stale;
         if (
             comparisonReport is not null
-            || SizeColumnText.Text != "サイズ"
+            || !SizeColumnText.Content.ToString()!.StartsWith("サイズ", StringComparison.Ordinal)
             || Entries.Items.Count != 3
         )
             throw new InvalidOperationException("Cancelled comparison replaced the normal view.");
@@ -599,11 +601,7 @@ public sealed partial class MainWindow
         return null;
     }
 
-    private static IEnumerable<FolderChange> FilterChanges(
-        FolderChangeReport report,
-        int depth,
-        bool leafOnly
-    )
+    private static IEnumerable<FolderChange> FilterChanges(FolderChangeReport report, bool leafOnly)
     {
         var rows = report.Folders;
         var paths = rows.Where(row => row.AfterPath is not null)
@@ -614,9 +612,7 @@ public sealed partial class MainWindow
             .Select(path => path[..path.LastIndexOf('\\')])
             .ToHashSet(StringComparer.Ordinal);
         return rows.Where(row =>
-            row.AfterPath is { } path
-            && (depth == 0 || path.Count(c => c == '\\') + 1 == depth)
-            && (!leafOnly || !parents.Contains(path))
+            row.AfterPath is { } path && (!leafOnly || !parents.Contains(path))
         );
     }
 }

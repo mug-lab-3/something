@@ -1154,6 +1154,43 @@ public sealed class ScanStoreTests
     }
 
     [Fact]
+    public void FolderAnalysis_IncludesEveryMatchingFolderBeyondFormerLimits()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var id = fixture.Store.BeginScan(Descriptor(range: new(0, 4000)), token);
+        var facts = new List<StagedObservation> { Stage(Directory(5, Root)) };
+        for (ulong index = 20; index < 620; index++)
+        {
+            facts.Add(
+                Stage(
+                    Directory(index, Root) with
+                    {
+                        Names = [new(Root, $"folder-{index}", FileNameNamespace.Win32, 0)],
+                    }
+                )
+            );
+            facts.Add(Stage(File(index + 2000, checked((long)(620 - index)), Ref(index))));
+        }
+        foreach (var batch in facts.Chunk(ScanStore.MaximumBatchSize))
+            fixture.Store.StageBatch(id, batch, token);
+        fixture.Store.CompleteScan(id, Started.AddSeconds(1), token);
+
+        var rows = fixture.Store.ReadFolderAnalysis(id, new(Depth: 1, LeafOnly: true), token);
+
+        Assert.Equal(600, rows.Length);
+        Assert.Equal(Ref(20), rows[0].Sample.Reference);
+        Assert.Equal(Ref(619), rows[^1].Sample.Reference);
+        Assert.Equal(600, rows.Select(row => row.Sample.Reference).Distinct().Count());
+        Assert.Empty(fixture.Store.ReadFolderAnalysis(id, new(Depth: 2), token));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Store.ReadFolderAnalysis(id, new(), cancelled.Token)
+        );
+    }
+
+    [Fact]
     public void LargestFolders_RanksSubtreesAndExcludesRootAndMetadata()
     {
         using var fixture = new DatabaseFixture();
@@ -1840,6 +1877,27 @@ public sealed class ScanStoreTests
         Assert.Equal(Ref(100), Assert.Single(logical.Entries).Reference);
         Assert.Equal(new CapacityAmount(0, 0), tail.Entries[0].Data);
         Assert.Null(tail.Entries[1].Data);
+        var ascending = Enumerable
+            .Range(0, 4)
+            .Select(page =>
+                Assert.Single(
+                    fixture
+                        .Store.ReadFolderEntries(
+                            id,
+                            Root,
+                            page,
+                            pageSize: 1,
+                            cancellationToken: token,
+                            descending: false
+                        )
+                        .Entries
+                )
+            )
+            .ToArray();
+        Assert.Equal(
+            new ulong[] { 102, 100, 101, 103 },
+            ascending.Select(row => row.Reference.RecordIndex)
+        );
     }
 
     [Theory]

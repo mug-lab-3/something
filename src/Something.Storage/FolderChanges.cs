@@ -81,10 +81,19 @@ public sealed record FolderChangeReport(
 
     public ImmutableArray<FolderChange> Rank(FolderChangeRanking ranking, int count = 20)
     {
-        if (!Enum.IsDefined(ranking))
-            throw new ArgumentOutOfRangeException(nameof(ranking));
         if (count is < 1 or > 1000)
             throw new ArgumentOutOfRangeException(nameof(count));
+        return [.. OrderChanges(ranking).Take(count)];
+    }
+
+    /// <summary>All known nonzero changes in the requested order, without a top-N limit.</summary>
+    public ImmutableArray<FolderChange> Analyze(FolderChangeRanking ranking) =>
+        [.. OrderChanges(ranking)];
+
+    private IOrderedEnumerable<FolderChange> OrderChanges(FolderChangeRanking ranking)
+    {
+        if (!Enum.IsDefined(ranking))
+            throw new ArgumentOutOfRangeException(nameof(ranking));
         var rows = Folders.Where(row => row.AllocatedDelta is not null);
         var ordered = ranking switch
         {
@@ -95,13 +104,9 @@ public sealed record FolderChangeReport(
             _ => rows.Where(row => row.AllocatedDelta != 0)
                 .OrderByDescending(row => BigInteger.Abs(row.AllocatedDelta!.Value)),
         };
-        return
-        [
-            .. ordered
-                .ThenBy(row => row.Reference.RecordIndex)
-                .ThenBy(row => row.Reference.SequenceNumber)
-                .Take(count),
-        ];
+        return ordered
+            .ThenBy(row => row.Reference.RecordIndex)
+            .ThenBy(row => row.Reference.SequenceNumber);
     }
 }
 

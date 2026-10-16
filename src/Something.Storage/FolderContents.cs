@@ -97,7 +97,8 @@ public sealed partial class ScanStore
         bool directoriesOnly = false,
         CancellationToken cancellationToken = default,
         FolderEntrySort sort = FolderEntrySort.AllocatedBytes,
-        bool includeTotalCount = false
+        bool includeTotalCount = false,
+        bool descending = true
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -212,8 +213,19 @@ public sealed partial class ScanStore
                 });
         long? totalCount = includeTotalCount ? query.LongCount() : null;
         cancellationToken.ThrowIfCancellationRequested();
-        var ordered =
-            sort == FolderEntrySort.AllocatedBytes
+        var ordered = !descending
+            ? sort == FolderEntrySort.AllocatedBytes
+                ? query
+                    .OrderByDescending(r => r.IsDirectory)
+                    .ThenBy(r => r.FolderAllocated == null && r.StreamAllocated == null)
+                    .ThenBy(r => r.FolderAllocated)
+                    .ThenBy(r => r.StreamAllocated)
+                : query
+                    .OrderByDescending(r => r.IsDirectory)
+                    .ThenBy(r => r.FolderLogical == null && r.StreamLogical == null)
+                    .ThenBy(r => r.FolderLogical)
+                    .ThenBy(r => r.StreamLogical)
+            : sort == FolderEntrySort.AllocatedBytes
                 ? query
                     .OrderByDescending(r => r.IsDirectory)
                     .ThenByDescending(r => r.FolderAllocated)

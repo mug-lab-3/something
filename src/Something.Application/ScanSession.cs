@@ -176,7 +176,8 @@ public sealed class ScanSession : IAsyncDisposable
         bool directoriesOnly,
         CancellationToken token,
         FolderEntrySort sort = FolderEntrySort.AllocatedBytes,
-        bool includeTotalCount = false
+        bool includeTotalCount = false,
+        bool descending = true
     )
     {
         await gate.WaitAsync(token);
@@ -192,7 +193,8 @@ public sealed class ScanSession : IAsyncDisposable
                         directoriesOnly: directoriesOnly,
                         cancellationToken: token,
                         sort: sort,
-                        includeTotalCount: includeTotalCount
+                        includeTotalCount: includeTotalCount,
+                        descending: descending
                     ),
                 token
             );
@@ -203,7 +205,7 @@ public sealed class ScanSession : IAsyncDisposable
         }
     }
 
-    public async Task<RankedFolder[]> ReadLargestAsync(
+    public async Task<RankedFolder[]> ReadFolderAnalysisAsync(
         FolderRankingFilter filter,
         CancellationToken token,
         FolderEntrySort sort = FolderEntrySort.AllocatedBytes
@@ -214,10 +216,7 @@ public sealed class ScanSession : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
-                () =>
-                    store
-                        .ReadLargestFolders(ScanId, 20, token, filter: filter, sort: sort)
-                        .ToArray(),
+                () => store.ReadFolderAnalysis(ScanId, filter, token, sort).ToArray(),
                 token
             );
         }

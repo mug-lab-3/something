@@ -69,6 +69,37 @@ public sealed class FolderChangeTests
     }
 
     [Fact]
+    public void AnalysisReturnsAllChangesWithoutTheTopTwentyLimit()
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Save(
+            Now.AddHours(-1),
+            [
+                .. Enumerable
+                    .Range(20, 50)
+                    .Select(index => new Folder((ulong)index, $"folder-{index}", 1)),
+            ]
+        );
+        var after = fixture.Save(
+            Now,
+            [
+                .. Enumerable
+                    .Range(20, 50)
+                    .Select(index => new Folder((ulong)index, $"folder-{index}", (UInt128)index)),
+            ]
+        );
+        var report = fixture.Archive.ReadFolderChanges("volume:A", before.Id, after.Id, Token);
+
+        var all = report.Analyze(FolderChangeRanking.Growth);
+
+        Assert.Equal(50, all.Length);
+        Assert.Equal((ulong)69, all[0].Reference.RecordIndex);
+        Assert.Equal((ulong)20, all[^1].Reference.RecordIndex);
+        Assert.Equal(20, report.Rank(FolderChangeRanking.Growth).Length);
+        Assert.Empty(report.Analyze(FolderChangeRanking.Shrinkage));
+    }
+
+    [Fact]
     public void MissingEndpointsDoNotCreateZeroChanges()
     {
         using var fixture = new Fixture();

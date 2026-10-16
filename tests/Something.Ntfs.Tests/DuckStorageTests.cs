@@ -26,6 +26,105 @@ public sealed class DuckStorageTests
     private static readonly FileReference Root = FileReference.Create(5, 1);
 
     [Fact]
+    public void BrowserSizeSortKeepsDirectionAcrossAllPagesAndUnknownAtTheEnd()
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        var buffer = new BufferedScan(
+            new("synthetic:sort", Guid.NewGuid(), 1, new(0, 1000), Start)
+        );
+        Add(
+            new(
+                Root,
+                true,
+                CapacityDomain.Ordinary,
+                CapacityResolution.Resolved,
+                [new(Root, "root", FileNameNamespace.Win32, 0)],
+                [],
+                true
+            )
+        );
+        var directory = FileReference.Create(700, 1);
+        Add(
+            new(
+                directory,
+                true,
+                CapacityDomain.Ordinary,
+                CapacityResolution.Resolved,
+                [new(Root, "directory", FileNameNamespace.Win32, 0)],
+                [],
+                true
+            )
+        );
+        for (ulong index = 20; index < 620; index++)
+            Add(
+                new(
+                    FileReference.Create(index, 1),
+                    false,
+                    CapacityDomain.Ordinary,
+                    CapacityResolution.Resolved,
+                    [new(Root, $"file-{index}", FileNameNamespace.Win32, 0)],
+                    [new("", (long)index, (long)index)],
+                    true
+                )
+            );
+        Add(
+            new(
+                FileReference.Create(650, 1),
+                false,
+                CapacityDomain.Ordinary,
+                CapacityResolution.Unresolved,
+                [new(Root, "unknown", FileNameNamespace.Win32, 0)],
+                [],
+                true
+            )
+        );
+        buffer.Complete(Token);
+        var id = database.Store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+
+        foreach (bool descending in new[] { true, false })
+        {
+            var rows = new List<FolderEntry>();
+            for (int page = 0; ; page++)
+            {
+                var batch = database.Store.ReadFolderEntries(
+                    id,
+                    Root,
+                    page,
+                    cancellationToken: Token,
+                    descending: descending
+                );
+                rows.AddRange(batch.Entries);
+                if (!batch.HasMore)
+                    break;
+            }
+            Assert.Equal(602, rows.Count);
+            Assert.Equal(602, rows.Select(row => row.Reference).Distinct().Count());
+            Assert.Equal(directory, rows[0].Reference);
+            Assert.Null(rows[^1].Data);
+            var expected = Enumerable.Range(20, 600).Select(index => (UInt128)index);
+            Assert.Equal(
+                descending ? expected.Reverse() : expected,
+                rows.Skip(1).Take(600).Select(row => row.Data!.Value.AllocatedBytes)
+            );
+        }
+
+        void Add(FileCapacityObservation file) =>
+            buffer.Add(
+                new StagedObservation(
+                    file.Reference.RecordIndex,
+                    file.Resolution == CapacityResolution.Resolved
+                        ? MftScanEntryKind.ResolvedFile
+                        : MftScanEntryKind.Unresolved,
+                    file.Resolution == CapacityResolution.Resolved
+                        ? LiveFileReadStatus.ObservedUnchanged
+                        : LiveFileReadStatus.Unsupported,
+                    file
+                ),
+                Token
+            );
+    }
+
+    [Fact]
     public void RecoveryDoesNotRetryWhenCommitHasStarted()
     {
         using var database = TemporaryScanDatabase.Create(Token);

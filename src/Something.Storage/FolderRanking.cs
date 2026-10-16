@@ -29,6 +29,14 @@ public sealed record RankedFolder(string RelativePath, FolderCapacitySample Samp
 
 public sealed partial class ScanStore
 {
+    /// <summary>All matching ordinary folders, ordered by capacity; no top-N truncation.</summary>
+    public ImmutableArray<RankedFolder> ReadFolderAnalysis(
+        Guid scanId,
+        FolderRankingFilter filter,
+        CancellationToken cancellationToken = default,
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
+    ) => ReadRankedFolders(scanId, int.MaxValue, cancellationToken, filter: filter, sort: sort);
+
     /// <summary>Defaults to unnamed DATA per visible name. Excludes root and NTFS metadata; nested rows overlap.</summary>
     public ImmutableArray<RankedFolder> ReadLargestFolders(
         Guid scanId,

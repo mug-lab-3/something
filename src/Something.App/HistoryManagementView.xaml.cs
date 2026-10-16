@@ -26,12 +26,15 @@ public sealed partial class HistoryManagementView : UserControl
     private bool initializing = true;
     private bool busy;
     private bool operationActive;
+    private bool sortByRecordCount;
+    private bool sortDescending = true;
     internal event Action<Task>? WorkStarted;
     internal event Action<bool>? MaintenanceChanged;
 
     public HistoryManagementView()
     {
         InitializeComponent();
+        UpdateHistorySortHeaders();
         noticeTimer.Tick += (_, _) => DismissNotice();
         Unloaded += (_, _) => DismissNotice();
         FromTime.Time = TimeSpan.Zero;
@@ -85,11 +88,9 @@ public sealed partial class HistoryManagementView : UserControl
             if (version != loadVersion || token.IsCancellationRequested)
                 return;
             initializing = true;
-            HistoryList.ItemsSource = rows.Select(row => new ManagedHistoryRow(
-                    row.Entry,
-                    row.RecordCount
-                ))
-                .ToArray();
+            HistoryList.ItemsSource = OrderHistory(
+                rows.Select(row => new ManagedHistoryRow(row.Entry, row.RecordCount))
+            );
             foreach (ManagedHistoryRow row in HistoryList.Items)
                 if (selected.Contains(row.Entry.Id))
                     HistoryList.SelectedItems.Add(row);
@@ -127,6 +128,48 @@ public sealed partial class HistoryManagementView : UserControl
             !busy && HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DeleteButton.IsEnabled = !busy && count > 0;
         UpdateSelectAllState();
+    }
+
+    private ManagedHistoryRow[] OrderHistory(IEnumerable<ManagedHistoryRow> rows)
+    {
+        var ordered = sortByRecordCount
+            ? sortDescending
+                ? rows.OrderByDescending(row => row.RecordCount)
+                : rows.OrderBy(row => row.RecordCount)
+            : sortDescending
+                ? rows.OrderByDescending(row => row.Entry.CompletedUtc)
+                : rows.OrderBy(row => row.Entry.CompletedUtc);
+        return [.. ordered.ThenBy(row => row.Entry.CompletedUtc).ThenBy(row => row.Entry.Id)];
+    }
+
+    private void UpdateHistorySortHeaders()
+    {
+        ColumnHeaders.Update(
+            CompletedHeader,
+            "スキャン完了日時",
+            !sortByRecordCount,
+            sortDescending
+        );
+        ColumnHeaders.Update(RecordCountHeader, "記録数", sortByRecordCount, sortDescending);
+    }
+
+    private void OnHistorySort(object sender, RoutedEventArgs args)
+    {
+        if (busy || sender is not Button { Tag: string tag })
+            return;
+        bool byCount = tag == "Count";
+        sortDescending = byCount == sortByRecordCount ? !sortDescending : true;
+        sortByRecordCount = byCount;
+        var selected = selectedIds.ToHashSet();
+        var rows = OrderHistory(HistoryList.Items.Cast<ManagedHistoryRow>());
+        initializing = true;
+        HistoryList.ItemsSource = rows;
+        foreach (var row in rows)
+            if (selected.Contains(row.Entry.Id))
+                HistoryList.SelectedItems.Add(row);
+        initializing = false;
+        UpdateHistorySortHeaders();
+        UpdateSelection();
     }
 
     private void UpdateSelectAllState()
@@ -225,6 +268,8 @@ public sealed partial class HistoryManagementView : UserControl
                 YearPresetButton,
                 HistoryList,
                 OptimizeButton,
+                CompletedHeader,
+                RecordCountHeader,
             }
         )
             control.IsEnabled = !value;
@@ -540,6 +585,23 @@ public sealed partial class HistoryManagementView : UserControl
         }
         HistoryList.SelectedItems.Add(HistoryList.Items[0]);
         var manual = selectedIds.ToHashSet();
+        OnHistorySort(RecordCountHeader, new());
+        var counts = HistoryList
+            .Items.Cast<ManagedHistoryRow>()
+            .Select(row => row.RecordCount)
+            .ToArray();
+        if (!counts.SequenceEqual(counts.OrderDescending()) || !selectedIds.SetEquals(manual))
+            throw new InvalidOperationException("History count sorting lost order or selection.");
+        OnHistorySort(RecordCountHeader, new());
+        counts = HistoryList
+            .Items.Cast<ManagedHistoryRow>()
+            .Select(row => row.RecordCount)
+            .ToArray();
+        if (!counts.SequenceEqual(counts.Order()) || !selectedIds.SetEquals(manual))
+            throw new InvalidOperationException(
+                "Ascending history sorting lost order or selection."
+            );
+        OnHistorySort(CompletedHeader, new());
         await VerifySyntheticDeletionAsync(false);
         OnPresetClick(HalfYearPresetButton, new());
         Require(

@@ -13,9 +13,9 @@ public sealed partial class MainWindow
             foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
             {
                 RootLayout.RequestedTheme = theme;
-                foreach (var tabs in new[] { WorkspaceTabs, ResultTabs })
+                foreach (var tabs in new[] { WorkspaceTabs })
                 {
-                    foreach (int selected in new[] { 1, 0 })
+                    foreach (int selected in new[] { 2, 1, 0 })
                     {
                         tabs.SelectedIndex = selected;
                         if (tabs == WorkspaceTabs)
@@ -51,18 +51,22 @@ public sealed partial class MainWindow
                                 );
                         }
                         VisualStateManager.GoToState(tab, "Selected", false);
-                        var other = (TabViewItem)tabs.TabItems[1 - selected];
-                        if (FindTreePart<Border>(other, "SelectionIndicator")?.Opacity != 0)
-                            throw new InvalidOperationException(
-                                "An inactive tab retained its underline."
-                            );
+                        foreach (
+                            var other in tabs
+                                .TabItems.Cast<TabViewItem>()
+                                .Where(item => item != tab)
+                        )
+                            if (FindTreePart<Border>(other, "SelectionIndicator")?.Opacity != 0)
+                                throw new InvalidOperationException(
+                                    "An inactive tab retained its underline."
+                                );
                     }
                 }
             }
         }
         finally
         {
-            WorkspaceTabs.SelectedIndex = ResultTabs.SelectedIndex = 0;
+            WorkspaceTabs.SelectedIndex = 0;
             RootLayout.RequestedTheme = originalTheme;
         }
     }

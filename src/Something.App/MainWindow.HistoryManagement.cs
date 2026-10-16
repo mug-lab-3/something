@@ -151,16 +151,23 @@ public sealed partial class MainWindow
     {
         if (HistoryManagement is null)
             return;
-        bool managing = WorkspaceTabs.SelectedIndex == 1;
+        bool managing = ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab);
+        bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
         ViewHost.Visibility = managing ? Visibility.Collapsed : Visibility.Visible;
         HistoryManagement.Visibility = managing ? Visibility.Visible : Visibility.Collapsed;
+        TreePanel.Visibility = FileListPanel.Visibility = analyzing
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        TreeColumn.Width = new(analyzing ? 0 : 250);
+        ResultsContent.ColumnSpacing = analyzing ? 0 : 16;
+        RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
         if (managing)
             await RefreshManagementIfVisibleAsync();
     }
 
     private async Task RefreshManagementIfVisibleAsync()
     {
-        if (closed || WorkspaceTabs.SelectedIndex != 1)
+        if (closed || !ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab))
             return;
         string? key = selectedCard is { } card ? volumeKeys.GetValueOrDefault(card) : null;
         var task = HistoryManagement.LoadAsync(key);
@@ -183,7 +190,7 @@ public sealed partial class MainWindow
         ComparisonPeriodBox.SelectedIndex = 9;
         updatingComparisonChoices = false;
         await TrackComparisonAsync();
-        WorkspaceTabs.SelectedIndex = 1;
+        WorkspaceTabs.SelectedItem = DatabaseWorkspaceTab;
         await RefreshManagementIfVisibleAsync();
         if (
             ViewHost.Visibility != Visibility.Collapsed
@@ -230,7 +237,7 @@ public sealed partial class MainWindow
         WorkspaceTabs.SelectedIndex = 0;
         if (ViewHost.Visibility != Visibility.Visible || Entries.Items.Count != 3)
             throw new InvalidOperationException("File view was not restored after management.");
-        WorkspaceTabs.SelectedIndex = 1;
+        WorkspaceTabs.SelectedItem = DatabaseWorkspaceTab;
         await RefreshManagementIfVisibleAsync();
         await Task.Delay(200, lifetime.Token);
     }
@@ -319,6 +326,7 @@ public sealed partial class MainWindow
                 Folders.RootNodes.Clear();
                 Entries.ItemsSource = null;
                 Ranking.ItemsSource = null;
+                AnalysisCountText.Text = "";
                 EntryCountText.DataContext = null;
                 PathText.Text = "未スキャン";
                 BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;

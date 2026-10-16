@@ -66,6 +66,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        UpdateSortHeaders();
         InitializeNotifications();
         ViewLoadingAnimation.Settled += (_, _) => UpdateViewLoadingPresentation();
         var arguments = Environment.GetCommandLineArgs();
@@ -216,15 +217,10 @@ public sealed partial class MainWindow : Window
                     "Up followed history instead of the observed parent."
                 );
             await LoadFolderAsync(projectLocation, true);
-            DepthBox.SelectedIndex = 1;
-            await LoadRankingAsync();
-            if (Ranking.Items.Count != 2)
-                throw new InvalidOperationException("Depth filtering did not apply.");
             LeafBox.IsChecked = true;
             await LoadRankingAsync();
-            if (Ranking.Items.Count != 1)
+            if (Ranking.Items.Count != 2)
                 throw new InvalidOperationException("Leaf filtering did not apply.");
-            DepthBox.SelectedIndex = 0;
             LeafBox.IsChecked = false;
             await LoadRankingAsync();
             navigation.Clear();
@@ -320,9 +316,16 @@ public sealed partial class MainWindow : Window
             if (loadingPreview is not null)
                 await Task.Delay(660, lifetime.Token);
             await VerifyTabPresentationAsync();
+            await VerifyAnalysisWorkspaceAsync();
+            await VerifyColumnSortingAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
+            {
+                WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
+                RootLayout.UpdateLayout();
+            }
             var deletionPreview =
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
                     ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
@@ -679,6 +682,7 @@ public sealed partial class MainWindow : Window
         Entries.ItemsSource = null;
         EntryCountText.DataContext = null;
         Ranking.ItemsSource = null;
+        AnalysisCountText.Text = "";
         location = null;
         session = sessions.GetValueOrDefault(card.Choice.Drive);
         if (oldHistory is not null)
@@ -720,6 +724,7 @@ public sealed partial class MainWindow : Window
         Entries.ItemsSource = null;
         EntryCountText.DataContext = null;
         Ranking.ItemsSource = null;
+        AnalysisCountText.Text = "";
         location = new(current.Root, current.Drive + "\\");
         var root = new TreeViewNode
         {
@@ -962,6 +967,7 @@ public sealed partial class MainWindow : Window
         var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         listingCancellation = request;
         var token = request.Token;
+        var order = entryOrder;
         BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
         try
         {
@@ -972,7 +978,8 @@ public sealed partial class MainWindow : Window
                 false,
                 token,
                 sort: FolderEntrySort.AllocatedBytes,
-                includeTotalCount: true
+                includeTotalCount: true,
+                descending: order.Descending
             );
             FolderLocation? parent = null;
             if (target.Reference != current.Root)
@@ -1001,10 +1008,39 @@ public sealed partial class MainWindow : Window
             Func<int, CancellationToken, Task<FolderEntryPage>> readPage = (
                 nextPage,
                 cancellation
-            ) => browser.ReadFolderAsync(target.Reference, nextPage, false, cancellation);
+            ) =>
+                browser.ReadFolderAsync(
+                    target.Reference,
+                    nextPage,
+                    false,
+                    cancellation,
+                    sort: FolderEntrySort.AllocatedBytes,
+                    descending: order.Descending
+                );
+            if (!Comparing && order.Column == BrowserColumn.Name)
+            {
+                var all = await ReadAllEntriesAsync(browser, target.Reference, token);
+                var sorted = await Task.Run(() => BrowserOrdering.Entries(all, order), token);
+                FolderEntryPage Page(int index) =>
+                    new(
+                        [.. sorted.Skip(index * 250).Take(250)],
+                        (long)(index + 1) * 250 < sorted.Length,
+                        index == 0 ? sorted.Length : null
+                    );
+                result = Page(0);
+                readPage = (index, cancellation) =>
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    return Task.FromResult(Page(index));
+                };
+            }
             if (Comparing && comparisonReport is not null)
             {
-                var compared = await ReadComparedEntriesAsync(current, target.Reference, token);
+                var changes = await ReadComparedEntriesAsync(current, target.Reference, token);
+                var compared = await Task.Run(
+                    () => BrowserOrdering.EntryChanges(changes, order),
+                    token
+                );
                 if (closed || version != navigationVersion || session != current)
                     return;
                 FolderEntryPage Page(int index) =>
@@ -1033,6 +1069,8 @@ public sealed partial class MainWindow : Window
                 token,
                 createRow
             );
+            if (closed || version != navigationVersion || session != current)
+                return;
             if (location is { } previous && previous != target)
             {
                 switch (action)
@@ -1475,12 +1513,6 @@ public sealed partial class MainWindow : Window
             await LoadFolderAsync(parent, NavigationAction.New);
     }
 
-    private async void OnRankingFilterChanged(object sender, SelectionChangedEventArgs args)
-    {
-        if (session is not null && !updatingComparisonChoices)
-            await LoadRankingAsync();
-    }
-
     private async void OnLeafChanged(object sender, RoutedEventArgs args)
     {
         if (session is not null)
@@ -1494,50 +1526,42 @@ public sealed partial class MainWindow : Window
         await using var viewUpdate =
             viewUpdates.Count == 0 ? RankingLoadingRegion.BeginUpdate() : null;
         int version = ++rankingVersion;
+        var order = analysisOrder;
+        bool leafOnly = LeafBox.IsChecked == true;
+        bool comparing = Comparing;
         try
         {
-            if (Comparing && ChangeOrderBox.SelectedIndex > 0)
+            if (comparing)
             {
                 var report = comparisonReport;
-                int depth = DepthBox.SelectedIndex;
-                bool leafOnly = LeafBox.IsChecked == true;
-                var order = ChangeOrderBox.SelectedIndex switch
-                {
-                    2 => FolderChangeRanking.Shrinkage,
-                    3 => FolderChangeRanking.Magnitude,
-                    _ => FolderChangeRanking.Growth,
-                };
                 var changed = report is null
-                    ? Array.Empty<RankingRow>()
+                    ? Array.Empty<FolderChange>()
                     : await Task.Run(
-                        () =>
-                            (report with { Folders = [.. FilterChanges(report, depth, leafOnly)] })
-                                .Rank(order)
-                                .Select(row => new RankingRow(row, current.Drive))
-                                .ToArray(),
+                        () => BrowserOrdering.FolderChanges(FilterChanges(report, leafOnly), order),
                         lifetime.Token
                     );
                 if (!closed && version == rankingVersion && current == session)
-                    Ranking.ItemsSource = changed;
+                    PublishAnalysis(
+                        changed.Length,
+                        index => new(changed[index], current.Drive),
+                        version,
+                        current
+                    );
                 return;
             }
-            var rows = await current.ReadLargestAsync(
-                new(
-                    DepthBox.SelectedIndex == 0 ? null : DepthBox.SelectedIndex,
-                    LeafBox.IsChecked == true
-                ),
-                lifetime.Token,
-                FolderEntrySort.AllocatedBytes
+            var facts = await current.ReadFolderAnalysisAsync(
+                new(LeafOnly: leafOnly),
+                lifetime.Token
             );
+            var rows = await Task.Run(() => BrowserOrdering.Folders(facts, order), lifetime.Token);
             if (closed || version != rankingVersion || current != session)
                 return;
-            Ranking.ItemsSource = rows.Select(r => new RankingRow(
-                    r,
-                    current.Drive,
-                    Comparing ? GetFolderComparison(r.Sample.Reference) : null,
-                    Comparing
-                ))
-                .ToArray();
+            PublishAnalysis(
+                rows.Length,
+                index => new(rows[index], current.Drive),
+                version,
+                current
+            );
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -1548,11 +1572,38 @@ public sealed partial class MainWindow : Window
 
     private async void OnRankInvoked(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (session is { } current && Ranking.SelectedItem is RankingRow row)
+        if (Ranking.SelectedItem is RankingRow row)
+            await OpenAnalysisFolderAsync(row);
+    }
+
+    private async Task OpenAnalysisFolderAsync(RankingRow row)
+    {
+        if (session is { } current)
+        {
+            await using var update = BeginViewUpdate("フォルダを表示しています…");
             await LoadFolderAsync(
                 new(row.Reference, current.Drive + "\\" + row.RelativePath),
                 true
             );
+            if (session == current && !closed)
+                WorkspaceTabs.SelectedIndex = 0;
+        }
+    }
+
+    private void PublishAnalysis(
+        int count,
+        Func<int, RankingRow> createRow,
+        int version,
+        ScanSession current
+    )
+    {
+        Ranking.ItemsSource = new AnalysisRowCollection(
+            count,
+            createRow,
+            () => !closed && version == rankingVersion && current == session,
+            lifetime.Token
+        );
+        AnalysisCountText.Text = $"{count:N0} フォルダ";
     }
 
     private void ShowError(Exception error)
