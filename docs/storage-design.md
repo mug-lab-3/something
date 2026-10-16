@@ -4,7 +4,7 @@
 
 2026-10-14、最適化DuckDBのファイル方式を採用決定した。比較結果・判断理由・切り替え要件は
 [採用決定](decisions/20261014-duckdb-storage.md) を参照する。保守性を優先する型付きモデル・LINQ・EF Coreの方針は維持する。
-アプリと診断CLIをDuckDBへ切り替えた。アプリの共有履歴は `catalog-v3.duckdb` に保存し、旧SQLite・以前のDuckDBファイルは変更しない。未変更の観測とフォルダ一覧を共有する新形式については [共有履歴の実装](decisions/20261014-shared-history.md) を参照する。以下の世代単位のモデル説明は読み出しビューにも引き続き適用される。
+アプリと診断CLIをDuckDBへ切り替えた。アプリの共有履歴は `catalog-v4.duckdb` に保存し、旧SQLite・以前のDuckDBファイルは変更しない。未変更の観測とフォルダ一覧を共有する新形式については [共有履歴の実装](decisions/20261014-shared-history.md) を参照する。以下の世代単位のモデル説明は読み出しビューにも引き続き適用される。
 EF Coreプロバイダー1.27.0と、その依存であるSkuirrels.DuckDB.NET.Data.Full 1.5.6を固定した。
 UInt128は保存層の型アダプターでUHUGEINTとして保持する。UUID、任意のUTF-16名のBLOB、可視一覧用の派生テーブルを使う。
 通常の照会・メタデータ更新・履歴整理はEF Core/LINQ、一括観測保存はEFモデルから列と変換を得たAppenderを使う。

@@ -13,7 +13,7 @@ namespace Something.Storage.SharedMigrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(
-                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY,Version INTEGER NOT NULL); INSERT INTO something_format VALUES ('Something',3);"
+                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY,Version INTEGER NOT NULL); INSERT INTO something_format VALUES ('Something',4);"
             );
             migrationBuilder.CreateTable(
                 name: "auxiliary_ref",
@@ -148,6 +148,7 @@ namespace Something.Storage.SharedMigrations
                 name: "shared_entry",
                 columns: table => new
                 {
+                    StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
                     ScanId = table.Column<Guid>(type: "UUID", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Ordinal = table.Column<int>(type: "INTEGER", nullable: false),
@@ -288,6 +289,7 @@ namespace Something.Storage.SharedMigrations
                 name: "state_observation",
                 columns: table => new
                 {
+                    StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
                     ScanId = table.Column<Guid>(type: "UUID", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Kind = table.Column<int>(type: "INTEGER", nullable: false),
@@ -301,6 +303,10 @@ namespace Something.Storage.SharedMigrations
                 },
                 constraints: table =>
                 {
+                    table.CheckConstraint(
+                        "state_observation_attributes",
+                        "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)"
+                    );
                     table.PrimaryKey("PK_state_observation", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
                         "state_observation_identity",

@@ -50,6 +50,7 @@ public sealed partial class ScanStore
                     )
                     {
                         ObservedHardLinkCount = row.ObservedLinkCount,
+                        StandardFileAttributes = row.StandardFileAttributes,
                     }
                     : null;
                 buffer.Add(

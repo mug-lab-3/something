@@ -37,7 +37,11 @@ public sealed record NtfsFile(
     ImmutableArray<NtfsFileName> Names,
     ImmutableArray<NtfsDataStream> DataStreams,
     ImmutableArray<NtfsAttribute> Attributes
-);
+)
+{
+    /// <summary>Null means absent; FILE_NAME's cached attributes are never substituted.</summary>
+    public uint? StandardFileAttributes { get; init; }
+}
 
 /// <summary>
 /// Resolves a complete file from record segments. Nonresident ATTRIBUTE_LIST bytes must be supplied
@@ -198,7 +202,10 @@ public sealed class MftFileAssembler(int bytesPerCluster, long? totalClusters = 
             names,
             streams.ToImmutable(),
             attributes.ToImmutable()
-        );
+        )
+        {
+            StandardFileAttributes = AttributeValueParser.ReadStandardFileAttributes(attributes),
+        };
     }
 
     private NtfsDataStream AssembleStream(string name, NtfsAttribute[] attributes)

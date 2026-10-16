@@ -5,6 +5,51 @@ namespace Something.Ntfs.Tests;
 
 public sealed class MftObservationAdapterTests
 {
+    [Theory]
+    [InlineData(0u, false, false)]
+    [InlineData(2u, true, false)]
+    [InlineData(4u, false, true)]
+    [InlineData(6u, true, true)]
+    [InlineData(uint.MaxValue, true, true)]
+    public void StandardAttributesAreIndependentOfNameAttributes(
+        uint flags,
+        bool hidden,
+        bool system
+    )
+    {
+        var entry = Entry() with { File = Entry().File! with { StandardFileAttributes = flags } };
+        var result = MftObservationAdapter.Convert(entry, TestContext.Current.CancellationToken)!;
+        Assert.Equal(flags, result.StandardFileAttributes);
+        Assert.Equal(hidden, result.IsHidden);
+        Assert.Equal(system, result.IsSystem);
+        var unknown = result with { StandardFileAttributes = null };
+        Assert.Null(unknown.IsHidden);
+        Assert.Null(unknown.IsSystem);
+    }
+
+    [Fact]
+    public void UnresolvedCapacityStillPreservesValidatedStandardAttributes()
+    {
+        var evidence = new MftFileEvidence(Ref(8), false, 1, NtfsMetadataKind.BadClusters)
+        {
+            StandardFileAttributes = 6,
+        };
+        var result = MftObservationAdapter.Convert(
+            new(
+                8,
+                MftScanEntryKind.Unresolved,
+                LiveFileReadStatus.Unsupported,
+                null,
+                Evidence: evidence
+            ),
+            TestContext.Current.CancellationToken
+        )!;
+        Assert.Equal(CapacityResolution.Unresolved, result.Resolution);
+        Assert.True(result.IsHidden);
+        Assert.True(result.IsSystem);
+        Assert.Empty(result.Streams);
+    }
+
     private static FileReference Ref(ulong i, ushort seq = 1) => FileReference.Create(i, seq);
 
     private static NtfsFileName Name(

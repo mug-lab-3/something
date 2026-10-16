@@ -60,10 +60,10 @@ internal static class DuckReadModel
             context.Database.ExecuteSqlInterpolated(
                 $"""
                 INSERT INTO browser (ScanId,ParentIndex,ParentSequence,RecordIndex,Ordinal,Name,
-                    Sequence,IsDirectory,Resolution,LinksComplete,EntrySubtreeLogical,EntrySubtreeAllocated,
+                    Sequence,IsDirectory,Resolution,LinksComplete,StandardFileAttributes,EntrySubtreeLogical,EntrySubtreeAllocated,
                     FolderSequence,EntrySubtreeUnresolved,UnobservedDirectories,StreamLogical,StreamAllocated)
                 SELECT n.ScanId,n.ParentIndex,n.ParentSequence,n.RecordIndex,n.Ordinal,n.Name,
-                    o.Sequence,o.IsDirectory,o.Resolution,o.LinksComplete,f.EntrySubtreeLogical,f.EntrySubtreeAllocated,
+                    o.Sequence,o.IsDirectory,o.Resolution,o.LinksComplete,o.StandardFileAttributes,f.EntrySubtreeLogical,f.EntrySubtreeAllocated,
                     f.Sequence,f.EntrySubtreeUnresolved,f.UnobservedDirectories,s.Logical,s.Allocated
                 FROM file_name n JOIN observation o ON o.ScanId=n.ScanId AND o.RecordIndex=n.RecordIndex
                 LEFT JOIN folder_sample f ON f.ScanId=n.ScanId AND f.RecordIndex=n.RecordIndex

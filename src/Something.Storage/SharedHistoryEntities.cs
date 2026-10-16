@@ -31,6 +31,7 @@ internal sealed class SharedListingReferenceEntity
 
 internal sealed class SharedEntryEntity
 {
+    public uint? StandardFileAttributes { get; set; }
     public Guid ScanId { get; set; }
     public long RecordIndex { get; set; }
     public int Ordinal { get; set; }
@@ -46,6 +47,7 @@ internal sealed class SharedEntryEntity
 
 internal sealed class StateObservationEntity
 {
+    public uint? StandardFileAttributes { get; set; }
     public Guid ScanId { get; set; }
     public long RecordIndex { get; set; }
     public MftScanEntryKind Kind { get; set; }

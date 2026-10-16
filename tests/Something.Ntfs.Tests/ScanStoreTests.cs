@@ -12,6 +12,45 @@ namespace Something.Ntfs.Tests;
 
 public sealed class ScanStoreTests
 {
+    [Fact]
+    public void StandardAttributesRoundTripForFoldersFilesAndUnknownWithoutNameFallback()
+    {
+        using var fixture = new DatabaseFixture();
+        var token = TestContext.Current.CancellationToken;
+        var id = fixture.Store.BeginScan(Descriptor(), token);
+        fixture.Store.StageBatch(
+            id,
+            [
+                Stage(Directory(5, Root)),
+                Stage(Directory(20, Root) with { StandardFileAttributes = 6 }),
+                Stage(File(100, 12, Ref(20)) with { StandardFileAttributes = uint.MaxValue }),
+                Stage(File(101, 10, Ref(20))),
+            ],
+            token
+        );
+        fixture.Store.CompleteScan(id, Started.AddSeconds(1), token);
+        fixture.Reopen();
+
+        var directory = Assert.Single(
+            fixture.Store.ReadFolderEntries(id, Root, cancellationToken: token).Entries
+        );
+        Assert.True(directory.IsHidden);
+        Assert.True(directory.IsSystem);
+        var files = fixture.Store.ReadFolderEntries(id, Ref(20), cancellationToken: token).Entries;
+        Assert.Equal(
+            uint.MaxValue,
+            files.Single(file => file.Reference == Ref(100)).StandardFileAttributes
+        );
+        Assert.Null(files.Single(file => file.Reference == Ref(101)).IsHidden);
+        Assert.Equal(
+            6u,
+            fixture
+                .Store.ReadFiles(id, token)
+                .Single(file => file.Reference == Ref(20))
+                .StandardFileAttributes
+        );
+    }
+
     private static readonly DateTimeOffset Started = new(2026, 10, 13, 0, 0, 0, TimeSpan.Zero);
     private static readonly FileReference Root = Ref(5);
 

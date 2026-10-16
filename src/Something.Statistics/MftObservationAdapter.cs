@@ -91,6 +91,7 @@ public static class MftObservationAdapter
             )
             {
                 ObservedHardLinkCount = evidence.HardLinkCount,
+                StandardFileAttributes = file.StandardFileAttributes,
             };
         }
         if (entry.File is not null || entry.Status == LiveFileReadStatus.ObservedUnchanged)
@@ -112,6 +113,7 @@ public static class MftObservationAdapter
         )
         {
             ObservedHardLinkCount = observed.HardLinkCount,
+            StandardFileAttributes = observed.StandardFileAttributes,
         };
     }
 

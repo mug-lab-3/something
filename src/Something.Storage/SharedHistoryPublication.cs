@@ -117,7 +117,7 @@ internal static class SharedHistoryPublication
             SELECT n.ParentIndex,n.ParentSequence,
                 CASE WHEN count(*) OVER(PARTITION BY n.ParentIndex,n.ParentSequence)>{LargeListingThreshold}
                      THEN n.RecordIndex // {BlockRecordRange}+1 ELSE 0 END Bucket,
-                n.RecordIndex,n.Ordinal,r.VersionId ObservationVersion,n.Name,o.Sequence,o.IsDirectory,o.Resolution,o.LinksComplete,
+                n.RecordIndex,n.Ordinal,r.VersionId ObservationVersion,n.Name,o.Sequence,o.IsDirectory,o.Resolution,o.LinksComplete,o.StandardFileAttributes,
                 s.Logical StreamLogical,s.Allocated StreamAllocated
             FROM incoming_file_name n JOIN incoming_observation o ON o.RecordIndex=n.RecordIndex
             JOIN incoming_ref r ON r.RecordIndex=n.RecordIndex
@@ -138,7 +138,7 @@ internal static class SharedHistoryPublication
                 CASE WHEN c.ParentIndex IS NULL AND p.ListingId IS NOT NULL THEN p.ListingId ELSE uuid() END
             FROM incoming_listing n LEFT JOIN changed_listing c USING(ParentIndex,ParentSequence,Bucket)
             LEFT JOIN scan_listing_ref p ON p.ScanId={old} AND p.ParentIndex=n.ParentIndex AND p.ParentSequence=n.ParentSequence AND p.Bucket=n.Bucket;
-            INSERT INTO shared_entry (ScanId,RecordIndex,Ordinal,ObservationVersion,Name,Sequence,IsDirectory,Resolution,LinksComplete,StreamLogical,StreamAllocated)
+            INSERT INTO shared_entry (ScanId,RecordIndex,Ordinal,ObservationVersion,Name,Sequence,IsDirectory,Resolution,LinksComplete,StandardFileAttributes,StreamLogical,StreamAllocated)
             SELECT m.ListingId,e.* EXCLUDE(ParentIndex,ParentSequence,Bucket)
             FROM incoming_entries e JOIN scan_listing_ref m ON m.ScanId={id} AND m.ParentIndex=e.ParentIndex AND m.ParentSequence=e.ParentSequence AND m.Bucket=e.Bucket
             WHERE NOT EXISTS (SELECT 1 FROM scan_listing_ref p WHERE p.ScanId={old} AND p.ListingId=m.ListingId);

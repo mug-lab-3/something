@@ -317,6 +317,7 @@ public sealed partial class ScanStore : IDisposable
             Resolution = file?.Resolution,
             LinksComplete = file?.LinkSetComplete,
             ObservedLinkCount = file?.ObservedHardLinkCount,
+            StandardFileAttributes = file?.StandardFileAttributes,
             Names = file is null
                 ? []
                 :
@@ -418,6 +419,7 @@ public sealed partial class ScanStore : IDisposable
                 )
                 {
                     ObservedHardLinkCount = row.ObservedLinkCount,
+                    StandardFileAttributes = row.StandardFileAttributes,
                 };
             }
             after = page[^1].RecordIndex;

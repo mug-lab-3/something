@@ -5,6 +5,7 @@ namespace Something.Storage;
 
 internal sealed class BrowserEntity
 {
+    public uint? StandardFileAttributes { get; set; }
     public Guid ScanId { get; set; }
     public long ParentIndex { get; set; }
     public ushort ParentSequence { get; set; }
@@ -42,6 +43,7 @@ internal sealed class ScanEntity
 
 internal sealed class ObservationEntity
 {
+    public uint? StandardFileAttributes { get; set; }
     public Guid ScanId { get; set; }
     public long RecordIndex { get; set; }
     public MftScanEntryKind Kind { get; set; }

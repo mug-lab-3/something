@@ -20,7 +20,14 @@ public sealed record FolderEntry(
     bool NamesComplete,
     bool CanBrowse,
     bool CapacityIncomplete
-);
+)
+{
+    public uint? StandardFileAttributes { get; init; }
+    public bool? IsHidden =>
+        StandardFileAttributes is { } attributes ? (attributes & 0x2) != 0 : null;
+    public bool? IsSystem =>
+        StandardFileAttributes is { } attributes ? (attributes & 0x4) != 0 : null;
+}
 
 public sealed record FolderEntryPage(
     ImmutableArray<FolderEntry> Entries,
@@ -162,6 +169,7 @@ public sealed partial class ScanStore
                 observation.IsDirectory,
                 observation.Resolution,
                 observation.LinksComplete,
+                observation.StandardFileAttributes,
                 FolderLogical = (UInt128?)folder.EntrySubtreeLogical,
                 FolderAllocated = (UInt128?)folder.EntrySubtreeAllocated,
                 FolderSequence = (ushort?)folder.Sequence,
@@ -197,6 +205,7 @@ public sealed partial class ScanStore
                     row.IsDirectory,
                     row.Resolution,
                     row.LinksComplete,
+                    row.StandardFileAttributes,
                     FolderLogical = row.EntrySubtreeLogical,
                     FolderAllocated = row.EntrySubtreeAllocated,
                     FolderSequence = row.FolderSequence,
@@ -270,6 +279,9 @@ public sealed partial class ScanStore
                     data is null
                         || directory && ((row.Unresolved ?? 0) != 0 || (row.Unobserved ?? 0) != 0)
                 )
+                {
+                    StandardFileAttributes = row.StandardFileAttributes,
+                }
             );
         }
         return new(entries.ToImmutable(), rows.Length > pageSize, totalCount);

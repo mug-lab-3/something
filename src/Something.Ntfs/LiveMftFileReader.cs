@@ -19,7 +19,10 @@ public sealed record MftFileEvidence(
     bool IsDirectory,
     ushort HardLinkCount,
     NtfsMetadataKind MetadataKind
-);
+)
+{
+    public uint? StandardFileAttributes { get; init; }
+}
 
 /// <summary>Only ObservedUnchanged carries capacity; it remains an optimistic observation.</summary>
 public sealed record LiveFileReadResult(
@@ -361,7 +364,13 @@ public sealed class LiveMftFileReader
             record.IsDirectory,
             record.HardLinkCount,
             NtfsMetadataClassifier.Classify(record)
-        );
+        )
+        {
+            StandardFileAttributes =
+                record.Attributes.Count(a => a.Type == NtfsAttributeTypes.StandardInformation) == 1
+                    ? AttributeValueParser.ReadStandardFileAttributes(record.Attributes)
+                    : null,
+        };
 
     private static LiveFileReadResult Failure(
         LiveRecordReadResult result,

@@ -13,7 +13,7 @@ public sealed partial class ScanHistoryArchive
     private readonly TimeProvider clock;
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
-    internal const string DatabaseFileName = "catalog-v3.duckdb";
+    internal const string DatabaseFileName = "catalog-v4.duckdb";
     private string DatabasePath => Path.Combine(root, DatabaseFileName);
 
     public void SaveTimings(

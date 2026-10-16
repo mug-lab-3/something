@@ -5,6 +5,37 @@ namespace Something.Ntfs;
 /// <summary>Parses attribute values independently of where their bytes were read.</summary>
 public static class AttributeValueParser
 {
+    /// <summary>DOS attributes from the 48-byte legacy or 72-byte extended resident value.</summary>
+    public static uint ParseStandardFileAttributes(ReadOnlySpan<byte> value)
+    {
+        var view = new BinaryView(value);
+        if (value.Length is not (48 or 72))
+            throw view.Error("Unsupported STANDARD_INFORMATION value length", 0);
+        return view.U32(32);
+    }
+
+    public static uint? ReadStandardFileAttributes(IEnumerable<NtfsAttribute> attributes)
+    {
+        uint? result = null;
+        foreach (var attribute in attributes)
+        {
+            if (attribute.Type != NtfsAttributeTypes.StandardInformation)
+                continue;
+            if (result is not null)
+                throw new NtfsAssemblyException("Duplicate STANDARD_INFORMATION attributes.");
+            if (
+                attribute is not ResidentAttribute resident
+                || attribute.Name.Length != 0
+                || attribute.Flags != 0
+            )
+                throw new NtfsAssemblyException(
+                    "STANDARD_INFORMATION must be resident, unnamed and uncompressed."
+                );
+            result = ParseStandardFileAttributes(resident.Value.AsSpan());
+        }
+        return result;
+    }
+
     public static NtfsFileName ParseFileName(ReadOnlySpan<byte> value)
     {
         var view = new BinaryView(value);

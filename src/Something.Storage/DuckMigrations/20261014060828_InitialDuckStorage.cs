@@ -15,12 +15,13 @@ namespace Something.Storage.DuckMigrations
             // This schema uses logical EF relationships, validated with set operations
             // before publication. Native foreign keys/cascades are intentionally omitted.
             migrationBuilder.Sql(
-                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY, Version INTEGER NOT NULL CHECK(Version=2)); INSERT INTO something_format VALUES ('Something',2);"
+                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY, Version INTEGER NOT NULL CHECK(Version=3)); INSERT INTO something_format VALUES ('Something',3);"
             );
             migrationBuilder.CreateTable(
                 name: "browser",
                 columns: table => new
                 {
+                    StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
                     ScanId = table.Column<Guid>(type: "UUID", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Ordinal = table.Column<int>(type: "INTEGER", nullable: false),
@@ -189,6 +190,7 @@ namespace Something.Storage.DuckMigrations
                 name: "observation",
                 columns: table => new
                 {
+                    StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
                     ScanId = table.Column<Guid>(type: "UUID", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Kind = table.Column<int>(type: "INTEGER", nullable: false),
@@ -202,6 +204,10 @@ namespace Something.Storage.DuckMigrations
                 },
                 constraints: table =>
                 {
+                    table.CheckConstraint(
+                        "observation_attributes",
+                        "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)"
+                    );
                     table.PrimaryKey("PK_observation", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
                         "observation_identity",

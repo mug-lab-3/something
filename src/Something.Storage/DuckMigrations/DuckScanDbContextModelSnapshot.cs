@@ -63,6 +63,9 @@ namespace Something.Storage.DuckMigrations
                     b.Property<ushort?>("Sequence")
                         .HasColumnType("USMALLINT");
 
+                    b.Property<long?>("StandardFileAttributes")
+                        .HasColumnType("BIGINT");
+
                     b.Property<long?>("StreamAllocated")
                         .HasColumnType("BIGINT");
 
@@ -318,6 +321,9 @@ namespace Something.Storage.DuckMigrations
                     b.Property<ushort?>("Sequence")
                         .HasColumnType("USMALLINT");
 
+                    b.Property<long?>("StandardFileAttributes")
+                        .HasColumnType("BIGINT");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -325,6 +331,8 @@ namespace Something.Storage.DuckMigrations
 
                     b.ToTable("observation", null, t =>
                         {
+                            t.HasCheckConstraint("observation_attributes", "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)");
+
                             t.HasCheckConstraint("observation_identity", "(Sequence IS NULL AND IsDirectory IS NULL AND Domain IS NULL AND Resolution IS NULL AND LinksComplete IS NULL AND ObservedLinkCount IS NULL) OR (Sequence BETWEEN 0 AND 65535 AND IsDirectory IN (0,1) AND Domain BETWEEN 0 AND 2 AND Resolution IN (0,1) AND LinksComplete IN (0,1) AND Sequence IS NOT NULL AND IsDirectory IS NOT NULL AND Domain IS NOT NULL AND Resolution IS NOT NULL AND LinksComplete IS NOT NULL)");
 
                             t.HasCheckConstraint("observation_index", "RecordIndex BETWEEN 0 AND 281474976710655");

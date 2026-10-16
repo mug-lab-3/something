@@ -102,6 +102,15 @@ internal class ScanDbContext(DbContextOptions options) : DbContext(options)
             }
         );
         observation.HasKey(x => new { x.ScanId, x.RecordIndex });
+        observation.Property(x => x.StandardFileAttributes).HasConversion<long?>();
+        observation.ToTable(
+            "observation",
+            t =>
+                t.HasCheckConstraint(
+                    "observation_attributes",
+                    "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)"
+                )
+        );
         observation
             .HasOne<ScanEntity>()
             .WithMany()
@@ -284,6 +293,7 @@ internal class ScanDbContext(DbContextOptions options) : DbContext(options)
             steps.HasOne<ScanTimingEntity>().WithMany().HasForeignKey(row => row.ScanId);
             var browser = model.Entity<BrowserEntity>();
             browser.ToTable("browser");
+            browser.Property(x => x.StandardFileAttributes).HasConversion<long?>();
             browser.HasKey(x => new
             {
                 x.ScanId,

@@ -21,13 +21,13 @@ internal static class SharedHistoryViews
         SELECT m.ScanId,s.* EXCLUDE(ScanId) FROM scan_folder_ref m JOIN state_file_name s ON s.ScanId=m.ObservationVersion AND s.RecordIndex=m.RecordIndex;
         CREATE VIEW browser AS
         SELECT m.ScanId,m.ParentIndex,m.ParentSequence,e.RecordIndex,e.Ordinal,e.Name,
-            e.Sequence,e.IsDirectory,e.Resolution,e.LinksComplete,
+            e.Sequence,e.IsDirectory,e.Resolution,e.LinksComplete,e.StandardFileAttributes,
             NULL::UHUGEINT EntrySubtreeLogical,NULL::UHUGEINT EntrySubtreeAllocated,NULL::USMALLINT FolderSequence,
             NULL::BIGINT EntrySubtreeUnresolved,NULL::BIGINT UnobservedDirectories,e.StreamLogical,e.StreamAllocated
         FROM scan_listing_ref m JOIN shared_entry e ON e.ScanId=m.ListingId WHERE NOT e.IsDirectory
         UNION ALL
         SELECT m.ScanId,m.ParentIndex,m.ParentSequence,e.RecordIndex,e.Ordinal,e.Name,
-            e.Sequence,e.IsDirectory,e.Resolution,e.LinksComplete,f.EntrySubtreeLogical,f.EntrySubtreeAllocated,
+            e.Sequence,e.IsDirectory,e.Resolution,e.LinksComplete,e.StandardFileAttributes,f.EntrySubtreeLogical,f.EntrySubtreeAllocated,
             f.Sequence FolderSequence,f.EntrySubtreeUnresolved,f.UnobservedDirectories,e.StreamLogical,e.StreamAllocated
         FROM scan_listing_ref m JOIN shared_entry e ON e.ScanId=m.ListingId
         LEFT JOIN scan_folder_ref r ON r.ScanId=m.ScanId AND r.RecordIndex=e.RecordIndex

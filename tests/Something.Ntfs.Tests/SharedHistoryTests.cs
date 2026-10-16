@@ -7,6 +7,65 @@ namespace Something.Ntfs.Tests;
 
 public sealed class SharedHistoryTests
 {
+    [Theory]
+    [InlineData(0u)]
+    [InlineData(2u)]
+    [InlineData(4u)]
+    [InlineData(6u)]
+    [InlineData(uint.MaxValue)]
+    public void StandardAttributesRoundTripAndInvalidateOnlyChangedStates(uint flags)
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Save(Buffer(), Now.AddMinutes(-3));
+        var after = fixture.Save(Buffer("standard", standardAttributes: flags), Now.AddMinutes(-2));
+        var same = fixture.Save(Buffer("standard", standardAttributes: flags), Now.AddMinutes(-1));
+        using var store = fixture.Writer();
+        var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
+        Assert.Equal(7, db.States.Count());
+        var prior = store
+            .ReadFiles(before.Id, Token)
+            .Single(file => file.Reference.RecordIndex == 1000);
+        Assert.Null(prior.StandardFileAttributes);
+        Assert.Null(prior.IsHidden);
+        var current = store
+            .ReadFiles(after.Id, Token)
+            .Single(file => file.Reference.RecordIndex == 1000);
+        Assert.Equal(flags, current.StandardFileAttributes);
+        Assert.Equal(0u, current.Names[0].FileAttributes);
+        Assert.Equal((flags & 2) != 0, current.IsHidden);
+        Assert.Equal((flags & 4) != 0, current.IsSystem);
+        Assert.Null(
+            Assert
+                .Single(
+                    store.ReadFolderEntries(before.Id, Folder, cancellationToken: Token).Entries
+                )
+                .StandardFileAttributes
+        );
+        foreach (var scan in new[] { after.Id, same.Id })
+        {
+            Assert.Equal(
+                flags,
+                Assert
+                    .Single(store.ReadFolderEntries(scan, Folder, cancellationToken: Token).Entries)
+                    .StandardFileAttributes
+            );
+            Assert.Equal(
+                flags,
+                Assert
+                    .Single(
+                        store
+                            .ReadFolderEntries(
+                                scan,
+                                FileReference.Create(30, 1),
+                                cancellationToken: Token
+                            )
+                            .Entries
+                    )
+                    .StandardFileAttributes
+            );
+        }
+    }
+
     [Fact]
     public void InvalidCompactionBackupCannotOverwriteAnIntactDatabase()
     {
@@ -260,6 +319,7 @@ public sealed class SharedHistoryTests
     [InlineData("ads")]
     [InlineData("attributes")]
     [InlineData("header")]
+    [InlineData("standard")]
     public void EveryStoredMetadataChangeCreatesANewStateWithoutChangingOldHistory(string change)
     {
         using var fixture = new Fixture();
@@ -667,6 +727,7 @@ public sealed class SharedHistoryTests
 
     private static bool Equal(FileCapacityObservation a, FileCapacityObservation b) =>
         a.Reference == b.Reference
+        && a.StandardFileAttributes == b.StandardFileAttributes
         && a.ObservedHardLinkCount == b.ObservedHardLinkCount
         && a.Names.AsSpan().SequenceEqual(b.Names.AsSpan())
         && a.Streams.AsSpan().SequenceEqual(b.Streams.AsSpan());
@@ -684,7 +745,8 @@ public sealed class SharedHistoryTests
         string change = "",
         string key = "volume:A",
         int count = 1,
-        bool aliases = true
+        bool aliases = true,
+        uint? standardAttributes = null
     )
     {
         var buffer = new BufferedScan(
@@ -769,6 +831,8 @@ public sealed class SharedHistoryTests
                 {
                     ObservedHardLinkCount =
                         changed && change == "header" ? (ushort)9 : (ushort)names.Count,
+                    StandardFileAttributes =
+                        changed && change == "standard" ? standardAttributes ?? 6u : null,
                 }
             );
         }

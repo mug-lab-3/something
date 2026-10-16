@@ -72,6 +72,11 @@ public sealed record FileCapacityObservation(
 )
 {
     public ushort? ObservedHardLinkCount { get; init; }
+    public uint? StandardFileAttributes { get; init; }
+    public bool? IsHidden =>
+        StandardFileAttributes is { } attributes ? (attributes & 0x2) != 0 : null;
+    public bool? IsSystem =>
+        StandardFileAttributes is { } attributes ? (attributes & 0x4) != 0 : null;
 }
 
 public sealed record FileAttribution(

@@ -198,6 +198,8 @@ public sealed class MftRecordParser
             if (valueOffset < headerEnd)
                 throw view.Error("Resident value overlaps attribute header/name", 20);
             ReadOnlySpan<byte> value = view.Slice(valueOffset, valueLength);
+            if (type == NtfsAttributeTypes.StandardInformation && (name.Length != 0 || flags != 0))
+                throw view.Error("STANDARD_INFORMATION must be unnamed and uncompressed", 8);
             ValidateKnownValue(type, value, origin + valueOffset);
             return new ResidentAttribute(
                 type,
@@ -208,8 +210,8 @@ public sealed class MftRecordParser
             );
         }
 
-        if (type == NtfsAttributeTypes.FileName)
-            throw view.Error("FILE_NAME must be resident", 8);
+        if (type is NtfsAttributeTypes.FileName or NtfsAttributeTypes.StandardInformation)
+            throw view.Error("FILE_NAME and STANDARD_INFORMATION must be resident", 8);
         long lowest = view.I64(16),
             highest = view.I64(24);
         int pairsOffset = view.U16(32);
@@ -263,6 +265,8 @@ public sealed class MftRecordParser
     {
         try
         {
+            if (type == NtfsAttributeTypes.StandardInformation)
+                AttributeValueParser.ParseStandardFileAttributes(value);
             if (type == NtfsAttributeTypes.FileName)
                 AttributeValueParser.ParseFileName(value);
             if (type == NtfsAttributeTypes.AttributeList)

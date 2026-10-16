@@ -4,7 +4,7 @@
 
 ## 保存構造
 
-本体は `%LOCALAPPDATA%\Something\History\catalog-v3.duckdb` を使用する。形式識別子は3。旧 `catalog-v2.duckdb` は移行・上書き・削除しない。最初は履歴が空で、新たに完了したスキャンから記録する。
+本体は `%LOCALAPPDATA%\Something\History\catalog-v4.duckdb` を使用する。形式識別子は4。旧 `catalog-v2.duckdb` は移行・上書き・削除しない。最初は履歴が空で、新たに完了したスキャンから記録する。
 
 - `state_observation` / `state_file_name` / `state_stream`: 不変の観測状態、全名前（DOS別名含む）、全DATAストリーム。キーのScanIdは**状態グループの識別子**であり、元スキャンの存続に依存しない。MFT番号とシーケンスを保存する。
 - `state_folder_sample`: 不変のフォルダ集計。名前別の容量と重複排除した容量を両方保存する。

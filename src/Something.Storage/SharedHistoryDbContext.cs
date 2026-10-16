@@ -90,6 +90,7 @@ internal sealed class SharedHistoryDbContext(DbContextOptions<SharedHistoryDbCon
             x.RecordIndex,
             x.Ordinal,
         });
+        entries.Property(x => x.StandardFileAttributes).HasConversion<long?>();
         entries
             .Property(x => x.Name)
             .HasConversion(v => StorageEncoding.Name(v), v => StorageEncoding.Name(v));

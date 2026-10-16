@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -97,6 +97,7 @@ namespace Something.Storage.Migrations
                 name: "observation",
                 columns: table => new
                 {
+                    StandardFileAttributes = table.Column<long>(type: "INTEGER", nullable: true),
                     ScanId = table.Column<Guid>(type: "TEXT", nullable: false),
                     RecordIndex = table.Column<long>(type: "INTEGER", nullable: false),
                     Kind = table.Column<int>(type: "INTEGER", nullable: false),
@@ -110,6 +111,10 @@ namespace Something.Storage.Migrations
                 },
                 constraints: table =>
                 {
+                    table.CheckConstraint(
+                        "observation_attributes",
+                        "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)"
+                    );
                     table.PrimaryKey("PK_observation", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
                         "observation_identity",

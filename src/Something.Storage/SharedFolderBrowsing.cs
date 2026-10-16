@@ -47,6 +47,7 @@ public sealed partial class ScanStore
                 IsDirectory = e.IsDirectory,
                 Resolution = e.Resolution,
                 LinksComplete = e.LinksComplete,
+                StandardFileAttributes = e.StandardFileAttributes,
                 StreamLogical = e.StreamLogical,
                 StreamAllocated = e.StreamAllocated,
                 EntrySubtreeLogical = s.EntrySubtreeLogical,
