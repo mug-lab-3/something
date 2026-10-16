@@ -118,11 +118,6 @@
                 IsChecked="True"
                 Click="OnVisibilityChanged"
               />
-              <MenuFlyoutSeparator />
-              <MenuFlyoutItem
-                Text="スキャン・DB保存は常にすべてのファイルが対象"
-                IsEnabled="False"
-              />
             </MenuFlyout>
           </Button.Flyout>
         </Button>
