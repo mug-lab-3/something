@@ -14,7 +14,7 @@ public sealed record ScanHistoryEntry(
         CompletedUtc.ToOffset(TimeSpan.FromMinutes(UtcOffsetMinutes));
 }
 
-/// <summary>Keep every completion in the last 24 hours, plus the latest completion per volume/calendar day.
+/// <summary>Keep every completion less than seven days old, plus the latest completion per volume/calendar day.
 /// Calendar days are captured at publication, so changing the machine time zone does not rebucket history.</summary>
 public static class HistoryRetention
 {
@@ -22,7 +22,7 @@ public static class HistoryRetention
     {
         ArgumentNullException.ThrowIfNull(entries);
         var rows = entries.ToArray();
-        var cutoff = now - TimeSpan.FromHours(24);
+        var cutoff = now - TimeSpan.FromDays(7);
         var keep = rows.Where(row => row.CompletedUtc > cutoff).Select(row => row.Id).ToHashSet();
         foreach (var day in rows.GroupBy(row => (row.VolumeKey, row.LocalDay)))
             keep.Add(

@@ -25,11 +25,8 @@ public sealed partial class MainWindow : Window
     private ScanSession? historicalSession;
     private int historyVersion;
     private bool updatingHistoryChoices;
-    private bool maintainingHistory;
     private Task startupTask = Task.CompletedTask;
-    private Task maintenanceTask = Task.CompletedTask;
     private readonly HashSet<Task> historyTasks = [];
-    private readonly DispatcherTimer historyTimer = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly Stack<FolderLocation> navigation = [];
     private readonly Stack<FolderLocation> forwardHistory = [];
     private FolderLocation? parentLocation;
@@ -142,23 +139,6 @@ public sealed partial class MainWindow : Window
             {
                 startupTask = InitializeHistoryAsync();
                 await startupTask;
-                if (!closed)
-                    historyTimer.Start();
-            };
-            historyTimer.Tick += async (_, _) =>
-            {
-                if (maintainingHistory || closed)
-                    return;
-                maintainingHistory = true;
-                try
-                {
-                    maintenanceTask = MaintainHistoryAsync();
-                    await maintenanceTask;
-                }
-                finally
-                {
-                    maintainingHistory = false;
-                }
             };
         }
         if (demo)
@@ -453,7 +433,6 @@ public sealed partial class MainWindow : Window
             return;
         try
         {
-            await Task.Run(() => history.Maintain(lifetime.Token), lifetime.Token);
             foreach (var card in cards)
             {
                 await using var viewUpdate =
@@ -511,23 +490,6 @@ public sealed partial class MainWindow : Window
                 }
                 await RefreshHistoryChoicesAsync(card);
             }
-        }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        catch (Exception error)
-        {
-            ShowError(error);
-        }
-    }
-
-    private async Task MaintainHistoryAsync()
-    {
-        if (history is null)
-            return;
-        try
-        {
-            await Task.Run(() => history.Maintain(lifetime.Token), lifetime.Token);
-            if (selectedCard is { } card)
-                await RefreshHistoryChoicesAsync(card);
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -1627,10 +1589,9 @@ public sealed partial class MainWindow : Window
         foreach (var indicator in treeLoads.Values)
             indicator.Dispose();
         lifetime.Cancel();
-        historyTimer.Stop();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
-        await Task.WhenAll(startupTask, maintenanceTask);
+        await startupTask;
         await Task.WhenAll(historyTasks.ToArray());
         if (historicalSession is not null)
             await historicalSession.DisposeAsync();

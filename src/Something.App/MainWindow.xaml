@@ -480,7 +480,7 @@
             />
             <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True" />
             <TextBlock
-              Text="フォルダはサブフォルダ込み。ハードリンクは名前ごとに計上し、リンク先はたどりません。履歴は直近24時間の全記録と、それ以前の各日の最終記録を保持します。"
+              Text="フォルダはサブフォルダ込み。ハードリンクは名前ごとに計上し、リンク先はたどりません。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
               TextWrapping="Wrap"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
               FontSize="12"

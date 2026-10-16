@@ -4,6 +4,17 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Something.App"
 >
+  <UserControl.Resources>
+    <Style
+      x:Key="GhostButtonStyle"
+      TargetType="Button"
+      BasedOn="{StaticResource DefaultButtonStyle}"
+    >
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+  </UserControl.Resources>
   <Grid RowSpacing="12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -12,14 +23,19 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
     <Border
-      CornerRadius="8"
-      Padding="16"
-      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+      Padding="0,0,0,16"
       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-      BorderThickness="1"
+      BorderThickness="0,0,0,1"
     >
       <StackPanel x:Name="SelectionControls" Spacing="12">
-        <StackPanel Orientation="Horizontal" Spacing="12">
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
           <Border
             CornerRadius="6"
             BorderThickness="1"
@@ -114,41 +130,22 @@
           </Border>
           <Button
             x:Name="ApplyRangeButton"
-            Content="範囲で選択"
+            Grid.Column="1"
+            Style="{StaticResource GhostButtonStyle}"
+            ToolTipService.ToolTip="この範囲で選択"
+            AutomationProperties.Name="この範囲で選択"
+            Width="36"
+            Height="36"
+            MinWidth="0"
+            Padding="0"
             Click="OnApplyRange"
             VerticalAlignment="Center"
-          />
-        </StackPanel>
-        <Grid ColumnSpacing="12">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button
-              x:Name="MonthPresetButton"
-              Content="1か月前以前"
-              Tag="1"
-              Click="OnPresetClick"
-            />
-            <Button
-              x:Name="ThreeMonthsPresetButton"
-              Content="3か月前以前"
-              Tag="3"
-              Click="OnPresetClick"
-            />
-            <Button
-              x:Name="HalfYearPresetButton"
-              Content="半年前以前"
-              Tag="6"
-              Click="OnPresetClick"
-            />
-            <Button x:Name="YearPresetButton" Content="1年前以前" Tag="12" Click="OnPresetClick" />
-          </StackPanel>
+          >
+            <FontIcon Glyph="&#xE73E;" FontSize="18" />
+          </Button>
           <TextBlock
             x:Name="SelectionCountText"
-            Grid.Column="1"
+            Grid.Column="3"
             VerticalAlignment="Center"
             HorizontalAlignment="Right"
             Text="選択中 0件"
@@ -157,7 +154,8 @@
           />
           <Button
             x:Name="DeleteButton"
-            Grid.Column="2"
+            Style="{StaticResource GhostButtonStyle}"
+            Grid.Column="4"
             Click="OnDelete"
             IsEnabled="False"
             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
@@ -168,12 +166,44 @@
             </StackPanel>
           </Button>
         </Grid>
-        <TextBlock
-          Text="「範囲で選択」を押すと、その範囲の履歴にチェックを付け直します。日時の編集や期間ボタンだけではチェックは変わりません。"
-          FontSize="12"
-          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-          TextWrapping="Wrap"
-        />
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button
+              x:Name="MonthPresetButton"
+              Style="{StaticResource GhostButtonStyle}"
+              Content="1か月前以前"
+              Tag="1"
+              Click="OnPresetClick"
+            />
+            <Button
+              x:Name="ThreeMonthsPresetButton"
+              Style="{StaticResource GhostButtonStyle}"
+              Content="3か月前以前"
+              Tag="3"
+              Click="OnPresetClick"
+            />
+            <Button
+              x:Name="HalfYearPresetButton"
+              Style="{StaticResource GhostButtonStyle}"
+              Content="半年前以前"
+              Tag="6"
+              Click="OnPresetClick"
+            />
+            <Button
+              x:Name="YearPresetButton"
+              Style="{StaticResource GhostButtonStyle}"
+              Content="1年前以前"
+              Tag="12"
+              Click="OnPresetClick"
+            />
+          </StackPanel>
+        </Grid>
+
         <TextBlock
           x:Name="SelectionError"
           Visibility="Collapsed"
@@ -200,14 +230,7 @@
         <Button x:Name="CancelDeleteButton" Content="キャンセル" Click="OnCancelDelete" />
       </StackPanel>
     </StackPanel>
-    <Border
-      Grid.Row="2"
-      CornerRadius="8"
-      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-      BorderThickness="1"
-      Padding="12"
-    >
+    <Border Grid.Row="2">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
@@ -239,6 +262,7 @@
           />
           <Button
             x:Name="RefreshButton"
+            Style="{StaticResource GhostButtonStyle}"
             Grid.Column="2"
             Click="OnRefresh"
             ToolTipService.ToolTip="履歴を更新"

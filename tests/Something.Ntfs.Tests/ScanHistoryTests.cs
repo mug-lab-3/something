@@ -41,8 +41,8 @@ public sealed class ScanHistoryTests
     [Fact]
     public void Retention_KeepsRecentCompletionsAndOnlyDailyLatestPerVolume()
     {
-        var old1 = Entry("A", Now.AddDays(-2).AddHours(-2));
-        var old2 = Entry("A", Now.AddDays(-2));
+        var old1 = Entry("A", Now.AddDays(-8).AddHours(-2));
+        var old2 = Entry("A", Now.AddDays(-8));
         var other = Entry("B", old1.CompletedUtc);
         var recent1 = Entry("A", Now.AddHours(-3));
         var recent2 = Entry("A", Now.AddHours(-1));
@@ -55,11 +55,11 @@ public sealed class ScanHistoryTests
     }
 
     [Fact]
-    public void Retention_Exact24HourBoundaryIsConsolidatedAndRecentDailyLatestReplacesOlderRow()
+    public void Retention_ExactSevenDayBoundaryIsConsolidatedAndRecentDailyLatestReplacesOlderRow()
     {
-        var older = Entry("A", Now.AddHours(-25));
-        var boundary = Entry("A", Now.AddHours(-24));
-        var recent = Entry("A", Now.AddHours(-23));
+        var older = Entry("A", Now.AddDays(-7).AddTicks(-1));
+        var boundary = Entry("A", Now.AddDays(-7));
+        var recent = Entry("A", Now.AddDays(-7).AddTicks(1));
 
         var keep = HistoryRetention.Keep([older, boundary, recent], Now);
 
@@ -67,11 +67,28 @@ public sealed class ScanHistoryTests
     }
 
     [Fact]
+    public void Retention_DoesNotConsolidateMultipleScansBetweenOneAndSevenDaysOld()
+    {
+        var entries = new[]
+        {
+            Entry("A", Now.AddDays(-2).AddHours(-1)),
+            Entry("A", Now.AddDays(-2)),
+            Entry("A", Now.AddDays(-6).AddHours(-1)),
+            Entry("A", Now.AddDays(-6)),
+            Entry("A", Now.AddDays(-7).AddTicks(1)),
+        };
+
+        var keep = HistoryRetention.Keep(entries, Now);
+
+        Assert.True(keep.SetEquals(entries.Select(row => row.Id)));
+    }
+
+    [Fact]
     public void Retention_UsesCapturedCalendarDayAndDeterministicTies()
     {
-        var first = Entry("A", Now.AddDays(-3), new(2026, 10, 10));
+        var first = Entry("A", Now.AddDays(-10), new(2026, 10, 4));
         var second = Entry("A", first.CompletedUtc, first.LocalDay);
-        var nextDay = Entry("A", first.CompletedUtc.AddMinutes(1), new(2026, 10, 11));
+        var nextDay = Entry("A", first.CompletedUtc.AddMinutes(1), new(2026, 10, 5));
 
         var keep = HistoryRetention.Keep([first, second, nextDay], Now);
 
@@ -132,7 +149,7 @@ public sealed class ScanHistoryTests
         Assert.Equal(new DateOnly(2026, 10, 14), first.LocalDay);
         Assert.Equal(first.LocalDay, second.LocalDay);
         Assert.Equal(540, first.UtcOffsetMinutes);
-        fixture.Clock.Now = Now.AddDays(2);
+        fixture.Clock.Now = Now.AddDays(8);
         var reopened = new ScanHistoryArchive(fixture.Root, fixture.Clock, TimeZoneInfo.Utc);
 
         reopened.Maintain(Token);
@@ -174,9 +191,9 @@ public sealed class ScanHistoryTests
     [Fact]
     public void Maintenance_HidesExpiredHistoryAndDefersDeletionWhileReaderOwnsSnapshot()
     {
-        using var fixture = new HistoryFixture(Now.AddDays(-2));
-        var first = fixture.Save(Now.AddDays(-2).AddHours(-1), Token);
-        var second = fixture.Save(Now.AddDays(-2), Token);
+        using var fixture = new HistoryFixture(Now.AddDays(-8));
+        var first = fixture.Save(Now.AddDays(-8).AddHours(-1), Token);
+        var second = fixture.Save(Now.AddDays(-8), Token);
         using var reader = fixture.Archive.Open(first.Id, Token);
         fixture.Clock.Now = Now;
 
@@ -259,9 +276,9 @@ public sealed class ScanHistoryTests
     [Fact]
     public void IndependentArchiveReaderDefersGenerationDeletion()
     {
-        using var fixture = new HistoryFixture(Now.AddDays(-2));
-        var first = fixture.Save(Now.AddDays(-2).AddHours(-1), Token);
-        fixture.Save(Now.AddDays(-2), Token);
+        using var fixture = new HistoryFixture(Now.AddDays(-8));
+        var first = fixture.Save(Now.AddDays(-8).AddHours(-1), Token);
+        fixture.Save(Now.AddDays(-8), Token);
         using var reader = fixture.Archive.Open(first.Id, Token);
         fixture.Clock.Now = Now;
         var other = new ScanHistoryArchive(fixture.Root, fixture.Clock, TimeZoneInfo.Utc);

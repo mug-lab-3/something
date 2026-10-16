@@ -214,7 +214,7 @@ public sealed class SharedHistoryTests
         var first = fixture.Save(Buffer(), Now.AddDays(-2).AddHours(-1));
         using var lease = fixture.Archive.Open(first.Id, Token);
         var second = fixture.Save(Buffer(), Now.AddDays(-2));
-        fixture.Clock.Now = Now;
+        fixture.Clock.Now = Now.AddDays(6);
         fixture.Archive.Maintain(Token);
         Assert.Equal(
             4096,
@@ -408,7 +408,7 @@ public sealed class SharedHistoryTests
         var old = fixture.Save(Buffer(), Now.AddDays(-2).AddHours(-1));
         using var lease = fixture.Archive.Open(old.Id, Token);
         var current = fixture.Save(Buffer("size"), Now.AddDays(-2));
-        fixture.Clock.Now = Now;
+        fixture.Clock.Now = Now.AddDays(6);
         fixture.Archive.Maintain(Token);
         using (var store = fixture.Writer())
             Assert.Equal(
