@@ -19,6 +19,7 @@ public sealed partial class HistoryManagementView : UserControl
     private HashSet<Guid> selectedIds = [];
     private HistoryDeleteDialog? activeDeleteDialog;
     private Func<Task<HistoryCompactionResult>>? optimize;
+    private Func<string, IAsyncDisposable>? beginProgress;
     private Task currentOperation = Task.CompletedTask;
     private readonly DispatcherTimer noticeTimer = new() { Interval = TimeSpan.FromSeconds(6) };
     private int loadVersion;
@@ -43,19 +44,22 @@ public sealed partial class HistoryManagementView : UserControl
         ScanHistoryArchive? archive,
         Func<Guid[], Task> refreshViews,
         Func<Task<HistoryCompactionResult>> optimize,
+        Func<string, IAsyncDisposable> beginProgress,
         CancellationToken token
     )
     {
         this.archive = archive;
         this.refreshViews = refreshViews;
         this.optimize = optimize;
+        this.beginProgress = beginProgress;
         this.token = token;
     }
 
-    internal async Task LoadAsync(string? key)
+    internal Task LoadAsync(string? key) =>
+        operationActive ? Task.CompletedTask : LoadCoreAsync(key);
+
+    private async Task LoadCoreAsync(string? key)
     {
-        if (operationActive)
-            return;
         int version = ++loadVersion;
         bool changed = volumeKey != key;
         var selected = changed ? [] : selectedIds.ToHashSet();
@@ -224,8 +228,9 @@ public sealed partial class HistoryManagementView : UserControl
             }
         )
             control.IsEnabled = !value;
-        BusyRing.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
-        BusyRing.IsActive = value;
+        bool showSpinner = value && !operationActive;
+        BusyRing.Visibility = showSpinner ? Visibility.Visible : Visibility.Collapsed;
+        BusyRing.IsActive = showSpinner;
         EmptyText.Visibility =
             !value && HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DeleteButton.IsEnabled = !value && HistoryList.SelectedItems.Count > 0;
@@ -287,7 +292,7 @@ public sealed partial class HistoryManagementView : UserControl
             .SelectedItems.Cast<ManagedHistoryRow>()
             .Select(row => row.Entry)
             .ToArray();
-        StartOperation(async () =>
+        StartOperation(async showProgress =>
         {
             var dialog = new HistoryDeleteDialog(rows) { XamlRoot = XamlRoot };
             activeDeleteDialog = dialog;
@@ -303,6 +308,7 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
+            showProgress("スキャン履歴を削除しています…");
             return await DeleteCoreAsync(rows.Select(row => row.Id).ToArray(), dialog.Optimize);
         });
     }
@@ -311,26 +317,32 @@ public sealed partial class HistoryManagementView : UserControl
     {
         if (busy)
             return;
-        StartOperation(async () =>
-            new OperationNotice(OptimizationText(await optimize!()), InfoBarSeverity.Success)
-        );
+        StartOperation(async showProgress =>
+        {
+            showProgress("DBを最適化しています…");
+            return new OperationNotice(
+                OptimizationText(await optimize!()),
+                InfoBarSeverity.Success
+            );
+        });
     }
 
-    private void StartOperation(Func<Task<OperationNotice?>> action)
+    private void StartOperation(Func<Action<string>, Task<OperationNotice?>> action)
     {
         currentOperation = RunOperationAsync(action);
         WorkStarted?.Invoke(currentOperation);
     }
 
-    private async Task RunOperationAsync(Func<Task<OperationNotice?>> action)
+    private async Task RunOperationAsync(Func<Action<string>, Task<OperationNotice?>> action)
     {
         operationActive = true;
         SetBusy(true);
         MaintenanceChanged?.Invoke(true);
         OperationNotice? notice = null;
+        IAsyncDisposable? presentation = null;
         try
         {
-            notice = await action();
+            notice = await action(message => presentation ??= beginProgress!(message));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
@@ -339,16 +351,26 @@ public sealed partial class HistoryManagementView : UserControl
         }
         finally
         {
-            operationActive = false;
             try
             {
                 if (!token.IsCancellationRequested)
-                    await LoadAsync(volumeKey);
+                    await LoadCoreAsync(volumeKey);
             }
             finally
             {
-                SetBusy(false);
-                MaintenanceChanged?.Invoke(false);
+                try
+                {
+                    // Cover deletion, reference refresh, collection, optional compaction,
+                    // and the final list reload with one continuous animation scope.
+                    if (presentation is not null)
+                        await presentation.DisposeAsync();
+                }
+                finally
+                {
+                    operationActive = false;
+                    SetBusy(false);
+                    MaintenanceChanged?.Invoke(false);
+                }
             }
         }
         if (notice is not null && !token.IsCancellationRequested)
@@ -449,6 +471,7 @@ public sealed partial class HistoryManagementView : UserControl
             activeDeleteDialog
             ?? throw new InvalidOperationException("Delete confirmation dialog was not shown.");
         dialog.VerifyDefaultOptions();
+        await dialog.VerifyButtonStatesAsync(token);
         if (confirm)
             dialog.ConfirmSynthetic(optimizeAfter);
         else

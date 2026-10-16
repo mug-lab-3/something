@@ -17,6 +17,7 @@ public sealed partial class MainWindow
             history,
             RefreshAfterHistoryDeletionAsync,
             OptimizeHistoryAsync,
+            message => BeginViewUpdate(message),
             lifetime.Token
         );
         HistoryManagement.WorkStarted += TrackHistoryManagementWork;

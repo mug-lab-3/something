@@ -39,6 +39,53 @@ public sealed partial class HistoryDeleteDialog : ContentDialog
         ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
     }
 
+    internal async Task VerifyButtonStatesAsync(CancellationToken token)
+    {
+        var button =
+            FindButton(this, "PrimaryButton")
+            ?? throw new InvalidOperationException("Delete button was not loaded.");
+        var content =
+            VisualTreeHelper.GetChild(button, 0) as ContentPresenter
+            ?? throw new InvalidOperationException("Delete button template was not loaded.");
+        var originalTheme = RequestedTheme;
+        try
+        {
+            foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
+            {
+                RequestedTheme = theme;
+                var colors = new HashSet<global::Windows.UI.Color>();
+                foreach (string state in new[] { "Normal", "PointerOver", "Pressed" })
+                {
+                    if (!VisualStateManager.GoToState(button, state, false))
+                        throw new InvalidOperationException(
+                            $"Missing delete button state: {state}."
+                        );
+                    await Task.Delay(120, token);
+                    if (
+                        content.Background is not SolidColorBrush background
+                        || content.Foreground is not SolidColorBrush foreground
+                        || background.Color.R <= background.Color.G * 2
+                        || background.Color.R <= background.Color.B * 2
+                        || foreground.Color != Microsoft.UI.Colors.White
+                    )
+                        throw new InvalidOperationException(
+                            $"Delete button lost its red/white colors in {theme}/{state}."
+                        );
+                    colors.Add(background.Color);
+                }
+                if (colors.Count != 3)
+                    throw new InvalidOperationException(
+                        "Delete button states lack visual feedback."
+                    );
+            }
+        }
+        finally
+        {
+            RequestedTheme = originalTheme;
+            VisualStateManager.GoToState(button, "Normal", false);
+        }
+    }
+
     private static Button? FindButton(DependencyObject parent, string name)
     {
         for (int index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
