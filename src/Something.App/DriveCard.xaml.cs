@@ -107,14 +107,18 @@ public sealed partial class DriveCard : UserControl
             : $"✓ スキャン済み ({result.Elapsed.TotalSeconds:F1}秒) · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件";
         ToolTipService.SetToolTip(
             ScanStateText,
-            result is null ? "未スキャン" : $"スキャン完了 · {result.Elapsed.TotalSeconds:F1}秒"
+            result is null
+                ? "未スキャン"
+                : $"{result.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · 管理領域未解決 {result.MetadataUnresolved:N0}\n取得時点の観測です。"
         );
+        ToolTipService.SetToolTip(ScanStatus, ToolTipService.GetToolTip(ScanStateText));
     }
 
-    internal void SetState(string text)
+    internal void SetState(string text, string? details = null)
     {
         ScanStateText.Text = text;
-        ToolTipService.SetToolTip(ScanStatus, text);
+        ToolTipService.SetToolTip(ScanStatus, details ?? text);
+        ToolTipService.SetToolTip(ScanStateText, details ?? text);
     }
 
     internal void SetProgress(bool scanning)

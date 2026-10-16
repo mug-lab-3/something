@@ -62,7 +62,7 @@ public sealed partial class MainWindow
         bool covered = loading || ViewLoadingAnimation.IsPlaying;
         ViewLoadingOverlay.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;
         ViewHost.IsEnabled = !covered;
-        ViewControls.Opacity = ResultsContent.Opacity = ViewFooter.Opacity = covered ? 0 : 1;
+        ViewControls.Opacity = ResultsContent.Opacity = EmptyScanText.Opacity = covered ? 0 : 1;
     }
 
     private async Task PreviewLoadingAnimationAsync()
@@ -84,7 +84,7 @@ public sealed partial class MainWindow
             if (
                 ViewLoadingOverlay.Visibility
                     != (loading ? Visibility.Visible : Visibility.Collapsed)
-                || new[] { ViewControls, (FrameworkElement)ResultsContent, ViewFooter }.Any(
+                || new[] { ViewControls, (FrameworkElement)ResultsContent, EmptyScanText }.Any(
                     element => element.Opacity != (loading ? 0 : 1)
                 )
                 || ViewHost.IsEnabled == loading

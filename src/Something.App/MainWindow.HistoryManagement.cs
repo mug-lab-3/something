@@ -322,7 +322,7 @@ public sealed partial class MainWindow
                 EntryCountText.DataContext = null;
                 PathText.Text = "未スキャン";
                 BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
-                StatusText.Text = "保存された履歴はありません。スキャンを開始してください。";
+                EmptyScanText.Visibility = Visibility.Visible;
             }
         }
         if (selectedCard is { } currentCard)

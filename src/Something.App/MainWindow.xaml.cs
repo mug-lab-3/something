@@ -66,6 +66,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeNotifications();
         ViewLoadingAnimation.Settled += (_, _) => UpdateViewLoadingPresentation();
         var arguments = Environment.GetCommandLineArgs();
         int demoHistory = Array.IndexOf(arguments, "--demo-history");
@@ -143,7 +144,10 @@ public sealed partial class MainWindow : Window
         }
         if (demo)
         {
-            StatusText.Text = "デモモード。実ディスクやファイルは読み取りません。";
+            ToolTipService.SetToolTip(
+                AppTitleBar,
+                "デモモード。実ディスクやファイルは読み取りません。"
+            );
             RootLayout.Loaded += async (_, _) =>
             {
                 var arguments = Environment.GetCommandLineArgs();
@@ -168,7 +172,7 @@ public sealed partial class MainWindow : Window
                 session is null
                 || Entries.Items.Count != 3
                 || Ranking.Items.Count != 3
-                || MessageBar.IsOpen
+                || HasPersistentNotification
             )
                 throw new InvalidOperationException(
                     $"Demo UI did not load: session={session is not null}; entries={Entries.Items.Count}; ranking={Ranking.Items.Count}; error={MessageBar.Title}: {MessageBar.Message}"
@@ -266,7 +270,7 @@ public sealed partial class MainWindow : Window
             projects = Folders
                 .RootNodes[0]
                 .Children.Single(node => node.Content is FolderNode { Name: "Projects" });
-            if (MessageBar.IsOpen)
+            if (HasPersistentNotification)
                 throw new InvalidOperationException(MessageBar.Message);
             await Task.Delay(350, lifetime.Token);
             RootLayout.UpdateLayout();
@@ -317,6 +321,7 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(660, lifetime.Token);
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
+            await VerifyNotificationsAsync();
             var deletionPreview =
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
                     ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
@@ -486,9 +491,6 @@ public sealed partial class MainWindow : Window
                         {
                             session = latest;
                             await ShowSessionAsync(latest);
-                            if (selectedCard == card)
-                                StatusText.Text =
-                                    $"保存済みの履歴 · {rows[0].CompletedLocal:yyyy/MM/dd HH:mm:ss} · 取得時点の観測";
                         }
                     }
                 }
@@ -613,8 +615,6 @@ public sealed partial class MainWindow : Window
                 await ShowSessionAsync(next);
                 if (selectedCard == card && session == next)
                 {
-                    StatusText.Text =
-                        $"履歴 · {row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
                     await RefreshHistoryChoicesAsync(card);
                 }
             }
@@ -687,16 +687,13 @@ public sealed partial class MainWindow : Window
         if (session is { } current)
         {
             await ShowSessionAsync(current);
-            if (selectedCard == card)
-                StatusText.Text =
-                    $"{current.Drive} の結果 · {current.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {current.MetadataUnresolved:N0} · 取得時点の観測";
         }
         else
         {
             PathText.Text = "未スキャン";
             EntryCountText.DataContext = null;
             BackButton.IsEnabled = false;
-            StatusText.Text = $"{card.Choice.Drive} を選択中 · スキャンを開始してください。";
+            EmptyScanText.Visibility = Visibility.Visible;
         }
         if (
             selectedCard == card
@@ -710,6 +707,11 @@ public sealed partial class MainWindow : Window
     private async Task ShowSessionAsync(ScanSession current)
     {
         await using var viewUpdate = BeginViewUpdate($"{current.Drive} の結果を表示しています…");
+        EmptyScanText.Visibility = Visibility.Collapsed;
+        ToolTipService.SetToolTip(
+            HistoryBox,
+            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1}秒 · 管理領域未解決 {current.MetadataUnresolved:N0}\n取得時点の観測です。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
+        );
         navigation.Clear();
         forwardHistory.Clear();
         parentLocation = null;
@@ -762,7 +764,6 @@ public sealed partial class MainWindow : Window
     private async Task RunScanAsync(DriveCard card, ScanOperation operation)
     {
         string drive = card.Choice.Drive;
-        MessageBar.IsOpen = false;
         var progress = new Progress<ScanProgress>(value =>
         {
             if (
@@ -820,8 +821,6 @@ public sealed partial class MainWindow : Window
                     session = next;
                     navigationVersion++;
                     rankingVersion++;
-                    StatusText.Text =
-                        $"{(demo ? "デモ / " : "")}{next.Elapsed.TotalSeconds:F1}秒で完了 · 管理領域未解決 {next.MetadataUnresolved:N0} · 取得時点の観測";
                     try
                     {
                         await ShowSessionAsync(next);
@@ -834,11 +833,11 @@ public sealed partial class MainWindow : Window
                     await RefreshHistoryChoicesAsync(card);
                     if (history?.MaintenanceError is { } cleanupError)
                     {
-                        MessageBar.Title =
-                            "履歴は保存済みですが、古い履歴の整理を完了できませんでした";
-                        MessageBar.Message = cleanupError;
-                        MessageBar.Severity = InfoBarSeverity.Warning;
-                        MessageBar.IsOpen = true;
+                        ShowToast(
+                            cleanupError,
+                            InfoBarSeverity.Warning,
+                            "履歴は保存済みですが、古い履歴の整理を完了できませんでした"
+                        );
                     }
                 }
                 else if (selectedCard is { } selected)
@@ -846,6 +845,10 @@ public sealed partial class MainWindow : Window
                     // Saving another volume can consolidate older generations in this volume too.
                     await RefreshHistoryChoicesAsync(selected);
                 }
+                ShowToast(
+                    $"{drive}: スキャンが完了しました（{next.Elapsed.TotalSeconds:F1}秒）。",
+                    InfoBarSeverity.Success
+                );
             }
             finally
             {
@@ -857,8 +860,10 @@ public sealed partial class MainWindow : Window
         {
             if (!closed)
             {
-                if (selectedCard == card)
-                    StatusText.Text = "キャンセルしました。前の結果は保持しています。";
+                ShowToast(
+                    $"{drive}: キャンセルしました。前の結果は保持しています。",
+                    InfoBarSeverity.Informational
+                );
                 card.SetResult(sessions.GetValueOrDefault(drive));
             }
         }
@@ -919,9 +924,6 @@ public sealed partial class MainWindow : Window
             ? $" · 再試行 {retrying.RetryAttempt}（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
             : "";
         string stepText = step.Number == 0 ? "準備中" : $"ステップ {step.Number}/{step.Total}";
-        if (selectedCard == card)
-            StatusText.Text =
-                $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒";
         card.SetState(
             (step.Number == 0 ? "" : $"{step.Number}/{step.Total} · ")
                 + (
@@ -939,7 +941,8 @@ public sealed partial class MainWindow : Window
                             ScanPhase.WritingSnapshot => "書き出し中",
                             _ => "スキャン完了",
                         }
-                )
+                ),
+            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒"
         );
     }
 
@@ -1558,14 +1561,13 @@ public sealed partial class MainWindow : Window
         bool denied =
             error is UnauthorizedAccessException
             || error.InnerException is Win32Exception { NativeErrorCode: 5 };
-        MessageBar.Title = denied
-            ? "スキャンには管理者権限が必要です"
-            : "処理を完了できませんでした";
-        MessageBar.Message = denied
-            ? "管理者として開いたPowerShellからアプリを起動してください。ドライブへのアクセスは読み取り専用です。"
-            : error.Message;
-        MessageBar.Severity = InfoBarSeverity.Error;
-        MessageBar.IsOpen = true;
+        ShowToast(
+            denied
+                ? "アプリを管理者として起動してください。ドライブへのアクセスは読み取り専用です。"
+                : error.Message,
+            InfoBarSeverity.Error,
+            denied ? "スキャンには管理者権限が必要です" : "処理を完了できませんでした"
+        );
     }
 
     private async void OnClosing(
@@ -1592,6 +1594,7 @@ public sealed partial class MainWindow : Window
     private async Task ShutdownAsync()
     {
         closed = true;
+        toastTimer.Stop();
         ViewLoadingAnimation.Cancel();
         EntryLoadingRegion.Cancel();
         RankingLoadingRegion.Cancel();
