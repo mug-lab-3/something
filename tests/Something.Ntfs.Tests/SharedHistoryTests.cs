@@ -8,6 +8,133 @@ namespace Something.Ntfs.Tests;
 public sealed class SharedHistoryTests
 {
     [Fact]
+    public void InvalidCompactionBackupCannotOverwriteAnIntactDatabase()
+    {
+        using var fixture = new Fixture();
+        var saved = fixture.Save(Buffer(), Now.AddMinutes(-1));
+        string database = Path.Combine(fixture.RootPath, ScanHistoryArchive.DatabaseFileName);
+        byte[] original = File.ReadAllBytes(database);
+        File.WriteAllBytes(database + ".compaction-backup", "invalid backup"u8.ToArray());
+
+        Assert.ThrowsAny<System.Data.Common.DbException>(() => fixture.Archive.ListAll(Token));
+
+        Assert.Equal(original, File.ReadAllBytes(database));
+        Assert.True(File.Exists(database + ".compaction-backup"));
+        File.Delete(database + ".compaction-backup");
+        Assert.Equal(saved.Id, Assert.Single(fixture.Archive.ListAll(Token)).Id);
+    }
+
+    [Fact]
+    public void CompactionShrinksHolesAndPreservesSharedFactsNamesStreamsAndOtherVolumes()
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Buffer(), Now.AddMinutes(-3));
+        var second = fixture.Save(Buffer("size"), Now.AddMinutes(-2));
+        var foreign = fixture.Save(Buffer(key: "volume:B"), Now.AddMinutes(-1));
+        using (var writer = fixture.Writer())
+        {
+            writer.HistoryContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE unused_payload AS SELECT i, sha256(i::VARCHAR)||sha256((i+1)::VARCHAR)||sha256((i+2)::VARCHAR) v FROM range(30000) t(i); CHECKPOINT; CREATE TABLE kept_payload AS SELECT i,sha256(i::VARCHAR) v FROM range(12000) t(i); CHECKPOINT; DROP TABLE unused_payload;"
+            );
+        }
+        fixture.Archive.Delete([first.Id], Token);
+
+        var result = fixture.Archive.Compact(256UL << 20, Token);
+
+        Assert.True(result.Replaced);
+        Assert.True(result.ReclaimedBytes > 0);
+        Assert.Equal(
+            new[] { foreign.Id, second.Id },
+            fixture.Archive.ListAll(Token).Select(row => row.Id)
+        );
+        using var remaining = fixture.Archive.Open(second.Id, Token);
+        var file = remaining
+            .Store.ReadFiles(second.Id, Token)
+            .Single(row => row.Reference.RecordIndex == 1000);
+        Assert.Equal("file-0-\ud800\0", file.Names[0].Name);
+        Assert.Equal(3, file.Names.Length);
+        Assert.Equal(8192, file.Streams[0].AllocatedBytes);
+        Assert.Equal(2, file.Streams.Length);
+        Assert.False(
+            File.Exists(
+                Path.Combine(fixture.RootPath, ScanHistoryArchive.DatabaseFileName)
+                    + ".compaction-backup"
+            )
+        );
+    }
+
+    [Fact]
+    public void CompactionRejectsIndependentReadersAndCancellationWithoutLosingHistory()
+    {
+        using var fixture = new Fixture();
+        var saved = fixture.Save(Buffer(), Now.AddMinutes(-1));
+        var other = new ScanHistoryArchive(fixture.RootPath);
+        using (var reader = other.Open(saved.Id, Token))
+            Assert.Throws<InvalidOperationException>(() =>
+                fixture.Archive.Compact(256UL << 20, Token)
+            );
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Archive.Compact(
+                256UL << 20,
+                cancelled.Token,
+                stage =>
+                {
+                    if (stage.StartsWith("コピー", StringComparison.Ordinal))
+                        cancelled.Cancel();
+                }
+            )
+        );
+        Assert.Equal(saved.Id, Assert.Single(fixture.Archive.ListAll(Token)).Id);
+        Assert.Empty(Directory.EnumerateDirectories(fixture.RootPath, ".compaction-*"));
+    }
+
+    [Fact]
+    public void InterruptedReplacementRestoresOriginalBackupBeforeOpeningHistory()
+    {
+        using var fixture = new Fixture();
+        var saved = fixture.Save(Buffer(), Now.AddMinutes(-1));
+        string database = Path.Combine(fixture.RootPath, ScanHistoryArchive.DatabaseFileName);
+        File.Move(database, database + ".compaction-backup");
+        File.WriteAllBytes(database, "incomplete replacement"u8.ToArray());
+
+        Assert.Equal(saved.Id, Assert.Single(fixture.Archive.ListAll(Token)).Id);
+
+        Assert.False(File.Exists(database + ".compaction-backup"));
+        using var reopened = fixture.Archive.Open(saved.Id, Token);
+        Assert.NotEmpty(reopened.Store.ReadFiles(saved.Id, Token));
+    }
+
+    [Fact]
+    public void HistorySummariesCountEachObservationOnceAndExcludeOtherVolumesAndRetiredScans()
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Buffer(), Now.AddMinutes(-3));
+        var second = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        fixture.Save(Buffer(key: "volume:B"), Now.AddMinutes(-1));
+
+        var summaries = fixture.Archive.ListSummaries("volume:A", Token);
+
+        Assert.Equal(new[] { second.Id, first.Id }, summaries.Select(row => row.Entry.Id));
+        Assert.All(summaries, row => Assert.Equal(6L, row.RecordCount));
+        using (var store = fixture.Writer())
+            Assert.Equal(
+                6L,
+                store.HistoryContext.Observations.LongCount(row => row.ScanId == second.Id)
+            );
+        fixture.Archive.Delete([first.Id], Token);
+        var remaining = Assert.Single(fixture.Archive.ListSummaries("volume:A", Token));
+        Assert.Equal(second.Id, remaining.Entry.Id);
+        Assert.Equal(6L, remaining.RecordCount);
+        Assert.Empty(fixture.Archive.ListSummaries("missing", Token));
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Archive.ListSummaries("volume:A", cancelled.Token)
+        );
+    }
+
+    [Fact]
     public void ManualDeletionPreservesOtherScansSharedFactsAndIndependentReaders()
     {
         using var fixture = new Fixture();

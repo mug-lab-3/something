@@ -317,7 +317,11 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(660, lifetime.Token);
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
-            await bitmap.RenderAsync(WindowLayout);
+            var deletionPreview =
+                demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
+                    ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
+                    : null;
+            await bitmap.RenderAsync(deletionPreview ?? (FrameworkElement)WindowLayout);
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");
             var pixels = (await bitmap.GetPixelsAsync()).ToArray();
@@ -742,7 +746,7 @@ public sealed partial class MainWindow : Window
     private Task StartScanAsync(DriveCard? requested = null)
     {
         var card = requested ?? selectedCard;
-        if (closed || card is null || scans.ContainsKey(card))
+        if (closed || historyMaintenance || card is null || scans.ContainsKey(card))
             return Task.CompletedTask;
         var operation = new ScanOperation(
             CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)
@@ -836,6 +840,11 @@ public sealed partial class MainWindow : Window
                         MessageBar.Severity = InfoBarSeverity.Warning;
                         MessageBar.IsOpen = true;
                     }
+                }
+                else if (selectedCard is { } selected)
+                {
+                    // Saving another volume can consolidate older generations in this volume too.
+                    await RefreshHistoryChoicesAsync(selected);
                 }
             }
             finally
@@ -1589,6 +1598,7 @@ public sealed partial class MainWindow : Window
         foreach (var indicator in treeLoads.Values)
             indicator.Dispose();
         lifetime.Cancel();
+        HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;

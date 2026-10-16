@@ -63,6 +63,7 @@ public sealed partial class ScanHistoryArchive
                     "History directories must not be reparse points."
                 );
         }
+        RecoverCompaction();
         var store = NewHistoryStore(cacheBytes, token);
         try
         {

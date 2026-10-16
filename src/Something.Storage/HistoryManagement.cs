@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Something.Storage;
 
+/// <summary>Logical observation count for one scan, not the sum of physical rows across shared tables.</summary>
+public sealed record ScanHistorySummary(ScanHistoryEntry Entry, long RecordCount);
+
 /// <summary>Inclusive completion-time boundaries; callers confirm a frozen set of IDs before deletion.</summary>
 public static class HistoryDeletion
 {
@@ -36,6 +39,38 @@ public static class HistoryDeletion
 
 public sealed partial class ScanHistoryArchive
 {
+    public ScanHistorySummary[] ListSummaries(string volumeKey, CancellationToken token = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
+        lock (sync)
+        {
+            token.ThrowIfCancellationRequested();
+            using var store = OpenDatabase(token);
+            var context = store.HistoryContext;
+            var snapshots = context
+                .HistorySnapshots.AsNoTracking()
+                .Where(row => !row.Retired && row.VolumeKey == volumeKey);
+            var entries = snapshots
+                .OrderByDescending(row => row.CompletedUtcTicks)
+                .ThenByDescending(row => row.Id)
+                .AsEnumerable()
+                .Select(ToEntry)
+                .ToArray();
+            if (entries.Length == 0)
+                return [];
+            var counts = (
+                from observation in context.Observations.AsNoTracking()
+                join snapshot in snapshots on observation.ScanId equals snapshot.Id
+                group observation by observation.ScanId into scan
+                select new { Id = scan.Key, Count = scan.LongCount() }
+            ).ToDictionary(row => row.Id, row => row.Count);
+            token.ThrowIfCancellationRequested();
+            return entries
+                .Select(row => new ScanHistorySummary(row, counts.GetValueOrDefault(row.Id)))
+                .ToArray();
+        }
+    }
+
     public ScanHistoryEntry[] ListAll(CancellationToken token = default)
     {
         lock (sync)

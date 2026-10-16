@@ -1,23 +1,131 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
+using Something.Storage;
+using Something.Windows;
 
 namespace Something.App;
 
 public sealed partial class MainWindow
 {
+    private bool historyMaintenance;
+
     private void InitializeHistoryManagement()
     {
         DatabaseWorkspaceTab.IsEnabled = history is not null;
-        HistoryManagement.Configure(history, RefreshAfterHistoryDeletionAsync, lifetime.Token);
+        HistoryManagement.Configure(
+            history,
+            RefreshAfterHistoryDeletionAsync,
+            OptimizeHistoryAsync,
+            lifetime.Token
+        );
         HistoryManagement.WorkStarted += TrackHistoryManagementWork;
-        HistoryManagement.DeletingChanged += deleting =>
+        HistoryManagement.MaintenanceChanged += deleting =>
         {
+            historyMaintenance = deleting;
             foreach (var card in cards)
                 card.IsEnabled = !deleting;
             WorkspaceTabs.IsEnabled = !deleting;
         };
     }
+
+    private async Task<HistoryCompactionResult> OptimizeHistoryAsync()
+    {
+        if (history is null || closed)
+            throw new InvalidOperationException("履歴DBを使用できません。");
+        if (scans.Count != 0 || !startupTask.IsCompleted)
+            throw new InvalidOperationException(
+                "スキャンや起動時の読み込みが完了してからDBを最適化してください。"
+            );
+        await using var update = BeginViewUpdate("DBを最適化しています…");
+        Guid? selectedScan = session?.ScanId;
+        var selectedLocation = location;
+        int period = ComparisonPeriodBox.SelectedIndex;
+        Guid? before = (ComparisonBeforeBox.SelectedItem as HistoryRow)?.Entry.Id;
+        await ClearComparisonAsync();
+        historyVersion++;
+        navigationVersion++;
+        rankingVersion++;
+        session = null;
+        var oldHistorical = historicalSession;
+        historicalSession = null;
+        var previous = sessions.Values.ToArray();
+        sessions.Clear();
+        try
+        {
+            await Task.WhenAll(
+                previous
+                    .Append(oldHistorical)
+                    .OfType<ScanSession>()
+                    .Distinct()
+                    .Select(current => current.DisposeAsync().AsTask())
+            );
+            var memory = WindowsMemoryAvailability.TryRead();
+            ulong available = memory is not null
+                ? Math.Min(
+                    memory.AvailablePhysicalBytes,
+                    Math.Min(memory.AvailableCommitBytes, memory.AvailableVirtualBytes)
+                )
+                : checked(
+                    (ulong)
+                        Math.Max(
+                            0,
+                            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
+                                - GC.GetGCMemoryInfo().MemoryLoadBytes
+                        )
+                );
+            ulong limit = Math.Min(MaximumNativeMemoryLimit, available / 4 * 3) / 16384 * 16384;
+            if (limit < 16384)
+                throw new InvalidOperationException("DB最適化用の空きメモリが不足しています。");
+            return await Task.Run(
+                () =>
+                    history.Compact(
+                        limit,
+                        lifetime.Token,
+                        stage =>
+                            DispatcherQueue.TryEnqueue(() =>
+                            {
+                                if (!closed)
+                                    ViewLoadingText.Text = stage;
+                            })
+                    ),
+                lifetime.Token
+            );
+        }
+        finally
+        {
+            if (!closed)
+            {
+                await InitializeHistoryAsync();
+                if (selectedCard is { } card && volumeKeys.TryGetValue(card, out var key))
+                {
+                    var entries = await Task.Run(
+                        () => history.List(key, lifetime.Token),
+                        lifetime.Token
+                    );
+                    if (
+                        selectedScan != session?.ScanId
+                        && entries.FirstOrDefault(row => row.Id == selectedScan) is { } saved
+                    )
+                        await ChangeHistoryAsync(new(saved));
+                    updatingComparisonChoices = true;
+                    ComparisonPeriodBox.SelectedIndex = period;
+                    if (before is not null)
+                        ComparisonBeforeBox.SelectedItem = ComparisonBeforeBox
+                            .Items.Cast<HistoryRow>()
+                            .FirstOrDefault(row => row.Entry.Id == before);
+                    updatingComparisonChoices = false;
+                    UpdateComparisonLayout();
+                    if (Comparing)
+                        await TrackComparisonAsync();
+                    if (session?.ScanId == selectedScan && selectedLocation is not null)
+                        await LoadFolderAsync(selectedLocation, false);
+                }
+            }
+        }
+    }
+
+    private const ulong MaximumNativeMemoryLimit = (ulong)long.MaxValue / 16384 * 16384;
 
     private async void TrackHistoryManagementWork(Task task)
     {
@@ -97,6 +205,26 @@ public sealed partial class MainWindow
         if (!HistoryManagement.IsShowingVolume(volumeKeys[cards[1]]))
             throw new InvalidOperationException(
                 "An obsolete drive request replaced the history list."
+            );
+        await StartScanAsync(cards[1]);
+        updatingComparisonChoices = true;
+        ComparisonPeriodBox.SelectedIndex = 9;
+        ComparisonBeforeBox.SelectedItem = HistoryBox.Items.Cast<HistoryRow>().Last();
+        updatingComparisonChoices = false;
+        await TrackComparisonAsync();
+        Guid? retainedBaseline = comparisonBaseline?.ScanId;
+        if (retainedBaseline is null)
+            throw new InvalidOperationException(
+                "Optimization smoke did not open a comparison baseline."
+            );
+        await HistoryManagement.VerifyStandaloneOptimizationAsync();
+        if (
+            session?.Drive != cards[1].Choice.Drive
+            || !HistoryManagement.IsShowingVolume(volumeKeys[cards[1]])
+            || comparisonBaseline?.ScanId != retainedBaseline
+        )
+            throw new InvalidOperationException(
+                "Standalone optimization did not restore the selected history."
             );
         WorkspaceTabs.SelectedIndex = 0;
         if (ViewHost.Visibility != Visibility.Visible || Entries.Items.Count != 3)

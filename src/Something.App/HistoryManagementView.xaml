@@ -5,6 +5,7 @@
   xmlns:local="using:Something.App"
 >
   <UserControl.Resources>
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
     <Style
       x:Key="GhostButtonStyle"
       TargetType="Button"
@@ -143,26 +144,17 @@
           >
             <FontIcon Glyph="&#xE73E;" FontSize="18" />
           </Button>
-          <TextBlock
-            x:Name="SelectionCountText"
-            Grid.Column="3"
-            VerticalAlignment="Center"
-            HorizontalAlignment="Right"
-            Text="選択中 0件"
-            FontWeight="SemiBold"
-            AutomationProperties.LiveSetting="Polite"
-          />
           <Button
-            x:Name="DeleteButton"
+            x:Name="OptimizeButton"
             Style="{StaticResource GhostButtonStyle}"
             Grid.Column="4"
-            Click="OnDelete"
-            IsEnabled="False"
-            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+            Click="OnOptimize"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            ToolTipService.ToolTip="全ドライブ共通の履歴DBを詰め直します。"
           >
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <FontIcon Glyph="&#xE74D;" FontSize="16" />
-              <TextBlock Text="履歴を削除" />
+              <FontIcon Glyph="&#xE90F;" FontSize="16" />
+              <TextBlock Text="DBを最適化" />
             </StackPanel>
           </Button>
         </Grid>
@@ -212,24 +204,6 @@
         />
       </StackPanel>
     </Border>
-    <StackPanel Grid.Row="1" Spacing="8">
-      <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" />
-      <StackPanel
-        x:Name="ConfirmationPanel"
-        Orientation="Horizontal"
-        Spacing="12"
-        Visibility="Collapsed"
-      >
-        <TextBlock x:Name="ConfirmationText" VerticalAlignment="Center" TextWrapping="Wrap" />
-        <Button
-          x:Name="ConfirmDeleteButton"
-          Content="削除を確定"
-          Click="OnConfirmDelete"
-          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-        />
-        <Button x:Name="CancelDeleteButton" Content="キャンセル" Click="OnCancelDelete" />
-      </StackPanel>
-    </StackPanel>
     <Border Grid.Row="2">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions>
@@ -241,7 +215,6 @@
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
             <TextBlock Text="スキャン履歴" FontSize="20" FontWeight="SemiBold" />
@@ -252,31 +225,41 @@
               Text="0件"
             />
           </StackPanel>
-          <ProgressRing
-            x:Name="BusyRing"
-            Grid.Column="1"
-            Width="20"
-            Height="20"
-            IsActive="False"
-            Visibility="Collapsed"
-          />
-          <Button
-            x:Name="RefreshButton"
-            Style="{StaticResource GhostButtonStyle}"
-            Grid.Column="2"
-            Click="OnRefresh"
-            ToolTipService.ToolTip="履歴を更新"
-            AutomationProperties.Name="履歴を更新"
-          >
-            <FontIcon Glyph="&#xE72C;" FontSize="16" />
-          </Button>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+            <TextBlock
+              x:Name="SelectionCountText"
+              VerticalAlignment="Center"
+              Text="選択中 0件"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              AutomationProperties.LiveSetting="Polite"
+            />
+            <Button
+              x:Name="DeleteButton"
+              Style="{StaticResource GhostButtonStyle}"
+              Click="OnDelete"
+              IsEnabled="False"
+              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+            >
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE74D;" FontSize="16" />
+                <TextBlock Text="履歴を削除" />
+              </StackPanel>
+            </Button>
+            <ProgressRing
+              x:Name="BusyRing"
+              Grid.Column="1"
+              Width="20"
+              Height="20"
+              IsActive="False"
+              Visibility="Collapsed"
+            />
+          </StackPanel>
         </Grid>
         <Grid Grid.Row="1" ColumnSpacing="12" Padding="12,0,12,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="20" />
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="100" />
-            <ColumnDefinition Width="120" />
+            <ColumnDefinition Width="160" />
           </Grid.ColumnDefinitions>
           <CheckBox
             x:Name="SelectAllCheckBox"
@@ -297,15 +280,11 @@
           />
           <TextBlock
             Grid.Column="2"
-            Text="ドライブ"
+            Text="記録数"
             FontWeight="SemiBold"
             VerticalAlignment="Center"
-          />
-          <TextBlock
-            Grid.Column="3"
-            Text="処理時間"
-            FontWeight="SemiBold"
-            VerticalAlignment="Center"
+            HorizontalAlignment="Right"
+            ToolTipService.ToolTip="保存したMFT観測レコード数。未解決・拡張レコードを含み、内部テーブルの行数合計ではありません。"
           />
         </Grid>
         <ListView
@@ -320,12 +299,14 @@
               <Grid ColumnSpacing="12" Padding="0,8">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="100" />
-                  <ColumnDefinition Width="120" />
+                  <ColumnDefinition Width="160" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{x:Bind CompletedText}" />
-                <TextBlock Grid.Column="1" Text="{x:Bind Entry.Drive}" />
-                <TextBlock Grid.Column="2" Text="{x:Bind ElapsedText}" />
+                <TextBlock
+                  Grid.Column="1"
+                  Text="{x:Bind RecordCountText}"
+                  HorizontalAlignment="Right"
+                />
               </Grid>
             </DataTemplate>
           </ListView.ItemTemplate>
@@ -346,6 +327,18 @@
       FontSize="12"
       TextWrapping="Wrap"
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+    />
+    <InfoBar
+      x:Name="Notice"
+      Grid.RowSpan="4"
+      Canvas.ZIndex="10"
+      HorizontalAlignment="Right"
+      VerticalAlignment="Bottom"
+      MaxWidth="520"
+      Margin="16"
+      IsOpen="False"
+      IsClosable="True"
+      AutomationProperties.LiveSetting="Polite"
     />
   </Grid>
 </UserControl>

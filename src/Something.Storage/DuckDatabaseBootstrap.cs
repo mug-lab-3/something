@@ -28,6 +28,19 @@ internal static class DuckDatabaseBootstrap
 
     internal static object Gate(string path) => Gates.GetOrAdd(Path.GetFullPath(path), _ => new());
 
+    // Call while holding Gate(path); every managed opener uses the same gate.
+    internal static void RequireClosed(string path)
+    {
+        lock (Engines)
+            if (Engines.ContainsKey(Path.GetFullPath(path)))
+                throw new InvalidOperationException(
+                    "DBを参照中です。すべての履歴表示を解放してから最適化してください。"
+                );
+    }
+
+    internal static void ForgetValidation(string path) =>
+        Validated.TryRemove(Path.GetFullPath(path), out _);
+
     internal static ScanDbContext Open(
         string path,
         CancellationToken token,

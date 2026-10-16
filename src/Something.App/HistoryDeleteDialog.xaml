@@ -1,0 +1,36 @@
+<ContentDialog
+  x:Class="Something.App.HistoryDeleteDialog"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  PrimaryButtonText="削除する"
+  CloseButtonText="キャンセル"
+  DefaultButton="None"
+>
+  <ContentDialog.PrimaryButtonStyle>
+    <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+      <Setter Property="Background" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+  </ContentDialog.PrimaryButtonStyle>
+  <ContentDialog.CloseButtonStyle>
+    <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}" />
+  </ContentDialog.CloseButtonStyle>
+  <StackPanel Spacing="16">
+    <TextBlock
+      x:Name="RangeText"
+      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+      TextWrapping="Wrap"
+    />
+    <TextBlock Text="この操作は元に戻せません。実ファイルは削除されません。" TextWrapping="Wrap" />
+    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
+    <CheckBox x:Name="OptimizeAfterDelete" Content="削除後にDBを最適化する" IsChecked="False" />
+    <TextBlock
+      Margin="32,0,0,0"
+      FontSize="12"
+      Text="全ドライブ共通の履歴DBを詰め直します。追加の空き容量が必要で、処理に時間がかかる場合があります。"
+      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+      TextWrapping="Wrap"
+    />
+  </StackPanel>
+</ContentDialog>

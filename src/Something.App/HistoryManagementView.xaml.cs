@@ -4,10 +4,10 @@ using Something.Storage;
 
 namespace Something.App;
 
-internal sealed record ManagedHistoryRow(ScanHistoryEntry Entry)
+internal sealed record ManagedHistoryRow(ScanHistoryEntry Entry, long RecordCount)
 {
     public string CompletedText => Entry.CompletedUtc.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss");
-    public string ElapsedText => $"{Entry.Elapsed.TotalSeconds:N1} 秒";
+    public string RecordCountText => RecordCount.ToString("N0");
 }
 
 public sealed partial class HistoryManagementView : UserControl
@@ -17,17 +17,22 @@ public sealed partial class HistoryManagementView : UserControl
     private CancellationToken token;
     private string? volumeKey;
     private HashSet<Guid> selectedIds = [];
-    private Guid[]? confirmed;
+    private HistoryDeleteDialog? activeDeleteDialog;
+    private Func<Task<HistoryCompactionResult>>? optimize;
+    private Task currentOperation = Task.CompletedTask;
+    private readonly DispatcherTimer noticeTimer = new() { Interval = TimeSpan.FromSeconds(6) };
     private int loadVersion;
     private bool initializing = true;
     private bool busy;
-    internal bool IsDeleting { get; private set; }
+    private bool operationActive;
     internal event Action<Task>? WorkStarted;
-    internal event Action<bool>? DeletingChanged;
+    internal event Action<bool>? MaintenanceChanged;
 
     public HistoryManagementView()
     {
         InitializeComponent();
+        noticeTimer.Tick += (_, _) => DismissNotice();
+        Unloaded += (_, _) => DismissNotice();
         FromTime.Time = TimeSpan.Zero;
         EndTime.Time = TimeSpan.Zero;
         initializing = false;
@@ -37,17 +42,19 @@ public sealed partial class HistoryManagementView : UserControl
     internal void Configure(
         ScanHistoryArchive? archive,
         Func<Guid[], Task> refreshViews,
+        Func<Task<HistoryCompactionResult>> optimize,
         CancellationToken token
     )
     {
         this.archive = archive;
         this.refreshViews = refreshViews;
+        this.optimize = optimize;
         this.token = token;
     }
 
     internal async Task LoadAsync(string? key)
     {
-        if (IsDeleting)
+        if (operationActive)
             return;
         int version = ++loadVersion;
         bool changed = volumeKey != key;
@@ -63,20 +70,22 @@ public sealed partial class HistoryManagementView : UserControl
         initializing = false;
         UpdateRangeText();
         SelectionError.Visibility = Visibility.Collapsed;
-        confirmed = null;
-        ConfirmationPanel.Visibility = Visibility.Collapsed;
-        Notice.IsOpen = false;
+        DismissNotice();
         SetBusy(true);
         try
         {
             var rows =
                 archive is not null && key is not null
-                    ? await Task.Run(() => archive.List(key, token), token)
+                    ? await Task.Run(() => archive.ListSummaries(key, token), token)
                     : [];
             if (version != loadVersion || token.IsCancellationRequested)
                 return;
             initializing = true;
-            HistoryList.ItemsSource = rows.Select(row => new ManagedHistoryRow(row)).ToArray();
+            HistoryList.ItemsSource = rows.Select(row => new ManagedHistoryRow(
+                    row.Entry,
+                    row.RecordCount
+                ))
+                .ToArray();
             foreach (ManagedHistoryRow row in HistoryList.Items)
                 if (selected.Contains(row.Entry.Id))
                     HistoryList.SelectedItems.Add(row);
@@ -103,9 +112,6 @@ public sealed partial class HistoryManagementView : UserControl
     {
         if (initializing)
             return;
-        confirmed = null;
-        ConfirmationPanel.Visibility = Visibility.Collapsed;
-        Notice.IsOpen = false;
         int count = HistoryList.SelectedItems.Count;
         selectedIds = HistoryList
             .SelectedItems.Cast<ManagedHistoryRow>()
@@ -137,7 +143,6 @@ public sealed partial class HistoryManagementView : UserControl
     {
         if (initializing || busy)
             return;
-        InvalidateConfirmation();
         try
         {
             DateTimeOffset? Instant(CalendarDatePicker date, TimePicker time) =>
@@ -173,13 +178,6 @@ public sealed partial class HistoryManagementView : UserControl
             SelectionError.Text = error.Message;
             SelectionError.Visibility = Visibility.Visible;
         }
-    }
-
-    private void InvalidateConfirmation()
-    {
-        confirmed = null;
-        ConfirmationPanel.Visibility = Visibility.Collapsed;
-        DeleteButton.IsEnabled = !busy && HistoryList.SelectedItems.Count > 0;
     }
 
     private void UpdateRangeText()
@@ -222,9 +220,7 @@ public sealed partial class HistoryManagementView : UserControl
                 HalfYearPresetButton,
                 YearPresetButton,
                 HistoryList,
-                RefreshButton,
-                ConfirmDeleteButton,
-                CancelDeleteButton,
+                OptimizeButton,
             }
         )
             control.IsEnabled = !value;
@@ -232,7 +228,7 @@ public sealed partial class HistoryManagementView : UserControl
         BusyRing.IsActive = value;
         EmptyText.Visibility =
             !value && HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        DeleteButton.IsEnabled = !value && confirmed is null && HistoryList.SelectedItems.Count > 0;
+        DeleteButton.IsEnabled = !value && HistoryList.SelectedItems.Count > 0;
         UpdateSelectAllState();
     }
 
@@ -259,7 +255,6 @@ public sealed partial class HistoryManagementView : UserControl
         if (initializing || busy)
             return;
         UpdateRangeText();
-        InvalidateConfirmation();
         SelectionError.Visibility = Visibility.Collapsed;
     }
 
@@ -282,8 +277,7 @@ public sealed partial class HistoryManagementView : UserControl
         UpdateSelectAllState();
     }
 
-    private void OnRefresh(object sender, RoutedEventArgs args) =>
-        WorkStarted?.Invoke(LoadAsync(volumeKey));
+    private sealed record OperationNotice(string Text, InfoBarSeverity Severity);
 
     private void OnDelete(object sender, RoutedEventArgs args)
     {
@@ -293,74 +287,190 @@ public sealed partial class HistoryManagementView : UserControl
             .SelectedItems.Cast<ManagedHistoryRow>()
             .Select(row => row.Entry)
             .ToArray();
-        confirmed = rows.Select(row => row.Id).ToArray();
-        ConfirmationText.Text =
-            $"{rows.Length:N0}件を削除: {rows.Min(row => row.CompletedUtc).ToLocalTime():yyyy/MM/dd HH:mm:ss} ～ {rows.Max(row => row.CompletedUtc).ToLocalTime():yyyy/MM/dd HH:mm:ss}";
-        ConfirmationPanel.Visibility = Visibility.Visible;
-        DeleteButton.IsEnabled = false;
+        StartOperation(async () =>
+        {
+            var dialog = new HistoryDeleteDialog(rows) { XamlRoot = XamlRoot };
+            activeDeleteDialog = dialog;
+            ContentDialogResult result;
+            try
+            {
+                result = await dialog.ShowAsync();
+            }
+            finally
+            {
+                activeDeleteDialog = null;
+            }
+            token.ThrowIfCancellationRequested();
+            if (result != ContentDialogResult.Primary)
+                return null;
+            return await DeleteCoreAsync(rows.Select(row => row.Id).ToArray(), dialog.Optimize);
+        });
     }
 
-    private void OnCancelDelete(object sender, RoutedEventArgs args) => UpdateSelection();
-
-    private void OnConfirmDelete(object sender, RoutedEventArgs args)
+    private void OnOptimize(object sender, RoutedEventArgs args)
     {
-        if (!busy && confirmed is { } ids)
-            WorkStarted?.Invoke(DeleteConfirmedAsync(ids));
-    }
-
-    private async Task DeleteConfirmedAsync(Guid[] ids)
-    {
-        if (archive is null || refreshViews is null)
+        if (busy)
             return;
-        IsDeleting = true;
+        StartOperation(async () =>
+            new OperationNotice(OptimizationText(await optimize!()), InfoBarSeverity.Success)
+        );
+    }
+
+    private void StartOperation(Func<Task<OperationNotice?>> action)
+    {
+        currentOperation = RunOperationAsync(action);
+        WorkStarted?.Invoke(currentOperation);
+    }
+
+    private async Task RunOperationAsync(Func<Task<OperationNotice?>> action)
+    {
+        operationActive = true;
         SetBusy(true);
-        DeletingChanged?.Invoke(true);
+        MaintenanceChanged?.Invoke(true);
+        OperationNotice? notice = null;
         try
         {
-            var removed = await Task.Run(() => archive.Delete(ids, token), token);
-            await refreshViews(removed);
-            int deferred = await Task.Run(() => archive.CollectRetired(token), token);
-            IsDeleting = false;
-            await LoadAsync(volumeKey);
-            ShowNotice(
-                $"{removed.Length:N0}件のスキャン履歴を削除しました。"
-                    + (deferred > 0 ? $" 使用中の{deferred:N0}件は参照解放後に整理します。" : ""),
-                InfoBarSeverity.Success
-            );
+            notice = await action();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
         {
-            // Retirement may already be committed; reconcile the visible view before reporting.
-            try
-            {
-                await refreshViews(ids);
-                IsDeleting = false;
-                await LoadAsync(volumeKey);
-            }
-            catch (Exception refreshError)
-            {
-                ShowNotice(
-                    $"{error.Message}\n一覧の再読み込みにも失敗しました: {refreshError.Message}",
-                    InfoBarSeverity.Error
-                );
-                return;
-            }
-            ShowNotice($"削除後の状態を確認してください。{error.Message}", InfoBarSeverity.Error);
+            notice = new(error.Message, InfoBarSeverity.Error);
         }
         finally
         {
-            IsDeleting = false;
-            SetBusy(false);
-            DeletingChanged?.Invoke(false);
+            operationActive = false;
+            try
+            {
+                if (!token.IsCancellationRequested)
+                    await LoadAsync(volumeKey);
+            }
+            finally
+            {
+                SetBusy(false);
+                MaintenanceChanged?.Invoke(false);
+            }
         }
+        if (notice is not null && !token.IsCancellationRequested)
+            ShowNotice(notice.Text, notice.Severity);
+    }
+
+    private async Task<OperationNotice> DeleteCoreAsync(Guid[] ids, bool optimizeAfter)
+    {
+        var removed = await Task.Run(() => archive!.Delete(ids, token), token);
+        string completed = $"{removed.Length:N0}件のスキャン履歴を削除しました。";
+        try
+        {
+            await refreshViews!(removed);
+            int deferred = await Task.Run(() => archive!.CollectRetired(token), token);
+            if (deferred > 0)
+                completed += $" 使用中の{deferred:N0}件は参照解放後に整理します。";
+            if (optimizeAfter)
+                return new(
+                    completed + " " + OptimizationText(await optimize!()),
+                    InfoBarSeverity.Success
+                );
+            await Task.Run(() => archive!.Checkpoint(token), token);
+            return new(completed, InfoBarSeverity.Success);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception error)
+        {
+            // Deletion has committed. A failed optimization never means deletion was rolled back.
+            try
+            {
+                await refreshViews!(removed);
+            }
+            catch (Exception refreshError)
+            {
+                return new(
+                    $"{completed} 表示の再読み込みに失敗しました: {refreshError.Message}",
+                    InfoBarSeverity.Warning
+                );
+            }
+            return new(
+                $"{completed} {(optimizeAfter ? "DB最適化" : "削除後の整理")}を完了できませんでした: {error.Message}",
+                InfoBarSeverity.Warning
+            );
+        }
+    }
+
+    private static string OptimizationText(HistoryCompactionResult result) =>
+        result.Replaced
+            ? $"DBを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)}削減）"
+            : "DBを確認しました。詰め直しによる縮小がないため、元のDBを維持しました。";
+
+    internal void CloseForShutdown()
+    {
+        DismissNotice();
+        activeDeleteDialog?.Hide();
+    }
+
+    internal async Task VerifyStandaloneOptimizationAsync()
+    {
+        OnOptimize(this, new());
+        await currentOperation;
+        if (Notice.Severity != InfoBarSeverity.Success)
+            throw new InvalidOperationException(
+                "Standalone DB optimization failed: " + Notice.Message
+            );
+        UpdateSelection();
+        if (!Notice.IsOpen || !noticeTimer.IsEnabled)
+            throw new InvalidOperationException(
+                "Completion toast did not survive selection updates."
+            );
+        await Task.Delay(TimeSpan.FromSeconds(6.2), token);
+        if (Notice.IsOpen || noticeTimer.IsEnabled)
+            throw new InvalidOperationException("Completion toast did not dismiss automatically.");
+    }
+
+    internal async Task<ContentDialog> PreviewSyntheticDeleteDialogAsync()
+    {
+        var rows = HistoryList
+            .Items.Cast<ManagedHistoryRow>()
+            .Take(3)
+            .Select(row => row.Entry)
+            .ToArray();
+        var dialog = new HistoryDeleteDialog(rows) { XamlRoot = XamlRoot };
+        activeDeleteDialog = dialog;
+        _ = dialog.ShowAsync();
+        await Task.Delay(300, token);
+        return dialog;
+    }
+
+    private async Task VerifySyntheticDeletionAsync(bool confirm, bool optimizeAfter = false)
+    {
+        OnDelete(this, new());
+        await Task.Delay(200, token);
+        var dialog =
+            activeDeleteDialog
+            ?? throw new InvalidOperationException("Delete confirmation dialog was not shown.");
+        dialog.VerifyDefaultOptions();
+        if (confirm)
+            dialog.ConfirmSynthetic(optimizeAfter);
+        else
+            dialog.Hide();
+        await currentOperation;
     }
 
     private void ShowNotice(string message, InfoBarSeverity severity)
     {
+        noticeTimer.Stop();
         Notice.Message = message;
         Notice.Severity = severity;
         Notice.IsOpen = true;
+        // Keep failures reviewable; only successful completion disappears automatically.
+        if (severity == InfoBarSeverity.Success)
+            noticeTimer.Start();
+    }
+
+    private void DismissNotice()
+    {
+        noticeTimer.Stop();
+        Notice.IsOpen = false;
     }
 
     internal async Task VerifySyntheticManagementAsync()
@@ -407,10 +517,10 @@ public sealed partial class HistoryManagementView : UserControl
         }
         HistoryList.SelectedItems.Add(HistoryList.Items[0]);
         var manual = selectedIds.ToHashSet();
-        OnDelete(this, new());
+        await VerifySyntheticDeletionAsync(false);
         OnPresetClick(HalfYearPresetButton, new());
         Require(
-            selectedIds.SetEquals(manual) && confirmed is null,
+            selectedIds.SetEquals(manual),
             "Preset changed manual checks or retained confirmation."
         );
         OnApplyRange(this, new());
@@ -426,10 +536,9 @@ public sealed partial class HistoryManagementView : UserControl
             HistoryList.SelectedItems.Count == HistoryList.Items.Count,
             "Explicit full interval failed."
         );
-        OnDelete(this, new());
         HistoryList.SelectedItems.RemoveAt(0);
         Require(
-            confirmed is null && SelectAllCheckBox.IsChecked is null,
+            SelectAllCheckBox.IsChecked is null,
             "Manual adjustment did not invalidate confirmation."
         );
         var selectedBeforeRefresh = selectedIds.ToHashSet();
@@ -471,22 +580,18 @@ public sealed partial class HistoryManagementView : UserControl
         HistoryList.SelectedItems.Clear();
         HistoryList.SelectedItems.Add(HistoryList.Items[0]);
         OnPresetClick(HalfYearPresetButton, new());
-        OnDelete(this, new());
-        var first =
-            confirmed ?? throw new InvalidOperationException("Manual deletion not confirmed.");
-        Require(first.Length == 1, "Deletion used the input range instead of checked rows.");
-        await DeleteConfirmedAsync(first);
+        var first = selectedIds.ToHashSet();
+        await VerifySyntheticDeletionAsync(true, optimizeAfter: true);
         Require(
             Notice.Severity == InfoBarSeverity.Success
                 && HistoryList.Items.Count > 0
                 && HistoryList
                     .Items.Cast<ManagedHistoryRow>()
                     .All(row => !first.Contains(row.Entry.Id)),
-            "Manual deletion failed."
+            "Manual deletion with optimization failed."
         );
         OnToggleAll(this, new());
-        OnDelete(this, new());
-        await DeleteConfirmedAsync(confirmed!);
+        await VerifySyntheticDeletionAsync(true);
         Require(
             HistoryList.Items.Count == 0
                 && Notice.Severity == InfoBarSeverity.Success
