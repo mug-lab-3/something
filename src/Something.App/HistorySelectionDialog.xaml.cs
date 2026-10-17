@@ -72,6 +72,19 @@ public sealed partial class HistorySelectionDialog : ContentDialog
     private static DateOnly DayOf(HistoryPickerRow row) =>
         DateOnly.FromDateTime(row.History.Entry.CompletedLocal.DateTime);
 
+    protected override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        // Keep the SDK's dialog buttons and keyboard behavior; remove its equal-width stretching.
+        if (GetTemplateChild("CommandSpace") is Grid commands)
+        {
+            commands.HorizontalAlignment = HorizontalAlignment.Right;
+            foreach (var column in commands.ColumnDefinitions)
+                if (column.Width.IsStar)
+                    column.Width = GridLength.Auto;
+        }
+    }
+
     private void OnOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
         DialogContent.Width = Math.Min(860, Math.Max(320, XamlRoot.Size.Width - 96));
@@ -286,5 +299,20 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         await countsTask.WaitAsync(token);
         if (visible.Take(Math.Min(2, visible.Length)).Any(row => row.CountText == "—"))
             throw new InvalidOperationException("Visible history counts did not load.");
+        if (
+            GetTemplateChild("PrimaryButton") is not Button primary
+            || GetTemplateChild("CloseButton") is not Button cancel
+            || primary.ActualWidth is < 96 or > 160
+            || cancel.ActualWidth is < 96 or > 160
+            || primary.ActualHeight > 36
+            || cancel.ActualHeight > 36
+            || primary.CornerRadius.TopLeft < 4
+            || cancel.CornerRadius.TopLeft < 4
+            || GetTemplateChild("CommandSpace")
+                is not Grid { HorizontalAlignment: HorizontalAlignment.Right }
+        )
+            throw new InvalidOperationException(
+                "History dialog buttons are not compact and rounded."
+            );
     }
 }

@@ -11,7 +11,23 @@
 >
   <ContentDialog.Resources>
     <x:Double x:Key="ContentDialogMaxWidth">1000</x:Double>
+    <Style
+      x:Key="CompactDialogButtonStyle"
+      TargetType="Button"
+      BasedOn="{StaticResource DefaultButtonStyle}"
+    >
+      <Setter Property="MinWidth" Value="96" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="16,4" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
   </ContentDialog.Resources>
+  <ContentDialog.PrimaryButtonStyle>
+    <Style TargetType="Button" BasedOn="{StaticResource CompactDialogButtonStyle}" />
+  </ContentDialog.PrimaryButtonStyle>
+  <ContentDialog.CloseButtonStyle>
+    <Style TargetType="Button" BasedOn="{StaticResource CompactDialogButtonStyle}" />
+  </ContentDialog.CloseButtonStyle>
   <Grid x:Name="DialogContent" Width="860" Height="500" RowSpacing="12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
