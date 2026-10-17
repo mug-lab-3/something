@@ -104,7 +104,10 @@ public sealed partial class MainWindow
         }
     }
 
-    private async void OnComparisonOptionsChanged(object sender, SelectionChangedEventArgs args)
+    private void OnComparisonPeriodChanged(object sender, SelectionChangedEventArgs args) =>
+        OnComparisonOptionsChanged(sender, EventArgs.Empty);
+
+    private async void OnComparisonOptionsChanged(object? sender, EventArgs args)
     {
         if (!updatingComparisonChoices && !closed)
             await TrackComparisonAsync();
@@ -154,6 +157,15 @@ public sealed partial class MainWindow
             ComparisonPeriodBox.SelectedItem is PeriodChoice { Period: FolderChangePeriod.Custom };
         CustomComparisonPanel.Visibility =
             Comparing && custom ? Visibility.Visible : Visibility.Collapsed;
+        HistoryBox.Header = Comparing ? "比較先のスキャン" : "表示する記録";
+        var before = custom ? ComparisonBeforeBox.SelectedItem?.Entry : comparisonReport?.Baseline;
+        HistoryBox.OtherEndpoint =
+            Comparing && before is not null
+                ? $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                : null;
+        ComparisonBeforeBox.OtherEndpoint = HistoryBox.SelectedItem is { } after
+            ? $"比較先：{after.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+            : null;
         ComparisonStatusText.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         ComparisonRangePanel.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         ChangeHeader.Visibility = RankingChangeHeader.Visibility = Comparing
@@ -232,6 +244,9 @@ public sealed partial class MainWindow
             SelectedBeforeText.Text = before is null
                 ? "比較前：記録なし"
                 : $"比較前：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+            HistoryBox.OtherEndpoint = before is null
+                ? null
+                : $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
             SelectedAfterText.Text = after is null
                 ? "比較後：記録なし"
                 : $"比較後：{after.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
@@ -457,7 +472,7 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "Unchanged history refresh restarted the comparison."
             );
-        var retainedChoices = ((IEnumerable<HistoryRow>)HistoryBox.ItemsSource).ToArray();
+        var retainedChoices = HistoryBox.Items.ToArray();
         UpdateComparisonChoices([retainedChoices[0]]);
         if (ComparisonBeforeBox.SelectedItem is not null)
             throw new InvalidOperationException(

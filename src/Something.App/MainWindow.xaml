@@ -156,11 +156,11 @@
           </Grid.RowDefinitions>
           <StackPanel x:Name="ViewControls" Grid.Row="0" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="12">
-              <ComboBox
+              <local:HistoryPicker
                 x:Name="HistoryBox"
                 ToolTipService.ToolTip="表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
                 Header="表示する記録"
-                Width="250"
+                Width="290"
                 PlaceholderText="最新のスキャン"
                 IsEnabled="False"
                 SelectionChanged="OnHistoryChanged"
@@ -170,7 +170,7 @@
                 x:Name="ComparisonPeriodBox"
                 Header="比較"
                 Width="150"
-                SelectionChanged="OnComparisonOptionsChanged"
+                SelectionChanged="OnComparisonPeriodChanged"
                 AutomationProperties.Name="比較期間"
               />
               <StackPanel
@@ -179,10 +179,10 @@
                 Spacing="8"
                 Visibility="Collapsed"
               >
-                <ComboBox
+                <local:HistoryPicker
                   x:Name="ComparisonBeforeBox"
                   Header="比較元のスキャン"
-                  Width="250"
+                  Width="290"
                   PlaceholderText="比較前"
                   SelectionChanged="OnComparisonOptionsChanged"
                   AutomationProperties.Name="比較前のスキャン"

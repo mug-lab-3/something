@@ -1,0 +1,131 @@
+<ContentDialog
+  x:Class="Something.App.HistorySelectionDialog"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
+  PrimaryButtonText="選択"
+  CloseButtonText="キャンセル"
+  DefaultButton="None"
+  Opened="OnOpened"
+  Closed="OnClosed"
+>
+  <ContentDialog.Resources>
+    <x:Double x:Key="ContentDialogMaxWidth">1000</x:Double>
+  </ContentDialog.Resources>
+  <Grid x:Name="DialogContent" Width="860" Height="500" RowSpacing="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <TextBlock
+      x:Name="ContextText"
+      TextWrapping="Wrap"
+      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+    />
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+      <ToggleButton
+        x:Name="AllButton"
+        Content="すべて"
+        Tag="All"
+        Click="OnPeriod"
+        IsChecked="True"
+      />
+      <ToggleButton x:Name="WeekButton" Content="直近7日" Tag="Week" Click="OnPeriod" />
+      <ToggleButton x:Name="MonthButton" Content="今月" Tag="Month" Click="OnPeriod" />
+      <ToggleButton x:Name="YearButton" Content="今年" Tag="Year" Click="OnPeriod" />
+    </StackPanel>
+    <Grid Grid.Row="2" ColumnSpacing="24">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="300" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <StackPanel Spacing="12">
+        <TextBlock Text="日付で絞り込む" FontWeight="SemiBold" />
+        <Border x:Name="CalendarHost" />
+        <TextBlock
+          Text="印のある日に記録があります"
+          FontSize="12"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        />
+      </StackPanel>
+      <Grid Grid.Column="1" RowSpacing="8">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock x:Name="RangeText" FontWeight="SemiBold" />
+        <Grid Grid.Row="1" Margin="12,0,12,0">
+          <TextBlock Text="スキャン日時" />
+          <TextBlock Text="記録数" HorizontalAlignment="Right" />
+        </Grid>
+        <ListView
+          x:Name="Records"
+          Grid.Row="2"
+          SelectionMode="Single"
+          HorizontalContentAlignment="Stretch"
+          SelectionChanged="OnSelectionChanged"
+          ContainerContentChanging="OnContainerChanging"
+        >
+          <ListView.ItemsPanel>
+            <ItemsPanelTemplate>
+              <ItemsStackPanel AreStickyGroupHeadersEnabled="True" />
+            </ItemsPanelTemplate>
+          </ListView.ItemsPanel>
+          <ListView.GroupStyle>
+            <GroupStyle>
+              <GroupStyle.HeaderTemplate>
+                <DataTemplate x:DataType="local:HistoryPickerGroup">
+                  <Border
+                    Padding="12,12,12,6"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                  >
+                    <TextBlock
+                      Text="{x:Bind Label}"
+                      FontWeight="SemiBold"
+                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    />
+                  </Border>
+                </DataTemplate>
+              </GroupStyle.HeaderTemplate>
+            </GroupStyle>
+          </ListView.GroupStyle>
+          <ListView.ItemTemplate>
+            <DataTemplate x:DataType="local:HistoryPickerRow">
+              <Grid Padding="0,10" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{x:Bind TimeText}" />
+                <TextBlock
+                  Grid.Column="1"
+                  Text="{x:Bind CountText, Mode=OneWay}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                />
+              </Grid>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+        <TextBlock
+          x:Name="EmptyText"
+          Grid.Row="2"
+          Text="この期間の記録はありません"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        />
+        <TextBlock
+          x:Name="CountError"
+          Grid.Row="3"
+          Text="記録数を取得できませんでした。日時から記録を選択できます。"
+          Visibility="Collapsed"
+          TextWrapping="Wrap"
+          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+        />
+      </Grid>
+    </Grid>
+  </Grid>
+</ContentDialog>

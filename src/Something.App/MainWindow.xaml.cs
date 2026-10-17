@@ -78,6 +78,12 @@ public sealed partial class MainWindow : Window
                 : null
             : ScanHistoryArchive.CreateDefault();
         scanner = new(history);
+        HistoryBox.LoadCounts = ComparisonBeforeBox.LoadCounts = ids =>
+            Task.Run<IReadOnlyDictionary<Guid, long>>(
+                () =>
+                    history?.ReadRecordCounts(ids, lifetime.Token) ?? new Dictionary<Guid, long>(),
+                lifetime.Token
+            );
         InitializeComparisonControls();
         InitializeHistoryManagement();
         if (demo && history is null)
@@ -341,7 +347,13 @@ public sealed partial class MainWindow : Window
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
                     ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
                     : null;
-            await bitmap.RenderAsync(deletionPreview ?? (FrameworkElement)WindowLayout);
+            var pickerPreview =
+                demo && Environment.GetCommandLineArgs().Contains("--smoke-history-picker")
+                    ? await HistoryBox.VerifyPreviewAsync(lifetime.Token)
+                    : null;
+            await bitmap.RenderAsync(
+                pickerPreview ?? deletionPreview ?? (FrameworkElement)WindowLayout
+            );
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");
             var pixels = (await bitmap.GetPixelsAsync()).ToArray();
@@ -564,7 +576,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void OnHistoryChanged(object sender, SelectionChangedEventArgs args)
+    private async void OnHistoryChanged(object? sender, EventArgs args)
     {
         if (!updatingHistoryChoices && HistoryBox.SelectedItem is HistoryRow row)
             await ChangeHistoryAsync(row);

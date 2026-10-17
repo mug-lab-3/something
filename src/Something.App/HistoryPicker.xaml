@@ -1,0 +1,26 @@
+<UserControl
+  x:Class="Something.App.HistoryPicker"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+  <StackPanel Spacing="8">
+    <TextBlock x:Name="HeaderText" />
+    <Button
+      x:Name="PickerButton"
+      Click="OnOpen"
+      HorizontalAlignment="Stretch"
+      HorizontalContentAlignment="Stretch"
+    >
+      <Grid ColumnSpacing="8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <FontIcon Glyph="&#xE787;" FontSize="16" />
+        <TextBlock x:Name="ValueText" Grid.Column="1" Text="記録を選択" />
+        <FontIcon Grid.Column="2" Glyph="&#xE70D;" FontSize="12" />
+      </Grid>
+    </Button>
+  </StackPanel>
+</UserControl>

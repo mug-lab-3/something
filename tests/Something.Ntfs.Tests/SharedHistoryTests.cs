@@ -208,6 +208,29 @@ public sealed class SharedHistoryTests
     }
 
     [Fact]
+    public void RequestedHistoryCountsExcludeMissingUnrequestedAndRetiredScans()
+    {
+        using var fixture = new Fixture();
+        var first = fixture.Save(Buffer(), Now.AddMinutes(-3));
+        var second = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        fixture.Save(Buffer(key: "volume:B"), Now.AddMinutes(-1));
+
+        var counts = fixture.Archive.ReadRecordCounts([first.Id, first.Id, Guid.NewGuid()], Token);
+
+        Assert.Equal(6L, Assert.Single(counts).Value);
+        Assert.True(counts.ContainsKey(first.Id));
+        Assert.Empty(fixture.Archive.ReadRecordCounts([], Token));
+        fixture.Archive.Delete([first.Id], Token);
+        counts = fixture.Archive.ReadRecordCounts([first.Id, second.Id], Token);
+        Assert.Equal(second.Id, Assert.Single(counts).Key);
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            fixture.Archive.ReadRecordCounts([], cancelled.Token)
+        );
+    }
+
+    [Fact]
     public void HistorySummariesCountEachObservationOnceAndExcludeOtherVolumesAndRetiredScans()
     {
         using var fixture = new Fixture();

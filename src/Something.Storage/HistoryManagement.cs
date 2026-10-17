@@ -39,6 +39,37 @@ public static class HistoryDeletion
 
 public sealed partial class ScanHistoryArchive
 {
+    /// <summary>Read counts only for the requested published scans, for a day in the history picker.</summary>
+    public IReadOnlyDictionary<Guid, long> ReadRecordCounts(
+        IReadOnlyCollection<Guid> scanIds,
+        CancellationToken token = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(scanIds);
+        token.ThrowIfCancellationRequested();
+        if (scanIds.Count == 0)
+            return new Dictionary<Guid, long>();
+        var ids = scanIds.Distinct().ToArray();
+        lock (sync)
+        {
+            token.ThrowIfCancellationRequested();
+            using var store = OpenDatabase(token);
+            var context = store.HistoryContext;
+            var snapshots = context
+                .HistorySnapshots.AsNoTracking()
+                .Where(row => !row.Retired && ids.Contains(row.Id));
+            var counts = (
+                from snapshot in snapshots
+                join observation in context.Observations.AsNoTracking()
+                    on snapshot.Id equals observation.ScanId
+                    into observations
+                select new { snapshot.Id, Count = observations.LongCount() }
+            ).ToDictionary(row => row.Id, row => row.Count);
+            token.ThrowIfCancellationRequested();
+            return counts;
+        }
+    }
+
     public ScanHistorySummary[] ListSummaries(string volumeKey, CancellationToken token = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
