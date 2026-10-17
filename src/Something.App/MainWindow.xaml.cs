@@ -458,6 +458,13 @@ public sealed partial class MainWindow : Window
             await current.DisposeAsync();
         sessions.Clear();
         session = null;
+        Entries.ItemsSource = null;
+        Ranking.ItemsSource = null;
+        await RestoreDriveHistoriesAsync();
+        if (sessions.Count != 3 || Entries.Items.Count != 0 || Ranking.Items.Count != 0)
+            throw new InvalidOperationException(
+                "Drive history restoration rendered files before every drive was ready."
+            );
         await InitializeHistoryAsync();
         if (sessions.Count != 3 || session?.ScanId != latest.ScanId || !HistoryBox.IsEnabled)
             throw new InvalidOperationException(
@@ -469,16 +476,54 @@ public sealed partial class MainWindow : Window
     {
         if (history is null)
             return;
+        await using var viewUpdate = BeginViewUpdate("ドライブの保存済み情報を読み込んでいます…");
+        foreach (var card in cards)
+        {
+            card.IsEnabled = false;
+            if (!sessions.ContainsKey(card.Choice.Drive) && !scans.ContainsKey(card))
+                card.SetState("履歴を確認中");
+        }
         try
         {
+            // Restore every card before starting visibility projection, tree, list, or ranking queries.
+            await RestoreDriveHistoriesAsync();
+            if (closed || selectedCard is not { } selected)
+                return;
             foreach (var card in cards)
+                card.IsEnabled = !historyMaintenance && !changingVisibility;
+            if (
+                historicalSession is null
+                && sessions.TryGetValue(selected.Choice.Drive, out var latest)
+            )
             {
-                await using var viewUpdate =
-                    selectedCard == card
-                        ? BeginViewUpdate(
-                            $"{card.Choice.Drive} の保存済みの結果を読み込んでいます…"
-                        )
-                        : null;
+                session = latest;
+                await ShowSessionAsync(latest);
+            }
+            await RefreshHistoryChoicesAsync(selected);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+        finally
+        {
+            if (!closed)
+                foreach (var card in cards)
+                    card.IsEnabled = !historyMaintenance && !changingVisibility;
+        }
+    }
+
+    private async Task RestoreDriveHistoriesAsync()
+    {
+        if (history is null)
+            return;
+        var failures = new List<Exception>();
+        foreach (var card in cards)
+        {
+            try
+            {
+                lifetime.Token.ThrowIfCancellationRequested();
                 string key = demo
                     ? $"demo:{card.Choice.Drive}"
                     : await Task.Run(
@@ -495,7 +540,6 @@ public sealed partial class MainWindow : Window
                     && !scans.ContainsKey(card)
                 )
                 {
-                    int viewingVersion = historyVersion;
                     var latest = await ScanSession.OpenHistoryAsync(
                         history,
                         rows[0].Id,
@@ -512,25 +556,25 @@ public sealed partial class MainWindow : Window
                     {
                         sessions[card.Choice.Drive] = latest;
                         card.SetResult(latest);
-                        if (
-                            selectedCard == card
-                            && viewingVersion == historyVersion
-                            && historicalSession is null
-                        )
-                        {
-                            session = latest;
-                            await ShowSessionAsync(latest);
-                        }
                     }
                 }
-                await RefreshHistoryChoicesAsync(card);
+                else if (!scans.ContainsKey(card))
+                    card.SetResult(sessions.GetValueOrDefault(card.Choice.Drive));
+            }
+            catch (OperationCanceledException) when (lifetime.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception error)
+            {
+                card.SetState("履歴を読み込めません", error.Message);
+                failures.Add(new IOException($"{card.Choice.Drive}: {error.Message}", error));
             }
         }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        catch (Exception error)
-        {
-            ShowError(error);
-        }
+        if (failures.Count > 0 && !closed)
+            ShowError(
+                new AggregateException("一部のドライブの履歴を読み込めませんでした。", failures)
+            );
     }
 
     private async Task RefreshHistoryChoicesAsync(DriveCard card)
