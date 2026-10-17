@@ -220,7 +220,10 @@ public sealed partial class MainWindow : Window
             await LoadFolderAsync(projectLocation, true);
             LeafBox.IsChecked = true;
             await LoadRankingAsync();
-            if (Ranking.Items.Count != 2)
+            if (
+                Ranking.Items.Count != 1
+                || Ranking.Items.Cast<RankingRow>().Single().RelativePath != @"Projects\Archive"
+            )
                 throw new InvalidOperationException("Leaf filtering did not apply.");
             LeafBox.IsChecked = false;
             await LoadRankingAsync();
@@ -753,7 +756,8 @@ public sealed partial class MainWindow : Window
         if (closed || session != current)
             return;
         root.IsExpanded = true;
-        await LoadRankingAsync();
+        if (!Analyzing)
+            await LoadRankingAsync();
     }
 
     private Task StartScanAsync(DriveCard? requested = null)
@@ -966,8 +970,11 @@ public sealed partial class MainWindow : Window
         if (session is not { } current || closed)
             return;
         await using var viewUpdate =
-            viewUpdates.Count == 0 ? EntryLoadingRegion.BeginUpdate() : null;
+            viewUpdates.Count == 0
+                ? (Analyzing ? RankingLoadingRegion : EntryLoadingRegion).BeginUpdate()
+                : null;
         int version = ++navigationVersion;
+        rankingVersion++; // Discard analysis for the previous scope as soon as navigation starts.
         listingCancellation?.Cancel();
         listingCancellation?.Dispose();
         var request = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
@@ -1126,6 +1133,9 @@ public sealed partial class MainWindow : Window
             BackButton.IsEnabled = navigation.Count > 0;
             ForwardButton.IsEnabled = forwardHistory.Count > 0;
             UpButton.IsEnabled = parentLocation is not null;
+            SelectLoadedFolder(target);
+            if (Analyzing)
+                await LoadRankingAsync();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
@@ -1319,7 +1329,10 @@ public sealed partial class MainWindow : Window
         if (folder.LoadMore && node.Parent is { } parent)
             await LoadChildrenAsync(parent, folder.NextPage);
         else
-            await LoadFolderAsync(folder.Location, true);
+        {
+            if (location != folder.Location && pendingTreeLocation != folder.Location)
+                await LoadFolderAsync(folder.Location, true);
+        }
     }
 
     private FolderNode? FindContextFolder(DependencyObject? source)
@@ -1565,9 +1578,17 @@ public sealed partial class MainWindow : Window
         var order = analysisOrder;
         bool leafOnly = LeafBox.IsChecked == true;
         bool comparing = Comparing;
+        var scope = location;
+        string prefix =
+            scope is null || scope.Reference == current.Root
+                ? ""
+                : scope.Path[(current.Drive.Length + 1)..].TrimEnd('\\') + "\\";
+        bool InScope(string path) => path.StartsWith(prefix, StringComparison.Ordinal);
         try
         {
             var attributes = await current.ReadFolderAttributesAsync(lifetime.Token);
+            if (closed || version != rankingVersion || current != session || scope != location)
+                return;
             if (comparing)
             {
                 var baselineAttributes = comparisonBaseline is { } baseline
@@ -1577,10 +1598,15 @@ public sealed partial class MainWindow : Window
                 var changed = report is null
                     ? Array.Empty<FolderChange>()
                     : await Task.Run(
-                        () => BrowserOrdering.FolderChanges(FilterChanges(report, leafOnly), order),
+                        () =>
+                            BrowserOrdering.FolderChanges(
+                                FilterChanges(report, leafOnly)
+                                    .Where(row => InScope(row.AfterPath!)),
+                                order
+                            ),
                         lifetime.Token
                     );
-                if (!closed && version == rankingVersion && current == session)
+                if (!closed && version == rankingVersion && current == session && scope == location)
                     PublishAnalysis(
                         changed.Length,
                         index => new RankingRow(changed[index], current.Drive)
@@ -1598,8 +1624,11 @@ public sealed partial class MainWindow : Window
                 new(LeafOnly: leafOnly),
                 lifetime.Token
             );
-            var rows = await Task.Run(() => BrowserOrdering.Folders(facts, order), lifetime.Token);
-            if (closed || version != rankingVersion || current != session)
+            var rows = await Task.Run(
+                () => BrowserOrdering.Folders(facts.Where(row => InScope(row.RelativePath)), order),
+                lifetime.Token
+            );
+            if (closed || version != rankingVersion || current != session || scope != location)
                 return;
             PublishAnalysis(
                 rows.Length,
@@ -1616,7 +1645,8 @@ public sealed partial class MainWindow : Window
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
         {
-            ShowError(error);
+            if (!closed && version == rankingVersion && current == session && scope == location)
+                ShowError(error);
         }
     }
 
@@ -1632,13 +1662,10 @@ public sealed partial class MainWindow : Window
         {
             if (!await FolderAvailableAsync(current.Drive + "\\" + row.RelativePath))
                 return;
-            await using var update = BeginViewUpdate("フォルダを表示しています…");
             await LoadFolderAsync(
                 new(row.Reference, current.Drive + "\\" + row.RelativePath),
                 true
             );
-            if (session == current && !closed)
-                WorkspaceTabs.SelectedIndex = 0;
         }
     }
 

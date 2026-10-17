@@ -8,6 +8,7 @@ namespace Something.App;
 public sealed partial class MainWindow
 {
     private int treeScrollVersion;
+    private FolderLocation? pendingTreeLocation;
 
     private ListView? TreeList => FindTreePart<ListView>(Folders, "ListControl");
 
@@ -26,10 +27,49 @@ public sealed partial class MainWindow
         }
     }
 
-    private void OnTreeSelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
+    private async void OnTreeSelectionChanged(
+        TreeView sender,
+        TreeViewSelectionChangedEventArgs args
+    )
     {
         if (sender.SelectedNode is { } selected)
+        {
             QueueTreeVisibility(selected);
+            if (
+                selected.Content is FolderNode { LoadMore: false } folder
+                && location != folder.Location
+                && pendingTreeLocation != folder.Location
+            )
+            {
+                pendingTreeLocation = folder.Location;
+                try
+                {
+                    await LoadFolderAsync(folder.Location, true);
+                }
+                finally
+                {
+                    if (pendingTreeLocation == folder.Location)
+                        pendingTreeLocation = null;
+                }
+            }
+        }
+    }
+
+    private void SelectLoadedFolder(FolderLocation target)
+    {
+        var pending = new Stack<TreeViewNode>(Folders.RootNodes);
+        while (pending.TryPop(out var node))
+        {
+            if (node.Content is FolderNode { LoadMore: false } folder && folder.Location == target)
+            {
+                Folders.SelectedNode = node;
+                QueueTreeVisibility(node);
+                return;
+            }
+            foreach (var child in node.Children)
+                pending.Push(child);
+        }
+        Folders.SelectedNode = null;
     }
 
     private void OnTreeSizeChanged(object sender, SizeChangedEventArgs args)

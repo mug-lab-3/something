@@ -156,14 +156,12 @@ public sealed partial class MainWindow
         bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
         ViewHost.Visibility = managing ? Visibility.Collapsed : Visibility.Visible;
         HistoryManagement.Visibility = managing ? Visibility.Visible : Visibility.Collapsed;
-        TreePanel.Visibility = FileListPanel.Visibility = analyzing
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        TreeColumn.Width = new(analyzing ? 0 : 250);
-        ResultsContent.ColumnSpacing = analyzing ? 0 : 16;
+        FileListPanel.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
         RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
         if (managing)
             await RefreshManagementIfVisibleAsync();
+        else if (analyzing)
+            await LoadRankingAsync();
     }
 
     private async Task RefreshManagementIfVisibleAsync()
