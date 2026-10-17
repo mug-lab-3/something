@@ -55,7 +55,7 @@
               >
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE787;" FontSize="16" />
-                  <TextBlock x:Name="FromValueText" Text="最初の記録" MinWidth="160" />
+                  <TextBlock x:Name="FromValueText" Text="—" MinWidth="160" />
                 </StackPanel>
                 <Button.Flyout>
                   <Flyout Placement="Bottom">
@@ -64,7 +64,7 @@
                         x:Name="FromDate"
                         DateChanged="OnDateChanged"
                         Width="220"
-                        PlaceholderText="最初の記録"
+                        PlaceholderText="日付を選択"
                         AutomationProperties.Name="開始日"
                       />
                       <TimePicker
@@ -92,8 +92,8 @@
                 ToolTipService.ToolTip="範囲の終了日時を編集"
               >
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                  <TextBlock x:Name="EndValueText" Text="最新の記録" MinWidth="160" />
                   <FontIcon Glyph="&#xE787;" FontSize="16" />
+                  <TextBlock x:Name="EndValueText" Text="—" MinWidth="160" />
                 </StackPanel>
                 <Button.Flyout>
                   <Flyout Placement="Bottom">
@@ -102,7 +102,7 @@
                         x:Name="EndDate"
                         DateChanged="OnDateChanged"
                         Width="220"
-                        PlaceholderText="最新の記録"
+                        PlaceholderText="日付を選択"
                         AutomationProperties.Name="終了日"
                       />
                       <TimePicker

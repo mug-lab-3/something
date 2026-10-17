@@ -28,6 +28,10 @@ public sealed partial class HistoryManagementView : UserControl
     private bool operationActive;
     private bool sortByRecordCount;
     private bool sortDescending = true;
+    private bool automaticStart = true;
+    private bool automaticEnd = true;
+    private DateTimeOffset? defaultStart;
+    private DateTimeOffset? defaultEnd;
     internal event Action<Task>? WorkStarted;
     internal event Action<bool>? MaintenanceChanged;
 
@@ -71,6 +75,8 @@ public sealed partial class HistoryManagementView : UserControl
         if (changed)
         {
             selectedIds.Clear();
+            automaticStart = automaticEnd = true;
+            defaultStart = defaultEnd = null;
             FromDate.Date = EndDate.Date = null;
         }
         HistoryList.ItemsSource = null;
@@ -91,10 +97,12 @@ public sealed partial class HistoryManagementView : UserControl
             HistoryList.ItemsSource = OrderHistory(
                 rows.Select(row => new ManagedHistoryRow(row.Entry, row.RecordCount))
             );
+            UpdateDefaultRange();
             foreach (ManagedHistoryRow row in HistoryList.Items)
                 if (selected.Contains(row.Entry.Id))
                     HistoryList.SelectedItems.Add(row);
             initializing = false;
+            UpdateRangeText();
             UpdateSelection();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -200,8 +208,8 @@ public sealed partial class HistoryManagementView : UserControl
                         TimeZoneInfo.Local
                     )
                     : null;
-            var start = Instant(FromDate, FromTime);
-            var end = Instant(EndDate, EndTime);
+            var start = automaticStart ? defaultStart : Instant(FromDate, FromTime);
+            var end = automaticEnd ? defaultEnd : Instant(EndDate, EndTime);
             var ids = HistoryDeletion
                 .SelectRange(
                     HistoryList.Items.Cast<ManagedHistoryRow>().Select(row => row.Entry),
@@ -227,12 +235,37 @@ public sealed partial class HistoryManagementView : UserControl
         }
     }
 
+    private void UpdateDefaultRange()
+    {
+        var instants = HistoryList
+            .Items.Cast<ManagedHistoryRow>()
+            .Select(row => (DateTimeOffset?)row.Entry.CompletedUtc)
+            .ToArray();
+        defaultStart = instants.Min();
+        defaultEnd = instants.Max();
+        if (automaticStart)
+        {
+            FromDate.Date = defaultStart?.ToLocalTime();
+            FromTime.Time = defaultStart?.ToLocalTime().TimeOfDay ?? TimeSpan.Zero;
+        }
+        if (automaticEnd)
+        {
+            EndDate.Date = defaultEnd?.ToLocalTime();
+            EndTime.Time = defaultEnd?.ToLocalTime().TimeOfDay ?? TimeSpan.Zero;
+        }
+    }
+
     private void UpdateRangeText()
     {
-        static string Display(CalendarDatePicker date, TimePicker time, string placeholder) =>
-            date.Date is { } value ? value.Date.Add(time.Time).ToString("g") : placeholder;
-        FromValueText.Text = Display(FromDate, FromTime, "最初の記録");
-        EndValueText.Text = Display(EndDate, EndTime, "最新の記録");
+        static string Display(CalendarDatePicker date, TimePicker time, DateTimeOffset? exact) =>
+            exact?.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")
+            ?? (
+                date.Date is { } value
+                    ? value.Date.Add(time.Time).ToString("yyyy/MM/dd HH:mm:ss")
+                    : "—"
+            );
+        FromValueText.Text = Display(FromDate, FromTime, automaticStart ? defaultStart : null);
+        EndValueText.Text = Display(EndDate, EndTime, automaticEnd ? defaultEnd : null);
     }
 
     private void OnApplyRange(object sender, RoutedEventArgs args) => ApplyRange();
@@ -242,6 +275,7 @@ public sealed partial class HistoryManagementView : UserControl
         if (busy)
             return;
         initializing = true;
+        automaticStart = automaticEnd = false;
         FromDate.Date = EndDate.Date = null;
         FromTime.Time = EndTime.Time = TimeSpan.Zero;
         initializing = false;
@@ -293,6 +327,7 @@ public sealed partial class HistoryManagementView : UserControl
             -int.Parse(tag, System.Globalization.CultureInfo.InvariantCulture)
         );
         initializing = true;
+        automaticStart = automaticEnd = false;
         FromDate.Date = null;
         EndDate.Date = cutoff;
         EndTime.Time = new(cutoff.Hour, cutoff.Minute, 0);
@@ -311,10 +346,29 @@ public sealed partial class HistoryManagementView : UserControl
     private void OnDateChanged(
         CalendarDatePicker sender,
         CalendarDatePickerDateChangedEventArgs args
-    ) => DatesEdited();
-
-    private void OnTimeChanged(object sender, TimePickerValueChangedEventArgs args) =>
+    )
+    {
+        if (!initializing && !busy)
+        {
+            if (sender == FromDate)
+                automaticStart = false;
+            else
+                automaticEnd = false;
+        }
         DatesEdited();
+    }
+
+    private void OnTimeChanged(object sender, TimePickerValueChangedEventArgs args)
+    {
+        if (!initializing && !busy)
+        {
+            if (ReferenceEquals(sender, FromTime))
+                automaticStart = false;
+            else
+                automaticEnd = false;
+        }
+        DatesEdited();
+    }
 
     private void OnToggleAll(object sender, RoutedEventArgs args)
     {
@@ -553,9 +607,28 @@ public sealed partial class HistoryManagementView : UserControl
             "Management did not start unchecked."
         );
         Require(
-            FromValueText.Text == "最初の記録" && EndValueText.Text == "最新の記録",
-            "Range placeholders failed."
+            FromValueText.Text
+                == HistoryList
+                    .Items.Cast<ManagedHistoryRow>()
+                    .MinBy(row => row.Entry.CompletedUtc)!
+                    .CompletedText
+                && EndValueText.Text
+                    == HistoryList
+                        .Items.Cast<ManagedHistoryRow>()
+                        .MaxBy(row => row.Entry.CompletedUtc)!
+                        .CompletedText
+                && FromDate.Date is not null
+                && EndDate.Date is not null,
+            "History range did not default to the saved scan timestamps."
         );
+        OnApplyRange(this, new());
+        Require(
+            HistoryList.SelectedItems.Count == HistoryList.Items.Count,
+            "Default range excluded a boundary scan."
+        );
+        OnToggleAll(this, new());
+        await LoadAsync(volumeKey);
+        Require(automaticStart && automaticEnd, "Reload discarded automatic range defaults.");
         Require(
             SelectAllCheckBox.IsChecked == false && SelectAllCheckBox.IsEnabled,
             "Empty selection header failed."
