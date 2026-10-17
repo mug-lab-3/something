@@ -8,6 +8,9 @@ public sealed partial class HistoryPicker : UserControl
     private HistoryRow[] rows = [];
     private readonly Dictionary<Guid, long> counts = [];
     private HistoryRow? selected;
+    private bool automatic;
+    private bool automaticSelectable;
+    private HistoryRow? automaticHistory;
     private HistorySelectionDialog? activeDialog;
     internal Func<Guid[], Task<IReadOnlyDictionary<Guid, long>>>? LoadCounts { get; set; }
     internal string? OtherEndpoint { get; set; }
@@ -57,7 +60,7 @@ public sealed partial class HistoryPicker : UserControl
                 : rows.FirstOrDefault(row => row.Entry.Id == value.Entry.Id);
             bool changed = selected?.Entry.Id != next?.Entry.Id;
             selected = next;
-            ValueText.Text = selected?.ToString() ?? PlaceholderText;
+            UpdateValueText();
             if (changed)
                 SelectionChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -68,6 +71,23 @@ public sealed partial class HistoryPicker : UserControl
         get => Array.FindIndex(rows, row => row.Entry.Id == selected?.Entry.Id);
         set => SelectedItem = value >= 0 && value < rows.Length ? rows[value] : null;
     }
+
+    internal HistoryRow? DisplayedHistory => automatic ? automaticHistory : selected;
+
+    internal void SetAutomaticHistory(HistoryRow? history, bool value, bool selectable = false)
+    {
+        if (value)
+            activeDialog?.Invalidate();
+        automatic = value;
+        automaticSelectable = value && selectable;
+        automaticHistory = history;
+        PickerChevron.Visibility = value && !selectable ? Visibility.Collapsed : Visibility.Visible;
+        PickerButton.IsTabStop = !value || selectable;
+        UpdateValueText();
+    }
+
+    private void UpdateValueText() =>
+        ValueText.Text = DisplayedHistory?.ToString() ?? (automatic ? "記録なし" : PlaceholderText);
 
     private HistorySelectionDialog CreateDialog() =>
         new(rows, selected, counts, LoadCounts)
@@ -80,7 +100,7 @@ public sealed partial class HistoryPicker : UserControl
 
     private async void OnOpen(object sender, RoutedEventArgs args)
     {
-        if (activeDialog is not null)
+        if (automatic && !automaticSelectable || activeDialog is not null)
             return;
         var dialog = CreateDialog();
         activeDialog = dialog;

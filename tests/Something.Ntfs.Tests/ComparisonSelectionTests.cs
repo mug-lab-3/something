@@ -126,7 +126,16 @@ public sealed class ComparisonSelectionTests
         var single = ComparisonSelection.Resolve([last], period, Now, Japan);
         Assert.False(single.Available);
         Assert.False(single.IsPartial);
-        Assert.Null(single.Before);
+        Assert.Equal(last, single.Before);
+        Assert.Null(single.After);
+        var anchoredSingle = ComparisonSelection.ResolveAtScan([last], period, last, Japan);
+        Assert.Equal(last, anchoredSingle.Before);
+        Assert.Null(anchoredSingle.After);
+        Assert.False(anchoredSingle.Available);
+        var old = History(Now.AddYears(-2));
+        var oldSingle = ComparisonSelection.Resolve([old], period, Now, Japan);
+        Assert.Equal(old, oldSingle.Before);
+        Assert.Null(oldSingle.After);
     }
 
     [Fact]

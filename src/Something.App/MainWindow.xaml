@@ -156,16 +156,6 @@
           </Grid.RowDefinitions>
           <StackPanel x:Name="ViewControls" Grid.Row="0" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="12">
-              <local:HistoryPicker
-                x:Name="HistoryBox"
-                ToolTipService.ToolTip="表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
-                Header="表示する記録"
-                Width="290"
-                PlaceholderText="最新のスキャン"
-                IsEnabled="False"
-                SelectionChanged="OnHistoryChanged"
-                AutomationProperties.Name="表示するスキャン"
-              />
               <ComboBox
                 x:Name="ComparisonPeriodBox"
                 Header="比較"
@@ -173,35 +163,51 @@
                 SelectionChanged="OnComparisonPeriodChanged"
                 AutomationProperties.Name="比較期間"
               />
-              <StackPanel
-                x:Name="CustomComparisonPanel"
-                Orientation="Horizontal"
-                Spacing="8"
-                Visibility="Collapsed"
-              >
+              <ContentControl x:Name="NormalHistoryHost">
                 <local:HistoryPicker
-                  x:Name="ComparisonBeforeBox"
-                  Header="比較元のスキャン"
+                  x:Name="HistoryBox"
+                  ToolTipService.ToolTip="表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
+                  Header="表示する記録"
                   Width="290"
-                  PlaceholderText="比較前"
-                  SelectionChanged="OnComparisonOptionsChanged"
-                  AutomationProperties.Name="比較前のスキャン"
+                  PlaceholderText="最新のスキャン"
+                  IsEnabled="False"
+                  SelectionChanged="OnHistoryChanged"
+                  AutomationProperties.Name="表示するスキャン"
                 />
-              </StackPanel>
+              </ContentControl>
+              <Border
+                x:Name="CustomComparisonPanel"
+                Visibility="Collapsed"
+                HorizontalAlignment="Left"
+                ToolTipService.ToolTip="差分は「比較する記録 − 基準の記録」です。＋は増加、−は減少を表します。サイズ列は右側の記録の値です。"
+              >
+                <Grid ColumnSpacing="16">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <local:HistoryPicker
+                    x:Name="ComparisonBeforeBox"
+                    Header="基準の記録"
+                    Width="290"
+                    PlaceholderText="基準の記録を選択"
+                    SelectionChanged="OnComparisonOptionsChanged"
+                    AutomationProperties.Name="基準の記録"
+                    ToolTipService.ToolTip="差分を計算する基準の記録です。右側の記録から、この記録のサイズを差し引きます。"
+                  />
+                  <FontIcon
+                    Grid.Column="1"
+                    Glyph="&#xE72A;"
+                    FontSize="18"
+                    VerticalAlignment="Center"
+                    Margin="0,24,0,0"
+                    AutomationProperties.Name="基準から比較する記録への変化"
+                  />
+                  <ContentControl x:Name="CustomHistoryHost" Grid.Column="2" />
+                </Grid>
+              </Border>
             </StackPanel>
-            <Border
-              x:Name="ComparisonRangePanel"
-              Visibility="Collapsed"
-              Padding="12,8"
-              CornerRadius="6"
-              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            >
-              <StackPanel Orientation="Horizontal" Spacing="16">
-                <TextBlock x:Name="SelectedBeforeText" Text="比較前：—" FontWeight="SemiBold" />
-                <TextBlock Text="→" />
-                <TextBlock x:Name="SelectedAfterText" Text="比較後：—" FontWeight="SemiBold" />
-              </StackPanel>
-            </Border>
             <TextBlock
               x:Name="ComparisonStatusText"
               Visibility="Collapsed"
@@ -402,6 +408,7 @@
                         </Button>
                         <Button
                           x:Name="ChangeHeader"
+                          ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
                           Grid.Column="3"
                           Content="増減"
                           Visibility="Collapsed"
@@ -544,6 +551,7 @@
                       />
                       <Button
                         x:Name="RankingChangeHeader"
+                        ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
                         Grid.Column="3"
                         Content="増減"
                         Visibility="Collapsed"

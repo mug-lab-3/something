@@ -347,6 +347,8 @@ public sealed partial class MainWindow : Window
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
                     ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
                     : null;
+            if (demo && Environment.GetCommandLineArgs().Contains("--smoke-custom-comparison"))
+                await PreviewCustomComparisonAsync();
             var pickerPreview =
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-history-picker")
                     ? await HistoryBox.VerifyPreviewAsync(lifetime.Token)

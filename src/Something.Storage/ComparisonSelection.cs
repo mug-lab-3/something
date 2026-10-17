@@ -85,7 +85,11 @@ public sealed record ComparisonSelection(
                 .OrderBy(row => row.CompletedUtc)
                 .ThenBy(row => row.Id)
                 .FirstOrDefault();
-        return new(start, end, before, after);
+        // A lone observation is a starting point, not a completed comparison.
+        // Keep the missing second observation explicit instead of reusing it at both ends.
+        return before is null || before.Id == after?.Id
+            ? new(start, end, after, null)
+            : new(start, end, before, after);
     }
 
     private static DateTimeOffset Boundary(DateTime local, TimeZoneInfo zone)

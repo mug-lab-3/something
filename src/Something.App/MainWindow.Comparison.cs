@@ -137,10 +137,9 @@ public sealed partial class MainWindow
         comparisonCancellation?.Cancel();
         listingCancellation?.Cancel();
         comparisonReport = null;
+        ComparisonStatusText.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
         comparisonSelectionKey = null;
         ComparisonStatusText.Text = "比較するにはスキャン履歴が必要です。";
-        SelectedBeforeText.Text = "比較前：—";
-        SelectedAfterText.Text = "比較後：—";
         comparisonFolders = [];
         cachedComparisonFolder = null;
         cachedComparisonEntries = [];
@@ -155,19 +154,60 @@ public sealed partial class MainWindow
     {
         bool custom =
             ComparisonPeriodBox.SelectedItem is PeriodChoice { Period: FolderChangePeriod.Custom };
-        CustomComparisonPanel.Visibility =
-            Comparing && custom ? Visibility.Visible : Visibility.Collapsed;
-        HistoryBox.Header = Comparing ? "比較先のスキャン" : "表示する記録";
-        var before = custom ? ComparisonBeforeBox.SelectedItem?.Entry : comparisonReport?.Baseline;
+        CustomComparisonPanel.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
+        var historyHost = Comparing ? CustomHistoryHost : NormalHistoryHost;
+        if (!ReferenceEquals(historyHost.Content, HistoryBox))
+        {
+            NormalHistoryHost.Content = null;
+            CustomHistoryHost.Content = null;
+            historyHost.Content = HistoryBox;
+        }
+        NormalHistoryHost.Visibility = Comparing ? Visibility.Collapsed : Visibility.Visible;
+        HistoryBox.Header = Comparing ? "比較する記録" : "表示する記録";
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(HistoryBox, HistoryBox.Header);
+        ToolTipService.SetToolTip(
+            HistoryBox,
+            Comparing
+                ? "サイズ列はこの記録の値です。差分は「比較する記録 − 基準の記録」で、＋は増加、−は減少です。"
+                : "表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
+        );
+        var period = (ComparisonPeriodBox.SelectedItem as PeriodChoice)?.Period;
+        var selection =
+            !custom && period is { } selectedPeriod && session?.History is { } endpoint
+                ? ComparisonSelection.ResolveAtScan(
+                    HistoryBox.Items.Select(row => row.Entry),
+                    selectedPeriod,
+                    endpoint,
+                    TimeZoneInfo.Local
+                )
+                : null;
+        var before = custom ? ComparisonBeforeBox.SelectedItem?.Entry : selection?.Before;
+        HistoryBox.SetAutomaticHistory(
+            null,
+            Comparing && !custom && selection?.After is null,
+            selectable: true
+        );
+        ComparisonBeforeBox.SetAutomaticHistory(
+            before is null ? null : new HistoryRow(before),
+            Comparing && !custom
+        );
+        ToolTipService.SetToolTip(
+            ComparisonBeforeBox,
+            custom
+                ? "差分を計算する基準の記録です。右側の記録から、この記録のサイズを差し引きます。"
+                : "比較期間から自動的に選ばれた基準の記録です。手動で選ぶ場合は比較方式を「任意のスキャン」に切り替えてください。"
+        );
         HistoryBox.OtherEndpoint =
             Comparing && before is not null
-                ? $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                ? $"基準の記録：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
                 : null;
-        ComparisonBeforeBox.OtherEndpoint = HistoryBox.SelectedItem is { } after
-            ? $"比較先：{after.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
-            : null;
-        ComparisonStatusText.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
-        ComparisonRangePanel.Visibility = Comparing ? Visibility.Visible : Visibility.Collapsed;
+        ComparisonBeforeBox.OtherEndpoint = HistoryBox.DisplayedHistory is { } after
+            ? $"比較する記録：{after.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+            : "比較する記録：記録なし";
+        ComparisonStatusText.Visibility =
+            Comparing && !(comparisonReport is { IsPartial: false, UncertainFolders.Length: 0 })
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         ChangeHeader.Visibility = RankingChangeHeader.Visibility = Comparing
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -241,15 +281,18 @@ public sealed partial class MainWindow
                 after = selection?.After;
                 selectedRange = selection;
             }
-            SelectedBeforeText.Text = before is null
-                ? "比較前：記録なし"
-                : $"比較前：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+            ComparisonBeforeBox.SetAutomaticHistory(
+                before is null ? null : new HistoryRow(before),
+                period != FolderChangePeriod.Custom
+            );
+            HistoryBox.SetAutomaticHistory(
+                null,
+                period != FolderChangePeriod.Custom && after is null,
+                selectable: true
+            );
             HistoryBox.OtherEndpoint = before is null
                 ? null
-                : $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
-            SelectedAfterText.Text = after is null
-                ? "比較後：記録なし"
-                : $"比較後：{after.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+                : $"基準の記録：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
             comparisonSelectionKey = (
                 period,
                 before?.Id,
@@ -260,14 +303,14 @@ public sealed partial class MainWindow
             if (history is null || before is null || after is null || before.Id == after.Id)
             {
                 ComparisonStatusText.Text =
-                    "履歴不足：比較前と比較後の異なる2回のスキャンが必要です。サイズ不明を0として差し引きません。";
+                    "履歴不足：基準の記録と比較する記録には、異なる2回のスキャンが必要です。サイズ不明を0として差し引きません。";
                 await ShowSessionAsync(displayed);
                 return;
             }
             if (before.VolumeKey != after.VolumeKey || before.CompletedUtc > after.CompletedUtc)
             {
                 ComparisonStatusText.Text =
-                    "同じドライブで、比較前が比較後より古いスキャンを選択してください。";
+                    "同じドライブで、基準の記録が比較する記録より古いスキャンを選択してください。";
                 await ShowSessionAsync(displayed);
                 return;
             }
@@ -320,7 +363,12 @@ public sealed partial class MainWindow
                         ? $"指定範囲：{requested.RequestedBeforeUtc.ToLocalTime():yyyy/MM/dd HH:mm} ～ {requested.RequestedAfterUtc.ToLocalTime():yyyy/MM/dd HH:mm} · "
                         : ""
                 )
-                + $"比較不能 {report.UncertainFolders.Length:N0} フォルダ · 増減は比較後 − 比較前";
+                + $"比較不能 {report.UncertainFolders.Length:N0} フォルダ";
+            ToolTipService.SetToolTip(ComparisonPeriodBox, ComparisonStatusText.Text);
+            ComparisonStatusText.Visibility =
+                !report.IsPartial && report.UncertainFolders.Length == 0
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
             await ShowSessionAsync(session);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -426,6 +474,17 @@ public sealed partial class MainWindow
         return null;
     }
 
+    private async Task PreviewCustomComparisonAsync()
+    {
+        updatingComparisonChoices = true;
+        ComparisonPeriodBox.SelectedIndex = 9;
+        ComparisonBeforeBox.SelectedIndex = ComparisonBeforeBox.Items.Count - 1;
+        updatingComparisonChoices = false;
+        await TrackComparisonAsync();
+        RootLayout.UpdateLayout();
+        await Task.Delay(200, lifetime.Token);
+    }
+
     private async Task VerifyComparisonModeAsync()
     {
         if (history is null)
@@ -436,6 +495,20 @@ public sealed partial class MainWindow
         ComparisonBeforeBox.SelectedIndex = ComparisonBeforeBox.Items.Count - 1;
         updatingComparisonChoices = false;
         await TrackComparisonAsync();
+        if (
+            CustomComparisonPanel.Visibility != Visibility.Visible
+            || Math.Abs(
+                CustomComparisonPanel.TransformToVisual(ViewControls).TransformPoint(new()).Y
+                    - ComparisonPeriodBox.TransformToVisual(ViewControls).TransformPoint(new()).Y
+            ) > 4
+            || NormalHistoryHost.Visibility != Visibility.Collapsed
+            || !ReferenceEquals(CustomHistoryHost.Content, HistoryBox)
+            || ComparisonBeforeBox.Header != "基準の記録"
+            || HistoryBox.Header != "比較する記録"
+        )
+            throw new InvalidOperationException(
+                "Custom comparison endpoints were not grouped in baseline-to-target order."
+            );
         if (
             comparisonReport is null
             || Entries.Items.Count != 3
@@ -482,6 +555,7 @@ public sealed partial class MainWindow
         await LoadFolderAsync(((FolderNode)projects.Content).Location, true);
         if (Entries.Items.Cast<EntryRow>().Any(row => !row.Delta.StartsWith('±')))
             throw new InvalidOperationException("Child folder comparison did not load.");
+        var retainedCustomBaseline = ComparisonBeforeBox.SelectedItem?.Entry.Id;
         for (int preset = 0; preset < 8; preset++)
         {
             updatingComparisonChoices = true;
@@ -494,10 +568,11 @@ public sealed partial class MainWindow
                         Baseline: { } selectedBefore,
                         Latest: { } selectedAfter
                     } selectedReport
-                || SelectedBeforeText.Text
-                    != $"比較前：{selectedBefore.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
-                || SelectedAfterText.Text
-                    != $"比較後：{selectedAfter.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                || ComparisonBeforeBox.DisplayedHistory?.Entry.Id != selectedBefore.Id
+                || HistoryBox.DisplayedHistory?.Entry.Id != selectedAfter.Id
+                || CustomComparisonPanel.Visibility != Visibility.Visible
+                || NormalHistoryHost.Visibility != Visibility.Collapsed
+                || ComparisonBeforeBox.SelectedItem?.Entry.Id != retainedCustomBaseline
                 || ComparisonStatusText.Text.StartsWith("履歴がある範囲のみ")
                     != selectedReport.IsPartial
             )
@@ -523,7 +598,13 @@ public sealed partial class MainWindow
         HistoryBox.SelectedItem = retainedChoices[0];
         updatingHistoryChoices = false;
         await TrackComparisonAsync();
-        if (comparisonReport is not null || !ComparisonStatusText.Text.StartsWith("履歴不足"))
+        if (
+            comparisonReport is not null
+            || !ComparisonStatusText.Text.StartsWith("履歴不足")
+            || ComparisonBeforeBox.DisplayedHistory?.Entry.Id != retainedChoices[0].Entry.Id
+            || HistoryBox.DisplayedHistory is not null
+            || HistoryBox.SelectedItem?.Entry.Id != retainedChoices[0].Entry.Id
+        )
             throw new InvalidOperationException(
                 "One retained snapshot must not produce a zero change."
             );
