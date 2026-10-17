@@ -372,53 +372,63 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                       </Grid.RowDefinitions>
-                      <Grid Grid.Row="0" Padding="12,0" ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="32" />
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition Width="140" />
-                          <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
-                          <ColumnDefinition Width="36" />
-                        </Grid.ColumnDefinitions>
-                        <Button
-                          x:Name="EntryNameHeader"
-                          Grid.Column="1"
-                          Content="名前"
-                          Tag="Name"
-                          Click="OnEntrySort"
-                          Style="{StaticResource ColumnHeaderButtonStyle}"
-                        />
-                        <Button
-                          Grid.Column="2"
-                          x:Name="SizeColumnText"
-                          Content="サイズ"
-                          Tag="Size"
-                          Click="OnEntrySort"
-                          Style="{StaticResource ColumnHeaderButtonStyle}"
-                        >
-                          <ToolTipService.ToolTip>
-                            <ToolTip>
-                              <TextBlock
-                                Text="{StaticResource SizeAccountingDescription}"
-                                TextWrapping="Wrap"
-                                MaxWidth="360"
-                              />
-                            </ToolTip>
-                          </ToolTipService.ToolTip>
-                        </Button>
-                        <Button
-                          x:Name="ChangeHeader"
-                          ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
-                          Grid.Column="3"
-                          Content="増減"
-                          Visibility="Collapsed"
-                          Tag="Change"
-                          Click="OnEntrySort"
-                          Style="{StaticResource ColumnHeaderButtonStyle}"
-                        />
-                      </Grid>
+                      <Border
+                        x:Name="EntryHeaderBand"
+                        Grid.Row="0"
+                        Style="{StaticResource ListHeaderBandStyle}"
+                      >
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="152" />
+                            <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
+                            <ColumnDefinition x:Name="EntryActionsHeaderColumn" Width="66" />
+                          </Grid.ColumnDefinitions>
+                          <Button
+                            x:Name="EntryNameHeader"
+                            Padding="60,6,6,6"
+                            Content="名前"
+                            Tag="Name"
+                            Click="OnEntrySort"
+                            Style="{StaticResource ColumnHeaderButtonStyle}"
+                          />
+                          <Button
+                            Grid.Column="1"
+                            x:Name="SizeColumnText"
+                            Padding="6"
+                            HorizontalContentAlignment="Right"
+                            Content="サイズ"
+                            Tag="Size"
+                            Click="OnEntrySort"
+                            Style="{StaticResource ColumnHeaderButtonStyle}"
+                          >
+                            <ToolTipService.ToolTip>
+                              <ToolTip>
+                                <TextBlock
+                                  Text="{StaticResource SizeAccountingDescription}"
+                                  TextWrapping="Wrap"
+                                  MaxWidth="360"
+                                />
+                              </ToolTip>
+                            </ToolTipService.ToolTip>
+                          </Button>
+                          <Button
+                            x:Name="ChangeHeader"
+                            HorizontalContentAlignment="Right"
+                            ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
+                            Grid.Column="2"
+                            Padding="6"
+                            Content="増減"
+                            Visibility="Collapsed"
+                            Tag="Change"
+                            Click="OnEntrySort"
+                            Style="{StaticResource ColumnHeaderButtonStyle}"
+                          />
+                        </Grid>
+                      </Border>
                       <ListView
                         x:Name="Entries"
+                        ItemContainerStyle="{StaticResource ListRowContainerStyle}"
                         Grid.Row="1"
                         DoubleTapped="OnEntryInvoked"
                         ContextRequested="OnEntryContextRequested"
@@ -455,12 +465,15 @@
                               />
                               <TextBlock
                                 Grid.Column="2"
+                                x:Name="EntrySizeText"
+                                HorizontalAlignment="Right"
                                 Text="{x:Bind Size}"
                                 TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                                 ToolTipService.ToolTip="{x:Bind SizeDescription}"
                               />
                               <TextBlock
                                 Grid.Column="3"
+                                HorizontalAlignment="Right"
                                 Text="{x:Bind Delta}"
                                 TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                                 ToolTipService.ToolTip="{x:Bind SizeDescription}"
@@ -533,53 +546,63 @@
                         AutomationProperties.LiveSetting="Polite"
                       />
                     </Grid>
-                    <Grid Grid.Row="1" ColumnSpacing="16">
-                      <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="32" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
-                        <ColumnDefinition Width="36" />
-                      </Grid.ColumnDefinitions>
-                      <Button
-                        x:Name="AnalysisNameHeader"
-                        Grid.Column="1"
-                        Content="フォルダ"
-                        Tag="Name"
-                        Click="OnAnalysisSort"
-                        Style="{StaticResource ColumnHeaderButtonStyle}"
-                      />
-                      <Button
-                        x:Name="RankingChangeHeader"
-                        ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
-                        Grid.Column="3"
-                        Content="増減"
-                        Visibility="Collapsed"
-                        Tag="Change"
-                        Click="OnAnalysisSort"
-                        Style="{StaticResource ColumnHeaderButtonStyle}"
-                      />
-                      <Button
-                        x:Name="AnalysisSizeHeader"
-                        Grid.Column="2"
-                        Content="サイズ"
-                        Tag="Size"
-                        Click="OnAnalysisSort"
-                        Style="{StaticResource ColumnHeaderButtonStyle}"
-                      >
-                        <ToolTipService.ToolTip>
-                          <ToolTip>
-                            <TextBlock
-                              Text="{StaticResource SizeAccountingDescription}"
-                              TextWrapping="Wrap"
-                              MaxWidth="360"
-                            />
-                          </ToolTip>
-                        </ToolTipService.ToolTip>
-                      </Button>
-                    </Grid>
+                    <Border
+                      x:Name="AnalysisHeaderBand"
+                      Grid.Row="1"
+                      Style="{StaticResource ListHeaderBandStyle}"
+                    >
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="152" />
+                          <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
+                          <ColumnDefinition x:Name="AnalysisActionsHeaderColumn" Width="66" />
+                        </Grid.ColumnDefinitions>
+                        <Button
+                          x:Name="AnalysisNameHeader"
+                          Padding="60,6,6,6"
+                          Content="フォルダ"
+                          Tag="Name"
+                          Click="OnAnalysisSort"
+                          Style="{StaticResource ColumnHeaderButtonStyle}"
+                        />
+                        <Button
+                          x:Name="RankingChangeHeader"
+                          HorizontalContentAlignment="Right"
+                          ToolTipService.ToolTip="比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。"
+                          Grid.Column="2"
+                          Padding="6"
+                          Content="増減"
+                          Visibility="Collapsed"
+                          Tag="Change"
+                          Click="OnAnalysisSort"
+                          Style="{StaticResource ColumnHeaderButtonStyle}"
+                        />
+                        <Button
+                          x:Name="AnalysisSizeHeader"
+                          HorizontalContentAlignment="Right"
+                          Grid.Column="1"
+                          Padding="6"
+                          Content="サイズ"
+                          Tag="Size"
+                          Click="OnAnalysisSort"
+                          Style="{StaticResource ColumnHeaderButtonStyle}"
+                        >
+                          <ToolTipService.ToolTip>
+                            <ToolTip>
+                              <TextBlock
+                                Text="{StaticResource SizeAccountingDescription}"
+                                TextWrapping="Wrap"
+                                MaxWidth="360"
+                              />
+                            </ToolTip>
+                          </ToolTipService.ToolTip>
+                        </Button>
+                      </Grid>
+                    </Border>
                     <ListView
                       x:Name="Ranking"
+                      ItemContainerStyle="{StaticResource ListRowContainerStyle}"
                       Grid.Row="2"
                       DoubleTapped="OnRankInvoked"
                       ContextRequested="OnRankContextRequested"
@@ -589,7 +612,7 @@
                           x:DataType="local:RankingRow"
                           xmlns:local="using:Something.App"
                         >
-                          <Grid Padding="0,8" ColumnSpacing="16">
+                          <Grid Padding="0,8" ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                               <ColumnDefinition Width="32" />
                               <ColumnDefinition Width="*" />
@@ -615,12 +638,15 @@
                             />
                             <TextBlock
                               Grid.Column="2"
+                              x:Name="AnalysisSizeText"
+                              HorizontalAlignment="Right"
                               Text="{x:Bind Size}"
                               TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                               ToolTipService.ToolTip="{x:Bind SizeDescription}"
                             />
                             <TextBlock
                               Grid.Column="3"
+                              HorizontalAlignment="Right"
                               Text="{x:Bind Delta}"
                               TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                               ToolTipService.ToolTip="{x:Bind SizeDescription}"

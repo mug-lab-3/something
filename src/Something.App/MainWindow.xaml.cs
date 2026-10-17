@@ -347,6 +347,12 @@ public sealed partial class MainWindow : Window
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
                     ? await HistoryManagement.PreviewSyntheticDeleteDialogAsync()
                     : null;
+            if (demo && Environment.GetCommandLineArgs().Contains("--smoke-header-hover"))
+            {
+                VisualStateManager.GoToState(EntryNameHeader, "PointerOver", false);
+                RootLayout.UpdateLayout();
+                await Task.Delay(200, lifetime.Token);
+            }
             if (demo && Environment.GetCommandLineArgs().Contains("--smoke-custom-comparison"))
                 await PreviewCustomComparisonAsync();
             var pickerPreview =

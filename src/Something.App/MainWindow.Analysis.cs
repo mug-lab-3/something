@@ -151,6 +151,13 @@ public sealed partial class MainWindow
             WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
             await LoadRankingAsync();
             RootLayout.UpdateLayout();
+            VerifyHeaderAlignment(
+                Ranking,
+                AnalysisNameHeader,
+                AnalysisSizeHeader,
+                "AnalysisPathText",
+                "AnalysisSizeText"
+            );
             if (
                 TreePanel.Visibility != Visibility.Visible
                 || FileListPanel.Visibility != Visibility.Collapsed

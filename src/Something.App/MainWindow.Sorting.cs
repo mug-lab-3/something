@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Something.Application;
 
 namespace Something.App;
@@ -86,6 +87,13 @@ public sealed partial class MainWindow
 
     private async Task VerifyColumnSortingAsync()
     {
+        VerifyHeaderAlignment(
+            Entries,
+            EntryNameHeader,
+            SizeColumnText,
+            "EntryNameText",
+            "EntrySizeText"
+        );
         var originalEntryOrder = entryOrder;
         var originalAnalysisOrder = analysisOrder;
         try
@@ -133,6 +141,77 @@ public sealed partial class MainWindow
             if (location is { } current)
                 await LoadFolderAsync(current, false);
             await LoadRankingAsync();
+        }
+    }
+
+    private void VerifyHeaderAlignment(
+        ListView list,
+        Button nameHeader,
+        Button sizeHeader,
+        string namePart,
+        string sizePart
+    )
+    {
+        RootLayout.UpdateLayout();
+        if (list.Items.Count == 0 || list.ContainerFromIndex(0) is not ListViewItem row)
+            throw new InvalidOperationException(
+                "Column alignment verification requires a visible row."
+            );
+        var name = FindTreePart<TextBlock>(row, namePart)!;
+        var size = FindTreePart<TextBlock>(row, sizePart)!;
+        double labelLeft = nameHeader
+            .TransformToVisual(list)
+            .TransformPoint(new(nameHeader.Padding.Left, 0))
+            .X;
+        double bodyLeft = name.TransformToVisual(list).TransformPoint(new()).X;
+        double labelRight = sizeHeader
+            .TransformToVisual(list)
+            .TransformPoint(new(sizeHeader.ActualWidth - sizeHeader.Padding.Right, 0))
+            .X;
+        double bodyRight = size.TransformToVisual(list).TransformPoint(new(size.ActualWidth, 0)).X;
+        if (Math.Abs(labelLeft - bodyLeft) > 1 || Math.Abs(labelRight - bodyRight) > 1)
+            throw new InvalidOperationException(
+                $"Header/body columns differ: name={labelLeft}/{bodyLeft}; size={labelRight}/{bodyRight}."
+            );
+        var cells = (Grid)nameHeader.Parent;
+        if (
+            Math.Abs(nameHeader.ActualHeight - cells.ActualHeight) > 1
+            || Math.Abs(sizeHeader.ActualHeight - cells.ActualHeight) > 1
+        )
+            throw new InvalidOperationException(
+                $"Header hover targets do not fill the cells: {nameHeader.ActualHeight}/{sizeHeader.ActualHeight}/{cells.ActualHeight}."
+            );
+        double nameRight = nameHeader
+            .TransformToVisual(cells)
+            .TransformPoint(new(nameHeader.ActualWidth, 0))
+            .X;
+        double sizeLeft = sizeHeader.TransformToVisual(cells).TransformPoint(new()).X;
+        if (Math.Abs(nameRight - sizeLeft) > 1)
+            throw new InvalidOperationException(
+                "Header hover backgrounds have a gap between columns."
+            );
+        foreach (var header in new[] { nameHeader, sizeHeader })
+        {
+            foreach (string state in new[] { "PointerOver", "Pressed" })
+            {
+                if (!VisualStateManager.GoToState(header, state, false))
+                    throw new InvalidOperationException("Header pointer state was not applied.");
+                RootLayout.UpdateLayout();
+                var painted = FindTreePart<ContentPresenter>(header, "HeaderContent")!;
+                var origin = painted.TransformToVisual(header).TransformPoint(new());
+                if (
+                    painted.Background is not SolidColorBrush { Color.A: > 0 }
+                    || Math.Abs(origin.X) > 1
+                    || Math.Abs(origin.Y) > 1
+                    || Math.Abs(painted.ActualWidth - header.ActualWidth) > 1
+                    || Math.Abs(painted.ActualHeight - header.ActualHeight) > 1
+                    || painted.CornerRadius.TopLeft != 0
+                )
+                    throw new InvalidOperationException(
+                        "Painted header hover background does not fill its column."
+                    );
+            }
+            VisualStateManager.GoToState(header, "Normal", false);
         }
     }
 }

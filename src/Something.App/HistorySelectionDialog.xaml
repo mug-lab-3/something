@@ -73,12 +73,23 @@
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <TextBlock x:Name="RangeText" FontWeight="SemiBold" />
-        <Grid Grid.Row="1" Margin="12,0,12,0">
-          <TextBlock Text="スキャン日時" />
-          <TextBlock Text="記録数" HorizontalAlignment="Right" />
-        </Grid>
+        <Border
+          x:Name="SelectionHeaderBand"
+          Grid.Row="1"
+          Style="{StaticResource ListHeaderBandStyle}"
+        >
+          <Grid Padding="{StaticResource ListContentPadding}">
+            <TextBlock Text="スキャン日時" Style="{StaticResource ListHeaderTextStyle}" />
+            <TextBlock
+              Text="記録数"
+              HorizontalAlignment="Right"
+              Style="{StaticResource ListHeaderTextStyle}"
+            />
+          </Grid>
+        </Border>
         <ListView
           x:Name="Records"
+          ItemContainerStyle="{StaticResource ListRowContainerStyle}"
           Grid.Row="2"
           SelectionMode="Single"
           HorizontalContentAlignment="Stretch"

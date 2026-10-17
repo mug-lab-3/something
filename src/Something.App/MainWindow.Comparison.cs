@@ -211,7 +211,11 @@ public sealed partial class MainWindow
         ChangeHeader.Visibility = RankingChangeHeader.Visibility = Comparing
             ? Visibility.Visible
             : Visibility.Collapsed;
-        ChangeHeaderColumn.Width = RankingChangeColumn.Width = new(Comparing ? 140 : 0);
+        // Hover cells own half of the 12px row gutters while their label positions stay unchanged.
+        ChangeHeaderColumn.Width = RankingChangeColumn.Width = new(Comparing ? 140 + 12 : 0);
+        EntryActionsHeaderColumn.Width = AnalysisActionsHeaderColumn.Width = new(
+            Comparing ? 54 : 66
+        );
         bool updating = updatingComparisonChoices;
         updatingComparisonChoices = true;
         try
