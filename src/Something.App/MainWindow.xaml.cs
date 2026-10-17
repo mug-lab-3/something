@@ -359,8 +359,12 @@ public sealed partial class MainWindow : Window
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-history-picker")
                     ? await HistoryBox.VerifyPreviewAsync(lifetime.Token)
                     : null;
+            var toastPreview =
+                demo && Environment.GetCommandLineArgs().Contains("--smoke-toasts")
+                    ? await PreviewNotificationsAsync()
+                    : null;
             await bitmap.RenderAsync(
-                pickerPreview ?? deletionPreview ?? (FrameworkElement)WindowLayout
+                toastPreview ?? pickerPreview ?? deletionPreview ?? (FrameworkElement)WindowLayout
             );
             if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
                 throw new InvalidOperationException("The UI did not render.");

@@ -31,9 +31,12 @@ public sealed partial class MainWindow
         if (transient && HasPersistentNotification && !replacePersistent)
             return;
         toastTimer.Stop();
-        MessageBar.Title = title;
+        MessageBar.Title = string.IsNullOrWhiteSpace(title)
+            ? ToastPresentation.GetTitle(severity)
+            : title;
         MessageBar.Message = message;
         MessageBar.Severity = severity;
+        MessageBar.Style = ToastPresentation.GetStyle(severity);
         MessageBar.IsOpen = true;
         if (transient)
             toastTimer.Start();

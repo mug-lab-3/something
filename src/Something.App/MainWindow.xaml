@@ -722,16 +722,16 @@
       </Border>
       <InfoBar
         x:Name="MessageBar"
+        Style="{StaticResource ToastStyle}"
         Grid.RowSpan="4"
         Canvas.ZIndex="20"
-        HorizontalAlignment="Right"
-        VerticalAlignment="Bottom"
-        MaxWidth="560"
-        Margin="16"
         IsOpen="False"
-        IsClosable="True"
         AutomationProperties.LiveSetting="Polite"
-      />
+      >
+        <InfoBar.Resources>
+          <ResourceDictionary Source="Styles/ToastPalette.xaml" />
+        </InfoBar.Resources>
+      </InfoBar>
     </Grid>
   </Grid>
 </Window>

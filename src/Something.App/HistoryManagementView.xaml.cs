@@ -582,7 +582,9 @@ public sealed partial class HistoryManagementView : UserControl
     {
         noticeTimer.Stop();
         Notice.Message = message;
+        Notice.Title = ToastPresentation.GetTitle(severity);
         Notice.Severity = severity;
+        Notice.Style = ToastPresentation.GetStyle(severity);
         Notice.IsOpen = true;
         // Keep failures reviewable; only successful completion disappears automatically.
         if (severity == InfoBarSeverity.Success)

@@ -1,0 +1,86 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityBackgroundBrush"
+        ResourceKey="CardBackgroundFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityBackgroundBrush"
+        ResourceKey="CardBackgroundFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconBackground"
+        ResourceKey="AccentFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconBackground"
+        ResourceKey="AccentFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconForeground"
+        ResourceKey="TextOnAccentFillColorPrimaryBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconForeground"
+        ResourceKey="TextOnAccentFillColorPrimaryBrush"
+      />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Default">
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityBackgroundBrush"
+        ResourceKey="CardBackgroundFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityBackgroundBrush"
+        ResourceKey="CardBackgroundFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconBackground"
+        ResourceKey="AccentFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconBackground"
+        ResourceKey="AccentFillColorDefaultBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconForeground"
+        ResourceKey="TextOnAccentFillColorPrimaryBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconForeground"
+        ResourceKey="TextOnAccentFillColorPrimaryBrush"
+      />
+    </ResourceDictionary>
+    <!-- Keep the system's semantic colors and contrast in accessibility themes. -->
+    <ResourceDictionary x:Key="HighContrast">
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityBackgroundBrush"
+        ResourceKey="SystemColorWindowColorBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityBackgroundBrush"
+        ResourceKey="SystemColorWindowColorBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconBackground"
+        ResourceKey="SystemColorHighlightColorBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconBackground"
+        ResourceKey="SystemColorHighlightColorBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarSuccessSeverityIconForeground"
+        ResourceKey="SystemColorHighlightTextColorBrush"
+      />
+      <StaticResource
+        x:Key="InfoBarInformationalSeverityIconForeground"
+        ResourceKey="SystemColorHighlightTextColorBrush"
+      />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

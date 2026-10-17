@@ -345,15 +345,15 @@
     />
     <InfoBar
       x:Name="Notice"
+      Style="{StaticResource ToastStyle}"
       Grid.RowSpan="4"
       Canvas.ZIndex="10"
-      HorizontalAlignment="Right"
-      VerticalAlignment="Bottom"
-      MaxWidth="520"
-      Margin="16"
       IsOpen="False"
-      IsClosable="True"
       AutomationProperties.LiveSetting="Polite"
-    />
+    >
+      <InfoBar.Resources>
+        <ResourceDictionary Source="Styles/ToastPalette.xaml" />
+      </InfoBar.Resources>
+    </InfoBar>
   </Grid>
 </UserControl>
