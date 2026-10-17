@@ -25,7 +25,9 @@ public sealed partial class EntryRow(
             ? $"{DisplayText.Escape(before.Name)} → {DisplayText.Escape(after.Name)}"
             : Name;
     public string Kind => Entry.IsDirectory ? "フォルダ" : "ファイル";
-    public Symbol Icon => Entry.IsDirectory ? Symbol.Folder : Symbol.Document;
+    public bool IsHidden => Entry.IsHidden == true;
+    public bool IsSystem => Entry.IsSystem == true;
+    public bool AttributesKnown => Entry.StandardFileAttributes is not null;
     public string Size =>
         comparing && change is { After: null }
             ? "—"
@@ -59,6 +61,11 @@ public sealed partial class RankingRow
 {
     public FileRemovalState Removal { get; internal set; } = new();
     public uint? StandardFileAttributes { get; internal set; }
+    public bool IsHidden =>
+        (StandardFileAttributes.GetValueOrDefault() & (uint)FileAttributes.Hidden) != 0;
+    public bool IsSystem =>
+        (StandardFileAttributes.GetValueOrDefault() & (uint)FileAttributes.System) != 0;
+    public bool AttributesKnown => StandardFileAttributes is not null;
     public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
     private readonly FolderChange? change;
     private readonly string drive;

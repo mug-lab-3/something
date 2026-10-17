@@ -1570,6 +1570,9 @@ public sealed partial class MainWindow : Window
             var attributes = await current.ReadFolderAttributesAsync(lifetime.Token);
             if (comparing)
             {
+                var baselineAttributes = comparisonBaseline is { } baseline
+                    ? await baseline.ReadFolderAttributesAsync(lifetime.Token)
+                    : null;
                 var report = comparisonReport;
                 var changed = report is null
                     ? Array.Empty<FolderChange>()
@@ -1582,9 +1585,9 @@ public sealed partial class MainWindow : Window
                         changed.Length,
                         index => new RankingRow(changed[index], current.Drive)
                         {
-                            StandardFileAttributes = attributes.GetValueOrDefault(
-                                changed[index].Reference
-                            ),
+                            StandardFileAttributes = changed[index].AfterPath is null
+                                ? baselineAttributes?.GetValueOrDefault(changed[index].Reference)
+                                : attributes.GetValueOrDefault(changed[index].Reference),
                         },
                         version,
                         current

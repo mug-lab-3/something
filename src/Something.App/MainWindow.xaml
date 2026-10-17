@@ -355,7 +355,7 @@
                     </Grid>
                     <Grid Grid.Row="1" Padding="12,0" ColumnSpacing="12">
                       <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="32" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
@@ -408,18 +408,19 @@
                         <DataTemplate x:DataType="local:EntryRow" xmlns:local="using:Something.App">
                           <Grid ColumnSpacing="12" Padding="0,8">
                             <Grid.ColumnDefinitions>
-                              <ColumnDefinition Width="24" />
+                              <ColumnDefinition Width="32" />
                               <ColumnDefinition Width="*" />
                               <ColumnDefinition Width="140" />
                               <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                               <ColumnDefinition Width="36" />
                             </Grid.ColumnDefinitions>
-                            <SymbolIcon
-                              Symbol="{x:Bind Icon}"
+                            <local:FileAttributeIcon
+                              x:Name="EntryAttributeIcon"
+                              IsDirectory="{x:Bind Entry.IsDirectory}"
+                              IsHidden="{x:Bind IsHidden}"
+                              IsSystem="{x:Bind IsSystem}"
+                              AttributesKnown="{x:Bind AttributesKnown}"
                               VerticalAlignment="Center"
-                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                              ToolTipService.ToolTip="{x:Bind Kind}"
-                              AutomationProperties.Name="{x:Bind Kind}"
                             />
                             <TextBlock
                               x:Name="EntryNameText"
@@ -502,6 +503,7 @@
                   </Grid>
                   <Grid Grid.Row="1" ColumnSpacing="16">
                     <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="32" />
                       <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="140" />
                       <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
@@ -509,6 +511,7 @@
                     </Grid.ColumnDefinitions>
                     <Button
                       x:Name="AnalysisNameHeader"
+                      Grid.Column="1"
                       Content="フォルダ"
                       Tag="Name"
                       Click="OnAnalysisSort"
@@ -516,7 +519,7 @@
                     />
                     <Button
                       x:Name="RankingChangeHeader"
-                      Grid.Column="2"
+                      Grid.Column="3"
                       Content="増減"
                       Visibility="Collapsed"
                       Tag="Change"
@@ -525,7 +528,7 @@
                     />
                     <Button
                       x:Name="AnalysisSizeHeader"
-                      Grid.Column="1"
+                      Grid.Column="2"
                       Content="サイズ"
                       Tag="Size"
                       Click="OnAnalysisSort"
@@ -552,33 +555,43 @@
                       <DataTemplate x:DataType="local:RankingRow" xmlns:local="using:Something.App">
                         <Grid Padding="0,8" ColumnSpacing="16">
                           <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
                             <ColumnDefinition Width="36" />
                           </Grid.ColumnDefinitions>
+                          <local:FileAttributeIcon
+                            x:Name="AnalysisAttributeIcon"
+                            IsDirectory="True"
+                            IsHidden="{x:Bind IsHidden}"
+                            IsSystem="{x:Bind IsSystem}"
+                            AttributesKnown="{x:Bind AttributesKnown}"
+                            VerticalAlignment="Center"
+                          />
                           <TextBlock
                             x:Name="AnalysisPathText"
+                            Grid.Column="1"
                             Text="{x:Bind Path}"
                             TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
                             ToolTipService.ToolTip="{x:Bind Path}"
                           />
                           <TextBlock
-                            Grid.Column="1"
+                            Grid.Column="2"
                             Text="{x:Bind Size}"
                             TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind SizeDescription}"
                           />
                           <TextBlock
-                            Grid.Column="2"
+                            Grid.Column="3"
                             Text="{x:Bind Delta}"
                             TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind SizeDescription}"
                           />
                           <Button
                             x:Name="RecycleAnalysisButton"
-                            Grid.Column="3"
+                            Grid.Column="4"
                             Width="32"
                             Height="32"
                             Padding="6"
