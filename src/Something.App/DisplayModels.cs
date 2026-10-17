@@ -4,6 +4,7 @@ using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Something.Application;
 using Something.Ntfs;
 using Something.Storage;
 
@@ -16,6 +17,8 @@ public sealed partial class EntryRow(
 )
 {
     public FolderEntry Entry { get; } = entry;
+    public FileRemovalState Removal { get; internal set; } = new();
+    public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
     public string Name => DisplayText.Escape(Entry.Name);
     public string NameDescription =>
         change is { Before: { } before, After: { } after } && before.Name != after.Name
@@ -54,6 +57,9 @@ public sealed partial class EntryRow(
 
 public sealed partial class RankingRow
 {
+    public FileRemovalState Removal { get; internal set; } = new();
+    public uint? StandardFileAttributes { get; internal set; }
+    public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
     private readonly FolderChange? change;
     private readonly string drive;
     private readonly UInt128? allocated;

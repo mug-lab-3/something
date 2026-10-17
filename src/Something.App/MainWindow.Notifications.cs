@@ -17,13 +17,18 @@ public sealed partial class MainWindow
         MessageBar.Closed += (_, _) => toastTimer.Stop();
     }
 
-    private void ShowToast(string message, InfoBarSeverity severity, string title = "")
+    private void ShowToast(
+        string message,
+        InfoBarSeverity severity,
+        string title = "",
+        bool replacePersistent = false
+    )
     {
         if (closed)
             return;
         bool transient = severity is InfoBarSeverity.Success or InfoBarSeverity.Informational;
         // A different drive completing must not hide an error awaiting review.
-        if (transient && HasPersistentNotification)
+        if (transient && HasPersistentNotification && !replacePersistent)
             return;
         toastTimer.Stop();
         MessageBar.Title = title;

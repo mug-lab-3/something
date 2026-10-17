@@ -203,7 +203,18 @@ public sealed class WindowsFileMetadata : IDisposable
         }
     }
 
-    public static WindowsFileMetadata Open(string drive, string path)
+    public static WindowsFileMetadata Open(string drive, string path) =>
+        OpenCore(drive, path, 7, false);
+
+    internal static WindowsFileMetadata OpenForRecycle(string drive, string path, uint share = 7) =>
+        OpenCore(drive, path, share, true);
+
+    private static WindowsFileMetadata OpenCore(
+        string drive,
+        string path,
+        uint share,
+        bool noFollow
+    )
     {
         WindowsMftRecordSource.DevicePath(drive);
         ArgumentNullException.ThrowIfNull(path);
@@ -220,7 +231,15 @@ public sealed class WindowsFileMetadata : IDisposable
                 "Specify an absolute file path on the selected drive.",
                 nameof(path)
             );
-        var handle = CreateFileW(path, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+        var handle = CreateFileW(
+            path,
+            0,
+            share,
+            IntPtr.Zero,
+            3,
+            0x02000000u | (noFollow ? 0x00200000u : 0),
+            IntPtr.Zero
+        );
         if (handle.IsInvalid)
         {
             int code = Marshal.GetLastPInvokeError();

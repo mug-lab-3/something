@@ -359,6 +359,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition x:Name="ChangeHeaderColumn" Width="0" />
+                        <ColumnDefinition Width="36" />
                       </Grid.ColumnDefinitions>
                       <Button
                         x:Name="EntryNameHeader"
@@ -411,6 +412,7 @@
                               <ColumnDefinition Width="*" />
                               <ColumnDefinition Width="140" />
                               <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
+                              <ColumnDefinition Width="36" />
                             </Grid.ColumnDefinitions>
                             <SymbolIcon
                               Symbol="{x:Bind Icon}"
@@ -420,21 +422,44 @@
                               AutomationProperties.Name="{x:Bind Kind}"
                             />
                             <TextBlock
+                              x:Name="EntryNameText"
                               Grid.Column="1"
                               Text="{x:Bind Name}"
+                              TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                               TextTrimming="CharacterEllipsis"
                               ToolTipService.ToolTip="{x:Bind NameDescription}"
                             />
                             <TextBlock
                               Grid.Column="2"
                               Text="{x:Bind Size}"
+                              TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                               ToolTipService.ToolTip="{x:Bind SizeDescription}"
                             />
                             <TextBlock
                               Grid.Column="3"
                               Text="{x:Bind Delta}"
+                              TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                               ToolTipService.ToolTip="{x:Bind SizeDescription}"
                             />
+                            <Button
+                              x:Name="RecycleEntryButton"
+                              Grid.Column="4"
+                              Width="32"
+                              Height="32"
+                              Padding="6"
+                              BorderThickness="0"
+                              Background="Transparent"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              ToolTipService.ToolTip="ゴミ箱に移動"
+                              AutomationProperties.Name="ゴミ箱に移動"
+                              IsEnabled="{x:Bind Removal.CanRecycle, Mode=OneWay}"
+                              Visibility="{x:Bind RecycleVisibility}"
+                              Click="OnRecycleEntry"
+                              DoubleTapped="OnRecycleDoubleTapped"
+                            >
+                              <FontIcon Glyph="&#xE74D;" FontSize="16" />
+                            </Button>
                           </Grid>
                         </DataTemplate>
                       </ListView.ItemTemplate>
@@ -480,6 +505,7 @@
                       <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="140" />
                       <ColumnDefinition x:Name="RankingChangeColumn" Width="0" />
+                      <ColumnDefinition Width="36" />
                     </Grid.ColumnDefinitions>
                     <Button
                       x:Name="AnalysisNameHeader"
@@ -529,22 +555,46 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="{x:Bind ComparisonWidth}" />
+                            <ColumnDefinition Width="36" />
                           </Grid.ColumnDefinitions>
                           <TextBlock
+                            x:Name="AnalysisPathText"
                             Text="{x:Bind Path}"
+                            TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
                             ToolTipService.ToolTip="{x:Bind Path}"
                           />
                           <TextBlock
                             Grid.Column="1"
                             Text="{x:Bind Size}"
+                            TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind SizeDescription}"
                           />
                           <TextBlock
                             Grid.Column="2"
                             Text="{x:Bind Delta}"
+                            TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind SizeDescription}"
                           />
+                          <Button
+                            x:Name="RecycleAnalysisButton"
+                            Grid.Column="3"
+                            Width="32"
+                            Height="32"
+                            Padding="6"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="ゴミ箱に移動"
+                            AutomationProperties.Name="ゴミ箱に移動"
+                            IsEnabled="{x:Bind Removal.CanRecycle, Mode=OneWay}"
+                            Visibility="{x:Bind RecycleVisibility}"
+                            Click="OnRecycleAnalysis"
+                            DoubleTapped="OnRecycleDoubleTapped"
+                          >
+                            <FontIcon Glyph="&#xE74D;" FontSize="16" />
+                          </Button>
                         </Grid>
                       </DataTemplate>
                     </ListView.ItemTemplate>

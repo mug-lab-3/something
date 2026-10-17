@@ -263,6 +263,8 @@ public sealed partial class MainWindow : Window
             if (history is not null)
                 await VerifyHistorySelectionAsync();
             await VerifyDisplaySettingsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-recycle"))
+                await VerifyFileRecycleAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-comparison"))
                 await VerifyComparisonModeAsync();
             projects = Folders
@@ -811,6 +813,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
             sessions.TryGetValue(drive, out var previous);
+            removals.ClearVolume(next.VolumeKey);
             sessions[drive] = next;
             operation.Progress = null;
             card.SetResult(next);
@@ -1070,7 +1073,30 @@ public sealed partial class MainWindow : Window
                         ShowError(error);
                 },
                 token,
-                createRow
+                entry =>
+                {
+                    var row = createRow?.Invoke(entry) ?? new(entry);
+                    row.RecycleVisibility = FileRecyclePolicy.IsProtected(
+                        RecycleTarget(
+                            current,
+                            target.Path.TrimEnd('\\') + "\\" + entry.Name,
+                            entry.Reference,
+                            entry.IsDirectory,
+                            entry.StandardFileAttributes
+                        )
+                    )
+                        ? Visibility.Collapsed
+                        : Visibility.Visible;
+                    row.Removal = removals.StateFor(
+                        RecycleTarget(
+                            current,
+                            target.Path.TrimEnd('\\') + "\\" + entry.Name,
+                            entry.Reference,
+                            entry.IsDirectory
+                        )
+                    );
+                    return row;
+                }
             );
             if (closed || version != navigationVersion || session != current)
                 return;
@@ -1434,8 +1460,14 @@ public sealed partial class MainWindow : Window
             string path = parent.Path.TrimEnd('\\') + "\\" + row.Entry.Name;
             if (row.Entry.IsDirectory)
             {
-                if (row.Entry.CanBrowse)
+                if (row.Entry.CanBrowse && await FolderAvailableAsync(path))
                     await LoadFolderAsync(new(row.Entry.Reference, path), true);
+                else if (!row.Entry.CanBrowse)
+                    ShowToast(
+                        "このスキャンではフォルダの内容を取得できません。",
+                        InfoBarSeverity.Informational,
+                        "フォルダを開けませんでした"
+                    );
             }
             else
                 await OpenPathAsync(path, isDirectory: false);
@@ -1456,10 +1488,8 @@ public sealed partial class MainWindow : Window
                     ProcessStartInfo start;
                     if (isDirectory)
                     {
-                        if (!Directory.Exists(path))
-                            throw new DirectoryNotFoundException(
-                                "フォルダーが見つからないか、アクセスできません。"
-                            );
+                        if ((File.GetAttributes(path) & FileAttributes.Directory) == 0)
+                            throw new IOException("現在の項目はフォルダではありません。");
                         start = new(
                             Path.Combine(
                                 Environment.GetFolderPath(Environment.SpecialFolder.Windows),
@@ -1473,10 +1503,8 @@ public sealed partial class MainWindow : Window
                     }
                     else
                     {
-                        if (!File.Exists(path))
-                            throw new FileNotFoundException(
-                                "ファイルが見つからないか、アクセスできません。"
-                            );
+                        if ((File.GetAttributes(path) & FileAttributes.Directory) != 0)
+                            throw new IOException("現在の項目はファイルではありません。");
                         start = new(path) { UseShellExecute = true, Verb = "open" };
                     }
                     using var process = Process.Start(start);
@@ -1485,9 +1513,14 @@ public sealed partial class MainWindow : Window
             );
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (IOException error)
+            when (error is FileNotFoundException or DirectoryNotFoundException)
+        {
+            ShowMissingItem(path);
+        }
         catch (Exception error)
         {
-            ShowError(error);
+            ShowToast(error.Message, InfoBarSeverity.Error, "開けませんでした");
         }
     }
 
@@ -1534,6 +1567,7 @@ public sealed partial class MainWindow : Window
         bool comparing = Comparing;
         try
         {
+            var attributes = await current.ReadFolderAttributesAsync(lifetime.Token);
             if (comparing)
             {
                 var report = comparisonReport;
@@ -1546,7 +1580,12 @@ public sealed partial class MainWindow : Window
                 if (!closed && version == rankingVersion && current == session)
                     PublishAnalysis(
                         changed.Length,
-                        index => new(changed[index], current.Drive),
+                        index => new RankingRow(changed[index], current.Drive)
+                        {
+                            StandardFileAttributes = attributes.GetValueOrDefault(
+                                changed[index].Reference
+                            ),
+                        },
                         version,
                         current
                     );
@@ -1561,7 +1600,12 @@ public sealed partial class MainWindow : Window
                 return;
             PublishAnalysis(
                 rows.Length,
-                index => new(rows[index], current.Drive),
+                index => new RankingRow(rows[index], current.Drive)
+                {
+                    StandardFileAttributes = attributes.GetValueOrDefault(
+                        rows[index].Sample.Reference
+                    ),
+                },
                 version,
                 current
             );
@@ -1583,6 +1627,8 @@ public sealed partial class MainWindow : Window
     {
         if (session is { } current)
         {
+            if (!await FolderAvailableAsync(current.Drive + "\\" + row.RelativePath))
+                return;
             await using var update = BeginViewUpdate("フォルダを表示しています…");
             await LoadFolderAsync(
                 new(row.Reference, current.Drive + "\\" + row.RelativePath),
@@ -1602,7 +1648,30 @@ public sealed partial class MainWindow : Window
     {
         Ranking.ItemsSource = new AnalysisRowCollection(
             count,
-            createRow,
+            index =>
+            {
+                var row = createRow(index);
+                row.RecycleVisibility = FileRecyclePolicy.IsProtected(
+                    RecycleTarget(
+                        current,
+                        current.Drive + "\\" + row.RelativePath,
+                        row.Reference,
+                        true,
+                        row.StandardFileAttributes
+                    )
+                )
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+                row.Removal = removals.StateFor(
+                    RecycleTarget(
+                        current,
+                        current.Drive + "\\" + row.RelativePath,
+                        row.Reference,
+                        true
+                    )
+                );
+                return row;
+            },
             () => !closed && version == rankingVersion && current == session,
             lifetime.Token
         );
@@ -1656,6 +1725,7 @@ public sealed partial class MainWindow : Window
         foreach (var indicator in treeLoads.Values)
             indicator.Dispose();
         lifetime.Cancel();
+        recycleDialog?.Hide();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());

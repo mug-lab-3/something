@@ -14,6 +14,8 @@ public sealed partial class ScanSession : IAsyncDisposable
     public Guid ScanId { get; }
     public string Drive { get; }
     public FileReference Root { get; }
+    public string VolumeKey { get; }
+    public ulong VolumeSerial { get; }
     public FolderCapacitySample RootSample { get; private set; }
     public ulong MetadataUnresolved { get; }
     public DiagnosticDatabaseSelection Selection { get; }
@@ -98,6 +100,9 @@ public sealed partial class ScanSession : IAsyncDisposable
         ScanId = id;
         Drive = drive;
         Root = root;
+        var descriptor = store.GetScan(id).Descriptor;
+        VolumeKey = descriptor.VolumeKey;
+        VolumeSerial = descriptor.VolumeSerial;
         RootSample = unfilteredRootSample = rootSample;
         MetadataUnresolved = metadataUnresolved;
         Selection = selection;
@@ -240,6 +245,29 @@ public sealed partial class ScanSession : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(() => ReadAnalysis(filter, token, sort), token);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private IReadOnlyDictionary<FileReference, uint?>? folderAttributeCache;
+
+    public async Task<IReadOnlyDictionary<FileReference, uint?>> ReadFolderAttributesAsync(
+        CancellationToken token
+    )
+    {
+        await gate.WaitAsync(token);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            return folderAttributeCache ??= await Task.Run(
+                () =>
+                    ReadVisibilityFolders(token)
+                        .ToDictionary(f => f.Reference, f => f.StandardFileAttributes),
+                token
+            );
         }
         finally
         {

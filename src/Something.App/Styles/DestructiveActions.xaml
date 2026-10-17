@@ -1,0 +1,110 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <SolidColorBrush x:Key="DeleteBackground" Color="#C42B1C" />
+      <SolidColorBrush x:Key="DeleteBackgroundPointerOver" Color="#B1251A" />
+      <SolidColorBrush x:Key="DeleteBackgroundPressed" Color="#9F2118" />
+      <SolidColorBrush x:Key="DeleteForeground" Color="White" />
+      <SolidColorBrush x:Key="DeleteForegroundActive" Color="White" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="HighContrast">
+      <SolidColorBrush
+        x:Key="DeleteBackground"
+        Color="{ThemeResource SystemColorButtonFaceColor}"
+      />
+      <SolidColorBrush
+        x:Key="DeleteBackgroundPointerOver"
+        Color="{ThemeResource SystemColorHighlightColor}"
+      />
+      <SolidColorBrush
+        x:Key="DeleteBackgroundPressed"
+        Color="{ThemeResource SystemColorHighlightColor}"
+      />
+      <SolidColorBrush
+        x:Key="DeleteForeground"
+        Color="{ThemeResource SystemColorButtonTextColor}"
+      />
+      <SolidColorBrush
+        x:Key="DeleteForegroundActive"
+        Color="{ThemeResource SystemColorHighlightTextColor}"
+      />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <Style
+    x:Key="DestructiveDialogButtonStyle"
+    TargetType="Button"
+    BasedOn="{StaticResource DefaultButtonStyle}"
+  >
+    <Setter Property="Background" Value="{ThemeResource DeleteBackground}" />
+    <Setter Property="Foreground" Value="{ThemeResource DeleteForeground}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <ContentPresenter
+            x:Name="DeleteContent"
+            Background="{TemplateBinding Background}"
+            Foreground="{TemplateBinding Foreground}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}"
+            CornerRadius="{TemplateBinding CornerRadius}"
+            Padding="{TemplateBinding Padding}"
+            Content="{TemplateBinding Content}"
+            ContentTemplate="{TemplateBinding ContentTemplate}"
+            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+            AutomationProperties.AccessibilityView="Raw"
+          >
+            <ContentPresenter.BackgroundTransition>
+              <BrushTransition Duration="0:0:0.083" />
+            </ContentPresenter.BackgroundTransition>
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter
+                      Target="DeleteContent.Foreground"
+                      Value="{ThemeResource DeleteForegroundActive}"
+                    />
+                    <Setter
+                      Target="DeleteContent.Background"
+                      Value="{ThemeResource DeleteBackgroundPointerOver}"
+                    />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter
+                      Target="DeleteContent.Foreground"
+                      Value="{ThemeResource DeleteForegroundActive}"
+                    />
+                    <Setter
+                      Target="DeleteContent.Background"
+                      Value="{ThemeResource DeleteBackgroundPressed}"
+                    />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter
+                      Target="DeleteContent.Background"
+                      Value="{ThemeResource ButtonBackgroundDisabled}"
+                    />
+                    <Setter
+                      Target="DeleteContent.Foreground"
+                      Value="{ThemeResource ButtonForegroundDisabled}"
+                    />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </ContentPresenter>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

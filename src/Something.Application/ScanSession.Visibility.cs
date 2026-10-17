@@ -230,6 +230,7 @@ public sealed partial class ScanSession
         rootPageCache.Clear();
         visibleScan = null;
         visibilityFolders = null;
+        folderAttributeCache = null;
         sourceFolderGraph = null;
         cachedVisibleParent = null;
         cachedVisibleEntries = [];
