@@ -331,7 +331,11 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
             {
                 WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
+                if (Environment.GetCommandLineArgs().Contains("--smoke-analysis-files"))
+                    AnalysisFoldersOnlyBox.IsChecked = false;
+                await LoadRankingAsync();
                 RootLayout.UpdateLayout();
+                await Task.Delay(200, lifetime.Token); // Let the compositor present newly bound rows.
             }
             var deletionPreview =
                 demo && Environment.GetCommandLineArgs().Contains("--smoke-delete-dialog")
@@ -1445,7 +1449,13 @@ public sealed partial class MainWindow : Window
             session is { } current
             && FindContextRow(Ranking, args.OriginalSource as DependencyObject) is RankingRow row
         )
-            ShowPathMenu(Ranking, current.Drive + "\\" + row.RelativePath, args);
+        {
+            string path = current.Drive + "\\" + row.RelativePath;
+            string parent = path[..path.LastIndexOf('\\')];
+            if (parent == current.Drive)
+                parent += "\\";
+            ShowPathMenu(Ranking, path, args, row.IsDirectory ? null : parent, row.IsDirectory);
+        }
     }
 
     private void CopyPath(string path)
@@ -1578,6 +1588,7 @@ public sealed partial class MainWindow : Window
         var order = analysisOrder;
         bool leafOnly = LeafBox.IsChecked == true;
         bool comparing = Comparing;
+        bool foldersOnly = AnalysisFoldersOnlyBox.IsChecked != false;
         var scope = location;
         string prefix =
             scope is null || scope.Reference == current.Root
@@ -1589,6 +1600,20 @@ public sealed partial class MainWindow : Window
             var attributes = await current.ReadFolderAttributesAsync(lifetime.Token);
             if (closed || version != rankingVersion || current != session || scope != location)
                 return;
+            if (!foldersOnly)
+            {
+                await LoadMixedAnalysisAsync(
+                    current,
+                    scope,
+                    version,
+                    order,
+                    leafOnly,
+                    comparing,
+                    attributes,
+                    InScope
+                );
+                return;
+            }
             if (comparing)
             {
                 var baselineAttributes = comparisonBaseline is { } baseline
@@ -1660,6 +1685,11 @@ public sealed partial class MainWindow : Window
     {
         if (session is { } current)
         {
+            if (!row.IsDirectory)
+            {
+                await OpenPathAsync(current.Drive + "\\" + row.RelativePath, false);
+                return;
+            }
             if (!await FolderAvailableAsync(current.Drive + "\\" + row.RelativePath))
                 return;
             await LoadFolderAsync(
@@ -1686,7 +1716,7 @@ public sealed partial class MainWindow : Window
                         current,
                         current.Drive + "\\" + row.RelativePath,
                         row.Reference,
-                        true,
+                        row.IsDirectory,
                         row.StandardFileAttributes
                     )
                 )
@@ -1697,7 +1727,7 @@ public sealed partial class MainWindow : Window
                         current,
                         current.Drive + "\\" + row.RelativePath,
                         row.Reference,
-                        true
+                        row.IsDirectory
                     )
                 );
                 return row;
@@ -1705,7 +1735,8 @@ public sealed partial class MainWindow : Window
             () => !closed && version == rankingVersion && current == session,
             lifetime.Token
         );
-        AnalysisCountText.Text = $"{count:N0} フォルダ";
+        AnalysisCountText.Text =
+            $"{count:N0} {(AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダ" : "項目")}";
     }
 
     private void ShowError(Exception error)

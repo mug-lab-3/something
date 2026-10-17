@@ -55,7 +55,7 @@ public sealed partial class MainWindow
                     current,
                     current.Drive + "\\" + row.RelativePath,
                     row.Reference,
-                    true,
+                    row.IsDirectory,
                     row.StandardFileAttributes
                 ),
                 row.Removal

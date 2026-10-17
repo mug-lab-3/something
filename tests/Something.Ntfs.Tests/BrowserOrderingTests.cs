@@ -8,6 +8,43 @@ namespace Something.Ntfs.Tests;
 
 public sealed class BrowserOrderingTests
 {
+    [Fact]
+    public void MixedAnalysisSortsFilesAndFoldersTogetherWithUnknownCapacityLast()
+    {
+        CapacityAnalysisItem[] items =
+        [
+            new(FileReference.Create(30, 1), "folder", true, 100, 0),
+            new(FileReference.Create(31, 1), "large-file", false, 1000, 2),
+            new(FileReference.Create(32, 1), "unknown", false, null, null),
+        ];
+        Assert.Equal(
+            new[] { "large-file", "folder", "unknown" },
+            BrowserOrdering
+                .Analysis(items, new(BrowserColumn.Size, true))
+                .Select(row => row.RelativePath)
+        );
+        Assert.Equal(
+            new[] { "folder", "large-file", "unknown" },
+            BrowserOrdering
+                .Analysis(items, new(BrowserColumn.Size, false))
+                .Select(row => row.RelativePath)
+        );
+        var unresolved = CapacityAnalysisItem.FromFileChange(
+            new(Entry(40, @"a\same-name", 100), null)
+        );
+        Assert.Null(unresolved.AllocatedBytes);
+        Assert.Null(unresolved.Delta);
+        Assert.Equal(FolderChangeStatus.NotObservedAfter, unresolved.Status);
+        var reused = EntryChanges.Compare(
+            [Entry(40, @"a\same-name", 100)],
+            [Entry(40, @"b\same-name", 110), Entry(41, @"a\same-name", 50)],
+            TestContext.Current.CancellationToken
+        );
+        var changed = reused.Select(CapacityAnalysisItem.FromFileChange).ToArray();
+        Assert.Contains(changed, row => row.Reference.RecordIndex == 40 && row.Delta == 10);
+        Assert.Contains(changed, row => row.Reference.RecordIndex == 41 && row.Delta is null);
+    }
+
     private static FolderEntry Entry(
         ulong index,
         string name,

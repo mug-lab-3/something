@@ -59,6 +59,8 @@ public sealed partial class EntryRow(
 
 public sealed partial class RankingRow
 {
+    private readonly CapacityAnalysisItem item;
+    private readonly string drive;
     public FileRemovalState Removal { get; internal set; } = new();
     public uint? StandardFileAttributes { get; internal set; }
     public bool IsHidden =>
@@ -67,10 +69,13 @@ public sealed partial class RankingRow
         (StandardFileAttributes.GetValueOrDefault() & (uint)FileAttributes.System) != 0;
     public bool AttributesKnown => StandardFileAttributes is not null;
     public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
-    private readonly FolderChange? change;
-    private readonly string drive;
-    private readonly UInt128? allocated;
-    private readonly bool comparing;
+
+    public RankingRow(CapacityAnalysisItem item, string drive)
+    {
+        this.item = item;
+        this.drive = drive;
+        StandardFileAttributes = item.StandardFileAttributes;
+    }
 
     public RankingRow(
         RankedFolder entry,
@@ -78,46 +83,29 @@ public sealed partial class RankingRow
         FolderChange? change = null,
         bool comparing = false
     )
-    {
-        Reference = entry.Sample.Reference;
-        RelativePath = entry.RelativePath;
-        allocated = entry.Data.AllocatedBytes;
-        this.drive = drive;
-        this.change = change;
-        this.comparing = comparing;
-    }
+        : this(CapacityAnalysisItem.FromFolder(entry, change: change, comparing: comparing), drive)
+    { }
 
     public RankingRow(FolderChange change, string drive)
-    {
-        Reference = change.Reference;
-        RelativePath = change.AfterPath ?? change.BeforePath ?? "";
-        this.change = change;
-        this.drive = drive;
-        allocated = change.AfterAllocatedBytes;
-        comparing = true;
-    }
+        : this(CapacityAnalysisItem.FromChange(change), drive) { }
 
-    public FileReference Reference { get; }
-    public string RelativePath { get; }
+    public FileReference Reference => item.Reference;
+    public string RelativePath => item.RelativePath;
+    public bool IsDirectory => item.IsDirectory;
     public string Path => $"{drive}\\{DisplayText.Escape(RelativePath)}";
-    public string Size => DisplayText.Bytes(allocated);
-    public string Delta =>
-        comparing ? DisplayText.Change(change?.AllocatedDelta, change?.Status) : "";
-    public GridLength ComparisonWidth => new(comparing ? 140 : 0);
+    public string Size =>
+        DisplayText.Bytes(item.AllocatedBytes)
+        + (item.AllocatedBytes is not null && item.CapacityIncomplete ? " *" : "");
+    public string Delta => item.Comparing ? DisplayText.Change(item.Delta, item.Status) : "";
+    public GridLength ComparisonWidth => new(item.Comparing ? 140 : 0);
     public string SizeDescription =>
-        comparing
+        item.Comparing
             ? $"比較前：{BeforeSize}\nサイズ：{Size}\n増減：{Delta}（比較後 − 比較前）"
             : "ディスク上の割り当て容量";
     public string BeforeSize =>
-        change is null
-            ? comparing
-                ? "—"
-                : ""
-            : DisplayText.Endpoint(change.BeforeAllocatedBytes, change.BeforePath is not null);
+        item.Comparing ? DisplayText.Endpoint(item.BeforeBytes, item.HasBefore) : "";
     public string AfterSize =>
-        change is null
-            ? ""
-            : DisplayText.Endpoint(change.AfterAllocatedBytes, change.AfterPath is not null);
+        item.Comparing ? DisplayText.Endpoint(item.AfterBytes, item.HasAfter) : "";
 }
 
 internal sealed record FolderLocation(FileReference Reference, string Path);

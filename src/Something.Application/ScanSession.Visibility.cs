@@ -231,6 +231,7 @@ public sealed partial class ScanSession
         visibleScan = null;
         visibilityFolders = null;
         folderAttributeCache = null;
+        fileAnalysisCache = null;
         sourceFolderGraph = null;
         cachedVisibleParent = null;
         cachedVisibleEntries = [];

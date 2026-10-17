@@ -68,7 +68,15 @@
           >
             <TabViewItem.Header>
               <StackPanel Orientation="Horizontal" Spacing="10">
-                <FontIcon Glyph="&#xE8B7;" FontSize="18" />
+                <Viewbox Width="20" Height="20">
+                  <Canvas Width="28" Height="28">
+                    <Path
+                      Data="M3,8 H8 L11,11 H25 Q26,11 26,12 V25 Q26,26 25,26 H4 Q3,26 3,25 Z M11,11 V2 H20 L25,7 V11 M20,2 V7 H25 M14,6 H17 M14,9 H21"
+                      Stroke="{ThemeResource TextFillColorPrimaryBrush}"
+                      StrokeThickness="1.6"
+                    />
+                  </Canvas>
+                </Viewbox>
                 <TextBlock Text="ファイル" />
               </StackPanel>
             </TabViewItem.Header>
@@ -494,13 +502,22 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                       </Grid.ColumnDefinitions>
-                      <CheckBox
-                        x:Name="LeafBox"
-                        Content="最下位フォルダのみ"
-                        Checked="OnLeafChanged"
-                        Unchecked="OnLeafChanged"
-                        VerticalAlignment="Bottom"
-                      />
+                      <StackPanel Orientation="Horizontal" Spacing="16">
+                        <CheckBox
+                          x:Name="AnalysisFoldersOnlyBox"
+                          Content="フォルダのみ"
+                          IsChecked="True"
+                          Checked="OnAnalysisFoldersOnlyChanged"
+                          Unchecked="OnAnalysisFoldersOnlyChanged"
+                        />
+                        <CheckBox
+                          x:Name="LeafBox"
+                          Content="最下位フォルダのみ"
+                          Checked="OnLeafChanged"
+                          Unchecked="OnLeafChanged"
+                          VerticalAlignment="Bottom"
+                        />
+                      </StackPanel>
                       <TextBlock
                         x:Name="AnalysisCountText"
                         Grid.Column="1"
@@ -574,7 +591,7 @@
                             </Grid.ColumnDefinitions>
                             <local:FileAttributeIcon
                               x:Name="AnalysisAttributeIcon"
-                              IsDirectory="True"
+                              IsDirectory="{x:Bind IsDirectory}"
                               IsHidden="{x:Bind IsHidden}"
                               IsSystem="{x:Bind IsSystem}"
                               AttributesKnown="{x:Bind AttributesKnown}"

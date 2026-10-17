@@ -437,6 +437,17 @@ public sealed partial class MainWindow
         )
             throw new InvalidOperationException("Comparison replaced the current size column.");
         await VerifyTreeIndicatorsAsync();
+        AnalysisFoldersOnlyBox.IsChecked = false;
+        await LoadRankingAsync();
+        if (
+            Ranking.Items.Cast<RankingRow>().Count(row => !row.IsDirectory) != 4
+            || Ranking.Items.Cast<RankingRow>().Any(row => !row.Delta.StartsWith('±'))
+        )
+            throw new InvalidOperationException(
+                "Mixed analysis did not preserve file comparison deltas."
+            );
+        AnalysisFoldersOnlyBox.IsChecked = true;
+        await LoadRankingAsync();
         var projects = Folders
             .RootNodes[0]
             .Children.Single(node => node.Content is FolderNode { Name: "Projects" });

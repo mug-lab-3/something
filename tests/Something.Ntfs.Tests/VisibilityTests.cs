@@ -331,6 +331,10 @@ public sealed class VisibilityTests
                 "Z:",
                 token
             );
+            Assert.Equal(9, (await restored.ReadFileAnalysisAsync(token)).Length);
+            await restored.SetVisibilityAsync(new(false, false), token);
+            Assert.Equal(3, (await restored.ReadFileAnalysisAsync(token)).Length);
+            await restored.SetVisibilityAsync(new(), token);
             Assert.Equal((UInt128)440, restored.RootSample.Entries!.SubtreeData.AllocatedBytes);
             Assert.Equal(
                 8,
@@ -509,6 +513,71 @@ public sealed class VisibilityTests
         );
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             session.ReadFolderAnalysisAsync(new(), token)
+        );
+    }
+
+    [Theory]
+    [InlineData(true, true, 9, 440)]
+    [InlineData(false, true, 6, 310)]
+    [InlineData(true, false, 5, 250)]
+    [InlineData(false, false, 3, 160)]
+    public async Task RecursiveFileAnalysisRetainsVisibleHardLinkNamesAndMatchesPerNameAccounting(
+        bool system,
+        bool hidden,
+        int count,
+        int bytes
+    )
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var session = await CreateSession(Facts(), token);
+        var original = await session.ReadFileAnalysisAsync(token);
+        await session.SetVisibilityAsync(new(system, hidden), token);
+        var files = await session.ReadFileAnalysisAsync(token);
+        Assert.Equal(count, files.Length);
+        Assert.Equal(
+            (UInt128)bytes,
+            files.Aggregate((UInt128)0, (total, f) => total + f.Entry.Data!.Value.AllocatedBytes)
+        );
+        Assert.Equal((UInt128)bytes, session.RootSample.Entries!.SubtreeData.AllocatedBytes);
+        Assert.All(files, file => Assert.False(file.Entry.IsDirectory));
+        Assert.Equal(hidden ? 2 : 1, files.Count(file => file.Entry.Reference == Ref(107)));
+        Assert.DoesNotContain(
+            files,
+            file => file.RelativePath.Contains("EXCLUD~1", StringComparison.Ordinal)
+        );
+        Array.Reverse(original);
+        await session.SetVisibilityAsync(new(), token);
+        var restored = await session.ReadFileAnalysisAsync(token);
+        Assert.Equal(9, restored.Length);
+        Assert.Same(
+            original.Single(f => f.Entry.Reference == Ref(100)),
+            restored.Single(f => f.Entry.Reference == Ref(100))
+        );
+    }
+
+    [Fact]
+    public async Task FileAnalysisRejectsReusedParentSequenceAndPreservesUnresolvedSize()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var facts = Facts()
+            .Append(
+                Fact(108, 20) with
+                {
+                    Names = [new(Ref(20, 2), "reused", FileNameNamespace.Win32, 0)],
+                }
+            )
+            .Append(Fact(109, 20) with { Resolution = CapacityResolution.Unresolved, Streams = [] })
+            .ToArray();
+        await using var session = await CreateSession(facts, token);
+        var files = await session.ReadFileAnalysisAsync(token);
+        Assert.DoesNotContain(files, file => file.Entry.Reference == Ref(108));
+        var unknown = Assert.Single(files, file => file.Entry.Reference == Ref(109));
+        Assert.Null(unknown.Entry.Data);
+        Assert.True(unknown.Entry.CapacityIncomplete);
+        Assert.Null(CapacityAnalysisItem.FromFile(unknown).AllocatedBytes);
+        await session.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            session.ReadFileAnalysisAsync(token)
         );
     }
 

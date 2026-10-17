@@ -42,6 +42,12 @@ public sealed class ScanStoreTests
             files.Single(file => file.Reference == Ref(100)).StandardFileAttributes
         );
         Assert.Null(files.Single(file => file.Reference == Ref(101)).IsHidden);
+        var recursive = fixture.Store.ReadAnalysisFiles(id, token).ToArray();
+        Assert.Equal(
+            files.OrderBy(file => file.Reference.RecordIndex),
+            recursive.Select(file => file.Entry).OrderBy(file => file.Reference.RecordIndex)
+        );
+        Assert.All(recursive, file => Assert.Equal(Ref(20), file.Parent));
         Assert.Equal(
             6u,
             fixture

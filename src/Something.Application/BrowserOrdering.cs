@@ -18,6 +18,28 @@ public readonly record struct BrowserOrder(BrowserColumn Column, bool Descending
 /// <summary>Order complete result sets before pagination; compare raw values, never display text.</summary>
 public static class BrowserOrdering
 {
+    public static CapacityAnalysisItem[] Analysis(
+        IEnumerable<CapacityAnalysisItem> rows,
+        BrowserOrder order
+    )
+    {
+        var grouped = rows.OrderBy(_ => 0);
+        var sorted = order.Column switch
+        {
+            BrowserColumn.Name => Text(grouped, row => row.RelativePath, order.Descending),
+            BrowserColumn.Change => Number(grouped, row => row.Delta, order.Descending),
+            _ => Number(grouped, row => row.AllocatedBytes, order.Descending),
+        };
+        return
+        [
+            .. sorted
+                .ThenBy(row => row.RelativePath, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.RelativePath, StringComparer.Ordinal)
+                .ThenBy(row => row.Reference.RecordIndex)
+                .ThenBy(row => row.Reference.SequenceNumber),
+        ];
+    }
+
     public static FolderEntry[] Entries(IEnumerable<FolderEntry> rows, BrowserOrder order)
     {
         var grouped = rows.OrderByDescending(row => row.IsDirectory);
