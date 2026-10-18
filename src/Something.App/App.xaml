@@ -10,7 +10,7 @@
         <ResourceDictionary Source="Styles/ListHeaders.xaml" />
         <ResourceDictionary Source="Styles/Toasts.xaml" />
         <ResourceDictionary Source="Styles/UnderlineTabs.xaml" />
-        <ResourceDictionary Source="Styles/DestructiveActions.xaml" />
+        <ResourceDictionary Source="Styles/DialogButtons.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

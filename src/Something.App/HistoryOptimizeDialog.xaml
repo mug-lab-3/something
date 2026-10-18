@@ -6,25 +6,9 @@
   PrimaryButtonText="最適化する"
   CloseButtonText="キャンセル"
   DefaultButton="None"
+  PrimaryButtonStyle="{StaticResource ConfirmationDialogButtonStyle}"
+  CloseButtonStyle="{StaticResource SecondaryDialogButtonStyle}"
 >
-  <ContentDialog.Resources>
-    <Style
-      x:Key="OptimizeDialogButtonStyle"
-      TargetType="Button"
-      BasedOn="{StaticResource DefaultButtonStyle}"
-    >
-      <Setter Property="MinWidth" Value="96" />
-      <Setter Property="Height" Value="32" />
-      <Setter Property="Padding" Value="16,4" />
-      <Setter Property="CornerRadius" Value="4" />
-    </Style>
-  </ContentDialog.Resources>
-  <ContentDialog.PrimaryButtonStyle>
-    <Style TargetType="Button" BasedOn="{StaticResource OptimizeDialogButtonStyle}" />
-  </ContentDialog.PrimaryButtonStyle>
-  <ContentDialog.CloseButtonStyle>
-    <Style TargetType="Button" BasedOn="{StaticResource OptimizeDialogButtonStyle}" />
-  </ContentDialog.CloseButtonStyle>
   <StackPanel Spacing="12">
     <TextBlock
       Text="全ドライブ共通の履歴DBを詰め直し、不要な領域を整理します。"

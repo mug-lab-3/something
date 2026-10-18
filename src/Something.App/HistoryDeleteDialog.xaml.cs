@@ -53,7 +53,7 @@ public sealed partial class HistoryDeleteDialog : ContentDialog
             foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
             {
                 RequestedTheme = theme;
-                var colors = new HashSet<global::Windows.UI.Color>();
+                var colors = new HashSet<(global::Windows.UI.Color Color, double Opacity)>();
                 foreach (string state in new[] { "Normal", "PointerOver", "Pressed" })
                 {
                     if (!VisualStateManager.GoToState(button, state, false))
@@ -64,14 +64,16 @@ public sealed partial class HistoryDeleteDialog : ContentDialog
                     if (
                         content.Background is not SolidColorBrush background
                         || content.Foreground is not SolidColorBrush foreground
-                        || background.Color.R <= background.Color.G * 2
-                        || background.Color.R <= background.Color.B * 2
-                        || foreground.Color != Microsoft.UI.Colors.White
+                        || background.Color.A == 0
+                        || foreground.Color.A == 0
+                        || button.Style.BasedOn
+                            != (Style)
+                                Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"]
                     )
                         throw new InvalidOperationException(
-                            $"Delete button lost its red/white colors in {theme}/{state}."
+                            $"Confirmation button lost its native accent styling in {theme}/{state}."
                         );
-                    colors.Add(background.Color);
+                    colors.Add((background.Color, background.Opacity));
                 }
                 if (colors.Count != 3)
                     throw new InvalidOperationException(

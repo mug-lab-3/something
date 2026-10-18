@@ -189,12 +189,9 @@ public sealed partial class MainWindow
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.None,
             PrimaryButtonStyle = (Style)
-                Microsoft.UI.Xaml.Application.Current.Resources["DestructiveDialogButtonStyle"],
-            CloseButtonStyle = new(typeof(Button))
-            {
-                BasedOn = (Style)
-                    Microsoft.UI.Xaml.Application.Current.Resources["DefaultButtonStyle"],
-            },
+                Microsoft.UI.Xaml.Application.Current.Resources["ConfirmationDialogButtonStyle"],
+            CloseButtonStyle = (Style)
+                Microsoft.UI.Xaml.Application.Current.Resources["SecondaryDialogButtonStyle"],
         };
         recycleDialog = dialog;
         try
