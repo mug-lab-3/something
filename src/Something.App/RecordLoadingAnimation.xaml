@@ -45,8 +45,8 @@
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
           <SplineDoubleKeyFrame KeyTime="0:0:0.24" Value="0" KeySpline="0.2,0,0.2,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="106" KeySpline="0.2,0,0.2,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="106" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="136" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="136" />
           <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="260" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
@@ -144,6 +144,35 @@
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
     </Canvas.Resources>
+    <!-- The back of the nest sits behind the database base. -->
+    <Canvas x:Name="NestBack" Canvas.Top="55">
+      <Canvas.RenderTransform>
+        <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.1" />
+      </Canvas.RenderTransform>
+      <!-- A solid inner bowl fills the space between the database and the woven rim. -->
+      <Ellipse Canvas.Left="30" Canvas.Top="68" Width="116" Height="40" Fill="#96725E" />
+      <Path
+        Data="M 30,80 C 33,55 143,55 149,80"
+        Stroke="#997467"
+        StrokeThickness="8"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 34,75 C 52,57 129,57 144,75 M 40,67 L 30,59 M 52,63 L 48,55 M 124,63 L 132,55 M 138,68 L 151,63"
+        Stroke="#C7A382"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 35,71 L 27,69 M 57,61 L 65,55 M 111,61 L 107,55 M 144,75 L 155,72"
+        Stroke="#AE8871"
+        StrokeThickness="2.5"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+    </Canvas>
     <!-- Stacked cylinders keep the database metaphor; the recessed top is the nest. -->
     <Rectangle
       Canvas.Left="38"
@@ -177,15 +206,15 @@
     <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
     <!-- The scanner stays still while each record walks through its open arch. -->
     <Path
-      Data="M 158,132 L 158,50 Q 158,40 168,40 L 232,40 Q 242,40 242,50 L 242,132"
+      Data="M 182,132 L 182,50 Q 182,40 192,40 L 256,40 Q 266,40 266,50 L 266,132"
       Stroke="#C9B0E5"
       StrokeThickness="8"
       StrokeLineJoin="Round"
     />
-    <Ellipse Canvas.Left="226" Canvas.Top="43" Width="7" Height="7" Fill="#8B709F" />
+    <Ellipse Canvas.Left="250" Canvas.Top="43" Width="7" Height="7" Fill="#8B709F" />
     <Ellipse
       x:Name="GateReady"
-      Canvas.Left="226"
+      Canvas.Left="250"
       Canvas.Top="43"
       Width="7"
       Height="7"
@@ -273,7 +302,42 @@
       StrokeThickness="2"
       Opacity="0.7"
     />
-    <Canvas x:Name="ScanBeam" Canvas.Left="163" Canvas.Top="55" Opacity="0">
+    <!-- The front of the nest cradles the base without covering the opening. -->
+    <Canvas x:Name="NestFront" Canvas.Top="51">
+      <Canvas.RenderTransform>
+        <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.25" />
+      </Canvas.RenderTransform>
+      <Path Data="M 29,78 C 39,99 139,99 149,78 L 145,89 C 132,111 47,111 33,89 Z" Fill="#A67E68" />
+      <Path
+        Data="M 30,79 C 44,101 136,101 148,79 M 36,89 C 56,109 122,109 142,89"
+        Stroke="#D5B18C"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 36,83 Q 43,92 57,98 M 55,88 Q 64,99 78,103 M 80,93 Q 89,101 102,104 M 105,91 Q 114,98 126,100 M 127,86 Q 136,91 143,94"
+        Stroke="#BF9777"
+        StrokeThickness="3"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 37,91 L 27,87 M 46,99 L 37,102 M 64,104 L 58,109 M 116,104 L 122,108 M 138,94 L 151,89"
+        Stroke="#CDAA87"
+        StrokeThickness="2.5"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+      <Path
+        Data="M 39,97 C 61,111 116,111 139,97 M 44,103 L 34,106 M 75,107 L 82,110 M 103,107 L 96,110 M 133,101 L 144,105"
+        Stroke="#B68C6E"
+        StrokeThickness="2.5"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+    </Canvas>
+    <Canvas x:Name="ScanBeam" Canvas.Left="187" Canvas.Top="55" Opacity="0">
       <Canvas.RenderTransform>
         <TranslateTransform x:Name="ScanBeamMotion" />
       </Canvas.RenderTransform>

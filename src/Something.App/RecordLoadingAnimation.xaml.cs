@@ -27,9 +27,9 @@ public sealed partial class RecordLoadingAnimation : UserControl
             return;
         if (!animationsEnabled)
         {
-            // Keep the chick beside its nest when system animations are disabled.
+            // Keep the chick centered under the scanner when system animations are disabled.
             Chick.Opacity = 1;
-            ChickMotion.TranslateX = 106;
+            ChickMotion.TranslateX = 136;
             ChickMotion.TranslateY = 22;
             FrontSprite.Opacity = 1;
             SideSprite.Opacity = 0;
