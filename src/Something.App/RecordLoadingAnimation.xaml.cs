@@ -33,8 +33,13 @@ public sealed partial class RecordLoadingAnimation : UserControl
         {
             ApplyKind();
             Chick.Opacity = 1;
-            ChickMotion.TranslateX = ActiveKind == LoadingAnimationKind.Inspect ? 136 : 94;
-            ChickMotion.TranslateY = 22;
+            ChickMotion.TranslateX = ActiveKind switch
+            {
+                LoadingAnimationKind.Inspect => 136,
+                LoadingAnimationKind.ScanDisk => 70,
+                _ => 94,
+            };
+            ChickMotion.TranslateY = ActiveKind == LoadingAnimationKind.ScanDisk ? 40 : 22;
             FrontSprite.Opacity = 1;
             SideSprite.Opacity = 0;
             GateReady.Opacity = ActiveKind == LoadingAnimationKind.Inspect ? 1 : 0;

@@ -8,6 +8,7 @@ internal enum LoadingAnimationKind
     Inspect,
     DeleteHistory,
     OptimizeDatabase,
+    ScanDisk,
 }
 
 public sealed partial class RecordLoadingAnimation
@@ -18,6 +19,11 @@ public sealed partial class RecordLoadingAnimation
     {
         ActiveKind = requestedKind;
         bool inspect = ActiveKind == LoadingAnimationKind.Inspect;
+        bool scanning = ActiveKind == LoadingAnimationKind.ScanDisk;
+        DiskSource.Visibility = DiskFront.Visibility = scanning
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        DatabaseBackMotion.X = DatabaseFrontMotion.X = scanning ? 132 : 0;
         ScannerArch.Visibility =
             ScannerLamp.Visibility =
             GateReady.Visibility =
@@ -44,7 +50,10 @@ public sealed partial class RecordLoadingAnimation
         {
             if (!maintenanceCycles.TryGetValue(ActiveKind, out var storyboard))
             {
-                storyboard = CreateMaintenanceCycle(ActiveKind);
+                storyboard =
+                    ActiveKind == LoadingAnimationKind.ScanDisk
+                        ? CreateScanCycle()
+                        : CreateMaintenanceCycle(ActiveKind);
                 maintenanceCycles.Add(ActiveKind, storyboard);
             }
             activeCycle = storyboard;

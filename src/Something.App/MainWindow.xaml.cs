@@ -278,6 +278,8 @@ public sealed partial class MainWindow : Window
                 throw new InvalidOperationException(
                     "Tree context target did not resolve its own path."
                 );
+            if (Environment.GetCommandLineArgs().Contains("--smoke-scan-animation"))
+                await VerifyScanAnimationAsync();
             var bitmap = new RenderTargetBitmap();
             if (Environment.GetCommandLineArgs().Contains("--smoke-progress"))
             {
@@ -706,6 +708,7 @@ public sealed partial class MainWindow : Window
             $"{card.Choice.Drive} の表示に切り替えています…"
         );
         selectedCard = card;
+        UpdateScanActivity();
         await ClearComparisonAsync();
         if (closed || selectedCard != card)
             return;
@@ -819,6 +822,7 @@ public sealed partial class MainWindow : Window
         card.SetBusy(true);
         card.SetProgress(true);
         card.SetState("準備中");
+        UpdateScanActivity();
         operation.Task = RunScanAsync(card, operation);
         return operation.Task;
     }
@@ -955,6 +959,9 @@ public sealed partial class MainWindow : Window
             {
                 card.SetBusy(false);
                 card.SetProgress(false);
+                UpdateScanActivity();
+                if (selectedCard == card && viewUpdates.Count == 0 && !HasScanPresentation)
+                    await ViewLoadingAnimation.WaitForSettledAsync();
                 if (demo)
                     card.SetDemoNextStage(
                         Environment.GetCommandLineArgs().Contains("--demo-static")
@@ -1024,6 +1031,8 @@ public sealed partial class MainWindow : Window
                 ),
             $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒"
         );
+        if (selectedCard == card)
+            UpdateScanActivity();
     }
 
     private Task LoadFolderAsync(FolderLocation target, bool addHistory) =>

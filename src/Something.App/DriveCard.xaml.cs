@@ -15,6 +15,8 @@ internal sealed record DriveChoice(
 public sealed partial class DriveCard : UserControl
 {
     internal DriveChoice Choice { get; }
+    internal string StateDescription =>
+        ToolTipService.GetToolTip(ScanStateText) as string ?? ScanStateText.Text;
     internal event EventHandler? Invoked;
     internal event EventHandler? ScanRequested;
     private bool? selectedState;
