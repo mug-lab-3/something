@@ -206,12 +206,20 @@
     <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
     <!-- The scanner stays still while each record walks through its open arch. -->
     <Path
+      x:Name="ScannerArch"
       Data="M 182,132 L 182,50 Q 182,40 192,40 L 256,40 Q 266,40 266,50 L 266,132"
       Stroke="#C9B0E5"
       StrokeThickness="8"
       StrokeLineJoin="Round"
     />
-    <Ellipse Canvas.Left="250" Canvas.Top="43" Width="7" Height="7" Fill="#8B709F" />
+    <Ellipse
+      x:Name="ScannerLamp"
+      Canvas.Left="250"
+      Canvas.Top="43"
+      Width="7"
+      Height="7"
+      Fill="#8B709F"
+    />
     <Ellipse
       x:Name="GateReady"
       Canvas.Left="250"
@@ -289,6 +297,29 @@
           <RotateTransform x:Name="RightFootMotion" CenterX="37" CenterY="60" />
         </Path.RenderTransform>
       </Path>
+      <Canvas x:Name="CarriedRecords" Canvas.Left="30" Canvas.Top="31" Opacity="0">
+        <Canvas.RenderTransform>
+          <TranslateTransform x:Name="CarriedMotion" />
+        </Canvas.RenderTransform>
+        <Rectangle Width="36" Height="16" RadiusX="4" RadiusY="4" Fill="#E8DAF5" Stroke="#B99AD2" />
+        <Rectangle
+          Canvas.Top="12"
+          Width="36"
+          Height="16"
+          RadiusX="4"
+          RadiusY="4"
+          Fill="#E8DAF5"
+          Stroke="#B99AD2"
+        />
+        <Path
+          Data="M 6,6 L 12,6 M 17,6 L 29,6 M 6,19 L 12,19 M 17,19 L 29,19"
+          Stroke="#A47BBF"
+          StrokeThickness="3"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+        <Path Data="M -1,12 Q 10,10 13,18 Q 8,25 -1,22" Fill="#B75B9B" />
+      </Canvas>
     </Canvas>
     <!-- The front of the database hides the next chick until it emerges from the nest. -->
     <Path
@@ -332,6 +363,61 @@
       <Path
         Data="M 39,97 C 61,111 116,111 139,97 M 44,103 L 34,106 M 75,107 L 82,110 M 103,107 L 96,110 M 133,101 L 144,105"
         Stroke="#B68C6E"
+        StrokeThickness="2.5"
+        StrokeStartLineCap="Round"
+        StrokeEndLineCap="Round"
+      />
+    </Canvas>
+    <Canvas x:Name="SortingBox" Canvas.Left="239" Canvas.Top="99" Visibility="Collapsed">
+      <Path Data="M 0,8 L 9,0 L 50,0 L 56,8 Z" Fill="#9C7EB5" />
+      <Rectangle
+        Canvas.Left="9"
+        Canvas.Top="-7"
+        Width="36"
+        Height="23"
+        RadiusX="3"
+        RadiusY="3"
+        Fill="#E8DAF5"
+        Stroke="#B99AD2"
+      />
+      <Path Data="M 15,0 L 21,0 M 27,0 L 38,0" Stroke="#A47BBF" StrokeThickness="3" />
+      <Rectangle Canvas.Top="8" Width="56" Height="37" RadiusX="5" RadiusY="5" Fill="#C4A6DC" />
+      <Rectangle
+        Canvas.Left="19"
+        Canvas.Top="19"
+        Width="18"
+        Height="5"
+        RadiusX="2.5"
+        RadiusY="2.5"
+        Fill="#9470AF"
+      />
+    </Canvas>
+    <Canvas x:Name="SortingStack" Canvas.Left="224" Canvas.Top="112" Visibility="Collapsed">
+      <Canvas.RenderTransform>
+        <CompositeTransform x:Name="StackMotion" CenterX="18" CenterY="18" />
+      </Canvas.RenderTransform>
+      <Rectangle
+        Canvas.Top="24"
+        Width="36"
+        Height="13"
+        RadiusX="4"
+        RadiusY="4"
+        Fill="#E8DAF5"
+        Stroke="#B99AD2"
+      />
+      <Rectangle
+        Canvas.Top="12"
+        Width="36"
+        Height="13"
+        RadiusX="4"
+        RadiusY="4"
+        Fill="#E8DAF5"
+        Stroke="#B99AD2"
+      />
+      <Rectangle Width="36" Height="13" RadiusX="4" RadiusY="4" Fill="#E8DAF5" Stroke="#B99AD2" />
+      <Path
+        Data="M 6,6 L 12,6 M 18,6 L 29,6 M 6,18 L 12,18 M 18,18 L 29,18 M 6,30 L 12,30 M 18,30 L 29,30"
+        Stroke="#A47BBF"
         StrokeThickness="2.5"
         StrokeStartLineCap="Round"
         StrokeEndLineCap="Round"

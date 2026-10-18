@@ -20,7 +20,7 @@ public sealed partial class HistoryManagementView : UserControl
     private HistoryDeleteDialog? activeDeleteDialog;
     private HistoryOptimizeDialog? activeOptimizeDialog;
     private Func<Task<HistoryCompactionResult>>? optimize;
-    private Func<string, IAsyncDisposable>? beginProgress;
+    private Func<string, LoadingAnimationKind, IAsyncDisposable>? beginProgress;
     private Task currentOperation = Task.CompletedTask;
     private readonly DispatcherTimer noticeTimer = new() { Interval = TimeSpan.FromSeconds(6) };
     private int loadVersion;
@@ -52,7 +52,7 @@ public sealed partial class HistoryManagementView : UserControl
         ScanHistoryArchive? archive,
         Func<Guid[], Task> refreshViews,
         Func<Task<HistoryCompactionResult>> optimize,
-        Func<string, IAsyncDisposable> beginProgress,
+        Func<string, LoadingAnimationKind, IAsyncDisposable> beginProgress,
         CancellationToken token
     )
     {
@@ -408,8 +408,12 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
-            showProgress("スキャン履歴を削除しています…");
-            return await DeleteCoreAsync(rows.Select(row => row.Id).ToArray(), dialog.Optimize);
+            showProgress("スキャン履歴を削除しています…", LoadingAnimationKind.DeleteHistory);
+            return await DeleteCoreAsync(
+                rows.Select(row => row.Id).ToArray(),
+                dialog.Optimize,
+                showProgress
+            );
         });
     }
 
@@ -433,7 +437,7 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
-            showProgress("DBを最適化しています…");
+            showProgress("DBを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
             return new OperationNotice(
                 OptimizationText(await optimize!()),
                 InfoBarSeverity.Success
@@ -441,22 +445,28 @@ public sealed partial class HistoryManagementView : UserControl
         });
     }
 
-    private void StartOperation(Func<Action<string>, Task<OperationNotice?>> action)
+    private void StartOperation(
+        Func<Action<string, LoadingAnimationKind>, Task<OperationNotice?>> action
+    )
     {
         currentOperation = RunOperationAsync(action);
         WorkStarted?.Invoke(currentOperation);
     }
 
-    private async Task RunOperationAsync(Func<Action<string>, Task<OperationNotice?>> action)
+    private async Task RunOperationAsync(
+        Func<Action<string, LoadingAnimationKind>, Task<OperationNotice?>> action
+    )
     {
         operationActive = true;
         SetBusy(true);
         MaintenanceChanged?.Invoke(true);
         OperationNotice? notice = null;
-        IAsyncDisposable? presentation = null;
+        List<IAsyncDisposable> presentations = [];
         try
         {
-            notice = await action(message => presentation ??= beginProgress!(message));
+            notice = await action(
+                (message, kind) => presentations.Add(beginProgress!(message, kind))
+            );
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
@@ -476,8 +486,8 @@ public sealed partial class HistoryManagementView : UserControl
                 {
                     // Cover deletion, reference refresh, collection, optional compaction,
                     // and the final list reload with one continuous animation scope.
-                    if (presentation is not null)
-                        await presentation.DisposeAsync();
+                    for (int index = presentations.Count - 1; index >= 0; index--)
+                        await presentations[index].DisposeAsync();
                 }
                 finally
                 {
@@ -491,7 +501,11 @@ public sealed partial class HistoryManagementView : UserControl
             ShowNotice(notice.Text, notice.Severity);
     }
 
-    private async Task<OperationNotice> DeleteCoreAsync(Guid[] ids, bool optimizeAfter)
+    private async Task<OperationNotice> DeleteCoreAsync(
+        Guid[] ids,
+        bool optimizeAfter,
+        Action<string, LoadingAnimationKind> showProgress
+    )
     {
         var removed = await Task.Run(() => archive!.Delete(ids, token), token);
         string completed = $"{removed.Length:N0}件のスキャン履歴を削除しました。";
@@ -502,10 +516,13 @@ public sealed partial class HistoryManagementView : UserControl
             if (deferred > 0)
                 completed += $" 使用中の{deferred:N0}件は参照解放後に整理します。";
             if (optimizeAfter)
+            {
+                showProgress("DBを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
                 return new(
                     completed + " " + OptimizationText(await optimize!()),
                     InfoBarSeverity.Success
                 );
+            }
             await Task.Run(() => archive!.Checkpoint(token), token);
             return new(completed, InfoBarSeverity.Success);
         }

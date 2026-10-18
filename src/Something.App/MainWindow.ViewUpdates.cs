@@ -10,12 +10,13 @@ public sealed partial class MainWindow
     private readonly List<ViewUpdate> viewUpdates = [];
     private readonly Dictionary<TreeViewNode, DelayedActivity> treeLoads = [];
 
-    private sealed class ViewUpdate(MainWindow window, string message)
+    private sealed class ViewUpdate(MainWindow window, string message, LoadingAnimationKind kind)
         : IDisposable,
             IAsyncDisposable
     {
         private MainWindow? owner = window;
         public string Message { get; } = message;
+        public LoadingAnimationKind Kind { get; } = kind;
 
         public void Dispose()
         {
@@ -36,9 +37,12 @@ public sealed partial class MainWindow
         }
     }
 
-    private ViewUpdate BeginViewUpdate(string message)
+    private ViewUpdate BeginViewUpdate(
+        string message,
+        LoadingAnimationKind kind = LoadingAnimationKind.Inspect
+    )
     {
-        var update = new ViewUpdate(this, message);
+        var update = new ViewUpdate(this, message, kind);
         viewUpdates.Add(update);
         UpdateViewLoadingPresentation();
         return update;
@@ -62,7 +66,26 @@ public sealed partial class MainWindow
         if (viewUpdates.LastOrDefault() is { } latest)
             ViewLoadingText.Text = latest.Message;
         if (loading)
+        {
             ViewLoadingOverlay.Visibility = Visibility.Visible;
+            // Nested list/comparison refreshes must not replace a maintenance animation.
+            var kind =
+                viewUpdates
+                    .LastOrDefault(update => update.Kind != LoadingAnimationKind.Inspect)
+                    ?.Kind
+                ?? LoadingAnimationKind.Inspect;
+            ViewLoadingAnimation.SetKind(kind);
+            ViewLoadingTitle.Text = kind switch
+            {
+                LoadingAnimationKind.DeleteHistory => "履歴を整理しています…",
+                LoadingAnimationKind.OptimizeDatabase => "DBを整理しています…",
+                _ => "表示を準備しています…",
+            };
+            ViewLoadingHint.Text =
+                kind == LoadingAnimationKind.Inspect
+                    ? "読み込みが完了すると、新しい表示に切り替わります。"
+                    : "処理が完了するまでお待ちください。";
+        }
         ViewLoadingAnimation.SetBusy(loading);
         bool covered = loading || ViewLoadingAnimation.IsPlaying;
         ViewLoadingOverlay.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;

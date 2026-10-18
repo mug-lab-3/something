@@ -708,6 +708,7 @@
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
             <local:RecordLoadingAnimation x:Name="ViewLoadingAnimation" />
             <TextBlock
+              x:Name="ViewLoadingTitle"
               Text="表示を準備しています…"
               FontSize="18"
               FontWeight="SemiBold"
@@ -721,6 +722,7 @@
               AutomationProperties.LiveSetting="Polite"
             />
             <TextBlock
+              x:Name="ViewLoadingHint"
               Text="読み込みが完了すると、新しい表示に切り替わります。"
               FontSize="12"
               HorizontalAlignment="Center"

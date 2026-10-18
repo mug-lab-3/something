@@ -17,7 +17,7 @@ public sealed partial class MainWindow
             history,
             RefreshAfterHistoryDeletionAsync,
             OptimizeHistoryAsync,
-            message => BeginViewUpdate(message),
+            (message, kind) => BeginViewUpdate(message, kind),
             lifetime.Token
         );
         HistoryManagement.WorkStarted += TrackHistoryManagementWork;
@@ -39,7 +39,10 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "スキャンや起動時の読み込みが完了してからDBを最適化してください。"
             );
-        await using var update = BeginViewUpdate("DBを最適化しています…");
+        await using var update = BeginViewUpdate(
+            "DBを最適化しています…",
+            LoadingAnimationKind.OptimizeDatabase
+        );
         Guid? selectedScan = session?.ScanId;
         var selectedLocation = location;
         int period = ComparisonPeriodBox.SelectedIndex;
@@ -185,6 +188,7 @@ public sealed partial class MainWindow
     {
         if (!demo || history is null)
             throw new InvalidOperationException("Management smoke requires isolated demo history.");
+        await VerifyMaintenanceAnimationsAsync();
         updatingComparisonChoices = true;
         ComparisonPeriodBox.SelectedIndex = 9;
         updatingComparisonChoices = false;
