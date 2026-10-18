@@ -58,6 +58,43 @@ public sealed partial class MainWindow
                 {
                     ViewLoadingAnimation.ResumeAfterPreview();
                 }
+                using (var foreground = BeginViewUpdate("Load selected drive"))
+                {
+                    if (
+                        ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.Inspect
+                        || ViewLoadingTitle.Text != "表示を準備しています…"
+                        || ViewLoadingText.Text != "Load selected drive"
+                    )
+                        throw new InvalidOperationException(
+                            "Foreground loading did not preempt the scan."
+                        );
+                    DisplayProgress(card, operation.Progress);
+                    if (
+                        ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.Inspect
+                        || ViewLoadingText.Text != "Load selected drive"
+                    )
+                        throw new InvalidOperationException(
+                            "Scan progress replaced foreground loading."
+                        );
+                    using var newer = BeginViewUpdate("Load newer selection");
+                    foreground.Dispose();
+                    if (
+                        ViewLoadingText.Text != "Load newer selection"
+                        || ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.Inspect
+                    )
+                        throw new InvalidOperationException(
+                            "An older request restored the scan too early."
+                        );
+                }
+                await Task.Delay(1450, lifetime.Token);
+                if (
+                    ViewLoadingAnimation.ActiveKind != expected
+                    || ViewLoadingTitle.Text != $"{card.Choice.Drive} スキャン中"
+                    || ViewLoadingText.Text != card.StateDescription
+                )
+                    throw new InvalidOperationException(
+                        "Finishing foreground work did not restore the current scan."
+                    );
             }
             await SelectDriveAsync(cards[1]);
             if (
@@ -65,7 +102,15 @@ public sealed partial class MainWindow
                 || ViewLoadingAnimation.IsPlaying
             )
                 throw new InvalidOperationException("Another drive retained the scan animation.");
-            await SelectDriveAsync(card);
+            var returning = SelectDriveAsync(card);
+            if (
+                !returning.IsCompleted
+                && ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.Inspect
+            )
+                throw new InvalidOperationException(
+                    "Drive switching displayed the scan before loading finished."
+                );
+            await returning;
             if (ViewLoadingOverlay.Visibility != Visibility.Visible)
                 throw new InvalidOperationException(
                     "Returning to a scanning drive lost its animation."

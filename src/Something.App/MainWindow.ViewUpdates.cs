@@ -67,28 +67,31 @@ public sealed partial class MainWindow
             RootLayout.UpdateLayout(); // Lay out the complete result while it is still covered.
             loading = viewUpdates.Count != 0 || HasScanPresentation;
         }
-        if (viewUpdates.LastOrDefault() is { } latest)
-            ViewLoadingText.Text = latest.Message;
         if (loading)
         {
             ViewLoadingOverlay.Visibility = Visibility.Visible;
-            // Nested list/comparison refreshes must not replace a maintenance animation.
-            var kind =
-                viewUpdates
-                    .LastOrDefault(update => update.Kind != LoadingAnimationKind.Inspect)
-                    ?.Kind
-                ?? ScanPresentationKind;
-            ViewLoadingAnimation.SetKind(kind);
-            ViewLoadingTitle.Text =
-                HasScanPresentation && !historyMaintenance
-                    ? $"{selectedCard!.Choice.Drive} スキャン中"
-                    : kind switch
-                    {
-                        LoadingAnimationKind.DeleteHistory => "履歴を整理しています…",
-                        LoadingAnimationKind.OptimizeDatabase => "DBを整理しています…",
-                        _ => "表示を準備しています…",
-                    };
-            if (HasScanPresentation && !historyMaintenance)
+            // Maintenance > foreground view loading > background scan. Select the mode,
+            // title and message from the same owner so scan progress cannot overwrite them.
+            var presentation =
+                viewUpdates.LastOrDefault(update => update.Kind != LoadingAnimationKind.Inspect)
+                ?? viewUpdates.LastOrDefault();
+            bool showingScan = presentation is null && HasScanPresentation;
+            var kind = presentation?.Kind ?? ScanPresentationKind;
+            ViewLoadingAnimation.SetKind(
+                kind,
+                interruptCurrentCycle: presentation?.Kind == LoadingAnimationKind.Inspect
+            );
+            ViewLoadingTitle.Text = showingScan
+                ? $"{selectedCard!.Choice.Drive} スキャン中"
+                : kind switch
+                {
+                    LoadingAnimationKind.DeleteHistory => "履歴を整理しています…",
+                    LoadingAnimationKind.OptimizeDatabase => "DBを整理しています…",
+                    _ => "表示を準備しています…",
+                };
+            if (presentation is not null)
+                ViewLoadingText.Text = presentation.Message;
+            else if (showingScan)
                 ViewLoadingText.Text = scans[selectedCard!].Finished
                     ? viewUpdates.LastOrDefault()?.Message ?? "スキャン結果を反映しています…"
                     : selectedCard!.StateDescription;

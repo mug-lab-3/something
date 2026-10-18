@@ -51,7 +51,13 @@ public sealed partial class RecordLoadingAnimation : UserControl
         BeginCycle();
     }
 
-    internal void SetKind(LoadingAnimationKind kind) => requestedKind = kind;
+    internal void SetKind(LoadingAnimationKind kind, bool interruptCurrentCycle = false)
+    {
+        requestedKind = kind;
+        // Foreground loading can preempt a background scan without settling its shared scope.
+        if (interruptCurrentCycle && IsPlaying && ActiveKind != kind)
+            BeginCycle();
+    }
 
     internal Task WaitForSettledAsync() => settling?.Task ?? Task.CompletedTask;
 

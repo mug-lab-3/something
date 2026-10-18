@@ -114,18 +114,7 @@ public sealed partial class MainWindow : Window
         foreach (var card in cards)
         {
             card.Invoked += async (_, _) => await SelectDriveAsync(card);
-            card.ScanRequested += async (_, _) =>
-            {
-                if (scans.TryGetValue(card, out var running))
-                {
-                    running.Cancellation.Cancel();
-                    return;
-                }
-                await SelectDriveAsync(card);
-                if (selectedCard != card)
-                    return;
-                await StartScanAsync(card);
-            };
+            card.ScanRequested += async (_, _) => await ToggleDriveScanAsync(card);
             card.SetBusy(false);
             if (demo)
                 card.SetDemoNextStage(DemoScanStage.Initial);
@@ -223,8 +212,17 @@ public sealed partial class MainWindow : Window
             if (session is null || Entries.Items.Count != 3)
                 throw new InvalidOperationException("Completed drive result was not retained.");
             var displayed = session;
-            Task second = StartScanAsync(cards[1]);
-            Task third = StartScanAsync(cards[2]);
+            Task second = ToggleDriveScanAsync(cards[1]);
+            Task third = ToggleDriveScanAsync(cards[2]);
+            if (
+                selectedCard != cards[0]
+                || session != displayed
+                || ViewLoadingOverlay.Visibility != Visibility.Collapsed
+                || ViewLoadingAnimation.IsPlaying
+            )
+                throw new InvalidOperationException(
+                    "Background scan requests changed selection or showed an animation."
+                );
             await StartScanAsync(cards[1]);
             await Task.WhenAll(second, third);
             if (
@@ -235,6 +233,20 @@ public sealed partial class MainWindow : Window
             )
                 throw new InvalidOperationException(
                     "Concurrent scans changed the selected drive or lost results."
+                );
+            var previousBackground = sessions[cards[1].Choice.Drive];
+            var cancelling = ToggleDriveScanAsync(cards[1]);
+            await ToggleDriveScanAsync(cards[1]);
+            await cancelling;
+            if (
+                selectedCard != cards[0]
+                || session != displayed
+                || sessions[cards[1].Choice.Drive] != previousBackground
+                || ViewLoadingOverlay.Visibility != Visibility.Collapsed
+                || ViewLoadingAnimation.IsPlaying
+            )
+                throw new InvalidOperationException(
+                    "Cancelling a background scan changed the current view or its retained result."
                 );
             await SelectDriveAsync(cards[1]);
             if (session?.Drive != cards[1].Choice.Drive || Entries.Items.Count != 3)
@@ -808,6 +820,17 @@ public sealed partial class MainWindow : Window
         root.IsExpanded = true;
         if (!Analyzing)
             await LoadRankingAsync();
+    }
+
+    private Task ToggleDriveScanAsync(DriveCard card)
+    {
+        if (scans.TryGetValue(card, out var running))
+        {
+            running.Cancellation.Cancel();
+            return Task.CompletedTask;
+        }
+        // A scan-button click targets its own drive; selection belongs to the card body.
+        return StartScanAsync(card);
     }
 
     private Task StartScanAsync(DriveCard? requested = null)
