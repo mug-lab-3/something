@@ -18,6 +18,7 @@ public sealed partial class HistoryManagementView : UserControl
     private string? volumeKey;
     private HashSet<Guid> selectedIds = [];
     private HistoryDeleteDialog? activeDeleteDialog;
+    private HistoryOptimizeDialog? activeOptimizeDialog;
     private Func<Task<HistoryCompactionResult>>? optimize;
     private Func<string, IAsyncDisposable>? beginProgress;
     private Task currentOperation = Task.CompletedTask;
@@ -418,6 +419,20 @@ public sealed partial class HistoryManagementView : UserControl
             return;
         StartOperation(async showProgress =>
         {
+            var dialog = new HistoryOptimizeDialog { XamlRoot = XamlRoot };
+            activeOptimizeDialog = dialog;
+            ContentDialogResult result;
+            try
+            {
+                result = await dialog.ShowAsync();
+            }
+            finally
+            {
+                activeOptimizeDialog = null;
+            }
+            token.ThrowIfCancellationRequested();
+            if (result != ContentDialogResult.Primary)
+                return null;
             showProgress("DBを最適化しています…");
             return new OperationNotice(
                 OptimizationText(await optimize!()),
@@ -528,12 +543,49 @@ public sealed partial class HistoryManagementView : UserControl
     {
         DismissNotice();
         activeDeleteDialog?.Hide();
+        activeOptimizeDialog?.Hide();
     }
 
     internal async Task VerifyStandaloneOptimizationAsync()
     {
-        OnOptimize(this, new());
-        await currentOperation;
+        var originalOptimize = optimize!;
+        int calls = 0;
+        optimize = () =>
+        {
+            calls++;
+            return originalOptimize();
+        };
+        try
+        {
+            OnOptimize(this, new());
+            await Task.Delay(200, token);
+            var cancelled =
+                activeOptimizeDialog
+                ?? throw new InvalidOperationException("Optimization confirmation was not shown.");
+            if (calls != 0 || cancelled.DefaultButton != ContentDialogButton.None)
+                throw new InvalidOperationException(
+                    "Optimization started before explicit confirmation."
+                );
+            cancelled.Hide();
+            await currentOperation;
+            if (calls != 0)
+                throw new InvalidOperationException("Cancelled optimization modified the DB.");
+            OnOptimize(this, new());
+            await Task.Delay(200, token);
+            (
+                activeOptimizeDialog
+                ?? throw new InvalidOperationException("Optimization confirmation was not shown.")
+            ).ConfirmSynthetic();
+            await currentOperation;
+            if (calls != 1)
+                throw new InvalidOperationException(
+                    "Confirmed optimization must run exactly once."
+                );
+        }
+        finally
+        {
+            optimize = originalOptimize;
+        }
         if (Notice.Severity != InfoBarSeverity.Success)
             throw new InvalidOperationException(
                 "Standalone DB optimization failed: " + Notice.Message

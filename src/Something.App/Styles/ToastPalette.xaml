@@ -6,11 +6,11 @@
     <ResourceDictionary x:Key="Light">
       <StaticResource
         x:Key="InfoBarSuccessSeverityBackgroundBrush"
-        ResourceKey="CardBackgroundFillColorDefaultBrush"
+        ResourceKey="SolidBackgroundFillColorTertiaryBrush"
       />
       <StaticResource
         x:Key="InfoBarInformationalSeverityBackgroundBrush"
-        ResourceKey="CardBackgroundFillColorDefaultBrush"
+        ResourceKey="SolidBackgroundFillColorTertiaryBrush"
       />
       <StaticResource
         x:Key="InfoBarSuccessSeverityIconBackground"
@@ -32,11 +32,11 @@
     <ResourceDictionary x:Key="Default">
       <StaticResource
         x:Key="InfoBarSuccessSeverityBackgroundBrush"
-        ResourceKey="CardBackgroundFillColorDefaultBrush"
+        ResourceKey="SolidBackgroundFillColorTertiaryBrush"
       />
       <StaticResource
         x:Key="InfoBarInformationalSeverityBackgroundBrush"
-        ResourceKey="CardBackgroundFillColorDefaultBrush"
+        ResourceKey="SolidBackgroundFillColorTertiaryBrush"
       />
       <StaticResource
         x:Key="InfoBarSuccessSeverityIconBackground"

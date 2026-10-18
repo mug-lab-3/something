@@ -90,6 +90,14 @@ public sealed partial class MainWindow
                 throw new InvalidOperationException(
                     "A toast severity did not render its background."
                 );
+            if (
+                backgrounds
+                    .Cast<SolidColorBrush>()
+                    .Any(brush => brush.Color.A != 255 || brush.Opacity != 1)
+            )
+                throw new InvalidOperationException(
+                    "Toast backgrounds must be opaque over the underlying list."
+                );
             var success = (SolidColorBrush)backgrounds[0]!;
             var information = (SolidColorBrush)backgrounds[1]!;
             if (success.Color != information.Color || success.Opacity != information.Opacity)

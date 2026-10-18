@@ -126,11 +126,13 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
     public Task<ScanSession> CreateDemoAsync(
         IProgress<ScanProgress>? progress,
         CancellationToken token,
-        string drive = "Demo"
+        string drive = "Demo",
+        DemoScanStage stage = DemoScanStage.Initial
     ) =>
         Task.Run(
             async () =>
             {
+                _ = DemoScanScenario.Next(stage); // Reject invalid stages before creating a generation.
                 var watch = Stopwatch.StartNew();
                 var reports = new ScanTimingCollector(false) { Target = progress };
                 reports.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
@@ -140,6 +142,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                     new($"demo:{drive}", Guid.NewGuid(), 1, new(0, 1000), DateTimeOffset.UtcNow)
                 );
                 var root = FileReference.Create(5, 1);
+                ulong candidates = 0;
                 void Add(
                     ulong index,
                     string name,
@@ -149,6 +152,7 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                     long allocated
                 )
                 {
+                    candidates++;
                     var file = new FileCapacityObservation(
                         FileReference.Create(index, 1),
                         directory,
@@ -178,19 +182,36 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                     "capture.mp4",
                     false,
                     FileReference.Create(21, 1),
-                    4_831_838_208,
-                    4_831_838_208
+                    stage == DemoScanStage.Initial ? 4_831_838_208 : 5_905_580_032,
+                    stage == DemoScanStage.Initial ? 4_831_838_208 : 5_905_580_032
                 );
                 Add(
                     102,
                     "source.zip",
                     false,
-                    FileReference.Create(22, 1),
-                    1_610_612_736,
-                    1_610_612_736
+                    FileReference.Create(stage == DemoScanStage.RemovedAndMoved ? 21u : 22u, 1),
+                    stage == DemoScanStage.Initial ? 1_610_612_736 : 1_073_741_824,
+                    stage == DemoScanStage.Initial ? 1_610_612_736 : 1_073_741_824
                 );
-                Add(103, "preview.png", false, FileReference.Create(20, 1), 12_581_034, 12_582_912);
-                return Publish(buffer, drive, true, 8, watch, reports, token, reservation);
+                if (stage != DemoScanStage.RemovedAndMoved)
+                    Add(
+                        103,
+                        "preview.png",
+                        false,
+                        FileReference.Create(20, 1),
+                        12_581_034,
+                        12_582_912
+                    );
+                if (stage != DemoScanStage.Initial)
+                    Add(
+                        104,
+                        "render.mov",
+                        false,
+                        FileReference.Create(21, 1),
+                        268_435_456,
+                        268_435_456
+                    );
+                return Publish(buffer, drive, true, candidates, watch, reports, token, reservation);
             },
             token
         );

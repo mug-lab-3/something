@@ -28,6 +28,10 @@ Everythingをもじった、Windows向けのディスク使用量・フォルダ
 
 ## アプリの起動
 
+ダミーの3ドライブで操作を確認する場合は、リポジトリ直下の `run-demo.bat` をダブルクリックしてください。Release版をデモモードで起動し、デモ専用の履歴を `artifacts\demo-history` に保存します。通常の履歴DBとは分離され、実ディスクはスキャンしません。Release版が未ビルドの場合は、先に `dotnet build src/Something.App -c Release` を実行してください。通常版と同じ実行ファイルを使うため、起動時のUAC確認は表示されます。
+
+デモは各ドライブのスキャンごとに「初期状態 → サイズ増減・追加 → 削除・移動 → 初期状態」の順で変化します。2回目は `Media\capture.mp4` が1 GiB増え、`Projects\Archive\source.zip` が512 MiB減り、`Media\render.mov`（256 MiB）が追加されます。3回目は `Projects\preview.png` を削除し、同じファイル識別情報のまま `source.zip` を `Media` に移します。スキャンボタンのツールチップで次の状態を確認できます。「比較：任意のスキャン」で変更前後の記録を選んで増減を確認してください。既存のデモ履歴は残し、再起動時は初期状態から新しい記録を追加します。画面テストで従来の固定データを使う場合だけ `--demo-static` を追加します。
+
 普段の開発では `dotnet build Something.slnx` またはVS Codeの `build` タスクを使い、`src\Something.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\Something.App.exe` を起動します。DLLや画面リソースが並ぶ通常の出力で、自己展開は行いません。Releaseビルドも同じ方式です。通常のビルド・起動は配布用exeを生成しません。
 
 配布用の単一exeが必要なときだけ、以下でpublishします。VS Codeのタスク `publish app` からも実行できます。

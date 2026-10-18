@@ -40,6 +40,9 @@ public sealed partial class MainWindow : Window
     }
 
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
+    private readonly Dictionary<string, DemoScanStage> demoStages = new(
+        StringComparer.OrdinalIgnoreCase
+    );
 
     private sealed class ScanOperation(CancellationTokenSource cancellation)
     {
@@ -124,6 +127,8 @@ public sealed partial class MainWindow : Window
                 await StartScanAsync(card);
             };
             card.SetBusy(false);
+            if (demo)
+                card.SetDemoNextStage(DemoScanStage.Initial);
         }
         selectedCard = cards.FirstOrDefault();
         foreach (var card in cards)
@@ -837,8 +842,17 @@ public sealed partial class MainWindow : Window
         });
         try
         {
+            // Static fixtures keep layout smoke tests reproducible; interactive demos cycle by drive.
+            var stage = Environment.GetCommandLineArgs().Contains("--demo-static")
+                ? DemoScanStage.Initial
+                : demoStages.GetValueOrDefault(drive);
             var next = demo
-                ? await scanner.CreateDemoAsync(progress, operation.Cancellation.Token, drive)
+                ? await scanner.CreateDemoAsync(
+                    progress,
+                    operation.Cancellation.Token,
+                    drive,
+                    stage
+                )
                 : await scanner.ScanAsync(drive, progress, operation.Cancellation.Token);
             if (demo && history is not null)
             {
@@ -853,6 +867,8 @@ public sealed partial class MainWindow : Window
                 }
             }
             operation.Finished = true;
+            if (demo)
+                demoStages[drive] = DemoScanScenario.Next(stage);
             if (closed)
             {
                 await next.DisposeAsync();
@@ -939,6 +955,12 @@ public sealed partial class MainWindow : Window
             {
                 card.SetBusy(false);
                 card.SetProgress(false);
+                if (demo)
+                    card.SetDemoNextStage(
+                        Environment.GetCommandLineArgs().Contains("--demo-static")
+                            ? DemoScanStage.Initial
+                            : demoStages.GetValueOrDefault(drive)
+                    );
             }
         }
     }

@@ -52,6 +52,12 @@ public sealed partial class DriveCard : UserControl
         );
     }
 
+    internal void SetDemoNextStage(DemoScanStage stage) =>
+        ToolTipService.SetToolTip(
+            ScanIconButton,
+            $"{Choice.Drive} 次のデモスキャン：{DemoScanScenario.Describe(stage)}"
+        );
+
     internal void RefreshVolume()
     {
         var current = Choice;
