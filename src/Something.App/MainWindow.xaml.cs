@@ -94,22 +94,10 @@ public sealed partial class MainWindow : Window
         AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
         AppWindow.TitleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
-        AppWindow.Resize(new(1280, 900));
+        SetStartupWindowPresentation(true, StartupRasterizationScale());
         RootLayout.Loaded += (_, _) =>
         {
-            double scale = RootLayout.XamlRoot.RasterizationScale;
-            var workArea = Microsoft
-                .UI.Windowing.DisplayArea.GetFromWindowId(
-                    AppWindow.Id,
-                    Microsoft.UI.Windowing.DisplayAreaFallback.Primary
-                )
-                .WorkArea;
-            AppWindow.Resize(
-                new(
-                    Math.Min((int)Math.Ceiling(1280 * scale), (int)(workArea.Width * 0.95)),
-                    Math.Min((int)Math.Ceiling(900 * scale), (int)(workArea.Height * 0.95))
-                )
-            );
+            SetStartupWindowPresentation(starting, RootLayout.XamlRoot.RasterizationScale);
         };
         var choices = demo
             ? new DriveChoice[]
@@ -142,33 +130,13 @@ public sealed partial class MainWindow : Window
             DriveCards.Children.Add(card);
         UpdateDriveCards();
         AppWindow.Closing += OnClosing;
-        if (!demo)
-        {
-            RootLayout.Loaded += async (_, _) =>
-            {
-                startupTask = InitializeHistoryAsync();
-                await startupTask;
-            };
-        }
+        RootLayout.Loaded += OnStartupLoaded;
         if (demo)
         {
             ToolTipService.SetToolTip(
                 AppTitleBar,
                 "デモモード。実ディスクやファイルは読み取りません。"
             );
-            RootLayout.Loaded += async (_, _) =>
-            {
-                var arguments = Environment.GetCommandLineArgs();
-                if (arguments.Contains("--preview-loading"))
-                {
-                    await PreviewLoadingAnimationAsync();
-                    return;
-                }
-                await StartScanAsync();
-                int smoke = Array.IndexOf(arguments, "--smoke-test");
-                if (smoke >= 0 && smoke + 1 < arguments.Length)
-                    await CaptureSmokeTestAsync(arguments[smoke + 1]);
-            };
         }
     }
 
@@ -506,6 +474,7 @@ public sealed partial class MainWindow : Window
                 && sessions.TryGetValue(selected.Choice.Drive, out var latest)
             )
             {
+                SetStartupMessage("最初のファイル一覧を準備しています…");
                 session = latest;
                 await ShowSessionAsync(latest);
             }
@@ -533,6 +502,7 @@ public sealed partial class MainWindow : Window
         {
             try
             {
+                SetStartupMessage($"{card.Choice.Drive} のスキャン履歴を読み込んでいます…");
                 lifetime.Token.ThrowIfCancellationRequested();
                 string key = demo
                     ? $"demo:{card.Choice.Drive}"
@@ -1849,6 +1819,7 @@ public sealed partial class MainWindow : Window
         closed = true;
         toastTimer.Stop();
         ViewLoadingAnimation.Cancel();
+        StartupAnimation.Cancel();
         EntryLoadingRegion.Cancel();
         RankingLoadingRegion.Cancel();
         foreach (var indicator in treeLoads.Values)

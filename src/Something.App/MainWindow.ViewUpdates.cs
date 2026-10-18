@@ -48,6 +48,11 @@ public sealed partial class MainWindow
     {
         if (closed)
             return;
+        if (starting)
+        {
+            ViewLoadingOverlay.Visibility = Visibility.Collapsed;
+            return;
+        }
         bool loading = viewUpdates.Count != 0;
         if (!loading)
         {
