@@ -74,9 +74,9 @@
 | `DriveCard_RefreshVolume_4` | 空き容量 不明 | [DriveCard.xaml.cs:93](../../src/Something.App/DriveCard.xaml.cs#L93) |
 | `DriveCard_SetSelected` | {0} {1}{2} | [DriveCard.xaml.cs:107](../../src/Something.App/DriveCard.xaml.cs#L107) |
 | `DriveCard_SetSelected_2` |  選択中 | [DriveCard.xaml.cs:107](../../src/Something.App/DriveCard.xaml.cs#L107) |
-| `DriveCard_SetResult` | ✓ スキャン済み ({0:F1}秒) · {1}件 | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115) |
-| `DriveCard_SetResult_2` | {0}<br>処理時間 {1:F1}秒 · 管理領域未解決 {2:N0}<br>取得時点の観測です。 | [DriveCard.xaml.cs:120](../../src/Something.App/DriveCard.xaml.cs#L120) |
-| `DriveCard_SetResult_3` | 今回のスキャン | [DriveCard.xaml.cs:120](../../src/Something.App/DriveCard.xaml.cs#L120)<br>[MainWindow.xaml.cs:790](../../src/Something.App/MainWindow.xaml.cs#L790) |
+| `DriveCard_SetResult` | ✓ 最終スキャン {0} | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115) |
+| `DriveCard_SetResult_2` | {0}<br>処理時間 {1:F1}秒 · {2}件<br>管理領域未解決 {3:N0} · 取得時点の観測です。 | [DriveCard.xaml.cs:120](../../src/Something.App/DriveCard.xaml.cs#L120) |
+| `DriveCard_SetResult_3` | 今回のスキャン | [MainWindow.xaml.cs:790](../../src/Something.App/MainWindow.xaml.cs#L790) |
 | `FileAttributeIcon_UpdatePresentation` | {0}（属性不明） | [FileAttributeIcon.xaml.cs:81](../../src/Something.App/FileAttributeIcon.xaml.cs#L81) |
 | `FileAttributeIcon_UpdatePresentation_2` | システム・隠し{0} | [FileAttributeIcon.xaml.cs:84](../../src/Something.App/FileAttributeIcon.xaml.cs#L84) |
 | `FileAttributeIcon_UpdatePresentation_3` | 隠し{0} | [FileAttributeIcon.xaml.cs:85](../../src/Something.App/FileAttributeIcon.xaml.cs#L85) |
@@ -614,3 +614,5 @@
 | `WindowsVolumeIdentity_VolumeMountChangedWhileReadingIdentity` | 識別情報を読み取る間にボリュームのマウント先が変わりました。 | [WindowsVolumeIdentity.cs:15](../../src/Something.Windows/WindowsVolumeIdentity.cs#L15) |
 | `WindowsVolumeIdentity_ReadVolumeIdentityFailed` | ボリュームの識別情報を読み取れませんでした。 | [WindowsVolumeIdentity.cs:24](../../src/Something.Windows/WindowsVolumeIdentity.cs#L24) |
 | `WindowsVolumeIdentity_WindowsReturnedAnInvalidVolumeIdentity` | Windowsが不正なボリューム識別情報を返しました。 | [WindowsVolumeIdentity.cs:35](../../src/Something.Windows/WindowsVolumeIdentity.cs#L35) |
+| `DriveCard_ScanDateTimeFormat` | yyyy/MM/dd HH:mm | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115) |
+| `DriveCard_UnknownScanDate` | 日時不明 | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115)<br>[DriveCard.xaml.cs:120](../../src/Something.App/DriveCard.xaml.cs#L120) |

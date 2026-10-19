@@ -11,6 +11,7 @@ public sealed partial class ScanSession : IAsyncDisposable
     private readonly ScanStore store;
     private readonly SemaphoreSlim gate = new(1);
     private bool disposed;
+    private readonly DateTimeOffset? completedLocal;
     public Guid ScanId { get; }
     public string Drive { get; }
     public FileReference Root { get; }
@@ -21,6 +22,7 @@ public sealed partial class ScanSession : IAsyncDisposable
     public DiagnosticDatabaseSelection Selection { get; }
     public bool IsDemo { get; }
     public TimeSpan Elapsed { get; private set; }
+    public DateTimeOffset? CompletedLocal => History?.CompletedLocal ?? completedLocal;
     public ScanTimingSnapshot? Timings { get; private set; }
     public ScanHistoryEntry? History { get; private set; }
 
@@ -100,7 +102,9 @@ public sealed partial class ScanSession : IAsyncDisposable
         ScanId = id;
         Drive = drive;
         Root = root;
-        var descriptor = store.GetScan(id).Descriptor;
+        var scan = store.GetScan(id);
+        completedLocal = scan.EndedUtc?.ToLocalTime();
+        var descriptor = scan.Descriptor;
         VolumeKey = descriptor.VolumeKey;
         VolumeSerial = descriptor.VolumeSerial;
         RootSample = unfilteredRootSample = rootSample;

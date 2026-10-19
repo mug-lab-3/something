@@ -112,12 +112,12 @@ public sealed partial class DriveCard : UserControl
     {
         ScanStateText.Text = result is null
             ? "未スキャン"
-            : $"✓ スキャン済み ({result.Elapsed.TotalSeconds:F1}秒) · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件";
+            : $"✓ 最終スキャン {result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm") ?? "日時不明"}";
         ToolTipService.SetToolTip(
             ScanStateText,
             result is null
                 ? "未スキャン"
-                : $"{result.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · 管理領域未解決 {result.MetadataUnresolved:N0}\n取得時点の観測です。"
+                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件\n管理領域未解決 {result.MetadataUnresolved:N0} · 取得時点の観測です。"
         );
         ToolTipService.SetToolTip(ScanStatus, ToolTipService.GetToolTip(ScanStateText));
     }

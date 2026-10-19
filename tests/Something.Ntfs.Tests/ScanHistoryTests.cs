@@ -117,6 +117,7 @@ public sealed partial class ScanHistoryTests
         using var snapshot = reopened.Open(saved.Id, Token);
         var aggregation = snapshot.Store.ReadAggregation(saved.Id, Token);
 
+        Assert.Equal(saved.CompletedLocal, session.CompletedLocal);
         Assert.Equal(3L, rows.TotalCount);
         Assert.Equal(2, rows.Entries.Count(row => row.Reference.RecordIndex == 20));
         Assert.DoesNotContain(rows.Entries, row => row.Name == "SHORT~1");

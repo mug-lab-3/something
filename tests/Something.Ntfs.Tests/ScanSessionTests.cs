@@ -80,6 +80,7 @@ public sealed class ScanSessionTests
     public async Task DemoSession_BrowsesRanksAndSerializesQueriesWithoutVolumeAccess()
     {
         var token = TestContext.Current.CancellationToken;
+        var beforeScan = DateTimeOffset.UtcNow;
         await using var session = await new DriveScanner().CreateDemoAsync(null, token);
 
         var queries = await Task.WhenAll(
@@ -90,6 +91,11 @@ public sealed class ScanSessionTests
         var ranking = await session.ReadFolderAnalysisAsync(new(1), token);
 
         Assert.True(session.IsDemo);
+        Assert.InRange(
+            session.CompletedLocal!.Value.ToUniversalTime(),
+            beforeScan,
+            DateTimeOffset.UtcNow
+        );
         Assert.All(
             queries,
             q =>
