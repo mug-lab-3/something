@@ -1,35 +1,43 @@
-# 単一exeの配布構成
+# 配布
 
-`scripts/publish-app.ps1` / VS Codeの `publish app` タスクを明示的に実行したときだけ、`artifacts/publish/win-x64/Something.App.exe` に発行する。配布物はこのexeひとつ。.NET 10、WinUI、DuckDB、画面リソース、依存ライセンス通知を同梱する。SDKの `--artifacts-path` で発行用のbin・obj・復元結果を `artifacts/publish-build` に分離する。ロック付き復元を行ってから発行し、開発用アプリのファイルを上書きせず、検証用のマニフェストなどの中間生成物も混ぜない。
+## 開発出力と発行物
 
-通常の `dotnet build` / `dotnet run` とVS Codeの開発タスクはこのプロファイルを指定しない。Debug・Releaseとも `src/Something.App/bin/<Configuration>/net10.0-windows10.0.26100.0/win-x64` のexeとDLL・リソースを使い、自己展開や単一ファイルへの梱包は行わない。開発タスクはpublishを依存タスクにしない。
+通常の `dotnet build` は exe・DLL・画面リソースを展開した状態で出力します。Debug / Release とも開発用で、単一ファイルへの梱包は行いません。
 
-## 発行と展開
+```text
+src/Something.App/bin/<Configuration>/net10.0-windows10.0.26100.0/win-x64/
+```
 
-`Properties/PublishProfiles/SingleFile.pubxml` で `PublishSingleFile`、`SelfContained`、`WindowsAppSDKSelfContained`、`EnableMsixTooling`、`IncludeAllContentForSelfExtract` を有効にする。`WindowsPackageType=None` は維持する。WinUI・EF Core等を含むため、トリミングは無効のままにする。開発ビルドも単一ファイル用のアナライザーを有効にし、SDKが追加するILLinkツールの依存を通常のNuGetロックに含める。Visual Studioは不要。
+配布用だけ、次のスクリプトまたは VS Code の `publish app` タスクで発行します。
 
-初回起動時に通常 `%TEMP%/.net/Something.App/<bundle-id>` に内容を展開し、同じバンドルでは再利用する。`DOTNET_BUNDLE_EXTRACT_BASE_DIR` が指定されていればその場所を使う。実行時にはDLL等が必要なので、静的リンクや展開不要の実行形式ではない。exeを更新すると別のキャッシュが作られ、旧キャッシュが残る場合がある。.NETも同梱するため、.NETの修正を取り込む場合はSDKを更新して再発行する。履歴DBは展開先ではなく、従来のユーザー別保存先に置く。
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
+```
 
-Microsoftの[WinUI単一exeの条件](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/unpackage-winui-app#single-file-exe)と[.NETの展開動作](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview)に従う。通常の配布用exeは引き続き管理者権限を要求する。
+出力は `artifacts/publish/win-x64/Something.App.exe` です。発行用の bin / obj / 復元結果は `artifacts/publish-build` に分離します。スクリプトはロック付き復元を行い、新しい出力が exe 一つだけであることを検証してから前回の発行フォルダを置き換えます。失敗時は前回の出力を維持します。生成専用フォルダに手作業のファイルを置かないでください。
 
-## 過剰な依存を修正
+## ランタイムと展開
 
-初回は総合パッケージ `Microsoft.WindowsAppSDK 1.8.260921001` を指定していた。このパッケージはWinUIだけでなく、AI・ML・ウィジェット・全体のRuntimeパッケージを含む。そのため、発行時に未使用の `onnxruntime.dll`、`DirectML.dll` 等が取り込まれた。標準のpublish出力を、そのまま「Somethingが全て使用するファイル」と扱ったのは誤りだった。
+`Properties/PublishProfiles/SingleFile.pubxml` は .NET と Windows App SDK を自己完結で含め、ネイティブ依存とコンテンツの自己展開を有効にします。WinUI、DuckDB、PRI / XBF、ライセンス通知もバンドルします。トリミングは無効です。
 
-現在は元のパッケージが指定していた版の `Microsoft.WindowsAppSDK.WinUI 1.8.260803003` と `Microsoft.WindowsAppSDK.DWrite 1.8.25122902` を直接参照する。WinUIが依存するFoundation・InteractiveExperiences・Base・WebView2はNuGetで解決する。単独コンポーネント使用に必要なBuildTools.MSIXも既存と同じ版を直接固定する。APIのダウングレードや、発行後のネイティブDLLの手動削除は行っていない。NuGetロックを更新し、依存経路そのものを限定した。
+起動時には通常 `%TEMP%/.net/Something.App/<bundle-id>` に必要ファイルを展開し、同じバンドルは再利用します。`DOTNET_BUNDLE_EXTRACT_BASE_DIR` があればその場所を使用します。単一 exe は静的リンクや展開不要の意味ではありません。版の異なる exe では旧キャッシュが残る場合があります。
 
-Microsoftの[1.8リリースノート](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/release-notes/windows-app-sdk-1-8)にもコンポーネント単独使用の説明がある。未使用ML DLLが総合同梱で残る問題は、[公式リポジトリの報告](https://github.com/microsoft/WindowsAppSDK/issues/6015)でも確認できる。
+配布先に .NET / Windows App SDK を別途導入する必要はありませんが、同梱ランタイムの修正を取り込むには再発行が必要です。履歴と設定は展開先ではなくユーザー別の保存先へ置きます。
 
-## ファイルの内訳と確認
+## Windows と権限
 
-2026-10-14のフォルダ形式での比較では、総合パッケージ構成の356ファイル・116 DLLから、299ファイル・87 DLL、約138.6MiBへ減った。299ファイルのうち172ファイルはWinUI等の多言語MUIリソースだった。現在は.NETランタイムも含め、これらの依存を単一exeにまとめる。単一exeは約211.0MiB（221,280,828バイト）。依存の削減と単一ファイルへの梱包は別の効果であり、梱包だけでは依存自体は減らない。
+現在の発行対象は Windows x64、ターゲットは Windows 10 SDK 26100、プロジェクトの最小バージョン指定は 17763 です。この指定だけを全 Windows 版での検証保証とは扱いません。
 
-SDKのコンポーネント内部も全てが現在の画面から直接呼ばれるわけではない。ここでの削減は、使わないSDKコンポーネントを依存関係から除くことであり、個別DLLの全使用経路を証明した「最小ファイル数」ではない。WinRTメタデータは[Microsoftの配布ガイド](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/deploy-unpackaged-apps)で同梱が推奨されている。多言語対応や将来の互換性を変える削除は行わない。
+マニフェストは `requireAdministrator` と `PerMonitorV2` を指定します。初回起動時を含め UAC 確認が表示されます。デモとプレビューも同じ exe なので昇格指定は共通です。
 
-PDBとAPIドキュメントを発行対象から除き、アプリ用PRIとXBFは明示的にバンドル対象に含める。WinUIのビルド出力にはPRI/XBFがあるが、標準.NET publishだけでは取り込まれなかったため補っている。バンドルのファイル選択前に追加し、exeの隣にコピーするだけの構成にしない。ライセンス通知は削除しない。
+## 依存の管理
 
-リポジトリ直下の `LICENSE` と `THIRD-PARTY-NOTICES.md` はアプリのContentとしてバンドルに含め、展開先のexeと同じフォルダに置かれる。`THIRD-PARTY-NOTICES.md` は `src/Something.App/packages.lock.json` で固定したパッケージ内の許諾文を転記したもので、自動生成はしない。配布物に入る依存（推移的依存・ネイティブDLLを含む）を追加・更新したときは、一覧と許諾文を合わせて更新する。テスト・開発ツール専用の依存は配布物に入らないため記載しない。
+WinUI と DWrite のコンポーネントパッケージを参照し、NuGet ロックで推移的依存も固定します。発行後にネイティブ DLL や多言語リソースを手作業で削って構成を作る方式にはしません。
 
-発行スクリプトは、新しい出力が `Something.App.exe` ひとつだけであることを確認してから前回のフォルダを置き換える。失敗時は前回の配布物を残す。単一exeの検証では、昇格を要求しない検証専用マニフェストと独立したbin/objを使い、exeしかないフォルダから既存の `--demo --demo-history --smoke-test` を実行した。初回展開、画面初期化、ツリー、一覧、ランキング、戻る/進む/親移動、600件の連続表示、複数デモドライブの同時スキャン、キャンセル、DuckDB履歴の保存・再表示が成功した。2回目も成功し、展開された481ファイルの更新時刻が変化しないことを確認した。検証は合成データと専用DBのみで、実ボリュームやユーザーの履歴を使わない。配布用exeの埋め込みマニフェストの `requireAdministrator` は別途確認する。
+`LICENSE` と `THIRD-PARTY-NOTICES.md` を配布物へ含めます。パッケージを追加・更新した場合は、推移的依存・ネイティブライブラリを含めて通知を見直します。テスト専用依存はアプリの配布依存と区別します。署名・インストーラー・MSIX の発行は、このスクリプトでは行いません。
 
-通常のインストーラーやMSIXへの変更は行わない。展開キャッシュは.NETの標準機構に任せ、他プロセスが使う可能性のある旧キャッシュの自動削除は実装しない。
+## 発行後の確認
+
+exe だけを置いた専用ディレクトリから起動し、初回展開と再起動、PRI / XBF の読み込み、デモの履歴保存・再表示を確認します。実履歴や実ファイルを使う確認とは分離します。配布マニフェストの権限指定と、必要な通知が含まれていることも確認します。
+
+参照: [WinUI の単一 exe](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/unpackage-winui-app#single-file-exe)、[.NET の単一ファイル展開](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview)。

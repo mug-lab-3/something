@@ -1,147 +1,74 @@
-# VS Codeでの開発
+# 開発環境
 
-Visual Studio本体は不要です。.NET 10 SDKとVS Codeでビルド・テストできます。C# 14を明示的に指定し、nullable参照型と警告のエラー扱いを有効にしています。
+## セットアップ
 
-## SDKと拡張機能
-
-Windows x64 / Arm64でGitとVS Codeを用意し、VS Codeの`code`コマンドがPATHにある状態で、リポジトリ直下から次を実行します。Visual Studioと事前の.NET SDKは不要です。SDKの初回インストールにはWindowsの管理者確認への同意が必要です。初回はMicrosoftのSDK配布先、NuGet、VS Code Marketplaceへ接続できる環境が必要です。
+開発対象は Windows x64 です。Git と VS Code をインストールし、`code` を PATH へ追加してください。Visual Studio 本体は使用しません。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -Open
 ```
 
-このコマンドが行うこと:
+`setup.ps1` は次を実行します。
 
-1. `global.json`の.NET SDK 10.0.401をWindowsの通常の場所へインストール。`scripts/sdk-downloads.json`に固定したMicrosoft公式インストーラURLとSHA-512で取得内容を検証。既に同じSDKがある場合は再利用。
-   `.config/dotnet-tools.json`でバージョン固定したCSharpierとdotnet-efも`dotnet tool restore`で復元。
-   DuckDBの実行に必要なMicrosoft Visual C++ Redistributable x64（検証済みの14.51.36247以降）も確認し、未導入・旧版の場合は固定した[Microsoft公式インストーラー](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)を取得する。`scripts/native-runtime-download.json`のSHA-256とMicrosoftの署名を検証して導入する。wingetやVisual Studio本体は不要。
-2. `.vscode/extensions.json`の推奨拡張をインストール。拡張のバージョンは固定していません。既存の拡張を強制更新しません。
-3. NuGet依存を各プロジェクトの`packages.lock.json`に従って`--locked-mode`で復元。
-   CSharpierで整形済みかを検査し、整形漏れがあればファイルを書き換えずに停止。
-4. ソリューションのビルドと単体テストを実行し、成功時にリポジトリのフォルダを開く。
+1. `global.json` に固定したシステム SDK と Visual C++ ランタイムを確認し、必要なら公式インストーラーを取得する。
+2. チェックインしたハッシュと照合してからインストールする。
+3. ローカル .NET ツールと VS Code 推奨拡張を復元する。
+4. NuGet のロック付き復元、整形検査、ビルド、単体テストを実行する。
+5. `-Open` 指定時はリポジトリを VS Code で開く。
 
-同じコマンドを繰り返し実行できます。SDKと拡張が準備済みなら再利用します。SDKは公式インストーラでシステムへ導入し、他のSDKバージョンを削除しません。SDKインストーラによるシステム設定・PATHへの登録が行われます。PowerShellの実行ポリシーは変更せず、`Bypass`は起動したプロセスだけに適用します。検証済みインストーラは再試行用に`.tools/installers`へ保持します。リポジトリ内にSDK本体は展開しません。
+未導入のシステムコンポーネントのインストールには管理者確認が必要です。SDK はリポジトリの `.tools` にインストールせず、通常のシステム SDK を使います。`.tools` はダウンロードキャッシュ等の生成領域で、Git に含めません。初回はネットワーク接続が必要です。
+
+エディタ拡張が不要な場合と、公開データも検証する場合は次のように実行します。
 
 ```powershell
-# エディタ不要のCLI / CI環境: SDK・復元・ビルド・単体テスト
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -SkipExtensions
-# 公開NISTイメージも取得・検証（追加約7 GiB）
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -WithPublicCorpus -Open
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -WithPublicCorpus
 ```
 
-通常のセットアップでは公開コーパスの7テストをスキップします。必要な合成・変異・OSS比較テストは実行します。調査用の`.tools/oss`や`.tools/audit`は開発の前提にしていません。公開データの利用条件と検証範囲は[public-corpus.md](public-corpus.md)を参照してください。VS Code自体の画面上でのデバッグ動作は未検証です。
+公開データは追加のダウンロードと約 7 GiB の展開領域を使います。[公開コーパス](public-corpus.md)を参照してください。拡張の一覧は [extensions.json](../.vscode/extensions.json)、タスクは [tasks.json](../.vscode/tasks.json) が正本です。
 
-SDK更新時は`global.json`と`scripts/sdk-downloads.json`を同時に更新し、[Microsoft公式リリース情報](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json)のSHA-512を使ってください。NuGet依存変更時は`restore Something.slnx --force-evaluate`でlockファイルを更新し、変更をレビューします。普段のセットアップでlockファイルを自動更新しません。`NuGet.Config`で取得元をnuget.orgへ固定しています。
-
-Windows x64 / Windows PowerShell 5.1で、公式インストーラのダウンロード・ハッシュ検証・システムへの初回インストール、既存SDKの再利用、空の`.tools`からのセットアップ、キャッシュ済みインストーラのハッシュ不一致時の実行拒否を検証済みです。ビルドと単体テスト136件が成功しています。C# Dev KitでもシステムSDKを使用したソリューション読み込み・NuGet復元を確認しました。Arm64の配布先も用意していますが、Arm64実機での実行は未検証です。
-
-VS Codeではリポジトリのフォルダをそのまま開いてください。SDKのパス上書き、専用の起動スクリプト、生成ワークスペースは不要です。ソリューション選択と整形設定はリポジトリの設定で共有します。
-
-## ビルド・テスト
-
-リポジトリ直下で.NET CLIを直接実行します。`global.json`がSDKバージョンを固定します。
+## CLI と VS Code
 
 ```powershell
-dotnet build Something.slnx
-dotnet test --solution Something.slnx
-dotnet test --solution Something.slnx --coverage --coverage-output-format cobertura --coverage-settings tests/coverage.runsettings --results-directory artifacts/test-results
+dotnet restore Something.slnx --locked-mode
+dotnet build Something.slnx --no-restore
+dotnet test --solution Something.slnx --no-restore
 ```
 
-VS Codeでは `Ctrl+Shift+B` でbuild、`Tasks: Run Task` でtest／test with coverageを実行できます。F5はオフラインのraw $MFTダンプを検査するCLIをデバッグします。ダンプのパスとレコード長を入力してください。ファイル名や内容は標準出力には出しません。
+SDK は現在 .NET 10.0.401、言語は C# 14 です。SDK 選択は `global.json`、言語・解析設定は `Directory.Build.props` を確認してください。無制限の preview バージョンは使いません。
 
-## フォーマットとコード品質
+VS Code はリポジトリのフォルダをそのまま開きます。SDK パスの独自上書きや開発者専用ワークスペースは不要です。`build` / `test` / `test with coverage` タスクで CLI と同じ処理を実行できます。
 
-整形は[CSharpier](https://csharpier.com/docs/Installation) 1.3.0をローカル.NETツールとして固定しています。CLIとVS Codeの保存時に同じバージョンを使用します。CSharpierの標準的な整形を採用し、`.editorconfig`でスペース4つ、折り返し目安100文字、LFを共有します。C#以外の対応XML（csproj、props、slnxなど）はスペース2つです。`.tools`や生成物は`.csharpierignore`で対象外にしています。独自の整形ルールやもう一つの整形エンジンを重ねません。
+通常ビルドと単体テストに昇格は不要です。実行中のアプリが DLL を使用している場合は閉じてから出力を更新します。ライブ取得を含むアプリの `dotnet run` とデバッグは、管理者として開いたターミナルまたは VS Code で行います。
+
+## 整形とコード品質
+
+CSharpier をローカルツールとして固定し、C# と対応 XML の整形を統一します。VS Code の保存時整形と CLI は同じツールを使用します。標準ルールと `.editorconfig` を維持し、別の空白フォーマッターを重ねません。
 
 ```powershell
-# 一括整形
-dotnet csharpier format . --no-cache --ignore-path .csharpierignore
-# 書き換えずに検査（整形漏れは終了コード1）
+dotnet tool restore
+dotnet csharpier format . --ignore-path .csharpierignore
 dotnet csharpier check . --ignore-path .csharpierignore
 ```
 
-VS CodeではC#の保存時に整形されます。`Tasks: Run Task`の`format` / `format check`でも実行できます。`setup.ps1`が拡張とツールを復元し、検査まで実行します。VS Codeの画面上での保存時整形は未検証です。
+整形とは別に Roslyn アナライザーと警告のエラー扱いで品質を検査します。テスト実行とカバレッジは[テスト](testing.md)を参照してください。
 
-セットアップは整形漏れで失敗します。ビルドが自動的にソースを変更する構成にはしていません。コード品質・安全性の診断は既存の.NET/Roslyn解析と警告のエラー扱いを継続します。[Microsoftのdotnet format](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format)もEditorConfigを使う公式の選択肢ですが、本リポジトリの空白・折り返しの整形はCSharpierに統一します。
+## 依存と SDK の更新
 
-## テスト方針
+NuGet パッケージとローカルツールを固定し、各 `packages.lock.json` をコミットします。依存変更時だけ `dotnet restore Something.slnx --force-evaluate` でロックを更新し、推移的依存も確認します。通常セットアップではロックを更新しません。
 
-- xUnit.net v3（パッケージ4.0.2）とMicrosoft.Testing.Platform v2を使用。VSTestやVisual Studio本体は不要。
-- AAA、振る舞いを示すテスト名、独立性、再現性を重視。管理者権限・ライブディスク・外部サービスを単体テストに要求しません。
-- 正常系、境界値、構造破損、符号／桁あふれ、途中読み取り、キャンセル、削除／変更／再利用を検証。
-- 乱数テストは固定seedで実行。5000回のレコード変異と5000回のmapping-pair入力を検査。これは網羅的なファジングの代替ではありません。
-- MFT 2026.5.1はテスト専用の比較対象。製品ライブラリは依存しません。合致は正しさの証明ではありません。
-- 行カバレッジと分岐カバレッジをSomething.Ntfs・Something.Statistics・Something.Storageについて別々に計測。パーサーの目安は行95%以上／分岐90%以上ですが、数字だけを満たすテストを追加せず、未検証の重要な振る舞いを優先します。
-- ライブボリューム取得の実装後は、Windows APIとのサイズ照合と作成・変更・移動・削除の統合テストを追加します。
-
-## 現在の構成
-
-- `src/Something.Ntfs`: WindowsやUIに依存しない解析／レコード結合／読み取り検証層。
-- `src/Something.Statistics`: 親参照の階層検証・共有容量の帰属・フォルダ集計・型付き取得アダプター。
-- `src/Something.Storage`: SQLite＋EF Coreのステージ保存・集計保存・世代公開基盤。実機保存CLIは未接続。
-- `src/Something.Windows`: 読み取り専用NTFS取得層とファイル情報API。実機の通常ファイル1件で論理サイズ一致を確認。
-- `tests/Something.Ntfs.Tests`: 単体・変異・OSS比較テスト。
-- `tools/Something.MftInspect`: オフラインraw MFTストリームの検査CLI。
-- `tools/Something.LiveInspect`: 少数のライブレコードとファイル論理サイズの検証CLI。
-
-Windows取得層の実装範囲・検証手順は [windows-acquisition.md](windows-acquisition.md) を参照してください。USN追跡、VSS、履歴比較、GUIはまだ実装していません。
+SDK 更新は `global.json` と `scripts/sdk-downloads.json` を同時に変更し、[Microsoft 公式リリースメタデータ](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json)の SHA-512 を使います。ネイティブランタイムの情報は `scripts/native-runtime-download.json` で管理します。変更したセットアップは空の `.tools` から確認します。
 
 ## 保存モデルの変更
 
-フォルダ容量の上位5件は、管理者として開いたPowerShellで次を実行して確認できます。
+共有履歴のモデルは `SharedHistoryDbContext`、単独スキャン用 DuckDB は `DuckScanDbContext` です。SQLite は比較・回帰用途です。目的のコンテキストを明示してマイグレーションを生成します。
 
 ```powershell
-dotnet run --project tools/Something.LiveInspect -c Release -- C: --top5
+dotnet ef migrations add ChangeName --project src/Something.Storage --context SharedHistoryDbContext --output-dir SharedMigrations
 ```
 
-全件取得を行い、ルートを除く各フォルダの配下の割り当てDATA容量順で、パスと論理・割り当てバイト数を最後に表示します。5秒ごとの進捗とCtrl+Cに対応します。ハードリンクは共通祖先へ一度だけ帰属し、NTFS管理領域は順位から除きます。親と子がともに上位に入ることがあるため、上位5件を合計してディスク使用量にはしません。未解決容量がある順位は暫定で、スキャン中の変化を含む楽観的な観測です。取得ボリュームは読み取り専用で、集計用の一時SQLite DBを使い、履歴は保存しません。DB保存・集計を含むので`--scan`の速度計測とは比較できません。上位表示は合成DBで検証済みですが、管理者権限のある実機の全件表示は未検証です。
+生成 DDL、型アダプター、モデルスナップショット、形式識別、公開前の論理参照検査を合わせてレビューします。物理 FK・カスケードを追加しない運用を維持し、依存行の明示削除も検証します。既存 DB の自動変換とは別の工程です。
 
-最終出力の`Capacity-accounting.conservation-match`は、取得時の既知DATA総量が、
-ルート配下・NTFS管理ファイル・所属不明の3区分の合計と一致することを示します。
-`Outside-folder-totals`の`unattributed-known-allocated-bytes`は容量既知でもフォルダへ帰属できなかった量で、
-`unattributed-unresolved`が0でも大きな値になる可能性があります。不一致の場合はエラーにします。
-2026-10-13の実機確認でDOS短縮名を持つ通常ファイルの誤分類を発見し、公開コーパスと
-取得から保存までの合成回帰テストで修正を確認しました。修正後の実機でも容量一致と大幅な不足の解消を確認しました。
-所属不明の既知容量は残っており、各フォルダの帰属が完全に検証されたわけではありません。
+## 公開物に含めないもの
 
-`--top5`はスキャン中の観測をメモリへ保持し、完了後にメモリ上で集計してから一括保存します。
-記録項目は従来と同じで、ファイル参照・名前・DOS名・ストリーム容量・取得状態を保持します。
-スキャン中はDBを開かず、完了後の保存と公開を1トランザクションで行います。
-`Timing`は`scan-and-buffer-seconds`、`aggregate-buffer-seconds`、
-`persist-publish-seconds`、`ranking-seconds`を最終表示します。
-`Memory`の`managed-bytes-after-buffering`はスキャン直後のmanagedメモリ推定値で、
-まだ回収されていないオブジェクトも含みます。ピークworking setも別表示します。
-メモリは件数と名前・ストリーム数に応じて増えます。メモリ不足時の自動DB退避は未実装です。
-保存処理だけを合成データで測るには次を実行します。管理者権限・ボリューム取得は不要です。
-
-```powershell
-dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchmark 100000
-# 同じデータをメモリへ収集してから集計・一括保存する方式
-dotnet run --project tools/Something.LiveInspect -c Release -- --storage-benchmark 100000 --buffered
-```
-
-一時DBを作成して、レコード生成・保存と集計・公開を別々に測り、既知の期待容量と照合します。
-公開履歴DBを使わず、正常終了・例外・Ctrl+C時には所有する一時DBを片付けます。
-性能変更の測定結果は[storage-design.md](storage-design.md)に記録しています。
-
-容量差の調査用に、最終出力の`Unattributed`で所属不明の理由別件数・既知容量を表示します。
-`Sample`は各理由で割り当て容量が大きい最大2件の参照番号・シーケンス番号・名前数・親参照です。
-ファイル名・パスは診断サンプルへ出さず、スキャン中の行単位出力もしません。
-名前集合の不完全、親参照の欠落・再利用、無効な階層、管理領域と通常領域をまたぐリンクなどを区別します。
-名前集合の不完全は、ヘッダーとの名前数不一致・重複名・対応するWin32名のないDOS名も分けます。
-`problem-parent`は原因となった親参照です。欠落やシーケンス不一致は、削除や容量ゼロの確定ではありません。
-各理由の件数と容量の合計がUnattributed区分と一致することも検証します。
-診断は帰属方針を変更せず、容量の取得失敗を0へ変換しません。
-
-EF Coreのモデルは`src/Something.Storage/ScanDbContext.cs`で管理します。固定バージョンのdotnet-ef 10.0.12はセットアップで復元され、Visual Studioは不要です。
-
-```powershell
-dotnet ef migrations add ChangeName --project src/Something.Storage --context DuckScanDbContext --output-dir DuckMigrations
-dotnet csharpier format . --no-cache --ignore-path .csharpierignore
-```
-
-生成したマイグレーションとモデルスナップショットをレビューし、DB制約と既存データの更新を検証してコミットします。テストはモデルとスナップショットの一致も検査します。設計時ファクトリーはメモリDBの接続設定でモデルを構築し、ユーザーの履歴DBを開きません。アプリのDB識別バージョンや対応するマイグレーション履歴の受け入れ範囲を変える場合は、`SqliteDatabaseBootstrap`も見直してください。
-
-EF Core導入後も空の`.tools`から`setup.ps1 -SkipExtensions`を実行し、固定ツール復元・locked-mode復元・整形検査・ビルド・611テストの成功を確認しました（公開コーパス7件は通常セットアップではスキップ）。コーパスありの別実行では全618テストが成功しました。実ボリュームのデータを保存するCLIはまだ接続していません。
-
-DuckDB用の新しいマイグレーションでは、論理参照をEFモデルに保ちつつ、物理FK・カスケードを生成しない運用を維持します。自動生成されたDDLを確認し、集合検査・明示的な世代削除と合わせてテストしてください。SQLite用のモデルと旧マイグレーションは比較・回帰テスト用に保持しています。
+SDK、キャッシュ、ビルド出力、スキャンダンプ、実履歴、個人のパスを含むログは追跡しません。確認用の生成物は `artifacts`、外部コーパスは `.tools` に置きます。ライセンスや再現手順を必要とする資料は、生成物へのリンクだけで済ませず、公開可能な仕様・条件・コマンドを文書に残します。
