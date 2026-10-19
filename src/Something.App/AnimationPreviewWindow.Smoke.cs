@@ -39,12 +39,9 @@ public sealed partial class AnimationPreviewWindow
                 await Animation.WaitForSettledAsync().WaitAsync(TimeSpan.FromSeconds(4));
                 if (Animation.IsPlaying)
                     throw new InvalidOperationException("Standalone preview did not settle.");
-                if (index == 3)
-                {
-                    await Task.Delay(80);
-                    Animation.VerifyOptimizationPose(4.9);
-                    await CaptureAsync(path + ".optimization-settled.png");
-                }
+                await Task.Delay(80);
+                Animation.VerifySettledPose();
+                await CaptureAsync($"{path}.{index}-settled.png");
                 StaticBox.IsChecked = true;
                 Restart();
                 if (Animation.IsPlaying || !Animation.WaitForSettledAsync().IsCompleted)

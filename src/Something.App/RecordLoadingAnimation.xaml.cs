@@ -98,14 +98,14 @@ public sealed partial class RecordLoadingAnimation : UserControl
         if (busy)
             BeginCycle();
         else
-            Stop(preserveFinalFrame: ActiveKind == LoadingAnimationKind.OptimizeDatabase);
+            Stop(preserveFinalFrame: true);
     }
 
     private void Stop(bool preserveFinalFrame = false)
     {
         busy = false;
         IsPlaying = false;
-        // Stopping the storyboard restores the initial queue instead of the completed DB entry.
+        // Keep the completed departure/DB entry; Stop would restore the base or static pose.
         if (!preserveFinalFrame)
             activeCycle?.Stop();
         settling?.TrySetResult();

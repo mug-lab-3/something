@@ -2,6 +2,21 @@ namespace Something.App;
 
 public sealed partial class RecordLoadingAnimation
 {
+    internal void VerifySettledPose()
+    {
+        if (IsPlaying)
+            throw new InvalidOperationException("Animation is still playing after settling.");
+        if (ActiveKind == LoadingAnimationKind.OptimizeDatabase)
+            VerifyOptimizationPose(4.9);
+        else if (Chick.Opacity != 0 || Farewell.Opacity != 0)
+            throw new InvalidOperationException("A chick or farewell reappeared after settling.");
+        if (
+            ActiveKind == LoadingAnimationKind.Inspect
+            && (ScanBeam.Opacity != 0 || GateReady.Opacity != 0)
+        )
+            throw new InvalidOperationException("Scanner effects remained visible after settling.");
+    }
+
     internal void PauseForPreview(double seconds)
     {
         if (!IsPlaying)
