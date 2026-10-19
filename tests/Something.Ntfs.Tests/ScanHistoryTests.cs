@@ -8,7 +8,7 @@ using Something.Windows;
 
 namespace Something.Ntfs.Tests;
 
-public sealed class ScanHistoryTests
+public sealed partial class ScanHistoryTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
     private static CancellationToken Token => TestContext.Current.CancellationToken;

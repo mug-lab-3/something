@@ -19,8 +19,8 @@ namespace Something.App;
 public sealed partial class MainWindow : Window
 {
     private readonly CancellationTokenSource lifetime = new();
-    private readonly DriveScanner scanner;
-    private readonly ScanHistoryArchive? history;
+    private DriveScanner scanner;
+    private ScanHistoryArchive? history;
     private readonly Dictionary<DriveCard, string> volumeKeys = [];
     private ScanSession? historicalSession;
     private int historyVersion;
@@ -79,7 +79,7 @@ public sealed partial class MainWindow : Window
             ? demoHistory >= 0 && demoHistory + 1 < arguments.Length
                 ? new ScanHistoryArchive(arguments[demoHistory + 1])
                 : null
-            : ScanHistoryArchive.CreateDefault();
+            : CreateConfiguredHistory();
         scanner = new(history);
         HistoryBox.LoadCounts = ComparisonBeforeBox.LoadCounts = ids =>
             Task.Run<IReadOnlyDictionary<Guid, long>>(
@@ -321,6 +321,8 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
+                await VerifyDatabaseSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
             {
                 WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
@@ -1880,6 +1882,8 @@ public sealed partial class MainWindow : Window
             indicator.Dispose();
         lifetime.Cancel();
         recycleDialog?.Hide();
+        settingsDialog?.Hide();
+        databaseDeleteDialog?.Hide();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());

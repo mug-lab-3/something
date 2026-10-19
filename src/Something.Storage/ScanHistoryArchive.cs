@@ -14,7 +14,8 @@ public sealed partial class ScanHistoryArchive
     private readonly TimeZoneInfo timeZone;
     public string? MaintenanceError { get; private set; }
     internal const string DatabaseFileName = "catalog-v4.duckdb";
-    private string DatabasePath => Path.Combine(root, DatabaseFileName);
+    public string DatabasePath => Path.Combine(root, DatabaseFileName);
+    public string DirectoryPath => root;
 
     public void SaveTimings(
         Guid scanId,
@@ -154,6 +155,9 @@ public sealed partial class ScanHistoryArchive
         ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
         lock (sync)
         {
+            token.ThrowIfCancellationRequested();
+            if (!HasDatabaseFiles)
+                return [];
             using var store = OpenDatabase(token);
             return store
                 .HistoryContext.HistorySnapshots.AsNoTracking()

@@ -61,6 +61,31 @@ public sealed partial class HistoryManagementView : UserControl
         this.optimize = optimize;
         this.beginProgress = beginProgress;
         this.token = token;
+        RefreshDatabaseSize();
+    }
+
+    internal void RefreshDatabaseSize()
+    {
+        try
+        {
+            if (archive is null)
+            {
+                DatabaseSizeText.Text = "";
+                return;
+            }
+            var info = archive.ReadDatabaseInfo();
+            DatabaseSizeText.Text = $"DB {DisplayText.Bytes((UInt128)info.TotalBytes)}";
+            ToolTipService.SetToolTip(
+                DatabaseSizeText,
+                $"全ドライブ共通\nDB本体 {info.DatabaseBytes:N0} B / WAL {info.WalBytes:N0} B\n{info.Path}"
+            );
+        }
+        catch (Exception error)
+            when (error is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            DatabaseSizeText.Text = "DBサイズ取得不可";
+            ToolTipService.SetToolTip(DatabaseSizeText, error.Message);
+        }
     }
 
     internal Task LoadAsync(string? key) =>
@@ -118,6 +143,7 @@ public sealed partial class HistoryManagementView : UserControl
             {
                 initializing = false;
                 SetBusy(false);
+                RefreshDatabaseSize();
             }
         }
     }

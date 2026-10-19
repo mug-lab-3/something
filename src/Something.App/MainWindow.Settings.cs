@@ -9,7 +9,7 @@ public sealed partial class MainWindow
 {
     private FileVisibilityOptions visibilityOptions = new();
     private DisplaySettingsStore? displaySettings;
-    private bool updatingSettings;
+
     private bool changingVisibility;
 
     private void InitializeDisplaySettings()
@@ -24,40 +24,6 @@ public sealed partial class MainWindow
                 )
             );
             visibilityOptions = displaySettings.Load();
-        }
-        UpdateSettingsChecks();
-    }
-
-    private void UpdateSettingsChecks()
-    {
-        updatingSettings = true;
-        IncludeSystemItem.IsChecked = visibilityOptions.IncludeSystem;
-        IncludeHiddenItem.IsChecked = visibilityOptions.IncludeHidden;
-        updatingSettings = false;
-    }
-
-    private async void OnVisibilityChanged(object sender, RoutedEventArgs e)
-    {
-        if (updatingSettings || closed)
-            return;
-        if (historyMaintenance || viewUpdates.Count != 0)
-        {
-            UpdateSettingsChecks();
-            return;
-        }
-        var options = new FileVisibilityOptions(
-            IncludeSystemItem.IsChecked,
-            IncludeHiddenItem.IsChecked
-        );
-        var task = ChangeVisibilityAsync(options);
-        historyTasks.Add(task);
-        try
-        {
-            await task;
-        }
-        finally
-        {
-            historyTasks.Remove(task);
         }
     }
 
@@ -75,7 +41,7 @@ public sealed partial class MainWindow
         {
             await using var update = BeginViewUpdate("表示するファイルと容量を集計しています…");
             visibilityOptions = options;
-            UpdateSettingsChecks();
+
             if (session is { } current)
             {
                 await current.SetVisibilityAsync(options, lifetime.Token);
@@ -93,7 +59,7 @@ public sealed partial class MainWindow
         catch (Exception error)
         {
             visibilityOptions = previous;
-            UpdateSettingsChecks();
+
             // Restore both the read model and the checkboxes if applying/saving fails.
             try
             {
@@ -133,8 +99,8 @@ public sealed partial class MainWindow
         // Demo attributes are unknown: excluding known flags must preserve its contents.
         await ChangeVisibilityAsync(new(false, false));
         if (
-            IncludeSystemItem.IsChecked
-            || IncludeHiddenItem.IsChecked
+            visibilityOptions.IncludeSystem
+            || visibilityOptions.IncludeHidden
             || current.RootSample != total
             || Entries.Items.Count != 3
             || Ranking.Items.Count != 3
@@ -163,7 +129,11 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "Drive navigation did not reuse its cached projection, root listing and analysis."
             );
-        if (IncludeSystemItem.IsChecked || IncludeHiddenItem.IsChecked || Entries.Items.Count != 3)
+        if (
+            visibilityOptions.IncludeSystem
+            || visibilityOptions.IncludeHidden
+            || Entries.Items.Count != 3
+        )
             throw new InvalidOperationException("Drive navigation lost the display settings.");
         await ChangeVisibilityAsync(new());
         await ChangeVisibilityAsync(new(false, false));
@@ -173,8 +143,8 @@ public sealed partial class MainWindow
             );
         await ChangeVisibilityAsync(new());
         if (
-            !IncludeSystemItem.IsChecked
-            || !IncludeHiddenItem.IsChecked
+            !visibilityOptions.IncludeSystem
+            || !visibilityOptions.IncludeHidden
             || current.RootSample != total
         )
             throw new InvalidOperationException("Display settings did not restore full results.");

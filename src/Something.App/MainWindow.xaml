@@ -118,6 +118,7 @@
           </TabView>
           <Button
             x:Name="SettingsButton"
+            Click="OnOpenSettings"
             Grid.Column="1"
             Background="Transparent"
             BorderThickness="0"
@@ -126,22 +127,6 @@
             ToolTipService.ToolTip="設定"
           >
             <FontIcon Glyph="&#xE713;" FontSize="20" />
-            <Button.Flyout>
-              <MenuFlyout>
-                <ToggleMenuFlyoutItem
-                  x:Name="IncludeSystemItem"
-                  Text="システムフォルダ・ファイルを含める"
-                  IsChecked="True"
-                  Click="OnVisibilityChanged"
-                />
-                <ToggleMenuFlyoutItem
-                  x:Name="IncludeHiddenItem"
-                  Text="隠しフォルダ・ファイルを含める"
-                  IsChecked="True"
-                  Click="OnVisibilityChanged"
-                />
-              </MenuFlyout>
-            </Button.Flyout>
           </Button>
         </Grid>
         <local:HistoryManagementView

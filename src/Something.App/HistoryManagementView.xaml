@@ -157,6 +157,13 @@
               <TextBlock Text="DBを最適化" />
             </StackPanel>
           </Button>
+          <TextBlock
+            x:Name="DatabaseSizeText"
+            Grid.Column="2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          />
         </Grid>
         <Grid ColumnSpacing="12">
           <Grid.ColumnDefinitions>

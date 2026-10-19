@@ -53,6 +53,8 @@ public sealed partial class ScanHistoryArchive
         lock (sync)
         {
             token.ThrowIfCancellationRequested();
+            if (!HasDatabaseFiles)
+                return new Dictionary<Guid, long>();
             using var store = OpenDatabase(token);
             var context = store.HistoryContext;
             var snapshots = context
@@ -76,6 +78,8 @@ public sealed partial class ScanHistoryArchive
         lock (sync)
         {
             token.ThrowIfCancellationRequested();
+            if (!HasDatabaseFiles)
+                return [];
             using var store = OpenDatabase(token);
             var context = store.HistoryContext;
             var snapshots = context

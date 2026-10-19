@@ -252,8 +252,13 @@ public sealed partial class ScanHistoryArchive
 
     private static void RequireOrdinaryFile(string path)
     {
-        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-            throw new InvalidOperationException("DB files must not be reparse points.");
+        if (
+            (File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory))
+            != 0
+        )
+            throw new InvalidOperationException(
+                "DB paths must refer to ordinary files, not directories or links."
+            );
     }
 
     private static void ExecuteMaintenance(
