@@ -91,7 +91,8 @@ public sealed partial class MainWindow : Window
         InitializeHistoryManagement();
         if (demo && history is null)
             HistoryBox.Visibility = Visibility.Collapsed;
-        Title = "Something";
+        Title = AppVersion.WindowTitle;
+        AppTitleBar.Title = Title;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;

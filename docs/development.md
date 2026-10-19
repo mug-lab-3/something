@@ -53,6 +53,14 @@ dotnet csharpier check . --ignore-path .csharpierignore
 
 整形とは別に Roslyn アナライザーと警告のエラー扱いで品質を検査します。テスト実行とカバレッジは[テスト](testing.md)を参照してください。
 
+## アプリのバージョン
+
+`src/Something.App/Something.App.csproj` の `<Version>` を変更します。SDK がアセンブリ・ファイル・情報バージョンのメタデータを生成するため、手書きの `AssemblyInfo.cs` や C# の定数を重ねません。
+
+タイトルバーは生成された情報バージョンを使用し、`Something 1.0.0` の形式で表示します。`1.1.0-beta.1` のようなプレリリース名は保持し、`+` 以降のビルド情報は表示しません。通常ウィンドウとアニメーションプレビューは同じ定義を使います。
+
+`app.manifest` の `assemblyIdentity` は Windows マニフェストの識別情報で、画面に表示するアプリバージョンの定義元ではありません。
+
 ## 依存と SDK の更新
 
 NuGet パッケージとローカルツールを固定し、各 `packages.lock.json` をコミットします。依存変更時だけ `dotnet restore Something.slnx --force-evaluate` でロックを更新し、推移的依存も確認します。通常セットアップではロックを更新しません。

@@ -12,7 +12,7 @@ public sealed partial class AnimationPreviewWindow : Window
     public AnimationPreviewWindow()
     {
         InitializeComponent();
-        Title = "Something · アニメーションプレビュー";
+        Title = $"{AppVersion.WindowTitle} · アニメーションプレビュー";
         AppWindow.Resize(new SizeInt32(780, 560));
         KindBox.SelectedIndex = 3;
         Root.Loaded += OnLoaded;

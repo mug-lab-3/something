@@ -16,7 +16,7 @@
 | `AnimationPreviewWindow_PauseButton_Content` | 一時停止 | [AnimationPreviewWindow.xaml:47](../../src/Something.App/AnimationPreviewWindow.xaml#L47) |
 | `AnimationPreviewWindow_Button_Content_2` | 区切りまで再生して停止 | [AnimationPreviewWindow.xaml:48](../../src/Something.App/AnimationPreviewWindow.xaml#L48) |
 | `AnimationPreviewWindow_StateText_Text` | 再生中 | [AnimationPreviewWindow.xaml:52](../../src/Something.App/AnimationPreviewWindow.xaml#L52)<br>[AnimationPreviewWindow.xaml.cs:44](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L44)<br>[AnimationPreviewWindow.xaml.cs:63](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L63) |
-| `AnimationPreviewWindow_AnimationPreviewWindow` | Something · アニメーションプレビュー | [AnimationPreviewWindow.xaml.cs:15](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L15) |
+| `AnimationPreviewWindow_AnimationPreviewWindow` | {0} · アニメーションプレビュー | [AnimationPreviewWindow.xaml.cs:15](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L15) |
 | `AnimationPreviewWindow_OnPause` | 一時停止中 | [AnimationPreviewWindow.xaml.cs:63](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L63) |
 | `AnimationPreviewWindow_OnFinish` | 停止 | [AnimationPreviewWindow.xaml.cs:75](../../src/Something.App/AnimationPreviewWindow.xaml.cs#L75) |
 | `ColumnHeaders_Update` |  ▼ | [ColumnHeaders.cs:15](../../src/Something.App/ColumnHeaders.cs#L15) |
@@ -187,7 +187,7 @@
 | `MainWindow_Comparison_RefreshComparisonAsync_5` | 指定範囲：{0:yyyy/MM/dd HH:mm} ～ {1:yyyy/MM/dd HH:mm} ·  | [MainWindow.Comparison.cs:367](../../src/Something.App/MainWindow.Comparison.cs#L367) |
 | `MainWindow_Comparison_RefreshComparisonAsync_6` | 比較不能 {0:N0} フォルダ | [MainWindow.Comparison.cs:370](../../src/Something.App/MainWindow.Comparison.cs#L370) |
 | `MainWindow_Comparison_RefreshComparisonAsync_7` | 比較できません。履歴または容量情報を確認してください。 | [MainWindow.Comparison.cs:384](../../src/Something.App/MainWindow.Comparison.cs#L384) |
-| `Application_Name` | Something | [MainWindow.DatabaseSettings.cs:20](../../src/Something.App/MainWindow.DatabaseSettings.cs#L20)<br>[MainWindow.Settings.cs:22](../../src/Something.App/MainWindow.Settings.cs#L22)<br>[MainWindow.xaml:15](../../src/Something.App/MainWindow.xaml#L15)<br>[MainWindow.xaml:747](../../src/Something.App/MainWindow.xaml#L747)<br>[MainWindow.xaml.cs:94](../../src/Something.App/MainWindow.xaml.cs#L94)<br>[ScanHistoryArchive.cs:54](../../src/Something.Storage/ScanHistoryArchive.cs#L54)<br>[ScanStore.cs:23](../../src/Something.Storage/ScanStore.cs#L23) |
+| `Application_Name` | Something | [MainWindow.DatabaseSettings.cs:20](../../src/Something.App/MainWindow.DatabaseSettings.cs#L20)<br>[MainWindow.Settings.cs:22](../../src/Something.App/MainWindow.Settings.cs#L22)<br>[MainWindow.xaml:15](../../src/Something.App/MainWindow.xaml#L15)<br>[MainWindow.xaml:747](../../src/Something.App/MainWindow.xaml#L747)<br>[ScanHistoryArchive.cs:54](../../src/Something.Storage/ScanHistoryArchive.cs#L54)<br>[ScanStore.cs:23](../../src/Something.Storage/ScanStore.cs#L23) |
 | `MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync` | スキャンや読み込みが完了してからDBを削除してください。 | [MainWindow.DatabaseSettings.cs:114](../../src/Something.App/MainWindow.DatabaseSettings.cs#L114) |
 | `MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync_2` | 履歴DBを削除しますか？ | [MainWindow.DatabaseSettings.cs:118](../../src/Something.App/MainWindow.DatabaseSettings.cs#L118) |
 | `MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync_3` | 全ドライブのスキャン履歴をすべて削除します。この操作は取り消せません。実ファイルは削除しません。<br><br>{0} | [MainWindow.DatabaseSettings.cs:122](../../src/Something.App/MainWindow.DatabaseSettings.cs#L122) |
@@ -616,3 +616,4 @@
 | `WindowsVolumeIdentity_WindowsReturnedAnInvalidVolumeIdentity` | Windowsが不正なボリューム識別情報を返しました。 | [WindowsVolumeIdentity.cs:35](../../src/Something.Windows/WindowsVolumeIdentity.cs#L35) |
 | `DriveCard_ScanDateTimeFormat` | yyyy/MM/dd HH:mm | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115) |
 | `DriveCard_UnknownScanDate` | 日時不明 | [DriveCard.xaml.cs:115](../../src/Something.App/DriveCard.xaml.cs#L115)<br>[DriveCard.xaml.cs:120](../../src/Something.App/DriveCard.xaml.cs#L120) |
+| `Application_WindowTitle` | Something {0} | [AppVersion.cs:14](../../src/Something.App/AppVersion.cs#L14) |

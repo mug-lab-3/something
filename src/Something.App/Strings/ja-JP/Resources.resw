@@ -61,8 +61,9 @@ src/Something.App/AnimationPreviewWindow.xaml.cs:44 Restart
 src/Something.App/AnimationPreviewWindow.xaml.cs:63 OnPause</comment>
   </data>
   <data name="AnimationPreviewWindow_AnimationPreviewWindow" xml:space="preserve">
-    <value>Something · アニメーションプレビュー</value>
-    <comment>src/Something.App/AnimationPreviewWindow.xaml.cs:15 AnimationPreviewWindow</comment>
+    <value>{0} · アニメーションプレビュー</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml.cs:15 AnimationPreviewWindow
+{0} = AppVersion.WindowTitle</comment>
   </data>
   <data name="AnimationPreviewWindow_OnPause" xml:space="preserve">
     <value>一時停止中</value>
@@ -905,7 +906,6 @@ src/Something.App/MainWindow.Comparison.cs:299 RefreshComparisonAsync
 src/Something.App/MainWindow.Settings.cs:22 InitializeDisplaySettings
 src/Something.App/MainWindow.xaml:15 AppTitleBar.Title
 src/Something.App/MainWindow.xaml:747 TextBlock.Text
-src/Something.App/MainWindow.xaml.cs:94 MainWindow
 src/Something.Storage/ScanHistoryArchive.cs:54 CreateDefault
 src/Something.Storage/ScanStore.cs:23 OpenDefault</comment>
   </data>
@@ -2957,5 +2957,10 @@ Original: Windows returned an invalid volume identity.</comment>
     <value>日時不明</value>
     <comment>src/Something.App/DriveCard.xaml.cs:115 SetResult
 src/Something.App/DriveCard.xaml.cs:120 SetResult</comment>
+  </data>
+  <data name="Application_WindowTitle" xml:space="preserve">
+    <value>Something {0}</value>
+    <comment>src/Something.App/AppVersion.cs:14 WindowTitle
+{0} = Display</comment>
   </data>
 </root>
