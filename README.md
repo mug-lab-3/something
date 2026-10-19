@@ -125,3 +125,7 @@ VS Code / CLIでの開発手順は [docs/development.md](docs/development.md)、
 読み取り専用Windows取得層と検証CLIを追加しています。実機の通常ファイル1件でMFTとWindows APIの論理サイズ一致を確認しました。範囲と手順は [docs/windows-acquisition.md](docs/windows-acquisition.md) を参照してください。全件走査の基準測定用CLIも追加しました。途中経過は5秒ごとに絞り、最後にまとめて表示します。手順と制限は [docs/scan-benchmark.md](docs/scan-benchmark.md) を参照してください。USN追跡、統計履歴は今後の実装です。
 
 NISTの公開NTFSイメージ7件を使った追加検証を用意しています。利用条件、取得元、検査結果、再実行方法は [docs/public-corpus.md](docs/public-corpus.md) を参照してください。ダンプはGitへ含めません。
+
+## ライセンス
+
+Somethingのソースコードは [MIT License](LICENSE) です。配布用exeに同梱する.NET・Windows App SDK・DuckDBなどのサードパーティ部品は、それぞれのライセンスに従います。一覧と許諾文は [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を参照してください。Windows App SDKの部品はMITではなく、Microsoftのライセンス条項が適用されます。
