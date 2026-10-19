@@ -1,0 +1,21 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!-- WiX 5 (MS-RL) builds with the .NET CLI and needs no separate EULA acceptance. -->
+  <PropertyGroup>
+    <OutputName>Something</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <!-- Supplied by scripts/publish-app.ps1 from the application project and its publish folder. -->
+    <ProductVersion Condition="'$(ProductVersion)' == ''">0.0.0</ProductVersion>
+    <PublishDir Condition="'$(PublishDir)' == ''">../artifacts/publish/win-x64</PublishDir>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
+    <!--
+      Known validation findings, reviewed for this package:
+      ICE03/ICE60 - WinUI's Microsoft.ui.xaml.dll and Microsoft.UI.Xaml.Phone.dll declare 86 languages,
+                    longer than the File.Language column; some runtime DLLs carry no language.
+                    Language only breaks ties between equal file versions.
+      ICE38/ICE43/ICE57 - the Start menu shortcut is per-machine (ALLUSERS=1) with an HKLM key path;
+                    these ICEs assume ProgramMenuFolder is per-user.
+      ICE61 - AllowSameVersionUpgrades lets a release replace its prerelease of the same MSI version.
+    -->
+    <SuppressIces>ICE03;ICE38;ICE43;ICE57;ICE60;ICE61</SuppressIces>
+  </PropertyGroup>
+</Project>

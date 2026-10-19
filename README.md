@@ -26,6 +26,10 @@ Something は Windows 向けのディスク容量分析アプリです。NTFS �
 
 スキャンはドライブ単位の手動実行です。常時監視や定期スキャンは行いません。
 
+## インストール
+
+[Releases](https://github.com/mug-lab-3/something/releases) から `Something-v<版>-win-x64.msi` を取得して実行します。`C:\Program Files\Something` に全ユーザー向けにインストールされ、スタートメニューに追加されます。インストーラーはまだコード署名していないため、Windows SmartScreen の警告が表示されます。同じリリースの `SHA256SUMS.txt` や `gh attestation verify` で、このリポジトリのワークフローで作られた配布物かを確認できます（[配布手順](docs/deployment.md#github-release)）。
+
 ## ソースから試す
 
 Git と VS Code を用意し、`code` コマンドを使える状態で、このリポジトリをクローンします。リポジトリのルートで以下を実行してください。Visual Studio は不要です。
@@ -45,7 +49,7 @@ src/Something.App/bin/Release/net10.0-windows10.0.26100.0/win-x64/Something.App.
 
 操作感を先に確認する場合は、`run-demo.bat` で合成した三ドライブのデモを起動できます。実ディスクはスキャンせず、専用の履歴にサイズ増減・追加・移動を記録します。
 
-詳しい手順は[開発環境](docs/development.md)、単一 exe の生成は[配布手順](docs/deployment.md)を参照してください。
+詳しい手順は[開発環境](docs/development.md)、MSI インストーラーの生成は[配布手順](docs/deployment.md)を参照してください。
 
 ## サイズと履歴について
 

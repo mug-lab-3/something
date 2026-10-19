@@ -9,7 +9,7 @@ Something は、Windows のローカル NTFS ドライブを解析し、フォ�
 | [開発環境](development.md) | セットアップ、VS Code、ビルド、整形、モデル変更 |
 | [画面と状態管理](user-interface.md) | タブ、並べ替え、待機表示、キャッシュ、起動 |
 | [ファイル操作](file-actions.md) | 開く、パスのコピー、ゴミ箱への移動、保護対象 |
-| [配布](deployment.md) | 開発出力と単一 exe の発行、依存ファイル |
+| [配布](deployment.md) | 開発出力、MSI インストーラーの発行、依存ファイル |
 | [日本語リソース](localization/README.md) | 文言定義、出典一覧、監査コマンド |
 
 ## 実装仕様

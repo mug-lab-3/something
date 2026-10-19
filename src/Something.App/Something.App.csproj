@@ -28,7 +28,7 @@
       CopyToOutputDirectory="PreserveNewest"
       CopyToPublishDirectory="PreserveNewest"
     />
-    <!-- Ship the project license and third-party notices inside the single-file bundle. -->
+    <!-- Install the project license and third-party notices next to the application. -->
     <Content
       Include="../../LICENSE;../../THIRD-PARTY-NOTICES.md"
       CopyToOutputDirectory="PreserveNewest"

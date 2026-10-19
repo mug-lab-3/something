@@ -47,40 +47,27 @@ jobs:
           Split-Path -Parent $dotnet | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           & ./scripts/setup-native-runtime.ps1
 
-      - name: Publish single-file application
+      - name: Publish application folder and installer
         run: ./scripts/publish-app.ps1
 
-      - name: Package application and license notices
+      - name: Record installer checksum
         run: |
           $ErrorActionPreference = 'Stop'
-          $files = @(
-              'artifacts/publish/win-x64/Something.App.exe'
-              'LICENSE'
-              'THIRD-PARTY-NOTICES.md'
-          )
-          foreach ($file in $files) {
-              if (!(Test-Path -LiteralPath $file -PathType Leaf)) {
-                  throw "Missing release file: $file"
-              }
+          $installer = Join-Path $PWD "artifacts/publish/Something-$env:RELEASE_TAG-win-x64.msi"
+          if (!(Test-Path -LiteralPath $installer -PathType Leaf)) {
+              throw "Missing release installer: $installer"
           }
-          $archive = Join-Path $PWD "artifacts/Something-$env:RELEASE_TAG-win-x64.zip"
-          Compress-Archive -LiteralPath $files -DestinationPath $archive -CompressionLevel Optimal
-          "RELEASE_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          # sha256sum format, so users can verify both the archive and the executable inside it.
+          "RELEASE_INSTALLER=$installer" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # sha256sum format, so users can verify the downloaded installer.
           $sums = Join-Path $PWD 'artifacts/SHA256SUMS.txt'
-          $lines = foreach ($file in @($archive, 'artifacts/publish/win-x64/Something.App.exe')) {
-              $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-              "$hash  $(Split-Path -Leaf $file)"
-          }
-          [IO.File]::WriteAllText($sums, ($lines -join "`n") + "`n")
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText($sums, "$hash  $(Split-Path -Leaf $installer)`n")
           "RELEASE_SUMS=$sums" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: |
-            artifacts/Something-v*-win-x64.zip
-            artifacts/publish/win-x64/Something.App.exe
+          subject-path: artifacts/publish/Something-v*-win-x64.msi
 
       # Upload directly to Releases: no Actions artifact or dependency cache is created.
       - name: Create or update GitHub Release
@@ -140,7 +127,7 @@ jobs:
                   throw "GitHub Release creation failed (exit $LASTEXITCODE)."
               }
           }
-          & gh release upload $env:RELEASE_TAG $env:RELEASE_ARCHIVE $env:RELEASE_SUMS --clobber
+          & gh release upload $env:RELEASE_TAG $env:RELEASE_INSTALLER $env:RELEASE_SUMS --clobber
           if ($LASTEXITCODE -ne 0) {
               throw "Release upload failed; the release remains a draft (exit $LASTEXITCODE)."
           }

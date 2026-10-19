@@ -1,0 +1,58 @@
+<!--
+  Per-machine installation under Program Files. The application requests elevation, so every file it
+  loads must live where only administrators can write; the MSI never places DLLs in user locations.
+  History and settings stay in each user's %LOCALAPPDATA%\Something and are not removed on uninstall.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Something"
+    Manufacturer="mug-lab-3"
+    Version="$(ProductVersion)"
+    UpgradeCode="009E77BB-F07F-4C67-9D9F-1B19D21C3C68"
+    Scope="perMachine"
+    Compressed="yes"
+  >
+    <!-- Prerelease builds share the numeric MSI version of their release, so allow same-version upgrades. -->
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of Something is already installed."
+    />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="SomethingIcon" SourceFile="$(PublishDir)\Assets\Something.ico" />
+    <Property Id="ARPPRODUCTICON" Value="SomethingIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/mug-lab-3/something" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Something" />
+    </StandardDirectory>
+
+    <Feature Id="Application" Title="Something">
+      <!-- Every published file, including LICENSE and THIRD-PARTY-NOTICES.md. -->
+      <Files Directory="INSTALLFOLDER" Include="$(PublishDir)\**" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut">
+        <Shortcut
+          Id="SomethingShortcut"
+          Name="Something"
+          Description="Local NTFS folder capacity and history"
+          Target="[INSTALLFOLDER]Something.App.exe"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="SomethingIcon"
+        />
+        <RegistryValue
+          Root="HKLM"
+          Key="Software\mug-lab-3\Something"
+          Name="StartMenuShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes"
+        />
+      </Component>
+    </StandardDirectory>
+  </Package>
+</Wix>
