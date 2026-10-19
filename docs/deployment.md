@@ -18,7 +18,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
 
 ```text
 artifacts/publish/win-x64/                         発行フォルダ（MSI の中身と同一）
-artifacts/publish/Something-v1.0.0-win-x64.msi     配布用インストーラー
+artifacts/publish/Something-v1.1.1-win-x64.msi     配布用インストーラー
 ```
 
 発行用の bin / obj / 復元結果は `artifacts/publish-build` に分離します。スクリプトはロック付き復元を行い、exe・PRI・ライセンス通知・アイコンがあり、シンボルを含まないことを検証してから前回の発行フォルダを置き換えます。失敗時は前回の出力を維持します。生成専用フォルダに手作業のファイルを置かないでください。
@@ -29,12 +29,17 @@ artifacts/publish/Something-v1.0.0-win-x64.msi     配布用インストーラ�
 
 | 項目 | 内容 |
 | --- | --- |
-| インストール先 | `C:\Program Files\Something`（全ユーザー、管理者確認あり） |
+| 画面 | 日本語。開始（名前とインストール先）→ インストールの確認 → 進捗 → 完了（起動方法と「Something を起動する」チェック、既定でオン） |
+| インストール先 | `C:\Program Files\Something`（全ユーザー、管理者確認あり。変更不可） |
 | ショートカット | スタートメニューの「Something」 |
 | 更新 | 同じ UpgradeCode の旧版を置き換える。プレリリースは同じ数値版の正式版で置き換えられる |
 | アンインストール | Windows の「インストールされているアプリ」から。`%LOCALAPPDATA%\Something` の履歴と設定は残す |
 
 MSI の版は `Something.App.csproj` の `<Version>` の数値部分です（`1.1.0-beta.1` は `1.1.0`）。UpgradeCode は全版で共通の固定値で、変更すると旧版を置き換えられなくなります。
+
+画面は WiX の UI 拡張の標準ダイアログで構成し、文言は [Strings.ja-JP.wxl](../installer/Strings.ja-JP.wxl) で上書きします。各ダイアログの文字領域は固定の大きさなので、文言は収まる長さにします。文言中の角かっこはプロパティ参照として置き換わるため、文字として使いません。チェックボックスの文字はプロパティが置き換わらないため、製品名をそのまま書きます。開始・完了画面の左側と、それ以外の画面の上部の画像（`Dialog.bmp` / `Banner.bmp`）は、[generate-installer-images.ps1](../scripts/generate-installer-images.ps1) がアプリのアイコンから生成したものをコミットしています。ライセンスの同意画面は設けません。MIT ライセンスは同意を求めるものではなく、`LICENSE` と `THIRD-PARTY-NOTICES.md` はインストール先に配置します。完了画面からの起動は、昇格していないインストーラー UI から行い、アプリ自身が UAC の確認を表示します。
+
+カレントユーザー向けのインストールは提供しません。インストール先がユーザーの書き込めるフォルダになり、管理者権限で動くアプリの DLL を差し替えられるためです。
 
 WinUI の DLL が宣言する言語数が多いことなどによる既知の ICE 検証結果は、理由を記録したうえで [Something.Installer.wixproj](../installer/Something.Installer.wixproj) で除外しています。
 

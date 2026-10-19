@@ -3,7 +3,11 @@
   loads must live where only administrators can write; the MSI never places DLLs in user locations.
   History and settings stay in each user's %LOCALAPPDATA%\Something and are not removed on uninstall.
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix
+  xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+  xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+>
   <Package
     Name="Something"
     Manufacturer="mug-lab-3"
@@ -11,6 +15,8 @@
     UpgradeCode="009E77BB-F07F-4C67-9D9F-1B19D21C3C68"
     Scope="perMachine"
     Compressed="yes"
+    Language="1041"
+    Codepage="932"
   >
     <!-- Prerelease builds share the numeric MSI version of their release, so allow same-version upgrades. -->
     <MajorUpgrade
@@ -27,6 +33,68 @@
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="Something" />
     </StandardDirectory>
+
+    <!--
+      Welcome (name and fixed location) -> ready -> progress -> finish (how to start, optional launch).
+      There is no folder choice: a user-writable location would let non-elevated processes replace
+      DLLs that the elevated application loads. There is no license dialog: the MIT license asks for
+      no acceptance, and LICENSE and THIRD-PARTY-NOTICES.md are installed with the application.
+      There is no PrepareDlg: it would show a full window during file costing and then close it
+      before the welcome page opens, which looks like the installer restarting.
+    -->
+    <UI Id="SomethingUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Normal_Size)" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Bigger_Size)" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="!(loc.Advanced_Font_FaceName)" Size="!(loc.Advanced_Font_Title_Size)" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="WelcomeDlg" />
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="1" Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2" Condition="Installed" />
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="SetLaunchTarget" Order="1" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication" Order="2" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+    </UI>
+    <UIRef Id="WixUI_Common" />
+    <!-- Localized progress and error texts; without them the progress page shows raw [1] templates. -->
+    <UIRef Id="WixUI_ErrorProgressText" />
+    <!-- Generated from the application icon by scripts/generate-installer-images.ps1. -->
+    <WixVariable Id="WixUIDialogBmp" Value="Dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="Banner.bmp" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="!(loc.LaunchApplicationText)" />
+    <!-- Formatted once INSTALLFOLDER is resolved, so the finish page shows the actual path. -->
+    <SetProperty
+      Id="WIXUI_EXITDIALOGOPTIONALTEXT"
+      Value="!(loc.ExitDialogOptionalText)"
+      After="CostFinalize"
+      Sequence="ui"
+    />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <!-- Started without elevation from the finished UI; the application itself then asks for UAC. -->
+    <CustomAction
+      Id="SetLaunchTarget"
+      Property="WixShellExecTarget"
+      Value="[INSTALLFOLDER]Something.App.exe"
+    />
+    <CustomAction
+      Id="LaunchApplication"
+      BinaryRef="Wix4UtilCA_X64"
+      DllEntry="WixShellExec"
+      Impersonate="yes"
+    />
 
     <Feature Id="Application" Title="Something">
       <!-- Every published file, including LICENSE and THIRD-PARTY-NOTICES.md. -->

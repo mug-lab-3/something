@@ -1,0 +1,19 @@
+<!--
+  Overrides of the WiX UI texts that tell users where the application goes and how to start it.
+  Dialog texts are formatted: square brackets denote properties, so literal brackets are avoided.
+  Each text must fit its fixed control: welcome description (about five lines), exit description
+  (about three lines) and exit optional text (about six lines).
+-->
+<WixLocalization Culture="ja-JP" Codepage="932" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+  <String
+    Id="WelcomeDlgDescription"
+    Value="[ProductName] をこのコンピューターのすべてのユーザー向けにインストールします。&#13;&#10;&#13;&#10;インストール先: [INSTALLFOLDER]"
+  />
+  <String Id="ExitDialogDescription" Value="[ProductName] のインストールが完了しました。" />
+  <String
+    Id="ExitDialogOptionalText"
+    Value="スタート メニューの「[ProductName]」から起動できます。起動時に管理者権限の確認が表示されます。&#13;&#10;&#13;&#10;インストール先: [INSTALLFOLDER]"
+  />
+  <!-- Check box labels are not formatted, so the product name is written literally. -->
+  <String Id="LaunchApplicationText" Value="Something を起動する" />
+</WixLocalization>

@@ -74,7 +74,8 @@ try {
     & dotnet build installer/Something.Installer.wixproj -c Release --no-restore --artifacts-path $taskBuildRoot `
         "-p:ProductVersion=$taskInstallerVersion" "-p:PublishDir=$taskStage" -o $taskInstallerStage
     if ($LASTEXITCODE -ne 0) { throw 'Installer build failed. The previous release was retained.' }
-    $taskBuiltInstaller = Join-Path $taskInstallerStage 'Something.msi'
+    # The single Japanese culture is built into a ja-JP subfolder.
+    $taskBuiltInstaller = Join-Path $taskInstallerStage 'ja-JP/Something.msi'
     if (!(Test-Path -LiteralPath $taskBuiltInstaller -PathType Leaf)) {
         throw 'Installer build produced no Something.msi. The previous release was retained.'
     }
