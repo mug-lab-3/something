@@ -45,19 +45,26 @@ public sealed partial class RecordLoadingAnimation : UserControl
             ChickMotion.TranslateX = ActiveKind switch
             {
                 LoadingAnimationKind.Inspect => 136,
-                LoadingAnimationKind.ScanDisk => 70,
+                LoadingAnimationKind.ScanDisk => 132,
                 LoadingAnimationKind.DeleteHistory => 96,
                 _ => 94,
             };
             ChickMotion.TranslateY = ActiveKind switch
             {
-                LoadingAnimationKind.ScanDisk => 40,
+                LoadingAnimationKind.ScanDisk => -20,
                 LoadingAnimationKind.DeleteHistory => 43,
                 _ => 22,
             };
             FrontSprite.Opacity = 1;
             SideSprite.Opacity = 0;
             GateReady.Opacity = ActiveKind == LoadingAnimationKind.Inspect ? 1 : 0;
+            if (ActiveKind == LoadingAnimationKind.ScanDisk)
+            {
+                CraneTravel.X = 220;
+                CraneLift.Y = 8;
+                CraneCable.ScaleY = 4;
+                CraneLeftArm.Angle = CraneRightArm.Angle = 0;
+            }
             if (ActiveKind == LoadingAnimationKind.DeleteHistory)
             {
                 DefaultChick.SetFarewellPose(true);

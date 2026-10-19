@@ -33,7 +33,13 @@
       </StackPanel>
     </StackPanel>
     <Viewbox Grid.Row="1" MaxWidth="480" MaxHeight="272">
-      <local:RecordLoadingAnimation x:Name="Animation" />
+      <Grid Width="420" Height="200">
+        <local:RecordLoadingAnimation
+          x:Name="Animation"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+        />
+      </Grid>
     </Viewbox>
     <StackPanel Grid.Row="2" Spacing="12">
       <StackPanel Orientation="Horizontal" Spacing="8">

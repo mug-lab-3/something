@@ -24,12 +24,18 @@ public sealed partial class RecordLoadingAnimation
         DiskSource.Visibility = DiskFront.Visibility = scanning
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ScanCrane.Visibility = scanning ? Visibility.Visible : Visibility.Collapsed;
+        Microsoft.UI.Xaml.Controls.Canvas.SetTop(DiskSource, scanning ? 28 : 0);
+        Microsoft.UI.Xaml.Controls.Canvas.SetTop(DiskFront, scanning ? 28 : 0);
         Width = optimizing ? 420 : 300;
-        AnimationClip.Rect = new global::Windows.Foundation.Rect(0, 0, Width, 170);
+        AnimationClip.Rect = new global::Windows.Foundation.Rect(0, 0, Width, Height);
+        // Match the DB/nest baseline while leaving room above it for the scan crane.
+        SceneOffset.Y = scanning ? 0 : 28;
         DatabaseBackMotion.X = DatabaseFrontMotion.X =
             optimizing ? 250
             : scanning ? 132
             : 0;
+        DatabaseBackMotion.Y = DatabaseFrontMotion.Y = scanning ? 28 : 0;
         Chick.Visibility = optimizing ? Visibility.Collapsed : Visibility.Visible;
         OptimizeFirst.Visibility =
             OptimizeSecond.Visibility =

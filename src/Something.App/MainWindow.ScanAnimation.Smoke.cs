@@ -22,7 +22,7 @@ public sealed partial class MainWindow
             {
                 operation.Progress = new(phase, 100, .42, TimeSpan.FromSeconds(5));
                 DisplayProgress(card, operation.Progress);
-                await Task.Delay(1450, lifetime.Token);
+                await Task.Delay(4050, lifetime.Token);
                 if (
                     RootLayout.FindName("ScanAnimation") is not null
                     || Math.Abs(
@@ -86,7 +86,7 @@ public sealed partial class MainWindow
                             "An older request restored the scan too early."
                         );
                 }
-                await Task.Delay(1450, lifetime.Token);
+                await Task.Delay(4050, lifetime.Token);
                 if (
                     ViewLoadingAnimation.ActiveKind != expected
                     || ViewLoadingTitle.Text != $"{card.Choice.Drive} スキャン中"

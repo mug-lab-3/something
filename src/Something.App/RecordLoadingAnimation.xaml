@@ -4,7 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Something.App"
   Width="300"
-  Height="170"
+  Height="200"
   IsHitTestVisible="False"
   AutomationProperties.AccessibilityView="Raw"
 >
@@ -16,7 +16,7 @@
   </UserControl.Resources>
   <Canvas>
     <Canvas.Clip>
-      <RectangleGeometry x:Name="AnimationClip" Rect="0,0,300,170" />
+      <RectangleGeometry x:Name="AnimationClip" Rect="0,0,300,200" />
     </Canvas.Clip>
     <Canvas.Resources>
       <Storyboard x:Name="Cycle" Completed="OnCycleCompleted">
@@ -132,363 +132,432 @@
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
     </Canvas.Resources>
-    <Canvas x:Name="DiskSource" Visibility="Collapsed">
-      <Rectangle
-        Canvas.Left="24"
-        Canvas.Top="94"
-        Width="108"
-        Height="34"
-        RadiusX="8"
-        RadiusY="8"
-        Fill="#9296AE"
-      />
-      <Ellipse Canvas.Left="24" Canvas.Top="112" Width="108" Height="28" Fill="#9296AE" />
-      <Ellipse
-        Canvas.Left="24"
-        Canvas.Top="80"
-        Width="108"
-        Height="30"
-        Fill="#CFD0DF"
-        Stroke="#E8E3F0"
-        StrokeThickness="2"
-      />
-      <Ellipse Canvas.Left="37" Canvas.Top="84" Width="82" Height="21" Fill="#ACADC7" />
-      <Ellipse Canvas.Left="69" Canvas.Top="90" Width="18" Height="9" Fill="#6B6684" />
-    </Canvas>
     <Canvas>
       <Canvas.RenderTransform>
-        <TranslateTransform x:Name="DatabaseBackMotion" />
+        <TranslateTransform x:Name="SceneOffset" Y="28" />
       </Canvas.RenderTransform>
-      <!-- The back of the nest sits behind the database base. -->
-      <Canvas x:Name="NestBack" Canvas.Top="55">
-        <Canvas.RenderTransform>
-          <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.1" />
-        </Canvas.RenderTransform>
-        <!-- A solid inner bowl fills the space between the database and the woven rim. -->
-        <Ellipse Canvas.Left="30" Canvas.Top="68" Width="116" Height="40" Fill="#96725E" />
+      <Canvas x:Name="ScanCrane" Canvas.ZIndex="2" Visibility="Collapsed">
         <Path
-          Data="M 30,80 C 33,55 143,55 149,80"
-          Stroke="#997467"
-          StrokeThickness="8"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-        <Path
-          Data="M 34,75 C 52,57 129,57 144,75 M 40,67 L 30,59 M 52,63 L 48,55 M 124,63 L 132,55 M 138,68 L 151,63"
-          Stroke="#C7A382"
+          Data="M 64,4 H 234"
+          Stroke="#776781"
           StrokeThickness="3"
           StrokeStartLineCap="Round"
           StrokeEndLineCap="Round"
         />
-        <Path
-          Data="M 35,71 L 27,69 M 57,61 L 65,55 M 111,61 L 107,55 M 144,75 L 155,72"
-          Stroke="#AE8871"
-          StrokeThickness="2.5"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
+        <Canvas>
+          <Canvas.RenderTransform>
+            <TranslateTransform x:Name="CraneTravel" X="78" />
+          </Canvas.RenderTransform>
+          <Rectangle
+            Canvas.Left="-10"
+            Width="20"
+            Height="8"
+            RadiusX="4"
+            RadiusY="4"
+            Fill="#C9B0E5"
+          />
+          <Rectangle Canvas.Left="-1" Canvas.Top="4" Width="2" Height="1" Fill="#B5A4C5">
+            <Rectangle.RenderTransform>
+              <ScaleTransform x:Name="CraneCable" ScaleY="4" />
+            </Rectangle.RenderTransform>
+          </Rectangle>
+          <Canvas>
+            <Canvas.RenderTransform>
+              <TranslateTransform x:Name="CraneLift" Y="8" />
+            </Canvas.RenderTransform>
+            <Path
+              Data="M -10,0 L -33,27 L -30,51 Q -28,56 -21,55"
+              Stroke="#D9C6EC"
+              StrokeThickness="4"
+              StrokeLineJoin="Round"
+              StrokeEndLineCap="Round"
+            >
+              <Path.RenderTransform>
+                <RotateTransform x:Name="CraneLeftArm" CenterX="-10" Angle="25" />
+              </Path.RenderTransform>
+            </Path>
+            <Path
+              Data="M 10,0 L 33,27 L 30,51 Q 28,56 21,55"
+              Stroke="#D9C6EC"
+              StrokeThickness="4"
+              StrokeLineJoin="Round"
+              StrokeEndLineCap="Round"
+            >
+              <Path.RenderTransform>
+                <RotateTransform x:Name="CraneRightArm" CenterX="10" Angle="-25" />
+              </Path.RenderTransform>
+            </Path>
+            <Rectangle
+              Canvas.Left="-14"
+              Canvas.Top="-4"
+              Width="28"
+              Height="12"
+              RadiusX="6"
+              RadiusY="6"
+              Fill="#A684BB"
+            />
+            <Ellipse Canvas.Left="-3" Width="6" Height="6" Fill="#E8D7EF" />
+          </Canvas>
+        </Canvas>
       </Canvas>
-      <!-- Stacked cylinders keep the database metaphor; the recessed top is the nest. -->
-      <Rectangle
-        Canvas.Left="38"
-        Canvas.Top="83"
-        Width="100"
-        Height="53"
-        Fill="{StaticResource DatabaseBrush}"
-      />
-      <Ellipse
-        Canvas.Left="38"
-        Canvas.Top="119"
-        Width="100"
-        Height="30"
-        Fill="{StaticResource DatabaseBrush}"
-      />
-      <Path
-        Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
-        Stroke="#D998C8"
-        StrokeThickness="2"
-        Opacity="0.7"
-      />
-      <Ellipse
-        Canvas.Left="38"
-        Canvas.Top="65"
-        Width="100"
-        Height="35"
-        Fill="#65365F"
-        Stroke="#E6ACD5"
-        StrokeThickness="3"
-      />
-      <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
-    </Canvas>
-    <!-- The scanner stays still while each record walks through its open arch. -->
-    <Path
-      x:Name="ScannerArch"
-      Data="M 182,132 L 182,50 Q 182,40 192,40 L 256,40 Q 266,40 266,50 L 266,132"
-      Stroke="#C9B0E5"
-      StrokeThickness="8"
-      StrokeLineJoin="Round"
-    />
-    <Ellipse
-      x:Name="ScannerLamp"
-      Canvas.Left="250"
-      Canvas.Top="43"
-      Width="7"
-      Height="7"
-      Fill="#8B709F"
-    />
-    <Ellipse
-      x:Name="GateReady"
-      Canvas.Left="250"
-      Canvas.Top="43"
-      Width="7"
-      Height="7"
-      Fill="#8CE4AD"
-      Opacity="0"
-    />
-    <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
-      <Canvas.RenderTransform>
-        <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />
-      </Canvas.RenderTransform>
-      <local:ChickFigure x:Name="DefaultChick" />
-    </Canvas>
-    <local:ChickFigure x:Name="OptimizeFirst" Canvas.Top="80" Visibility="Collapsed">
-      <local:ChickFigure.RenderTransform>
-        <CompositeTransform
-          x:Name="OptimizeFirstMotion"
-          CenterX="27"
-          CenterY="68"
-          ScaleX="1"
-          ScaleY="1"
+      <Canvas x:Name="DiskSource" Visibility="Collapsed">
+        <Rectangle
+          Canvas.Left="24"
+          Canvas.Top="94"
+          Width="108"
+          Height="34"
+          RadiusX="8"
+          RadiusY="8"
+          Fill="#9296AE"
         />
-      </local:ChickFigure.RenderTransform>
-    </local:ChickFigure>
-    <local:ChickFigure x:Name="OptimizeSecond" Canvas.Top="80" Visibility="Collapsed">
-      <local:ChickFigure.RenderTransform>
-        <CompositeTransform
-          x:Name="OptimizeSecondMotion"
-          CenterX="27"
-          CenterY="68"
-          ScaleX="1"
-          ScaleY="1"
+        <Ellipse Canvas.Left="24" Canvas.Top="112" Width="108" Height="28" Fill="#9296AE" />
+        <Ellipse
+          Canvas.Left="24"
+          Canvas.Top="80"
+          Width="108"
+          Height="30"
+          Fill="#CFD0DF"
+          Stroke="#E8E3F0"
+          StrokeThickness="2"
         />
-      </local:ChickFigure.RenderTransform>
-    </local:ChickFigure>
-    <local:ChickFigure x:Name="OptimizeThird" Canvas.Top="80" Visibility="Collapsed">
-      <local:ChickFigure.RenderTransform>
-        <CompositeTransform
-          x:Name="OptimizeThirdMotion"
-          CenterX="27"
-          CenterY="68"
-          ScaleX="1"
-          ScaleY="1"
-        />
-      </local:ChickFigure.RenderTransform>
-    </local:ChickFigure>
-    <Canvas x:Name="OptimizationConversation" Canvas.ZIndex="2" Visibility="Collapsed">
-      <Canvas x:Name="FirstTalk" Canvas.Left="28" Canvas.Top="44" Opacity="0">
-        <Path
-          Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
-          Fill="#574360"
-          Stroke="#D2B3E3"
-        />
-        <Path
-          Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
-          Stroke="#E8D7EF"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
+        <Ellipse Canvas.Left="37" Canvas.Top="84" Width="82" Height="21" Fill="#ACADC7" />
+        <Ellipse Canvas.Left="69" Canvas.Top="90" Width="18" Height="9" Fill="#6B6684" />
       </Canvas>
-      <Canvas x:Name="SecondTalk" Canvas.Left="112" Canvas.Top="10" Opacity="0">
-        <Path
-          Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
-          Fill="#574360"
-          Stroke="#D2B3E3"
-        />
-        <Path
-          Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
-          Stroke="#E8D7EF"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-      </Canvas>
-      <Canvas x:Name="ThirdTalk" Canvas.Left="216" Canvas.Top="20" Opacity="0">
-        <Path
-          Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
-          Fill="#574360"
-          Stroke="#D2B3E3"
-        />
-        <Path
-          Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
-          Stroke="#E8D7EF"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-      </Canvas>
-      <Canvas x:Name="ChickAttention" Opacity="0">
-        <TextBlock
-          Canvas.Left="40"
-          Canvas.Top="43"
-          Text="!"
-          FontSize="20"
-          FontWeight="SemiBold"
-          Foreground="#E8D7EF"
-        />
-        <TextBlock
-          Canvas.Left="129"
-          Canvas.Top="14"
-          Text="!"
-          FontSize="20"
-          FontWeight="SemiBold"
-          Foreground="#E8D7EF"
-        />
-        <TextBlock
-          Canvas.Left="224"
-          Canvas.Top="33"
-          Text="!"
-          FontSize="20"
-          FontWeight="SemiBold"
-          Foreground="#E8D7EF"
-        />
-      </Canvas>
-    </Canvas>
-    <Canvas
-      x:Name="OptimizationWhistle"
-      Canvas.Left="260"
-      Canvas.Top="5"
-      Canvas.ZIndex="2"
-      Visibility="Collapsed"
-      Opacity="0"
-    >
-      <!-- The mouthpiece faces right, while the sound travels left toward the chicks. -->
       <Canvas>
         <Canvas.RenderTransform>
-          <CompositeTransform x:Name="WhistleMotion" CenterX="18" CenterY="23" />
+          <TranslateTransform x:Name="DatabaseBackMotion" />
         </Canvas.RenderTransform>
-        <Ellipse Canvas.Top="15" Width="27" Height="24" Fill="#C9B0E5" />
-        <Path Data="M 17,16 L 33,7 L 40,15 L 24,29 Z" Fill="#C9B0E5" />
+        <!-- The back of the nest sits behind the database base. -->
+        <Canvas x:Name="NestBack" Canvas.Top="55">
+          <Canvas.RenderTransform>
+            <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.1" />
+          </Canvas.RenderTransform>
+          <!-- A solid inner bowl fills the space between the database and the woven rim. -->
+          <Ellipse Canvas.Left="30" Canvas.Top="68" Width="116" Height="40" Fill="#96725E" />
+          <Path
+            Data="M 30,80 C 33,55 143,55 149,80"
+            Stroke="#997467"
+            StrokeThickness="8"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+          <Path
+            Data="M 34,75 C 52,57 129,57 144,75 M 40,67 L 30,59 M 52,63 L 48,55 M 124,63 L 132,55 M 138,68 L 151,63"
+            Stroke="#C7A382"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+          <Path
+            Data="M 35,71 L 27,69 M 57,61 L 65,55 M 111,61 L 107,55 M 144,75 L 155,72"
+            Stroke="#AE8871"
+            StrokeThickness="2.5"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+        <!-- Stacked cylinders keep the database metaphor; the recessed top is the nest. -->
         <Rectangle
-          Canvas.Left="8"
-          Canvas.Top="20"
-          Width="10"
-          Height="5"
-          RadiusX="2"
-          RadiusY="2"
-          Fill="#745486"
+          Canvas.Left="38"
+          Canvas.Top="83"
+          Width="100"
+          Height="53"
+          Fill="{StaticResource DatabaseBrush}"
+        />
+        <Ellipse
+          Canvas.Left="38"
+          Canvas.Top="119"
+          Width="100"
+          Height="30"
+          Fill="{StaticResource DatabaseBrush}"
         />
         <Path
-          Data="M -4,15 L -12,11 M -5,24 L -18,24 M -3,32 L -11,37"
-          Stroke="#D9C6EC"
-          StrokeThickness="2.5"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
+          Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
+          Stroke="#D998C8"
+          StrokeThickness="2"
+          Opacity="0.7"
         />
+        <Ellipse
+          Canvas.Left="38"
+          Canvas.Top="65"
+          Width="100"
+          Height="35"
+          Fill="#65365F"
+          Stroke="#E6ACD5"
+          StrokeThickness="3"
+        />
+        <Ellipse Canvas.Left="48" Canvas.Top="72" Width="80" Height="21" Fill="#4F2E50" />
       </Canvas>
-      <TextBlock
-        Canvas.Left="-70"
-        Canvas.Top="8"
-        Text="ピーッ ♪"
-        FontSize="14"
-        Foreground="#D9C6EC"
-      />
-    </Canvas>
-    <Canvas x:Name="DiskFront" Visibility="Collapsed">
+      <!-- The scanner stays still while each record walks through its open arch. -->
       <Path
-        Data="M 24,95 C 24,115 132,115 132,95 L 132,126 C 132,145 24,145 24,126 Z"
-        Fill="#9296AE"
+        x:Name="ScannerArch"
+        Data="M 182,132 L 182,50 Q 182,40 192,40 L 256,40 Q 266,40 266,50 L 266,132"
+        Stroke="#C9B0E5"
+        StrokeThickness="8"
+        StrokeLineJoin="Round"
       />
-      <Path
-        Data="M 24,95 C 24,115 132,115 132,95 M 32,124 L 105,124"
-        Stroke="#C7C6D9"
-        StrokeThickness="2"
+      <Ellipse
+        x:Name="ScannerLamp"
+        Canvas.Left="250"
+        Canvas.Top="43"
+        Width="7"
+        Height="7"
+        Fill="#8B709F"
       />
-      <Ellipse Canvas.Left="115" Canvas.Top="122" Width="5" Height="5" Fill="#B8F1ED" />
-    </Canvas>
-    <Canvas>
-      <Canvas.RenderTransform>
-        <TranslateTransform x:Name="DatabaseFrontMotion" />
-      </Canvas.RenderTransform>
-      <!-- The front of the database hides the next chick until it emerges from the nest. -->
-      <Path
-        Data="M 38,82 C 38,103 138,103 138,82 L 138,134 C 138,154 38,154 38,134 Z"
-        Fill="{StaticResource DatabaseBrush}"
+      <Ellipse
+        x:Name="GateReady"
+        Canvas.Left="250"
+        Canvas.Top="43"
+        Width="7"
+        Height="7"
+        Fill="#8CE4AD"
+        Opacity="0"
       />
-      <Path Data="M 38,82 C 38,103 138,103 138,82" Stroke="#E6ACD5" StrokeThickness="3" />
-      <Path
-        Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
-        Stroke="#D998C8"
-        StrokeThickness="2"
-        Opacity="0.7"
-      />
-      <!-- The front of the nest cradles the base without covering the opening. -->
-      <Canvas x:Name="NestFront" Canvas.Top="51">
+      <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
         <Canvas.RenderTransform>
-          <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.25" />
+          <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />
         </Canvas.RenderTransform>
-        <Path
-          Data="M 29,78 C 39,99 139,99 149,78 L 145,89 C 132,111 47,111 33,89 Z"
-          Fill="#A67E68"
-        />
-        <Path
-          Data="M 30,79 C 44,101 136,101 148,79 M 36,89 C 56,109 122,109 142,89"
-          Stroke="#D5B18C"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-        <Path
-          Data="M 36,83 Q 43,92 57,98 M 55,88 Q 64,99 78,103 M 80,93 Q 89,101 102,104 M 105,91 Q 114,98 126,100 M 127,86 Q 136,91 143,94"
-          Stroke="#BF9777"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-        <Path
-          Data="M 37,91 L 27,87 M 46,99 L 37,102 M 64,104 L 58,109 M 116,104 L 122,108 M 138,94 L 151,89"
-          Stroke="#CDAA87"
-          StrokeThickness="2.5"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-        <Path
-          Data="M 39,97 C 61,111 116,111 139,97 M 44,103 L 34,106 M 75,107 L 82,110 M 103,107 L 96,110 M 133,101 L 144,105"
-          Stroke="#B68C6E"
-          StrokeThickness="2.5"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
+        <local:ChickFigure x:Name="DefaultChick" />
+      </Canvas>
+      <local:ChickFigure x:Name="OptimizeFirst" Canvas.Top="80" Visibility="Collapsed">
+        <local:ChickFigure.RenderTransform>
+          <CompositeTransform
+            x:Name="OptimizeFirstMotion"
+            CenterX="27"
+            CenterY="68"
+            ScaleX="1"
+            ScaleY="1"
+          />
+        </local:ChickFigure.RenderTransform>
+      </local:ChickFigure>
+      <local:ChickFigure x:Name="OptimizeSecond" Canvas.Top="80" Visibility="Collapsed">
+        <local:ChickFigure.RenderTransform>
+          <CompositeTransform
+            x:Name="OptimizeSecondMotion"
+            CenterX="27"
+            CenterY="68"
+            ScaleX="1"
+            ScaleY="1"
+          />
+        </local:ChickFigure.RenderTransform>
+      </local:ChickFigure>
+      <local:ChickFigure x:Name="OptimizeThird" Canvas.Top="80" Visibility="Collapsed">
+        <local:ChickFigure.RenderTransform>
+          <CompositeTransform
+            x:Name="OptimizeThirdMotion"
+            CenterX="27"
+            CenterY="68"
+            ScaleX="1"
+            ScaleY="1"
+          />
+        </local:ChickFigure.RenderTransform>
+      </local:ChickFigure>
+      <Canvas x:Name="OptimizationConversation" Canvas.ZIndex="2" Visibility="Collapsed">
+        <Canvas x:Name="FirstTalk" Canvas.Left="28" Canvas.Top="44" Opacity="0">
+          <Path
+            Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
+            Fill="#574360"
+            Stroke="#D2B3E3"
+          />
+          <Path
+            Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
+            Stroke="#E8D7EF"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+        <Canvas x:Name="SecondTalk" Canvas.Left="112" Canvas.Top="10" Opacity="0">
+          <Path
+            Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
+            Fill="#574360"
+            Stroke="#D2B3E3"
+          />
+          <Path
+            Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
+            Stroke="#E8D7EF"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+        <Canvas x:Name="ThirdTalk" Canvas.Left="216" Canvas.Top="20" Opacity="0">
+          <Path
+            Data="M 0,0 H 32 Q 36,0 36,5 V 17 Q 36,22 31,22 H 15 L 8,28 L 9,22 H 5 Q 0,22 0,17 Z"
+            Fill="#574360"
+            Stroke="#D2B3E3"
+          />
+          <Path
+            Data="M 9,11 H 11 M 17,11 H 19 M 25,11 H 27"
+            Stroke="#E8D7EF"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+        <Canvas x:Name="ChickAttention" Opacity="0">
+          <TextBlock
+            Canvas.Left="40"
+            Canvas.Top="43"
+            Text="!"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Foreground="#E8D7EF"
+          />
+          <TextBlock
+            Canvas.Left="129"
+            Canvas.Top="14"
+            Text="!"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Foreground="#E8D7EF"
+          />
+          <TextBlock
+            Canvas.Left="224"
+            Canvas.Top="33"
+            Text="!"
+            FontSize="20"
+            FontWeight="SemiBold"
+            Foreground="#E8D7EF"
+          />
+        </Canvas>
+      </Canvas>
+      <Canvas
+        x:Name="OptimizationWhistle"
+        Canvas.Left="260"
+        Canvas.Top="5"
+        Canvas.ZIndex="2"
+        Visibility="Collapsed"
+        Opacity="0"
+      >
+        <!-- The mouthpiece faces right, while the sound travels left toward the chicks. -->
+        <Canvas>
+          <Canvas.RenderTransform>
+            <CompositeTransform x:Name="WhistleMotion" CenterX="18" CenterY="23" />
+          </Canvas.RenderTransform>
+          <Ellipse Canvas.Top="15" Width="27" Height="24" Fill="#C9B0E5" />
+          <Path Data="M 17,16 L 33,7 L 40,15 L 24,29 Z" Fill="#C9B0E5" />
+          <Rectangle
+            Canvas.Left="8"
+            Canvas.Top="20"
+            Width="10"
+            Height="5"
+            RadiusX="2"
+            RadiusY="2"
+            Fill="#745486"
+          />
+          <Path
+            Data="M -4,15 L -12,11 M -5,24 L -18,24 M -3,32 L -11,37"
+            Stroke="#D9C6EC"
+            StrokeThickness="2.5"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+        <TextBlock
+          Canvas.Left="-70"
+          Canvas.Top="8"
+          Text="ピーッ ♪"
+          FontSize="14"
+          Foreground="#D9C6EC"
         />
       </Canvas>
-    </Canvas>
-    <Canvas
-      x:Name="Farewell"
-      Canvas.Left="174"
-      Canvas.Top="27"
-      Canvas.ZIndex="2"
-      Visibility="Collapsed"
-      Opacity="0"
-    >
-      <Path
-        Data="M 0,0 H 76 Q 82,0 82,6 V 23 Q 82,29 76,29 H 28 L 18,37 L 20,29 H 6 Q 0,29 0,23 Z"
-        Fill="#574360"
-        Stroke="#D2B3E3"
-      />
-      <TextBlock
-        Canvas.Left="10"
-        Canvas.Top="4"
-        Text="じゃっ！"
-        FontSize="14"
-        FontWeight="SemiBold"
-        Foreground="#E8D7EF"
-      />
-    </Canvas>
-    <Canvas x:Name="ScanBeam" Canvas.Left="187" Canvas.Top="55" Opacity="0">
-      <Canvas.RenderTransform>
-        <TranslateTransform x:Name="ScanBeamMotion" />
-      </Canvas.RenderTransform>
-      <Rectangle Width="74" Height="6" RadiusX="3" RadiusY="3" Fill="#309DE4E3" Canvas.Top="-2" />
-      <Rectangle Width="74" Height="2" RadiusX="1" RadiusY="1" Fill="#B8F1ED" />
+      <Canvas x:Name="DiskFront" Visibility="Collapsed">
+        <Path
+          Data="M 24,95 C 24,115 132,115 132,95 L 132,126 C 132,145 24,145 24,126 Z"
+          Fill="#9296AE"
+        />
+        <Path
+          Data="M 24,95 C 24,115 132,115 132,95 M 32,124 L 105,124"
+          Stroke="#C7C6D9"
+          StrokeThickness="2"
+        />
+        <Ellipse Canvas.Left="115" Canvas.Top="122" Width="5" Height="5" Fill="#B8F1ED" />
+      </Canvas>
+      <Canvas>
+        <Canvas.RenderTransform>
+          <TranslateTransform x:Name="DatabaseFrontMotion" />
+        </Canvas.RenderTransform>
+        <!-- The front of the database hides the next chick until it emerges from the nest. -->
+        <Path
+          Data="M 38,82 C 38,103 138,103 138,82 L 138,134 C 138,154 38,154 38,134 Z"
+          Fill="{StaticResource DatabaseBrush}"
+        />
+        <Path Data="M 38,82 C 38,103 138,103 138,82" Stroke="#E6ACD5" StrokeThickness="3" />
+        <Path
+          Data="M 38,104 C 38,123 138,123 138,104 M 38,122 C 38,141 138,141 138,122"
+          Stroke="#D998C8"
+          StrokeThickness="2"
+          Opacity="0.7"
+        />
+        <!-- The front of the nest cradles the base without covering the opening. -->
+        <Canvas x:Name="NestFront" Canvas.Top="51">
+          <Canvas.RenderTransform>
+            <ScaleTransform CenterX="88" CenterY="110" ScaleX="1.15" ScaleY="1.25" />
+          </Canvas.RenderTransform>
+          <Path
+            Data="M 29,78 C 39,99 139,99 149,78 L 145,89 C 132,111 47,111 33,89 Z"
+            Fill="#A67E68"
+          />
+          <Path
+            Data="M 30,79 C 44,101 136,101 148,79 M 36,89 C 56,109 122,109 142,89"
+            Stroke="#D5B18C"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+          <Path
+            Data="M 36,83 Q 43,92 57,98 M 55,88 Q 64,99 78,103 M 80,93 Q 89,101 102,104 M 105,91 Q 114,98 126,100 M 127,86 Q 136,91 143,94"
+            Stroke="#BF9777"
+            StrokeThickness="3"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+          <Path
+            Data="M 37,91 L 27,87 M 46,99 L 37,102 M 64,104 L 58,109 M 116,104 L 122,108 M 138,94 L 151,89"
+            Stroke="#CDAA87"
+            StrokeThickness="2.5"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+          <Path
+            Data="M 39,97 C 61,111 116,111 139,97 M 44,103 L 34,106 M 75,107 L 82,110 M 103,107 L 96,110 M 133,101 L 144,105"
+            Stroke="#B68C6E"
+            StrokeThickness="2.5"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
+      </Canvas>
+      <Canvas
+        x:Name="Farewell"
+        Canvas.Left="174"
+        Canvas.Top="27"
+        Canvas.ZIndex="2"
+        Visibility="Collapsed"
+        Opacity="0"
+      >
+        <Path
+          Data="M 0,0 H 76 Q 82,0 82,6 V 23 Q 82,29 76,29 H 28 L 18,37 L 20,29 H 6 Q 0,29 0,23 Z"
+          Fill="#574360"
+          Stroke="#D2B3E3"
+        />
+        <TextBlock
+          Canvas.Left="10"
+          Canvas.Top="4"
+          Text="じゃっ！"
+          FontSize="14"
+          FontWeight="SemiBold"
+          Foreground="#E8D7EF"
+        />
+      </Canvas>
+      <Canvas x:Name="ScanBeam" Canvas.Left="187" Canvas.Top="55" Opacity="0">
+        <Canvas.RenderTransform>
+          <TranslateTransform x:Name="ScanBeamMotion" />
+        </Canvas.RenderTransform>
+        <Rectangle Width="74" Height="6" RadiusX="3" RadiusY="3" Fill="#309DE4E3" Canvas.Top="-2" />
+        <Rectangle Width="74" Height="2" RadiusX="1" RadiusY="1" Fill="#B8F1ED" />
+      </Canvas>
     </Canvas>
   </Canvas>
 </UserControl>

@@ -2,6 +2,45 @@ namespace Something.App;
 
 public sealed partial class RecordLoadingAnimation
 {
+    internal void VerifyScanPose(double seconds)
+    {
+        if (
+            ActiveKind != LoadingAnimationKind.ScanDisk
+            || ScanCrane.Visibility != Microsoft.UI.Xaml.Visibility.Visible
+            || ChickMotion.ScaleX != 1
+            || ChickMotion.ScaleY != 1
+            || SideSprite.Opacity != 0
+        )
+            throw new InvalidOperationException(
+                "Crane scan did not preserve the full-size front-facing chick."
+            );
+        if (
+            seconds is >= 1.6 and <= 2.45
+            && (
+                Math.Abs(61 + ChickMotion.TranslateX + 27 - CraneTravel.X) > .1
+                || Math.Abs(38 + ChickMotion.TranslateY - CraneLift.Y - 10) > .1
+                || CraneLeftArm.Angle != 0
+                || CraneRightArm.Angle != 0
+                || Chick.Opacity < .99
+            )
+        )
+            throw new InvalidOperationException(
+                "The closed crane did not carry the chick with it."
+            );
+        if (
+            seconds == 2.8
+            && (
+                CraneLeftArm.Angle < 24
+                || CraneRightArm.Angle > -24
+                || CraneTravel.X != 220
+                || ChickMotion.TranslateY <= -20
+            )
+        )
+            throw new InvalidOperationException("The crane did not release the chick over the DB.");
+        if (seconds >= 3.7 && Chick.Opacity != 0)
+            throw new InvalidOperationException("The chick did not finish falling into the DB.");
+    }
+
     internal void VerifySettledPose()
     {
         if (IsPlaying)
@@ -158,7 +197,11 @@ public sealed partial class RecordLoadingAnimation
     internal void VerifyDepartureAccessoriesHidden()
     {
         if (
-            DefaultChick.HasBackpack
+            (
+                ActiveKind != LoadingAnimationKind.ScanDisk
+                && ScanCrane.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+            )
+            || DefaultChick.HasBackpack
             || DefaultChick.RaisedWing.Opacity != 0
             || Farewell.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
             || OptimizationChicks.Any(chick => chick.Figure.HasBackpack)

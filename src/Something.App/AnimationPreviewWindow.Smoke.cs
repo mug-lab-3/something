@@ -18,6 +18,7 @@ public sealed partial class AnimationPreviewWindow
                     throw new InvalidOperationException("Standalone preview did not start.");
                 double[] frames = index switch
                 {
+                    1 => [.55, .98, 1.6, 2.45, 2.8, 3.2, 3.7],
                     2 => [.4, 1.5, 2.5, 3.08],
                     3 => [.4, 1.15, 2.5, 2.86, 3.85, 4.8],
                     _ => [.6],
@@ -30,6 +31,8 @@ public sealed partial class AnimationPreviewWindow
                         Animation.VerifyOptimizationPose(frame);
                     else if (index == 2)
                         Animation.VerifyDeletionPose(frame);
+                    else if (index == 1)
+                        Animation.VerifyScanPose(frame);
                     if (index != 2)
                         Animation.VerifyDepartureAccessoriesHidden();
                     await CaptureAsync($"{path}.{index}-{frame:F2}.png");
