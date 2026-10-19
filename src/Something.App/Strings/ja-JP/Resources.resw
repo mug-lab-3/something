@@ -1,0 +1,2953 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <data name="AnimationPreviewWindow_TextBlock_Text" xml:space="preserve">
+    <value>アニメーションプレビュー</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:20 TextBlock.Text</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content" xml:space="preserve">
+    <value>読み込み</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:23 ComboBoxItem.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content_2" xml:space="preserve">
+    <value>スキャン</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:24 ComboBoxItem.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content_3" xml:space="preserve">
+    <value>履歴削除</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:25 ComboBoxItem.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content_4" xml:space="preserve">
+    <value>DB最適化</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:26 ComboBoxItem.Content
+src/Something.App/HistoryManagementView.xaml.cs:574 DeleteCoreAsync</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content_5" xml:space="preserve">
+    <value>ダーク</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:29 ComboBoxItem.Content
+src/Something.App/MainWindow.Notifications.Smoke.cs:49 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="AnimationPreviewWindow_ComboBoxItem_Content_6" xml:space="preserve">
+    <value>ライト</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:30 ComboBoxItem.Content
+src/Something.App/MainWindow.Notifications.Smoke.cs:49 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="AnimationPreviewWindow_StaticBox_Content" xml:space="preserve">
+    <value>静止表示</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:32 StaticBox.Content
+src/Something.App/AnimationPreviewWindow.xaml.cs:44 Restart</comment>
+  </data>
+  <data name="AnimationPreviewWindow_Button_Content" xml:space="preserve">
+    <value>最初から再生</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:46 Button.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_PauseButton_Content" xml:space="preserve">
+    <value>一時停止</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:47 PauseButton.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_Button_Content_2" xml:space="preserve">
+    <value>区切りまで再生して停止</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:48 Button.Content</comment>
+  </data>
+  <data name="AnimationPreviewWindow_StateText_Text" xml:space="preserve">
+    <value>再生中</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml:52 StateText.Text
+src/Something.App/AnimationPreviewWindow.xaml.cs:44 Restart
+src/Something.App/AnimationPreviewWindow.xaml.cs:63 OnPause</comment>
+  </data>
+  <data name="AnimationPreviewWindow_AnimationPreviewWindow" xml:space="preserve">
+    <value>Something · アニメーションプレビュー</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml.cs:15 AnimationPreviewWindow</comment>
+  </data>
+  <data name="AnimationPreviewWindow_OnPause" xml:space="preserve">
+    <value>一時停止中</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml.cs:63 OnPause</comment>
+  </data>
+  <data name="AnimationPreviewWindow_OnFinish" xml:space="preserve">
+    <value>停止</value>
+    <comment>src/Something.App/AnimationPreviewWindow.xaml.cs:75 OnFinish</comment>
+  </data>
+  <data name="ColumnHeaders_Update" xml:space="preserve">
+    <value> ▼</value>
+    <comment>src/Something.App/ColumnHeaders.cs:15 Update</comment>
+  </data>
+  <data name="ColumnHeaders_Update_2" xml:space="preserve">
+    <value> ▲</value>
+    <comment>src/Something.App/ColumnHeaders.cs:16 Update</comment>
+  </data>
+  <data name="ColumnHeaders_Update_3" xml:space="preserve">
+    <value>昇順</value>
+    <comment>src/Something.App/ColumnHeaders.cs:20 Update
+src/Something.App/ColumnHeaders.cs:25 Update</comment>
+  </data>
+  <data name="ColumnHeaders_Update_4" xml:space="preserve">
+    <value>降順</value>
+    <comment>src/Something.App/ColumnHeaders.cs:21 Update
+src/Something.App/ColumnHeaders.cs:25 Update</comment>
+  </data>
+  <data name="ColumnHeaders_Update_5" xml:space="preserve">
+    <value>並べ替え</value>
+    <comment>src/Something.App/ColumnHeaders.cs:22 Update</comment>
+  </data>
+  <data name="ColumnHeaders_Update_6" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>src/Something.App/ColumnHeaders.cs:25 Update
+{0} = label
+{1} = (descending ? "降順" : "昇順")</comment>
+  </data>
+  <data name="ColumnHeaders_Update_7" xml:space="preserve">
+    <value>クリックして{0}で{1}</value>
+    <comment>src/Something.App/ColumnHeaders.cs:27 Update
+{0} = label
+{1} = next</comment>
+  </data>
+  <data name="DelayedLoadingRegion_TextBlock_Text" xml:space="preserve">
+    <value>読み込んでいます…</value>
+    <comment>src/Something.App/DelayedLoadingRegion.xaml:25 TextBlock.Text</comment>
+  </data>
+  <data name="DisplayModels_NameDescription" xml:space="preserve">
+    <value>{0} → {1}</value>
+    <comment>src/Something.App/DisplayModels.cs:25 NameDescription
+{0} = DisplayText.Escape(before.Name)
+{1} = DisplayText.Escape(after.Name)</comment>
+  </data>
+  <data name="Common_Folder" xml:space="preserve">
+    <value>フォルダ</value>
+    <comment>src/Something.App/DisplayModels.cs:27 Kind
+src/Something.App/FileAttributeIcon.xaml.cs:79 UpdatePresentation
+src/Something.App/MainWindow.Sorting.cs:35 UpdateSortHeaders
+src/Something.App/MainWindow.xaml:230 TextBlock.Text
+src/Something.App/MainWindow.xaml:557 AnalysisNameHeader.Content
+src/Something.App/MainWindow.xaml.cs:1833 PublishAnalysis</comment>
+  </data>
+  <data name="Common_File" xml:space="preserve">
+    <value>ファイル</value>
+    <comment>src/Something.App/DisplayModels.cs:27 Kind
+src/Something.App/FileAttributeIcon.xaml.cs:79 UpdatePresentation
+src/Something.App/MainWindow.xaml:75 TabViewItem.AutomationProperties.Name
+src/Something.App/MainWindow.xaml:88 TextBlock.Text</comment>
+  </data>
+  <data name="DisplayModels_Size" xml:space="preserve">
+    <value>—</value>
+    <comment>src/Something.App/DisplayModels.cs:33 Size
+src/Something.App/DisplayModels.cs:186 Description
+src/Something.App/DisplayModels.cs:200 Endpoint
+src/Something.App/DriveCard.xaml.cs:115 SetResult
+src/Something.App/HistoryManagementView.xaml:58 FromValueText.Text
+src/Something.App/HistoryManagementView.xaml:96 EndValueText.Text
+src/Something.App/HistoryManagementView.xaml.cs:292 UpdateRangeText
+src/Something.App/HistorySelectionDialog.xaml.cs:20 CountText</comment>
+  </data>
+  <data name="DisplayModels_Size_2" xml:space="preserve">
+    <value> *</value>
+    <comment>src/Something.App/DisplayModels.cs:37 Size
+src/Something.App/DisplayModels.cs:98 Size</comment>
+  </data>
+  <data name="DisplayModels_SizeDescription" xml:space="preserve">
+    <value>比較前：{0}
+サイズ：{1}
+増減：{2}（比較後 − 比較前）</value>
+    <comment>src/Something.App/DisplayModels.cs:49 SizeDescription
+{0} = BeforeSize
+{1} = Size
+{2} = Delta
+src/Something.App/DisplayModels.cs:103 SizeDescription
+{0} = BeforeSize
+{1} = Size
+{2} = Delta</comment>
+  </data>
+  <data name="DisplayModels_SizeDescription_2" xml:space="preserve">
+    <value>ディスク上の割り当て容量</value>
+    <comment>src/Something.App/DisplayModels.cs:50 SizeDescription
+src/Something.App/DisplayModels.cs:104 SizeDescription</comment>
+  </data>
+  <data name="DisplayModels_SizeDescription_3" xml:space="preserve">
+    <value>。容量が未解決の項目があります。未解決分は表示値に含まれません</value>
+    <comment>src/Something.App/DisplayModels.cs:54 SizeDescription</comment>
+  </data>
+  <data name="DisplayModels_SizeDescription_4" xml:space="preserve">
+    <value>。名前集合が未確定です</value>
+    <comment>src/Something.App/DisplayModels.cs:57 SizeDescription</comment>
+  </data>
+  <data name="DisplayModels_ToString" xml:space="preserve">
+    <value>最新 · </value>
+    <comment>src/Something.App/DisplayModels.cs:116 ToString</comment>
+  </data>
+  <data name="DisplayModels_YyyyMMDdHHMmSs" xml:space="preserve">
+    <value>yyyy/MM/dd HH:mm:ss</value>
+    <comment>src/Something.App/DisplayModels.cs:117 ToString
+src/Something.App/DriveCard.xaml.cs:120 SetResult
+src/Something.App/HistoryManagementView.xaml.cs:9 CompletedText
+src/Something.App/HistoryManagementView.xaml.cs:288 UpdateRangeText
+src/Something.App/HistoryManagementView.xaml.cs:291 UpdateRangeText
+src/Something.App/HistorySelectionDialog.xaml.cs:14 TimeText
+src/Something.App/MainWindow.xaml.cs:790 ShowSessionAsync</comment>
+  </data>
+  <data name="DisplayModels_ChangeDescription" xml:space="preserve">
+    <value>容量が増加</value>
+    <comment>src/Something.App/DisplayModels.cs:176 ChangeDescription</comment>
+  </data>
+  <data name="DisplayModels_ChangeDescription_2" xml:space="preserve">
+    <value>容量が減少</value>
+    <comment>src/Something.App/DisplayModels.cs:177 ChangeDescription</comment>
+  </data>
+  <data name="DisplayModels_ChangeDescription_3" xml:space="preserve">
+    <value>変化なし</value>
+    <comment>src/Something.App/DisplayModels.cs:178 ChangeDescription</comment>
+  </data>
+  <data name="DisplayModels_ChangeDescription_4" xml:space="preserve">
+    <value>比較不能</value>
+    <comment>src/Something.App/DisplayModels.cs:180 ChangeDescription
+src/Something.App/DisplayModels.cs:213 Change</comment>
+  </data>
+  <data name="DisplayModels_Description" xml:space="preserve">
+    <value>
+サイズ：{0}</value>
+    <comment>src/Something.App/DisplayModels.cs:186 Description
+{0} = (Comparing &amp;&amp; Comparison is { AfterPath: null } ? "—" : DisplayText.Bytes(AllocatedBytes))</comment>
+  </data>
+  <data name="DisplayModels_Description_2" xml:space="preserve">
+    <value>（既知分。未解決容量を含みません）</value>
+    <comment>src/Something.App/DisplayModels.cs:188 Description</comment>
+  </data>
+  <data name="DisplayModels_Description_3" xml:space="preserve">
+    <value>
+比較前：{0}
+増減：{1}</value>
+    <comment>src/Something.App/DisplayModels.cs:191 Description
+{0} = DisplayText.Endpoint(Comparison?.BeforeAllocatedBytes, Comparison?.BeforePath is not null)
+{1} = Change</comment>
+  </data>
+  <data name="DisplayModels_Change" xml:space="preserve">
+    <value>+</value>
+    <comment>src/Something.App/DisplayModels.cs:205 Change</comment>
+  </data>
+  <data name="DisplayModels_Change_2" xml:space="preserve">
+    <value>−</value>
+    <comment>src/Something.App/DisplayModels.cs:206 Change</comment>
+  </data>
+  <data name="DisplayModels_Change_3" xml:space="preserve">
+    <value>±</value>
+    <comment>src/Something.App/DisplayModels.cs:207 Change</comment>
+  </data>
+  <data name="DisplayModels_Change_4" xml:space="preserve">
+    <value>前の記録なし</value>
+    <comment>src/Something.App/DisplayModels.cs:211 Change</comment>
+  </data>
+  <data name="DisplayModels_Change_5" xml:space="preserve">
+    <value>後の記録なし</value>
+    <comment>src/Something.App/DisplayModels.cs:212 Change</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio" xml:space="preserve">
+    <value>B</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_2" xml:space="preserve">
+    <value>KiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_3" xml:space="preserve">
+    <value>MiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_4" xml:space="preserve">
+    <value>GiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_5" xml:space="preserve">
+    <value>TiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_6" xml:space="preserve">
+    <value>PiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_7" xml:space="preserve">
+    <value>EiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_8" xml:space="preserve">
+    <value>ZiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_9" xml:space="preserve">
+    <value>YiB</value>
+    <comment>src/Something.App/DisplayModels.cs:218 CapacityRatio
+src/Something.App/DisplayModels.cs:243 Bytes</comment>
+  </data>
+  <data name="DisplayModels_CapacityRatio_10" xml:space="preserve">
+    <value>{0} / {1} {2}</value>
+    <comment>src/Something.App/DisplayModels.cs:229 CapacityRatio
+{0} = ((double)used / divisor).ToString(format, CultureInfo.CurrentCulture)
+{1} = size.ToString(format, CultureInfo.CurrentCulture)
+{2} = units[unit]</comment>
+  </data>
+  <data name="DisplayModels_Bytes" xml:space="preserve">
+    <value>未解決</value>
+    <comment>src/Something.App/DisplayModels.cs:242 Bytes</comment>
+  </data>
+  <data name="DisplayModels_Bytes_2" xml:space="preserve">
+    <value>{0} {1}</value>
+    <comment>src/Something.App/DisplayModels.cs:251 Bytes
+{0} = size.ToString(unit == 0 ? "N0" : "N2", CultureInfo.CurrentCulture)
+{1} = units[unit]
+src/Something.App/DriveCard.xaml.cs:53 SetBusy
+{0} = Choice.Drive
+{1} = label</comment>
+  </data>
+  <data name="DriveCard_ScanStateText_Text" xml:space="preserve">
+    <value>未スキャン</value>
+    <comment>src/Something.App/DriveCard.xaml:76 ScanStateText.Text
+src/Something.App/DriveCard.xaml.cs:114 SetResult
+src/Something.App/DriveCard.xaml.cs:119 SetResult
+src/Something.App/MainWindow.DatabaseSettings.cs:251 ReleaseDatabaseViewsAsync
+src/Something.App/MainWindow.HistoryManagement.cs:334 RefreshAfterHistoryDeletionAsync
+src/Something.App/MainWindow.xaml:340 PathText.Text
+src/Something.App/MainWindow.xaml.cs:769 SelectDriveAsync</comment>
+  </data>
+  <data name="DriveCard_ScanIconButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>スキャン開始</value>
+    <comment>src/Something.App/DriveCard.xaml:102 ScanIconButton.ToolTipService.ToolTip
+src/Something.App/DriveCard.xaml:103 ScanIconButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="DriveCard_DriveCard" xml:space="preserve">
+    <value>{0} {1} · NTFS</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:32 DriveCard
+{0} = choice.Drive
+{1} = DisplayText.Escape(choice.Label)</comment>
+  </data>
+  <data name="DriveCard_SetBusy" xml:space="preserve">
+    <value>スキャンをキャンセル</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:49 SetBusy</comment>
+  </data>
+  <data name="DriveCard_SetBusy_2" xml:space="preserve">
+    <value>このドライブをスキャン</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:49 SetBusy</comment>
+  </data>
+  <data name="DriveCard_SetDemoNextStage" xml:space="preserve">
+    <value>{0} 次のデモスキャン：{1}</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:60 SetDemoNextStage
+{0} = Choice.Drive
+{1} = DemoScanScenario.Describe(stage)</comment>
+  </data>
+  <data name="DriveCard_RefreshVolume" xml:space="preserve">
+    <value>空き {0}</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:83 RefreshVolume
+{0} = DisplayText.Bytes((UInt128)current.Free.Value)</comment>
+  </data>
+  <data name="DriveCard_RefreshVolume_2" xml:space="preserve">
+    <value>使用中 {0} / 合計 {1}</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:86 RefreshVolume
+{0} = DisplayText.Bytes(used)
+{1} = DisplayText.Bytes((UInt128)current.Total.Value)</comment>
+  </data>
+  <data name="DriveCard_RefreshVolume_3" xml:space="preserve">
+    <value>ドライブ容量を取得できません</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:92 RefreshVolume</comment>
+  </data>
+  <data name="DriveCard_RefreshVolume_4" xml:space="preserve">
+    <value>空き容量 不明</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:93 RefreshVolume</comment>
+  </data>
+  <data name="DriveCard_SetSelected" xml:space="preserve">
+    <value>{0} {1}{2}</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:107 SetSelected
+{0} = Choice.Drive
+{1} = Choice.Label
+{2} = (selected ? " 選択中" : "")</comment>
+  </data>
+  <data name="DriveCard_SetSelected_2" xml:space="preserve">
+    <value> 選択中</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:107 SetSelected</comment>
+  </data>
+  <data name="DriveCard_SetResult" xml:space="preserve">
+    <value>✓ スキャン済み ({0:F1}秒) · {1}件</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:115 SetResult
+{0} = result.Elapsed.TotalSeconds
+{1} = result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"</comment>
+  </data>
+  <data name="DriveCard_SetResult_2" xml:space="preserve">
+    <value>{0}
+処理時間 {1:F1}秒 · 管理領域未解決 {2:N0}
+取得時点の観測です。</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:120 SetResult
+{0} = result.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"
+{1} = result.Elapsed.TotalSeconds
+{2} = result.MetadataUnresolved</comment>
+  </data>
+  <data name="DriveCard_SetResult_3" xml:space="preserve">
+    <value>今回のスキャン</value>
+    <comment>src/Something.App/DriveCard.xaml.cs:120 SetResult
+src/Something.App/MainWindow.xaml.cs:790 ShowSessionAsync</comment>
+  </data>
+  <data name="FileAttributeIcon_UpdatePresentation" xml:space="preserve">
+    <value>{0}（属性不明）</value>
+    <comment>src/Something.App/FileAttributeIcon.xaml.cs:81 UpdatePresentation
+{0} = kind</comment>
+  </data>
+  <data name="FileAttributeIcon_UpdatePresentation_2" xml:space="preserve">
+    <value>システム・隠し{0}</value>
+    <comment>src/Something.App/FileAttributeIcon.xaml.cs:84 UpdatePresentation
+{0} = kind</comment>
+  </data>
+  <data name="FileAttributeIcon_UpdatePresentation_3" xml:space="preserve">
+    <value>隠し{0}</value>
+    <comment>src/Something.App/FileAttributeIcon.xaml.cs:85 UpdatePresentation
+{0} = kind</comment>
+  </data>
+  <data name="FileAttributeIcon_UpdatePresentation_4" xml:space="preserve">
+    <value>システム{0}</value>
+    <comment>src/Something.App/FileAttributeIcon.xaml.cs:86 UpdatePresentation
+{0} = kind</comment>
+  </data>
+  <data name="FolderEntryCollection_ATotalEntryCountIsRequired" xml:space="preserve">
+    <value>項目の総件数が必要です。</value>
+    <comment>src/Something.App/FolderEntryCollection.cs:38 FolderEntryCollection
+Original: A total entry count is required.</comment>
+  </data>
+  <data name="FolderEntryCollection_TotalCountText" xml:space="preserve">
+    <value>{0:N0} 件</value>
+    <comment>src/Something.App/FolderEntryCollection.cs:45 TotalCountText
+{0} = totalCount
+src/Something.App/FolderEntryCollection.cs:49 CountDescription
+{0} = totalCount</comment>
+  </data>
+  <data name="FolderEntryCollection_CountDescription" xml:space="preserve">
+    <value>{0:N0} 件 · {1:N0} 件読み込み済み</value>
+    <comment>src/Something.App/FolderEntryCollection.cs:48 CountDescription
+{0} = totalCount
+{1} = Count</comment>
+  </data>
+  <data name="HistoryDeleteDialog_ContentDialog_PrimaryButtonText" xml:space="preserve">
+    <value>削除する</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml:7 ContentDialog.PrimaryButtonText</comment>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>キャンセル</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml:8 ContentDialog.CloseButtonText
+src/Something.App/HistoryOptimizeDialog.xaml:7 ContentDialog.CloseButtonText
+src/Something.App/HistorySelectionDialog.xaml:7 ContentDialog.CloseButtonText
+src/Something.App/MainWindow.DatabaseSettings.cs:127 ConfirmDeleteDatabaseAsync
+src/Something.App/MainWindow.FileActions.cs:189 ConfirmRecycleAsync
+src/Something.App/SettingsDialog.xaml:7 ContentDialog.CloseButtonText</comment>
+  </data>
+  <data name="HistoryDeleteDialog_TextBlock_Text" xml:space="preserve">
+    <value>この操作は元に戻せません。実ファイルは削除されません。</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml:17 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryDeleteDialog_OptimizeAfterDelete_Content" xml:space="preserve">
+    <value>削除後にDBを最適化する</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml:19 OptimizeAfterDelete.Content</comment>
+  </data>
+  <data name="HistoryDeleteDialog_TextBlock_Text_2" xml:space="preserve">
+    <value>全ドライブ共通の履歴DBを詰め直します。追加の空き容量が必要で、処理に時間がかかる場合があります。</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml:23 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryDeleteDialog_HistoryDeleteDialog" xml:space="preserve">
+    <value>{0:N0}件のスキャン履歴を削除しますか？</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml.cs:17 HistoryDeleteDialog
+{0} = rows.Length</comment>
+  </data>
+  <data name="HistoryDeleteDialog_YyyyMMDdHHMmSsYyyyMMDd" xml:space="preserve">
+    <value>{0:yyyy/MM/dd HH:mm:ss} – {1:yyyy/MM/dd HH:mm:ss}</value>
+    <comment>src/Something.App/HistoryDeleteDialog.xaml.cs:19 HistoryDeleteDialog
+{0} = rows.Min(row =&gt; row.CompletedUtc).ToLocalTime()
+{1} = rows.Max(row =&gt; row.CompletedUtc).ToLocalTime()</comment>
+  </data>
+  <data name="HistoryManagementView_FromRangeButton_AutomationProperties_Name" xml:space="preserve">
+    <value>範囲の開始日時</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:53 FromRangeButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_FromRangeButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>範囲の開始日時を編集</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:54 FromRangeButton.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="HistoryManagementView_FromDate_PlaceholderText" xml:space="preserve">
+    <value>日付を選択</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:67 FromDate.PlaceholderText
+src/Something.App/HistoryManagementView.xaml:105 EndDate.PlaceholderText</comment>
+  </data>
+  <data name="HistoryManagementView_FromDate_AutomationProperties_Name" xml:space="preserve">
+    <value>開始日</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:68 FromDate.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_FromTime_AutomationProperties_Name" xml:space="preserve">
+    <value>開始時刻</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:74 FromTime.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_TextBlock_Text" xml:space="preserve">
+    <value>–</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:81 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_EndRangeButton_AutomationProperties_Name" xml:space="preserve">
+    <value>範囲の終了日時</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:91 EndRangeButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_EndRangeButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>範囲の終了日時を編集</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:92 EndRangeButton.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="HistoryManagementView_EndDate_AutomationProperties_Name" xml:space="preserve">
+    <value>終了日</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:106 EndDate.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_EndTime_AutomationProperties_Name" xml:space="preserve">
+    <value>終了時刻</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:112 EndTime.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_ClearRangeButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>範囲の入力をクリア</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:125 ClearRangeButton.ToolTipService.ToolTip
+src/Something.App/HistoryManagementView.xaml:126 ClearRangeButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_ApplyRangeButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>この範囲で選択</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:136 ApplyRangeButton.ToolTipService.ToolTip
+src/Something.App/HistoryManagementView.xaml:137 ApplyRangeButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="HistoryManagementView_OptimizeButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>全ドライブ共通の履歴DBを詰め直します。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:153 OptimizeButton.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="HistoryManagementView_TextBlock_Text_2" xml:space="preserve">
+    <value>DBを最適化</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:157 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_MonthPresetButton_Content" xml:space="preserve">
+    <value>1か月前以前</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:178 MonthPresetButton.Content</comment>
+  </data>
+  <data name="HistoryManagementView_ThreeMonthsPresetButton_Content" xml:space="preserve">
+    <value>3か月前以前</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:185 ThreeMonthsPresetButton.Content</comment>
+  </data>
+  <data name="HistoryManagementView_HalfYearPresetButton_Content" xml:space="preserve">
+    <value>半年前以前</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:192 HalfYearPresetButton.Content</comment>
+  </data>
+  <data name="HistoryManagementView_YearPresetButton_Content" xml:space="preserve">
+    <value>1年前以前</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:199 YearPresetButton.Content</comment>
+  </data>
+  <data name="HistoryManagementView_TextBlock_Text_3" xml:space="preserve">
+    <value>スキャン履歴</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:227 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_TotalText_Text" xml:space="preserve">
+    <value>0件</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:232 TotalText.Text</comment>
+  </data>
+  <data name="HistoryManagementView_SelectionCountText_Text" xml:space="preserve">
+    <value>選択中 0件</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:239 SelectionCountText.Text</comment>
+  </data>
+  <data name="HistoryManagementView_TextBlock_Text_4" xml:space="preserve">
+    <value>履歴を削除</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:252 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_SelectAllCheckBox_ToolTipService_ToolTip" xml:space="preserve">
+    <value>すべて選択</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:286 SelectAllCheckBox.ToolTipService.ToolTip
+src/Something.App/HistoryManagementView.xaml:287 SelectAllCheckBox.AutomationProperties.Name
+src/Something.App/HistoryManagementView.xaml.cs:219 UpdateSelectAllState</comment>
+  </data>
+  <data name="HistoryManagementView_CompletedHeader_Content" xml:space="preserve">
+    <value>スキャン完了日時 ▼</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:293 CompletedHeader.Content</comment>
+  </data>
+  <data name="HistoryManagementView_RecordCountHeader_Content" xml:space="preserve">
+    <value>記録数</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:302 RecordCountHeader.Content
+src/Something.App/HistoryManagementView.xaml.cs:188 UpdateHistorySortHeaders
+src/Something.App/HistorySelectionDialog.xaml:84 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_RecordCountHeader_ToolTipService_ToolTip" xml:space="preserve">
+    <value>保存したMFT観測レコード数。未解決・拡張レコードを含み、内部テーブルの行数合計ではありません。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:307 RecordCountHeader.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="HistoryManagementView_EmptyText_Text" xml:space="preserve">
+    <value>このドライブには保存された履歴がありません。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:339 EmptyText.Text</comment>
+  </data>
+  <data name="HistoryManagementView_TextBlock_Text_5" xml:space="preserve">
+    <value>スキャン履歴のみを削除します。実ファイルには影響しません。DBの空き領域は再利用されるため、ファイル容量がすぐ縮むとは限りません。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml:348 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryManagementView_RefreshDatabaseSize" xml:space="preserve">
+    <value>DB {0}</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:77 RefreshDatabaseSize
+{0} = DisplayText.Bytes((UInt128)info.TotalBytes)</comment>
+  </data>
+  <data name="HistoryManagementView_RefreshDatabaseSize_2" xml:space="preserve">
+    <value>全ドライブ共通
+DB本体 {0:N0} B / WAL {1:N0} B
+{2}</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:80 RefreshDatabaseSize
+{0} = info.DatabaseBytes
+{1} = info.WalBytes
+{2} = info.Path</comment>
+  </data>
+  <data name="HistoryManagementView_RefreshDatabaseSize_3" xml:space="preserve">
+    <value>DBサイズ取得不可</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:86 RefreshDatabaseSize</comment>
+  </data>
+  <data name="HistoryManagementView_UpdateSelection" xml:space="preserve">
+    <value>選択中 {0:N0}件</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:160 UpdateSelection
+{0} = count</comment>
+  </data>
+  <data name="HistoryManagementView_UpdateSelection_2" xml:space="preserve">
+    <value>{0:N0}件</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:161 UpdateSelection
+{0} = HistoryList.Items.Count</comment>
+  </data>
+  <data name="HistoryManagementView_UpdateHistorySortHeaders" xml:space="preserve">
+    <value>スキャン完了日時</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:184 UpdateHistorySortHeaders</comment>
+  </data>
+  <data name="HistoryManagementView_UpdateSelectAllState" xml:space="preserve">
+    <value>選択解除</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:219 UpdateSelectAllState</comment>
+  </data>
+  <data name="HistoryManagementView_OnDelete" xml:space="preserve">
+    <value>スキャン履歴を削除しています…</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:437 OnDelete</comment>
+  </data>
+  <data name="HistoryManagementView_OnOptimize" xml:space="preserve">
+    <value>DBを最適化しています…</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:466 OnOptimize
+src/Something.App/HistoryManagementView.xaml.cs:546 DeleteCoreAsync
+src/Something.App/MainWindow.HistoryManagement.cs:43 OptimizeHistoryAsync</comment>
+  </data>
+  <data name="HistoryManagementView_DeleteCoreAsync" xml:space="preserve">
+    <value>{0:N0}件のスキャン履歴を削除しました。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:537 DeleteCoreAsync
+{0} = removed.Length</comment>
+  </data>
+  <data name="HistoryManagementView_DeleteCoreAsync_2" xml:space="preserve">
+    <value> 使用中の{0:N0}件は参照解放後に整理します。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:543 DeleteCoreAsync
+{0} = deferred</comment>
+  </data>
+  <data name="HistoryManagementView_DeleteCoreAsync_3" xml:space="preserve">
+    <value>{0} 表示の再読み込みに失敗しました: {1}</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:569 DeleteCoreAsync
+{0} = completed
+{1} = refreshError.Message</comment>
+  </data>
+  <data name="HistoryManagementView_DeleteCoreAsync_4" xml:space="preserve">
+    <value>{0} {1}を完了できませんでした: {2}</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:574 DeleteCoreAsync
+{0} = completed
+{1} = (optimizeAfter ? "DB最適化" : "削除後の整理")
+{2} = error.Message</comment>
+  </data>
+  <data name="HistoryManagementView_DeleteCoreAsync_5" xml:space="preserve">
+    <value>削除後の整理</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:574 DeleteCoreAsync</comment>
+  </data>
+  <data name="HistoryManagementView_OptimizationText" xml:space="preserve">
+    <value>DBを最適化しました。{0} → {1}（{2}削減）</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:582 OptimizationText
+{0} = DisplayText.Bytes((UInt128)result.BeforeBytes)
+{1} = DisplayText.Bytes((UInt128)result.AfterBytes)
+{2} = DisplayText.Bytes((UInt128)result.ReclaimedBytes)</comment>
+  </data>
+  <data name="HistoryManagementView_OptimizationText_2" xml:space="preserve">
+    <value>DBを確認しました。詰め直しによる縮小がないため、元のDBを維持しました。</value>
+    <comment>src/Something.App/HistoryManagementView.xaml.cs:583 OptimizationText</comment>
+  </data>
+  <data name="HistoryOptimizeDialog_ContentDialog_Title" xml:space="preserve">
+    <value>DBを最適化しますか？</value>
+    <comment>src/Something.App/HistoryOptimizeDialog.xaml:5 ContentDialog.Title</comment>
+  </data>
+  <data name="HistoryOptimizeDialog_ContentDialog_PrimaryButtonText" xml:space="preserve">
+    <value>最適化する</value>
+    <comment>src/Something.App/HistoryOptimizeDialog.xaml:6 ContentDialog.PrimaryButtonText</comment>
+  </data>
+  <data name="HistoryOptimizeDialog_TextBlock_Text" xml:space="preserve">
+    <value>全ドライブ共通の履歴DBを詰め直し、不要な領域を整理します。</value>
+    <comment>src/Something.App/HistoryOptimizeDialog.xaml:14 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryOptimizeDialog_TextBlock_Text_2" xml:space="preserve">
+    <value>DBの容量や記録数によっては、処理に時間がかかる場合があります。追加の空き容量が必要です。</value>
+    <comment>src/Something.App/HistoryOptimizeDialog.xaml:18 TextBlock.Text</comment>
+  </data>
+  <data name="HistoryPicker_ValueText_Text" xml:space="preserve">
+    <value>記録を選択</value>
+    <comment>src/Something.App/HistoryPicker.xaml:21 ValueText.Text
+src/Something.App/HistoryPicker.xaml.cs:31 PlaceholderText</comment>
+  </data>
+  <data name="HistoryPicker_UpdateValueText" xml:space="preserve">
+    <value>記録なし</value>
+    <comment>src/Something.App/HistoryPicker.xaml.cs:90 UpdateValueText
+src/Something.App/HistorySelectionDialog.xaml.cs:137 OnDayItemChanging</comment>
+  </data>
+  <data name="HistorySelectionDialog_ContentDialog_PrimaryButtonText" xml:space="preserve">
+    <value>選択</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:6 ContentDialog.PrimaryButtonText</comment>
+  </data>
+  <data name="HistorySelectionDialog_AllButton_Content" xml:space="preserve">
+    <value>すべて</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:45 AllButton.Content</comment>
+  </data>
+  <data name="HistorySelectionDialog_WeekButton_Content" xml:space="preserve">
+    <value>直近7日</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:50 WeekButton.Content
+src/Something.App/HistorySelectionDialog.xaml.cs:163 ApplyPeriod</comment>
+  </data>
+  <data name="HistorySelectionDialog_MonthButton_Content" xml:space="preserve">
+    <value>今月</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:51 MonthButton.Content
+src/Something.App/HistorySelectionDialog.xaml.cs:164 ApplyPeriod
+src/Something.App/MainWindow.Comparison.cs:78 InitializeComparisonControls</comment>
+  </data>
+  <data name="HistorySelectionDialog_YearButton_Content" xml:space="preserve">
+    <value>今年</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:52 YearButton.Content
+src/Something.App/HistorySelectionDialog.xaml.cs:165 ApplyPeriod
+src/Something.App/MainWindow.Comparison.cs:79 InitializeComparisonControls</comment>
+  </data>
+  <data name="HistorySelectionDialog_TextBlock_Text" xml:space="preserve">
+    <value>日付で絞り込む</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:60 TextBlock.Text</comment>
+  </data>
+  <data name="HistorySelectionDialog_TextBlock_Text_2" xml:space="preserve">
+    <value>印のある日に記録があります</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:63 TextBlock.Text</comment>
+  </data>
+  <data name="HistorySelectionDialog_TextBlock_Text_3" xml:space="preserve">
+    <value>スキャン日時</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:82 TextBlock.Text</comment>
+  </data>
+  <data name="HistorySelectionDialog_EmptyText_Text" xml:space="preserve">
+    <value>この期間の記録はありません</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:142 EmptyText.Text</comment>
+  </data>
+  <data name="HistorySelectionDialog_CountError_Text" xml:space="preserve">
+    <value>記録数を取得できませんでした。日時から記録を選択できます。</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml:150 CountError.Text</comment>
+  </data>
+  <data name="HistorySelectionDialog_TimeText" xml:space="preserve">
+    <value> · 選択中</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:16 TimeText</comment>
+  </data>
+  <data name="HistorySelectionDialog_TimeText_2" xml:space="preserve">
+    <value> · 最新</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:17 TimeText</comment>
+  </data>
+  <data name="HistorySelectionDialog_OnOpened" xml:space="preserve">
+    <value>一覧から記録を選び、「選択」で表示に反映します。</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:92 OnOpened</comment>
+  </data>
+  <data name="HistorySelectionDialog_OnDayItemChanging" xml:space="preserve">
+    <value>保存済みの記録があります</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:137 OnDayItemChanging</comment>
+  </data>
+  <data name="HistorySelectionDialog_ApplyPeriod" xml:space="preserve">
+    <value>すべての記録</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:166 ApplyPeriod</comment>
+  </data>
+  <data name="HistorySelectionDialog_ShowDate" xml:space="preserve">
+    <value>yyyy/MM/dd</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:187 ShowDate</comment>
+  </data>
+  <data name="HistorySelectionDialog_ShowRows" xml:space="preserve">
+    <value>今日</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:195 ShowRows
+src/Something.App/MainWindow.Comparison.cs:76 InitializeComparisonControls</comment>
+  </data>
+  <data name="HistorySelectionDialog_ShowRows_2" xml:space="preserve">
+    <value>昨日</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:196 ShowRows</comment>
+  </data>
+  <data name="HistorySelectionDialog_ShowRows_3" xml:space="preserve">
+    <value>yyyy年M月</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:197 ShowRows</comment>
+  </data>
+  <data name="HistorySelectionDialog_ShowRows_4" xml:space="preserve">
+    <value>{0} · {1:N0}件</value>
+    <comment>src/Something.App/HistorySelectionDialog.xaml.cs:207 ShowRows
+{0} = label
+{1} = visible.Length</comment>
+  </data>
+  <data name="MainWindow_Analysis_NoComparisonRows" xml:space="preserve">
+    <value>比較対象の行がありません。</value>
+    <comment>src/Something.App/MainWindow.Analysis.cs:41 LoadMixedAnalysisAsync
+Original: No comparison rows.</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls" xml:space="preserve">
+    <value>なし</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:71 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_2" xml:space="preserve">
+    <value>24時間</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:72 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_3" xml:space="preserve">
+    <value>7日間</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:73 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_4" xml:space="preserve">
+    <value>30日間</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:74 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_5" xml:space="preserve">
+    <value>365日間</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:75 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_6" xml:space="preserve">
+    <value>今週</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:77 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_InitializeComparisonControls_7" xml:space="preserve">
+    <value>任意のスキャン</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:80 InitializeComparisonControls</comment>
+  </data>
+  <data name="MainWindow_Comparison_TrackComparisonAsync" xml:space="preserve">
+    <value>比較条件を反映しています…</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:118 TrackComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_ClearComparisonAsync" xml:space="preserve">
+    <value>比較するにはスキャン履歴が必要です。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:142 ClearComparisonAsync
+src/Something.App/MainWindow.Comparison.cs:251 RefreshComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout" xml:space="preserve">
+    <value>比較する記録</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:166 UpdateComparisonLayout</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_2" xml:space="preserve">
+    <value>表示する記録</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:166 UpdateComparisonLayout
+src/Something.App/MainWindow.xaml:163 HistoryBox.Header</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_3" xml:space="preserve">
+    <value>サイズ列はこの記録の値です。差分は「比較する記録 − 基準の記録」で、＋は増加、−は減少です。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:171 UpdateComparisonLayout</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_4" xml:space="preserve">
+    <value>表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:172 UpdateComparisonLayout
+src/Something.App/MainWindow.xaml:162 HistoryBox.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_5" xml:space="preserve">
+    <value>差分を計算する基準の記録です。右側の記録から、この記録のサイズを差し引きます。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:197 UpdateComparisonLayout
+src/Something.App/MainWindow.xaml:190 ComparisonBeforeBox.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_6" xml:space="preserve">
+    <value>比較期間から自動的に選ばれた基準の記録です。手動で選ぶ場合は比較方式を「任意のスキャン」に切り替えてください。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:198 UpdateComparisonLayout</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_7" xml:space="preserve">
+    <value>基準の記録：{0:yyyy/MM/dd HH:mm:ss}</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:202 UpdateComparisonLayout
+{0} = before.CompletedLocal
+src/Something.App/MainWindow.Comparison.cs:299 RefreshComparisonAsync
+{0} = before.CompletedLocal</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_8" xml:space="preserve">
+    <value>比較する記録：{0:yyyy/MM/dd HH:mm:ss}</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:205 UpdateComparisonLayout
+{0} = after.Entry.CompletedLocal</comment>
+  </data>
+  <data name="MainWindow_Comparison_UpdateComparisonLayout_9" xml:space="preserve">
+    <value>比較する記録：記録なし</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:206 UpdateComparisonLayout</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync" xml:space="preserve">
+    <value>履歴不足：基準の記録と比較する記録には、異なる2回のスキャンが必要です。サイズ不明を0として差し引きません。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:310 RefreshComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_2" xml:space="preserve">
+    <value>同じドライブで、基準の記録が比較する記録より古いスキャンを選択してください。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:317 RefreshComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_3" xml:space="preserve">
+    <value>サイズの増減を集計中…</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:321 RefreshComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_4" xml:space="preserve">
+    <value>履歴がある範囲のみ · </value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:364 RefreshComparisonAsync</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_5" xml:space="preserve">
+    <value>指定範囲：{0:yyyy/MM/dd HH:mm} ～ {1:yyyy/MM/dd HH:mm} · </value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:367 RefreshComparisonAsync
+{0} = requested.RequestedBeforeUtc.ToLocalTime()
+{1} = requested.RequestedAfterUtc.ToLocalTime()</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_6" xml:space="preserve">
+    <value>比較不能 {0:N0} フォルダ</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:370 RefreshComparisonAsync
+{0} = report.UncertainFolders.Length</comment>
+  </data>
+  <data name="MainWindow_Comparison_RefreshComparisonAsync_7" xml:space="preserve">
+    <value>比較できません。履歴または容量情報を確認してください。</value>
+    <comment>src/Something.App/MainWindow.Comparison.cs:384 RefreshComparisonAsync</comment>
+  </data>
+  <data name="Application_Name" xml:space="preserve">
+    <value>Something</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:20 CreateConfiguredHistory
+src/Something.App/MainWindow.Settings.cs:22 InitializeDisplaySettings
+src/Something.App/MainWindow.xaml:15 AppTitleBar.Title
+src/Something.App/MainWindow.xaml:747 TextBlock.Text
+src/Something.App/MainWindow.xaml.cs:94 MainWindow
+src/Something.Storage/ScanHistoryArchive.cs:54 CreateDefault
+src/Something.Storage/ScanStore.cs:23 OpenDefault</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync" xml:space="preserve">
+    <value>スキャンや読み込みが完了してからDBを削除してください。</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:114 ConfirmDeleteDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync_2" xml:space="preserve">
+    <value>履歴DBを削除しますか？</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:118 ConfirmDeleteDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync_3" xml:space="preserve">
+    <value>全ドライブのスキャン履歴をすべて削除します。この操作は取り消せません。実ファイルは削除しません。
+
+{0}</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:122 ConfirmDeleteDatabaseAsync
+{0} = history.DatabasePath</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ConfirmDeleteDatabaseAsync_4" xml:space="preserve">
+    <value>DBを削除</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:126 ConfirmDeleteDatabaseAsync
+src/Something.App/SettingsDialog.xaml:91 TextBlock.Text</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync" xml:space="preserve">
+    <value>スキャンや読み込みが完了してからDBを操作してください。</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:150 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync_2" xml:space="preserve">
+    <value>履歴DBを削除しています…</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:159 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync_3" xml:space="preserve">
+    <value>履歴DBを移動しています…</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:159 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync_4" xml:space="preserve">
+    <value>全ドライブのスキャン履歴DBを削除しました。</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:212 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync_5" xml:space="preserve">
+    <value>DBを新しい保存先に切り替えました。元DBは削除できず、旧フォルダに残っています。</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:214 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_DatabaseSettings_ManageDatabaseAsync_6" xml:space="preserve">
+    <value>履歴DBを新しい保存先へ移動しました。</value>
+    <comment>src/Something.App/MainWindow.DatabaseSettings.cs:215 ManageDatabaseAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync" xml:space="preserve">
+    <value>ゴミ箱に移動しています…</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:97 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_2" xml:space="preserve">
+    <value>ゴミ箱に移動しました</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:112 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_3" xml:space="preserve">
+    <value>スキャン時と同じ項目であることを確認できません。再スキャンしてください。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:123 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_4" xml:space="preserve">
+    <value>項目が変更されています</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:125 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_5" xml:space="preserve">
+    <value>システム項目・Windowsの標準フォルダは削除できません。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:129 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_6" xml:space="preserve">
+    <value>保護されている項目です</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:131 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_7" xml:space="preserve">
+    <value>確認中に隠し属性が変更されました。もう一度削除ボタンを押して警告を確認してください。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:135 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_8" xml:space="preserve">
+    <value>属性が変更されています</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:137 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_RecycleCoreAsync_9" xml:space="preserve">
+    <value>ゴミ箱に移動できませんでした</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:143 RecycleCoreAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_ConfirmRecycleAsync" xml:space="preserve">
+    <value>隠し項目の削除に注意してください</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:162 ConfirmRecycleAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_ConfirmRecycleAsync_2" xml:space="preserve">
+    <value>Windowsやアプリが使用するデータの可能性があります。ゴミ箱に移動すると、アプリの動作や設定に影響することがあります。内容を確認してください。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:164 ConfirmRecycleAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_ConfirmRecycleAsync_3" xml:space="preserve">
+    <value>フォルダ内のファイル・フォルダも移動します。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:179 ConfirmRecycleAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_ConfirmRecycleAsync_4" xml:space="preserve">
+    <value>ゴミ箱に移動しますか？</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:186 ConfirmRecycleAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_ConfirmRecycleAsync_5" xml:space="preserve">
+    <value>ゴミ箱に移動</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:188 ConfirmRecycleAsync
+src/Something.App/MainWindow.xaml:484 RecycleEntryButton.ToolTipService.ToolTip
+src/Something.App/MainWindow.xaml:485 RecycleEntryButton.AutomationProperties.Name
+src/Something.App/MainWindow.xaml:657 RecycleAnalysisButton.ToolTipService.ToolTip
+src/Something.App/MainWindow.xaml:658 RecycleAnalysisButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_FileActions_ShowMissingItem" xml:space="preserve">
+    <value>このファイル・フォルダはすでに存在しません</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:213 ShowMissingItem</comment>
+  </data>
+  <data name="MainWindow_FileActions_FolderAvailableAsync" xml:space="preserve">
+    <value>現在の項目はフォルダではありません。</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:225 FolderAvailableAsync
+src/Something.App/MainWindow.xaml.cs:1609 OpenPathAsync</comment>
+  </data>
+  <data name="MainWindow_FileActions_FolderAvailableAsync_2" xml:space="preserve">
+    <value>開けませんでした</value>
+    <comment>src/Something.App/MainWindow.FileActions.cs:240 FolderAvailableAsync
+src/Something.App/MainWindow.xaml.cs:1640 OpenPathAsync</comment>
+  </data>
+  <data name="MainWindow_HistoryManagement_OptimizeHistoryAsync" xml:space="preserve">
+    <value>履歴DBを使用できません。</value>
+    <comment>src/Something.App/MainWindow.HistoryManagement.cs:37 OptimizeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_HistoryManagement_OptimizeHistoryAsync_2" xml:space="preserve">
+    <value>スキャンや起動時の読み込みが完了してからDBを最適化してください。</value>
+    <comment>src/Something.App/MainWindow.HistoryManagement.cs:40 OptimizeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_HistoryManagement_OptimizeHistoryAsync_3" xml:space="preserve">
+    <value>DB最適化用の空きメモリが不足しています。</value>
+    <comment>src/Something.App/MainWindow.HistoryManagement.cs:84 OptimizeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_HistoryManagement_RefreshAfterHistoryDeletionAsync" xml:space="preserve">
+    <value>削除後の履歴を反映しています…</value>
+    <comment>src/Something.App/MainWindow.HistoryManagement.cs:252 RefreshAfterHistoryDeletionAsync</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_Text" xml:space="preserve">
+    <value>成功・情報はアクセント色、警告・エラーは意味色</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:36 PreviewNotificationsAsync.Text</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_Text_2" xml:space="preserve">
+    <value>成功・情報は6秒で閉じます。警告・エラーは閉じるまで残ります。</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:39 PreviewNotificationsAsync.Text</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync" xml:space="preserve">
+    <value>選択した3件のスキャン履歴を削除しました。</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:53 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_2" xml:space="preserve">
+    <value>このファイルはすでに存在しません。</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:54 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_3" xml:space="preserve">
+    <value>ファイルが変更されたため、操作を中止しました。</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:55 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_4" xml:space="preserve">
+    <value>ファイルを開けませんでした。アクセスが拒否されました。</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:56 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="MainWindow_Notifications_Smoke_PreviewNotificationsAsync_5" xml:space="preserve">
+    <value>トーストの表示確認</value>
+    <comment>src/Something.App/MainWindow.Notifications.Smoke.cs:79 PreviewNotificationsAsync</comment>
+  </data>
+  <data name="MainWindow_Settings_ChangeVisibilityAsync" xml:space="preserve">
+    <value>表示するファイルと容量を集計しています…</value>
+    <comment>src/Something.App/MainWindow.Settings.cs:42 ChangeVisibilityAsync</comment>
+  </data>
+  <data name="Common_Name" xml:space="preserve">
+    <value>名前</value>
+    <comment>src/Something.App/MainWindow.Sorting.cs:17 UpdateSortHeaders
+src/Something.App/MainWindow.Sorting.cs:35 UpdateSortHeaders
+src/Something.App/MainWindow.xaml:383 EntryNameHeader.Content</comment>
+  </data>
+  <data name="Common_Size" xml:space="preserve">
+    <value>サイズ</value>
+    <comment>src/Something.App/MainWindow.Sorting.cs:23 UpdateSortHeaders
+src/Something.App/MainWindow.Sorting.cs:41 UpdateSortHeaders
+src/Something.App/MainWindow.xaml:393 SizeColumnText.Content
+src/Something.App/MainWindow.xaml:579 AnalysisSizeHeader.Content</comment>
+  </data>
+  <data name="Common_Change" xml:space="preserve">
+    <value>増減</value>
+    <comment>src/Something.App/MainWindow.Sorting.cs:29 UpdateSortHeaders
+src/Something.App/MainWindow.Sorting.cs:47 UpdateSortHeaders
+src/Something.App/MainWindow.xaml:414 ChangeHeader.Content
+src/Something.App/MainWindow.xaml:568 RankingChangeHeader.Content</comment>
+  </data>
+  <data name="MainWindow_Startup_StartupDidNotSettleBeforePresentingTheWorkspace" xml:space="preserve">
+    <value>起動準備の完了前に作業画面が表示されました。</value>
+    <comment>src/Something.App/MainWindow.Startup.cs:182 RunStartupAsync
+Original: Startup did not settle before presenting the workspace.</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation" xml:space="preserve">
+    <value>{0} スキャン中</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:85 UpdateViewLoadingPresentation
+{0} = selectedCard!.Choice.Drive</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_2" xml:space="preserve">
+    <value>履歴を整理しています…</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:88 UpdateViewLoadingPresentation</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_3" xml:space="preserve">
+    <value>DBを整理しています…</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:89 UpdateViewLoadingPresentation</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_4" xml:space="preserve">
+    <value>表示を準備しています…</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:90 UpdateViewLoadingPresentation
+src/Something.App/MainWindow.xaml:697 ViewLoadingTitle.Text</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_5" xml:space="preserve">
+    <value>スキャン結果を反映しています…</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:96 UpdateViewLoadingPresentation</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_6" xml:space="preserve">
+    <value>読み込みが完了すると、新しい表示に切り替わります。</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:100 UpdateViewLoadingPresentation
+src/Something.App/MainWindow.xaml:711 ViewLoadingHint.Text</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_UpdateViewLoadingPresentation_7" xml:space="preserve">
+    <value>処理が完了するまでお待ちください。</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:101 UpdateViewLoadingPresentation</comment>
+  </data>
+  <data name="MainWindow_ViewUpdates_PreviewLoadingAnimationAsync" xml:space="preserve">
+    <value>レコードを確認しています · アニメーションのプレビュー</value>
+    <comment>src/Something.App/MainWindow.ViewUpdates.cs:114 PreviewLoadingAnimationAsync</comment>
+  </data>
+  <data name="MainWindow_String" xml:space="preserve">
+    <value>
+            サイズはディスク上の割り当て容量（DATA）です。フォルダはサブフォルダ込みで集計し、ハードリンクは名前ごとに計上します。リンク先はたどりません。表示はスキャン取得時点の観測です。
+          </value>
+    <comment>src/Something.App/MainWindow.xaml:38 String</comment>
+  </data>
+  <data name="MainWindow_AnalysisWorkspaceTab_AutomationProperties_Name" xml:space="preserve">
+    <value>容量分析</value>
+    <comment>src/Something.App/MainWindow.xaml:96 AnalysisWorkspaceTab.AutomationProperties.Name
+src/Something.App/MainWindow.xaml:101 TextBlock.Text</comment>
+  </data>
+  <data name="MainWindow_DatabaseWorkspaceTab_AutomationProperties_Name" xml:space="preserve">
+    <value>DB管理</value>
+    <comment>src/Something.App/MainWindow.xaml:109 DatabaseWorkspaceTab.AutomationProperties.Name
+src/Something.App/MainWindow.xaml:114 TextBlock.Text</comment>
+  </data>
+  <data name="Common_Settings" xml:space="preserve">
+    <value>設定</value>
+    <comment>src/Something.App/MainWindow.xaml:126 SettingsButton.AutomationProperties.Name
+src/Something.App/MainWindow.xaml:127 SettingsButton.ToolTipService.ToolTip
+src/Something.App/SettingsDialog.xaml:5 ContentDialog.Title</comment>
+  </data>
+  <data name="MainWindow_ComparisonPeriodBox_Header" xml:space="preserve">
+    <value>比較</value>
+    <comment>src/Something.App/MainWindow.xaml:154 ComparisonPeriodBox.Header</comment>
+  </data>
+  <data name="MainWindow_ComparisonPeriodBox_AutomationProperties_Name" xml:space="preserve">
+    <value>比較期間</value>
+    <comment>src/Something.App/MainWindow.xaml:157 ComparisonPeriodBox.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_HistoryBox_PlaceholderText" xml:space="preserve">
+    <value>最新のスキャン</value>
+    <comment>src/Something.App/MainWindow.xaml:165 HistoryBox.PlaceholderText</comment>
+  </data>
+  <data name="MainWindow_HistoryBox_AutomationProperties_Name" xml:space="preserve">
+    <value>表示するスキャン</value>
+    <comment>src/Something.App/MainWindow.xaml:168 HistoryBox.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_CustomComparisonPanel_ToolTipService_ToolTip" xml:space="preserve">
+    <value>差分は「比較する記録 − 基準の記録」です。＋は増加、−は減少を表します。サイズ列は右側の記録の値です。</value>
+    <comment>src/Something.App/MainWindow.xaml:175 CustomComparisonPanel.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="MainWindow_ComparisonBeforeBox_Header" xml:space="preserve">
+    <value>基準の記録</value>
+    <comment>src/Something.App/MainWindow.xaml:185 ComparisonBeforeBox.Header
+src/Something.App/MainWindow.xaml:189 ComparisonBeforeBox.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_ComparisonBeforeBox_PlaceholderText" xml:space="preserve">
+    <value>基準の記録を選択</value>
+    <comment>src/Something.App/MainWindow.xaml:187 ComparisonBeforeBox.PlaceholderText</comment>
+  </data>
+  <data name="MainWindow_FontIcon_AutomationProperties_Name" xml:space="preserve">
+    <value>基準から比較する記録への変化</value>
+    <comment>src/Something.App/MainWindow.xaml:198 FontIcon.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_TreeLoadingRing_AutomationProperties_Name" xml:space="preserve">
+    <value>子フォルダーを読み込み中</value>
+    <comment>src/Something.App/MainWindow.xaml:278 TreeLoadingRing.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_BackButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>戻る</value>
+    <comment>src/Something.App/MainWindow.xaml:313 BackButton.ToolTipService.ToolTip
+src/Something.App/MainWindow.xaml:314 BackButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_ForwardButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>進む</value>
+    <comment>src/Something.App/MainWindow.xaml:322 ForwardButton.ToolTipService.ToolTip
+src/Something.App/MainWindow.xaml:323 ForwardButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_UpButton_ToolTipService_ToolTip" xml:space="preserve">
+    <value>上へ（親フォルダ）</value>
+    <comment>src/Something.App/MainWindow.xaml:331 UpButton.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="MainWindow_UpButton_AutomationProperties_Name" xml:space="preserve">
+    <value>親フォルダへ移動</value>
+    <comment>src/Something.App/MainWindow.xaml:332 UpButton.AutomationProperties.Name</comment>
+  </data>
+  <data name="MainWindow_TextBlock_Text" xml:space="preserve">
+    <value>フォルダ内</value>
+    <comment>src/Something.App/MainWindow.xaml:353 TextBlock.Text</comment>
+  </data>
+  <data name="MainWindow_ChangeHeader_ToolTipService_ToolTip" xml:space="preserve">
+    <value>比較する記録 − 基準の記録。＋は増加、−は減少です。サイズ列は比較する記録の値です。</value>
+    <comment>src/Something.App/MainWindow.xaml:411 ChangeHeader.ToolTipService.ToolTip
+src/Something.App/MainWindow.xaml:565 RankingChangeHeader.ToolTipService.ToolTip</comment>
+  </data>
+  <data name="MainWindow_AnalysisFoldersOnlyBox_Content" xml:space="preserve">
+    <value>フォルダのみ</value>
+    <comment>src/Something.App/MainWindow.xaml:521 AnalysisFoldersOnlyBox.Content</comment>
+  </data>
+  <data name="MainWindow_LeafBox_Content" xml:space="preserve">
+    <value>最下位フォルダのみ</value>
+    <comment>src/Something.App/MainWindow.xaml:528 LeafBox.Content</comment>
+  </data>
+  <data name="MainWindow_EmptyScanText_Text" xml:space="preserve">
+    <value>ドライブカードのスキャンボタンから開始してください。</value>
+    <comment>src/Something.App/MainWindow.xaml:678 EmptyScanText.Text</comment>
+  </data>
+  <data name="MainWindow_StartupText_Text" xml:space="preserve">
+    <value>スキャン履歴を読み込んでいます…</value>
+    <comment>src/Something.App/MainWindow.xaml:755 StartupText.Text</comment>
+  </data>
+  <data name="MainWindow_MainWindow" xml:space="preserve">
+    <value>合成データ</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:108 MainWindow</comment>
+  </data>
+  <data name="MainWindow_MainWindow_2" xml:space="preserve">
+    <value>別の合成データ</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:109 MainWindow</comment>
+  </data>
+  <data name="MainWindow_MainWindow_3" xml:space="preserve">
+    <value>アーカイブ（合成）</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:110 MainWindow</comment>
+  </data>
+  <data name="MainWindow_MainWindow_4" xml:space="preserve">
+    <value>デモモード。実ディスクやファイルは読み取りません。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:132 MainWindow</comment>
+  </data>
+  <data name="MainWindow_LocalDrives" xml:space="preserve">
+    <value>ローカルディスク</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:408 LocalDrives</comment>
+  </data>
+  <data name="MainWindow_InitializeHistoryAsync" xml:space="preserve">
+    <value>ドライブの保存済み情報を読み込んでいます…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:478 InitializeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_InitializeHistoryAsync_2" xml:space="preserve">
+    <value>履歴を確認中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:483 InitializeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_InitializeHistoryAsync_3" xml:space="preserve">
+    <value>最初のファイル一覧を準備しています…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:498 InitializeHistoryAsync</comment>
+  </data>
+  <data name="MainWindow_RestoreDriveHistoriesAsync" xml:space="preserve">
+    <value>{0} のスキャン履歴を読み込んでいます…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:526 RestoreDriveHistoriesAsync
+{0} = card.Choice.Drive</comment>
+  </data>
+  <data name="MainWindow_RestoreDriveHistoriesAsync_2" xml:space="preserve">
+    <value>履歴を読み込めません</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:571 RestoreDriveHistoriesAsync</comment>
+  </data>
+  <data name="MainWindow_RestoreDriveHistoriesAsync_3" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:572 RestoreDriveHistoriesAsync
+{0} = card.Choice.Drive
+{1} = error.Message
+src/Something.App/MainWindow.xaml.cs:977 RunScanAsync
+{0} = drive
+{1} = error.Message</comment>
+  </data>
+  <data name="MainWindow_RestoreDriveHistoriesAsync_4" xml:space="preserve">
+    <value>一部のドライブの履歴を読み込めませんでした。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:577 RestoreDriveHistoriesAsync</comment>
+  </data>
+  <data name="MainWindow_ChangeHistoryAsync" xml:space="preserve">
+    <value>{0:yyyy/MM/dd HH:mm:ss} の記録を読み込んでいます…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:635 ChangeHistoryAsync
+{0} = row.Entry.CompletedLocal</comment>
+  </data>
+  <data name="MainWindow_SelectDriveAsync" xml:space="preserve">
+    <value>{0} の表示に切り替えています…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:722 SelectDriveAsync
+{0} = card.Choice.Drive</comment>
+  </data>
+  <data name="MainWindow_ShowSessionAsync" xml:space="preserve">
+    <value>{0} の結果を表示しています…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:785 ShowSessionAsync
+{0} = current.Drive</comment>
+  </data>
+  <data name="MainWindow_ShowSessionAsync_2" xml:space="preserve">
+    <value>{0}
+処理時間 {1:F1}秒 · 管理領域未解決 {2:N0}
+取得時点の観測です。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:790 ShowSessionAsync
+{0} = current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"
+{1} = current.Elapsed.TotalSeconds
+{2} = current.MetadataUnresolved</comment>
+  </data>
+  <data name="MainWindow_StartScanAsync" xml:space="preserve">
+    <value>準備中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:849 StartScanAsync
+src/Something.App/MainWindow.xaml.cs:1038 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_RunScanAsync" xml:space="preserve">
+    <value>{0} のスキャン結果を反映しています…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:917 RunScanAsync
+{0} = drive</comment>
+  </data>
+  <data name="MainWindow_RunScanAsync_2" xml:space="preserve">
+    <value>履歴は保存済みですが、古い履歴の整理を完了できませんでした</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:942 RunScanAsync</comment>
+  </data>
+  <data name="MainWindow_RunScanAsync_3" xml:space="preserve">
+    <value>{0}: スキャンが完了しました（{1:F1}秒）。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:952 RunScanAsync
+{0} = drive
+{1} = next.Elapsed.TotalSeconds</comment>
+  </data>
+  <data name="MainWindow_RunScanAsync_4" xml:space="preserve">
+    <value>{0}: キャンセルしました。前の結果は保持しています。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:967 RunScanAsync
+{0} = drive</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress" xml:space="preserve">
+    <value>履歴を保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1005 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_2" xml:space="preserve">
+    <value>メモリ予算の空きを待機中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1006 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_3" xml:space="preserve">
+    <value>メタデータを取得中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1007 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_4" xml:space="preserve">
+    <value>フォルダ容量を集計中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1008 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_5" xml:space="preserve">
+    <value>結果を保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1009 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_6" xml:space="preserve">
+    <value>結果をファイルへ書き出し中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1010 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_7" xml:space="preserve">
+    <value>スキャン完了</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1011 DisplayProgress
+src/Something.App/MainWindow.xaml.cs:1054 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_8" xml:space="preserve">
+    <value>フォルダを抽出中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1015 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_9" xml:space="preserve">
+    <value>階層を構築中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1016 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_10" xml:space="preserve">
+    <value>ファイル容量を集計中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1017 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_11" xml:space="preserve">
+    <value>サブフォルダを集計中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1018 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_12" xml:space="preserve">
+    <value>集計結果を検証中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1019 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_13" xml:space="preserve">
+    <value>ファイル情報を保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1020 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_14" xml:space="preserve">
+    <value>フォルダ容量を保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1021 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_15" xml:space="preserve">
+    <value>フォルダ名を保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1022 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_16" xml:space="preserve">
+    <value>保存データを反映中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1023 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_17" xml:space="preserve">
+    <value>保存データを検証中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1024 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_18" xml:space="preserve">
+    <value>一覧用データを生成中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1025 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_19" xml:space="preserve">
+    <value>保存を確定中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1026 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_20" xml:space="preserve">
+    <value>履歴を整理中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1027 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_21" xml:space="preserve">
+    <value> {0:P0}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1030 DisplayProgress
+{0} = Math.Clamp(value, 0, 1)</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_22" xml:space="preserve">
+    <value> · {0:N0}/{1:N0} 件</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1032 DisplayProgress
+{0} = work.Completed
+{1} = total</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_23" xml:space="preserve">
+    <value> · {0:N0} 件</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1033 DisplayProgress
+{0} = progress.Candidates</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_24" xml:space="preserve">
+    <value> · 再試行 {0}（メモリ上限 {1:F1} GiB）</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1036 DisplayProgress
+{0} = retrying.RetryAttempt
+{1} = retrying.MemoryLimitBytes / (double)(1UL &lt;&lt; 30)</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_25" xml:space="preserve">
+    <value>ステップ {0}/{1}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1038 DisplayProgress
+{0} = step.Number
+{1} = step.Total</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_26" xml:space="preserve">
+    <value>{0}/{1} · </value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1040 DisplayProgress
+{0} = step.Number
+{1} = step.Total</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_27" xml:space="preserve">
+    <value>履歴保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1046 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_28" xml:space="preserve">
+    <value>メモリ待ち</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1047 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_29" xml:space="preserve">
+    <value>走査中 {0:P0}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1049 DisplayProgress
+{0} = Math.Clamp(fraction, 0, 1)</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_30" xml:space="preserve">
+    <value>走査中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1050 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_31" xml:space="preserve">
+    <value>集計中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1051 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_32" xml:space="preserve">
+    <value>保存中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1052 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_33" xml:space="preserve">
+    <value>書き出し中</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1053 DisplayProgress</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_34" xml:space="preserve">
+    <value>{0} · {1}{2}{3}{4}{5} · {6:F1} 秒</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1057 DisplayProgress
+{0} = stepText
+{1} = phase
+{2} = (detail is null ? "" : $" · {detail}")
+{3} = percentage
+{4} = counts
+{5} = retry
+{6} = progress.Elapsed.TotalSeconds</comment>
+  </data>
+  <data name="MainWindow_DisplayProgress_35" xml:space="preserve">
+    <value> · {0}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1057 DisplayProgress
+{0} = detail</comment>
+  </data>
+  <data name="MainWindow_LoadChildrenAsync" xml:space="preserve">
+    <value>さらに読み込む…</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1390 LoadChildrenAsync</comment>
+  </data>
+  <data name="Common_Open" xml:space="preserve">
+    <value>開く</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1489 ShowPathMenu</comment>
+  </data>
+  <data name="MainWindow_ShowPathMenu" xml:space="preserve">
+    <value>ディレクトリのパスをコピー</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1504 ShowPathMenu</comment>
+  </data>
+  <data name="MainWindow_ShowPathMenu_2" xml:space="preserve">
+    <value>パスをコピー</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1505 ShowPathMenu</comment>
+  </data>
+  <data name="MainWindow_ShowPathMenu_3" xml:space="preserve">
+    <value>ファイルのパスをコピー</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1505 ShowPathMenu</comment>
+  </data>
+  <data name="MainWindow_OnEntryInvoked" xml:space="preserve">
+    <value>このスキャンではフォルダの内容を取得できません。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1584 OnEntryInvoked</comment>
+  </data>
+  <data name="MainWindow_OnEntryInvoked_2" xml:space="preserve">
+    <value>フォルダを開けませんでした</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1586 OnEntryInvoked</comment>
+  </data>
+  <data name="MainWindow_OpenPathAsync" xml:space="preserve">
+    <value>開く対象の絶対パスを取得できませんでした。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1604 OpenPathAsync</comment>
+  </data>
+  <data name="MainWindow_OpenPathAsync_2" xml:space="preserve">
+    <value>現在の項目はファイルではありません。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1624 OpenPathAsync</comment>
+  </data>
+  <data name="MainWindow_PublishAnalysis" xml:space="preserve">
+    <value>{0:N0} {1}</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1833 PublishAnalysis
+{0} = count
+{1} = (AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダ" : "項目")</comment>
+  </data>
+  <data name="MainWindow_PublishAnalysis_2" xml:space="preserve">
+    <value>項目</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1833 PublishAnalysis</comment>
+  </data>
+  <data name="MainWindow_ShowError" xml:space="preserve">
+    <value>アプリを管理者として起動してください。ドライブへのアクセスは読み取り専用です。</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1845 ShowError</comment>
+  </data>
+  <data name="MainWindow_ShowError_2" xml:space="preserve">
+    <value>スキャンには管理者権限が必要です</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1848 ShowError</comment>
+  </data>
+  <data name="MainWindow_ShowError_3" xml:space="preserve">
+    <value>処理を完了できませんでした</value>
+    <comment>src/Something.App/MainWindow.xaml.cs:1848 ShowError</comment>
+  </data>
+  <data name="Animation_Attention" xml:space="preserve">
+    <value>!</value>
+    <comment>src/Something.App/RecordLoadingAnimation.xaml:433 TextBlock.Text
+src/Something.App/RecordLoadingAnimation.xaml:441 TextBlock.Text
+src/Something.App/RecordLoadingAnimation.xaml:449 TextBlock.Text</comment>
+  </data>
+  <data name="Animation_Whistle" xml:space="preserve">
+    <value>ピーッ ♪</value>
+    <comment>src/Something.App/RecordLoadingAnimation.xaml:491 TextBlock.Text</comment>
+  </data>
+  <data name="Animation_Farewell" xml:space="preserve">
+    <value>じゃっ！</value>
+    <comment>src/Something.App/RecordLoadingAnimation.xaml:579 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_ContentDialog_PrimaryButtonText" xml:space="preserve">
+    <value>保存</value>
+    <comment>src/Something.App/SettingsDialog.xaml:6 ContentDialog.PrimaryButtonText</comment>
+  </data>
+  <data name="SettingsDialog_TextBlock_Text" xml:space="preserve">
+    <value>表示</value>
+    <comment>src/Something.App/SettingsDialog.xaml:19 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_IncludeSystem_Content" xml:space="preserve">
+    <value>システムフォルダ・ファイルを含める</value>
+    <comment>src/Something.App/SettingsDialog.xaml:20 IncludeSystem.Content</comment>
+  </data>
+  <data name="SettingsDialog_IncludeHidden_Content" xml:space="preserve">
+    <value>隠しフォルダ・ファイルを含める</value>
+    <comment>src/Something.App/SettingsDialog.xaml:21 IncludeHidden.Content</comment>
+  </data>
+  <data name="SettingsDialog_TextBlock_Text_2" xml:space="preserve">
+    <value>DB設定</value>
+    <comment>src/Something.App/SettingsDialog.xaml:24 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_TextBlock_Text_3" xml:space="preserve">
+    <value>現在のDBサイズ</value>
+    <comment>src/Something.App/SettingsDialog.xaml:34 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_DirectoryBox_Header" xml:space="preserve">
+    <value>DBの保存フォルダ</value>
+    <comment>src/Something.App/SettingsDialog.xaml:58 DirectoryBox.Header</comment>
+  </data>
+  <data name="SettingsDialog_DirectoryBox_PlaceholderText" xml:space="preserve">
+    <value>保存先の絶対パス</value>
+    <comment>src/Something.App/SettingsDialog.xaml:59 DirectoryBox.PlaceholderText</comment>
+  </data>
+  <data name="SettingsDialog_BrowseButton_Content" xml:space="preserve">
+    <value>参照…</value>
+    <comment>src/Something.App/SettingsDialog.xaml:64 BrowseButton.Content</comment>
+  </data>
+  <data name="SettingsDialog_TextBlock_Text_4" xml:space="preserve">
+    <value>保存先を変更すると、現在の履歴DBを移動します。移動先のDBは上書きしません。</value>
+    <comment>src/Something.App/SettingsDialog.xaml:70 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_TextBlock_Text_5" xml:space="preserve">
+    <value>DBフォルダを開く</value>
+    <comment>src/Something.App/SettingsDialog.xaml:79 TextBlock.Text</comment>
+  </data>
+  <data name="SettingsDialog_BusyHint_Text" xml:space="preserve">
+    <value>スキャンや処理が完了すると、保存先の変更とDB削除ができます。</value>
+    <comment>src/Something.App/SettingsDialog.xaml:97 BusyHint.Text</comment>
+  </data>
+  <data name="SettingsDialog_SettingsDialog" xml:space="preserve">
+    <value>DB本体 {0:N0} B / WAL {1:N0} B</value>
+    <comment>src/Something.App/SettingsDialog.xaml.cs:47 SettingsDialog
+{0} = info.DatabaseBytes
+{1} = info.WalBytes</comment>
+  </data>
+  <data name="SettingsDialog_OnSave" xml:space="preserve">
+    <value>保存先を絶対パスで指定してください。</value>
+    <comment>src/Something.App/SettingsDialog.xaml.cs:60 OnSave</comment>
+  </data>
+  <data name="ToastPresentation_GetTitle" xml:space="preserve">
+    <value>完了しました</value>
+    <comment>src/Something.App/ToastPresentation.cs:17 GetTitle</comment>
+  </data>
+  <data name="ToastPresentation_GetTitle_2" xml:space="preserve">
+    <value>お知らせ</value>
+    <comment>src/Something.App/ToastPresentation.cs:18 GetTitle</comment>
+  </data>
+  <data name="ToastPresentation_GetTitle_3" xml:space="preserve">
+    <value>確認してください</value>
+    <comment>src/Something.App/ToastPresentation.cs:19 GetTitle</comment>
+  </data>
+  <data name="ToastPresentation_GetTitle_4" xml:space="preserve">
+    <value>処理できませんでした</value>
+    <comment>src/Something.App/ToastPresentation.cs:20 GetTitle</comment>
+  </data>
+  <data name="DatabaseSettingsStore_SaveDirectory" xml:space="preserve">
+    <value>DBの保存先は絶対パスで指定してください。</value>
+    <comment>src/Something.Application/DatabaseSettingsStore.cs:37 SaveDirectory
+src/Something.Storage/HistoryDatabaseFiles.cs:94 Relocate</comment>
+  </data>
+  <data name="DemoScanStage_Describe" xml:space="preserve">
+    <value>初期状態</value>
+    <comment>src/Something.Application/DemoScanStage.cs:24 Describe</comment>
+  </data>
+  <data name="DemoScanStage_Describe_2" xml:space="preserve">
+    <value>サイズ増減・ファイル追加</value>
+    <comment>src/Something.Application/DemoScanStage.cs:25 Describe</comment>
+  </data>
+  <data name="DemoScanStage_Describe_3" xml:space="preserve">
+    <value>ファイル削除・移動</value>
+    <comment>src/Something.Application/DemoScanStage.cs:26 Describe</comment>
+  </data>
+  <data name="DriveScanner_VolumeMountChangedWhileOpeningScan" xml:space="preserve">
+    <value>スキャンを開始する間にボリュームのマウント先が変わりました。</value>
+    <comment>src/Something.Application/DriveScanner.cs:63 ScanAsync
+Original: Volume mount changed while opening scan.</comment>
+  </data>
+  <data name="ScanProgressSteps_ProgressStageIsOutsideTheScanPlan" xml:space="preserve">
+    <value>進捗のステージがスキャン計画の範囲外です。</value>
+    <comment>src/Something.Application/ScanProgressSteps.cs:41 Locate
+Original: Progress stage is outside the scan plan.</comment>
+  </data>
+  <data name="ScanTimingCollector_TimingMeasurementAlreadyCompleted" xml:space="preserve">
+    <value>処理時間の計測はすでに完了しています。</value>
+    <comment>src/Something.Application/ScanTimingCollector.cs:20 Report
+src/Something.Application/ScanTimingCollector.cs:45 Complete
+Original: Timing measurement already completed.</comment>
+  </data>
+  <data name="ScanTimingCollector_ScanElapsedTimeMustBeMonotonic" xml:space="preserve">
+    <value>スキャンの経過時間は逆行できません。</value>
+    <comment>src/Something.Application/ScanTimingCollector.cs:23 Report
+src/Something.Application/ScanTimingCollector.cs:47 Complete
+Original: Scan elapsed time must be monotonic.</comment>
+  </data>
+  <data name="AttributeListValueReader_OnlyACompleteUnnamedUncompressedATTRIBUTELISTIsSupported" xml:space="preserve">
+    <value>完全な名前なし・非圧縮のATTRIBUTE_LISTだけに対応しています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:74 ReadAsync
+Original: Only a complete unnamed, uncompressed ATTRIBUTE_LIST is supported.</comment>
+  </data>
+  <data name="AttributeListValueReader_ATTRIBUTELISTSizesAreInvalidOrNotFullyInitialized" xml:space="preserve">
+    <value>ATTRIBUTE_LISTのサイズが不正か、全領域が初期化されていません。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:83 ReadAsync
+Original: ATTRIBUTE_LIST sizes are invalid or not fully initialized.</comment>
+  </data>
+  <data name="AttributeListValueReader_ATTRIBUTELISTValueExceedsTheAcquisitionLimit" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの値が取得上限を超えています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:88 ReadAsync
+src/Something.Ntfs/LiveMftFileReader.cs:414 ReadListOwnedAsync
+Original: ATTRIBUTE_LIST value exceeds the acquisition limit.</comment>
+  </data>
+  <data name="AttributeListValueReader_ATTRIBUTELISTHasMissingSparseOrOutOfVolume" xml:space="preserve">
+    <value>ATTRIBUTE_LISTのマッピングペアが欠落しているか、スパース領域またはボリューム外を参照しています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:107 ReadAsync
+Original: ATTRIBUTE_LIST has missing, sparse, or out-of-volume mapping pairs.</comment>
+  </data>
+  <data name="AttributeListValueReader_ATTRIBUTELISTMappedExtentExceedsTheAcquisitionLimit" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの割り当て範囲が取得上限を超えています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:112 ReadAsync
+Original: ATTRIBUTE_LIST mapped extent exceeds the acquisition limit.</comment>
+  </data>
+  <data name="AttributeListValueReader_CompleteATTRIBUTELISTMappingPairsAndSizesDisagree" xml:space="preserve">
+    <value>完全なATTRIBUTE_LISTのマッピングペアとサイズが一致しません。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:125 ReadAsync
+Original: Complete ATTRIBUTE_LIST mapping pairs and sizes disagree.</comment>
+  </data>
+  <data name="AttributeListValueReader_ATTRIBUTELISTPhysicalExtentsOverlap" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの物理領域が重複しています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:132 ReadAsync
+Original: ATTRIBUTE_LIST physical extents overlap.</comment>
+  </data>
+  <data name="AttributeListValueReader_PartialOrOversizedATTRIBUTELISTClusterRead" xml:space="preserve">
+    <value>ATTRIBUTE_LISTのクラスター読み取りが不完全か、要求サイズを超えています。</value>
+    <comment>src/Something.Ntfs/AttributeListValueReader.cs:153 ReadAsync
+Original: Partial or oversized ATTRIBUTE_LIST cluster read.</comment>
+  </data>
+  <data name="AttributeValueParser_UnsupportedSTANDARDINFORMATIONValueLength" xml:space="preserve">
+    <value>このSTANDARD_INFORMATIONの値の長さには対応していません。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:13 ParseStandardFileAttributes
+Original: Unsupported STANDARD_INFORMATION value length</comment>
+  </data>
+  <data name="AttributeValueParser_DuplicateSTANDARDINFORMATIONAttributes" xml:space="preserve">
+    <value>STANDARD_INFORMATION属性が重複しています。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:25 ReadStandardFileAttributes
+Original: Duplicate STANDARD_INFORMATION attributes.</comment>
+  </data>
+  <data name="AttributeValueParser_STANDARDINFORMATIONMustBeResidentUnnamedAndUncompressed" xml:space="preserve">
+    <value>STANDARD_INFORMATIONは常駐・名前なし・非圧縮である必要があります。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:32 ReadStandardFileAttributes
+Original: STANDARD_INFORMATION must be resident, unnamed and uncompressed.</comment>
+  </data>
+  <data name="AttributeValueParser_InvalidFileName" xml:space="preserve">
+    <value>ファイル名が不正です。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:46 ParseFileName
+Original: Invalid file name</comment>
+  </data>
+  <data name="AttributeValueParser_FileNameValueLengthMismatch" xml:space="preserve">
+    <value>ファイル名の値の長さが一致しません。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:48 ParseFileName
+Original: File name value length mismatch</comment>
+  </data>
+  <data name="AttributeValueParser_InvalidAttributeListEntry" xml:space="preserve">
+    <value>属性リストの項目が不正です。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:71 ParseAttributeList
+Original: Invalid attribute list entry</comment>
+  </data>
+  <data name="AttributeValueParser_InvalidAttributeListNameOffset" xml:space="preserve">
+    <value>属性リストの名前オフセットが不正です。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:75 ParseAttributeList
+Original: Invalid attribute list name offset</comment>
+  </data>
+  <data name="AttributeValueParser_NegativeStartingVCN" xml:space="preserve">
+    <value>開始VCNが負の値です。</value>
+    <comment>src/Something.Ntfs/AttributeValueParser.cs:78 ParseAttributeList
+Original: Negative starting VCN</comment>
+  </data>
+  <data name="BinaryView_FieldExtendsOutsideItsContainingStructure" xml:space="preserve">
+    <value>フィールドが、それを含む構造の範囲外にはみ出しています。</value>
+    <comment>src/Something.Ntfs/BinaryView.cs:30 Require
+Original: Field extends outside its containing structure</comment>
+  </data>
+  <data name="BinaryView_LengthExceedsSupportedRange" xml:space="preserve">
+    <value>長さが扱える範囲を超えています。</value>
+    <comment>src/Something.Ntfs/BinaryView.cs:40 Length32
+Original: Length exceeds supported range</comment>
+  </data>
+  <data name="DataRunParser_InvalidVCNRange" xml:space="preserve">
+    <value>VCNの範囲が不正です。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:28 Parse
+Original: Invalid VCN range</comment>
+  </data>
+  <data name="DataRunParser_InvalidMappingPairFieldWidth" xml:space="preserve">
+    <value>マッピングペアのフィールド幅が不正です。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:42 Parse
+Original: Invalid mapping-pair field width</comment>
+  </data>
+  <data name="DataRunParser_InvalidOrOverflowingRunLength" xml:space="preserve">
+    <value>データランの長さが不正か、扱える範囲を超えています。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:47 Parse
+Original: Invalid or overflowing run length</comment>
+  </data>
+  <data name="DataRunParser_LCNOverflow" xml:space="preserve">
+    <value>LCNが扱える範囲を超えています。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:58 Parse
+Original: LCN overflow</comment>
+  </data>
+  <data name="DataRunParser_InvalidPhysicalClusterRange" xml:space="preserve">
+    <value>物理クラスターの範囲が不正です。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:61 Parse
+Original: Invalid physical cluster range</comment>
+  </data>
+  <data name="DataRunParser_RunExceedsDeclaredVCNRange" xml:space="preserve">
+    <value>データランが宣言されたVCNの範囲を超えています。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:68 Parse
+Original: Run exceeds declared VCN range</comment>
+  </data>
+  <data name="DataRunParser_RunsDoNotCoverDeclaredVCNRange" xml:space="preserve">
+    <value>データランが宣言されたVCNの範囲全体を覆っていません。</value>
+    <comment>src/Something.Ntfs/DataRunParser.cs:71 Parse
+Original: Runs do not cover declared VCN range</comment>
+  </data>
+  <data name="LiveMftFileReader_ExpectedReferenceMustReferToTheRequestedIndex" xml:space="preserve">
+    <value>期待する参照は、要求したインデックスを指している必要があります。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:82 ReadAsync
+src/Something.Ntfs/LiveMftRecordReader.cs:90 ReadAsync
+Original: Expected reference must refer to the requested index.</comment>
+  </data>
+  <data name="LiveMftFileReader_ExpectedABaseFileRecord" xml:space="preserve">
+    <value>基本ファイルレコードが必要です。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:109 ReadAsync
+Original: Expected a base file record.</comment>
+  </data>
+  <data name="LiveMftFileReader_DedicatedCapacityAccountingForNTFSBadClusMetadataIsNot" xml:space="preserve">
+    <value>NTFSの$BadClusメタデータ専用の容量集計は実装されていません。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:118 ReadAsync
+Original: Dedicated capacity accounting for NTFS $BadClus metadata is not implemented.</comment>
+  </data>
+  <data name="LiveMftFileReader_InvalidATTRIBUTELISTDeclaration" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの宣言が不正です。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:131 ReadAsync
+Original: Invalid ATTRIBUTE_LIST declaration.</comment>
+  </data>
+  <data name="LiveMftFileReader_TheRecordSourceCannotAcquireNonresidentATTRIBUTELISTValues" xml:space="preserve">
+    <value>このレコード取得元は、非常駐ATTRIBUTE_LISTの値を取得できません。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:145 ReadAsync
+Original: The record source cannot acquire nonresident ATTRIBUTE_LIST values.</comment>
+  </data>
+  <data name="LiveMftFileReader_ConflictingATTRIBUTELISTIdentities" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの識別情報が競合しています。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:222 ReadAsync
+Original: Conflicting ATTRIBUTE_LIST identities.</comment>
+  </data>
+  <data name="LiveMftFileReader_FileRecordAcquisitionLimitExceededRequiredRecordsMaximumRecords" xml:space="preserve">
+    <value>ファイルレコードの取得上限を超えました。必要数={0}、上限={1}、拡張レコード数={2}。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:235 ReadAsync
+{0} = requiredRecords
+{1} = maximumRecords
+{2} = extensions.Length
+Original: File record acquisition limit exceeded: required-records={0}; maximum-records={1}; extension-records={2}.</comment>
+  </data>
+  <data name="LiveMftFileReader_ATTRIBUTELISTInAnExtensionRecordIsNotSupported" xml:space="preserve">
+    <value>拡張レコード内のATTRIBUTE_LISTには対応していません。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:261 ReadAsync
+Original: ATTRIBUTE_LIST in an extension record is not supported.</comment>
+  </data>
+  <data name="LiveMftFileReader_InvalidATTRIBUTELISTLogicalOrInitializedLength" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの論理長または初期化済みの長さが不正です。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:409 ReadListOwnedAsync
+Original: Invalid ATTRIBUTE_LIST logical or initialized length.</comment>
+  </data>
+  <data name="LiveMftFileReader_ATTRIBUTELISTResponseLengthDoesNotMatchItsDescriptor" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの応答長が記述子と一致しません。</value>
+    <comment>src/Something.Ntfs/LiveMftFileReader.cs:421 ReadListOwnedAsync
+Original: ATTRIBUTE_LIST response length does not match its descriptor.</comment>
+  </data>
+  <data name="LiveMftRecordReader_RecordExceedsSupportedSize" xml:space="preserve">
+    <value>レコードのサイズが扱える範囲を超えています。</value>
+    <comment>src/Something.Ntfs/LiveMftRecordReader.cs:108 ReadAsync
+Original: Record exceeds supported size</comment>
+  </data>
+  <data name="LiveMftScanner_ScanRangeMustNotBeEmpty" xml:space="preserve">
+    <value>スキャン範囲は空にできません。</value>
+    <comment>src/Something.Ntfs/LiveMftScanner.cs:83 ScanAsync
+Original: Scan range must not be empty.</comment>
+  </data>
+  <data name="LiveMftScanner_ScanSourceReturnedAnOutOfRangeRepeatedOr" xml:space="preserve">
+    <value>スキャン元が範囲外・重複・順序の不正なレコードを返しました。</value>
+    <comment>src/Something.Ntfs/LiveMftScanner.cs:96 ScanAsync
+Original: Scan source returned an out-of-range, repeated, or unordered record.</comment>
+  </data>
+  <data name="MftFileAssembler_ExpectedAnActiveBaseRecord" xml:space="preserve">
+    <value>使用中の基本レコードが必要です。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:84 Assemble
+Original: Expected an active base record.</comment>
+  </data>
+  <data name="MftFileAssembler_ExtensionHasAStaleOrDifferentBaseFileReference" xml:space="preserve">
+    <value>拡張レコードの基本ファイル参照が古いか、別のファイルを指しています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:93 Assemble
+Original: Extension has a stale or different base file reference.</comment>
+  </data>
+  <data name="MftFileAssembler_DuplicateRecordIndex" xml:space="preserve">
+    <value>レコードのインデックスが重複しています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:102 Assemble
+Original: Duplicate record index.</comment>
+  </data>
+  <data name="MftFileAssembler_MultipleATTRIBUTELISTAttributes" xml:space="preserve">
+    <value>ATTRIBUTE_LIST属性が複数あります。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:109 Assemble
+Original: Multiple ATTRIBUTE_LIST attributes.</comment>
+  </data>
+  <data name="MftFileAssembler_ExtensionsListBytesSuppliedWithoutATTRIBUTELIST" xml:space="preserve">
+    <value>ATTRIBUTE_LISTがない状態で、拡張レコードまたはリストのバイト列が渡されました。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:115 Assemble
+Original: Extensions/list bytes supplied without ATTRIBUTE_LIST.</comment>
+  </data>
+  <data name="MftFileAssembler_ATTRIBUTELISTMustBeUnnamed" xml:space="preserve">
+    <value>ATTRIBUTE_LISTは名前なしである必要があります。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:123 Assemble
+Original: ATTRIBUTE_LIST must be unnamed.</comment>
+  </data>
+  <data name="MftFileAssembler_ExternalBytesSuppliedForResidentATTRIBUTELIST" xml:space="preserve">
+    <value>常駐ATTRIBUTE_LISTに外部のバイト列が渡されました。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:129 Assemble
+Original: External bytes supplied for resident ATTRIBUTE_LIST.</comment>
+  </data>
+  <data name="MftFileAssembler_CompleteNonresidentATTRIBUTELISTValueIsRequired" xml:space="preserve">
+    <value>非常駐ATTRIBUTE_LISTの完全な値が必要です。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:144 Assemble
+Original: Complete nonresident ATTRIBUTE_LIST value is required.</comment>
+  </data>
+  <data name="MftFileAssembler_ATTRIBUTELISTCannotReferenceItself" xml:space="preserve">
+    <value>ATTRIBUTE_LISTは自分自身を参照できません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:152 Assemble
+Original: ATTRIBUTE_LIST cannot reference itself.</comment>
+  </data>
+  <data name="MftFileAssembler_MissingRecordOrSequenceNumberMismatchInATTRIBUTELIST" xml:space="preserve">
+    <value>ATTRIBUTE_LISTが参照するレコードがないか、シーケンス番号が一致しません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:155 Assemble
+Original: Missing record or sequence number mismatch in ATTRIBUTE_LIST.</comment>
+  </data>
+  <data name="MftFileAssembler_MissingOrAmbiguousListedAttribute" xml:space="preserve">
+    <value>リストで指定された属性がないか、一意に確定できません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:171 Assemble
+Original: Missing or ambiguous listed attribute.</comment>
+  </data>
+  <data name="MftFileAssembler_DuplicateATTRIBUTELISTEntry" xml:space="preserve">
+    <value>ATTRIBUTE_LISTの項目が重複しています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:174 Assemble
+Original: Duplicate ATTRIBUTE_LIST entry.</comment>
+  </data>
+  <data name="MftFileAssembler_RecordContainsAnUnlistedAttribute" xml:space="preserve">
+    <value>レコードにリスト未記載の属性があります。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:183 Assemble
+Original: Record contains an unlisted attribute.</comment>
+  </data>
+  <data name="MftFileAssembler_MixedOrDuplicateResidentDATAAttributes" xml:space="preserve">
+    <value>常駐DATA属性が混在または重複しています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:216 AssembleStream
+Original: Mixed or duplicate resident DATA attributes.</comment>
+  </data>
+  <data name="MftFileAssembler_MissingFirstDATAExtent" xml:space="preserve">
+    <value>先頭のDATAエクステントがありません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:219 AssembleStream
+Original: Missing first DATA extent.</comment>
+  </data>
+  <data name="MftFileAssembler_DATAExtentVCNDiscontinuityExpectedLowestObservedLowestObserved" xml:space="preserve">
+    <value>DATAエクステントのVCNが連続していません。期待する開始VCN={0}、観測した開始VCN={1}、終了VCN={2}。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:232 AssembleStream
+{0} = nextVcn
+{1} = extent.LowestVcn
+{2} = extent.HighestVcn
+Original: DATA extent VCN discontinuity: expected-lowest={0}; observed-lowest={1}; observed-highest={2}.</comment>
+  </data>
+  <data name="MftFileAssembler_DATAExtentFlagsMismatchIsNotSupportedFirstObserved" xml:space="preserve">
+    <value>DATAエクステントのフラグの組み合わせには対応していません。先頭={0}、観測値={1}、開始VCN={2}、終了VCN={3}。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:238 AssembleStream
+{0} = extents[0].Flags
+{1} = extent.Flags
+{2} = extent.LowestVcn
+{3} = extent.HighestVcn
+Original: DATA extent flags mismatch is not supported: first={0}; observed={1}; lowest-vcn={2}; highest-vcn={3}.</comment>
+  </data>
+  <data name="MftFileAssembler_NonemptyStreamHasNoMappingPairs" xml:space="preserve">
+    <value>空ではないストリームにマッピングペアがありません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:247 AssembleStream
+Original: Nonempty stream has no mapping pairs.</comment>
+  </data>
+  <data name="MftFileAssembler_DATAPhysicalClusterRangeExceedsTheObservedVolumeBounds" xml:space="preserve">
+    <value>DATAの物理クラスター範囲が観測したボリュームの範囲を超えています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:260 AssembleStream
+Original: DATA physical cluster range exceeds the observed volume bounds.</comment>
+  </data>
+  <data name="MftFileAssembler_DATASizesDisagreeWithCompleteMappingPairsAndVolume" xml:space="preserve">
+    <value>DATAのサイズが、完全なマッピングペアおよびボリュームの構造と一致しません。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:271 AssembleStream
+Original: DATA sizes disagree with complete mapping pairs and volume geometry.</comment>
+  </data>
+  <data name="MftFileAssembler_DATAByteCountOverflow" xml:space="preserve">
+    <value>DATAのバイト数が扱える範囲を超えています。</value>
+    <comment>src/Something.Ntfs/MftFileAssembler.cs:276 AssembleStream
+Original: DATA byte count overflow.</comment>
+  </data>
+  <data name="MftRecordParser_RecordSizeMustBeAPowerOfTwoBetween" xml:space="preserve">
+    <value>レコードサイズは512から65536の範囲の2の累乗である必要があります。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:40 Parse
+Original: Record size must be a power of two between 512 and 65536</comment>
+  </data>
+  <data name="MftRecordParser_MissingFILESignature" xml:space="preserve">
+    <value>FILEシグネチャがありません。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:84 RestoreFixups
+Original: Missing FILE signature</comment>
+  </data>
+  <data name="MftRecordParser_UpdateSequenceArrayCountMismatch" xml:space="preserve">
+    <value>更新シーケンス配列の要素数が一致しません。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:89 RestoreFixups
+Original: Update sequence array count mismatch</comment>
+  </data>
+  <data name="MftRecordParser_InvalidUpdateSequenceArrayLocation" xml:space="preserve">
+    <value>更新シーケンス配列の位置が不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:91 RestoreFixups
+Original: Invalid update sequence array location</comment>
+  </data>
+  <data name="MftRecordParser_UpdateSequenceMismatchForTheSpecifiedRecordEncoding" xml:space="preserve">
+    <value>指定されたレコードのエンコードに対して更新シーケンスが一致しません。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:108 RestoreFixups
+Original: Update sequence mismatch for the specified record encoding</comment>
+  </data>
+  <data name="MftRecordParser_AllocatedRecordSizeMismatch" xml:space="preserve">
+    <value>レコードの割り当てサイズが一致しません。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:124 ParseRestored
+Original: Allocated record size mismatch</comment>
+  </data>
+  <data name="MftRecordParser_InvalidFirstAttributeOffset" xml:space="preserve">
+    <value>最初の属性のオフセットが不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:126 ParseRestored
+Original: Invalid first attribute offset</comment>
+  </data>
+  <data name="MftRecordParser_InvalidUsedRecordSize" xml:space="preserve">
+    <value>レコードの使用サイズが不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:128 ParseRestored
+Original: Invalid used record size</comment>
+  </data>
+  <data name="MftRecordParser_InvalidAttributeTypeOrLength" xml:space="preserve">
+    <value>属性の種類または長さが不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:146 ParseRestored
+Original: Invalid attribute type or length</comment>
+  </data>
+  <data name="MftRecordParser_DuplicateAttributeInstanceID" xml:space="preserve">
+    <value>属性のインスタンスIDが重複しています。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:150 ParseRestored
+Original: Duplicate attribute instance ID</comment>
+  </data>
+  <data name="MftRecordParser_UnknownAttributeForm" xml:space="preserve">
+    <value>属性の形式が不明です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:178 ParseAttribute
+Original: Unknown attribute form</comment>
+  </data>
+  <data name="MftRecordParser_InvalidAttributeNameOffset" xml:space="preserve">
+    <value>属性名のオフセットが不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:190 ParseAttribute
+Original: Invalid attribute name offset</comment>
+  </data>
+  <data name="MftRecordParser_ResidentValueOverlapsAttributeHeaderName" xml:space="preserve">
+    <value>常駐値が属性ヘッダーまたは属性名と重複しています。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:199 ParseAttribute
+Original: Resident value overlaps attribute header/name</comment>
+  </data>
+  <data name="MftRecordParser_STANDARDINFORMATIONMustBeUnnamedAndUncompressed" xml:space="preserve">
+    <value>STANDARD_INFORMATIONは名前なし・非圧縮である必要があります。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:202 ParseAttribute
+Original: STANDARD_INFORMATION must be unnamed and uncompressed</comment>
+  </data>
+  <data name="MftRecordParser_FILENAMEAndSTANDARDINFORMATIONMustBeResident" xml:space="preserve">
+    <value>FILE_NAMEとSTANDARD_INFORMATIONは常駐属性である必要があります。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:214 ParseAttribute
+Original: FILE_NAME and STANDARD_INFORMATION must be resident</comment>
+  </data>
+  <data name="MftRecordParser_MappingPairsOverlapAttributeHeaderName" xml:space="preserve">
+    <value>マッピングペアが属性ヘッダーまたは属性名と重複しています。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:222 ParseAttribute
+Original: Mapping pairs overlap attribute header/name</comment>
+  </data>
+  <data name="MftRecordParser_InvalidStreamSizes" xml:space="preserve">
+    <value>ストリームのサイズが不正です。</value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:239 ParseAttribute
+Original: Invalid stream sizes</comment>
+  </data>
+  <data name="MftRecordParser_InvalidAttributeValue" xml:space="preserve">
+    <value>属性値が不正です: </value>
+    <comment>src/Something.Ntfs/MftRecordParser.cs:278 ValidateKnownValue
+Original: Invalid attribute value: </comment>
+  </data>
+  <data name="MftRecordReader_StreamMustBeReadable" xml:space="preserve">
+    <value>ストリームは読み取り可能である必要があります。</value>
+    <comment>src/Something.Ntfs/MftRecordReader.cs:53 ReadAsync
+Original: Stream must be readable.</comment>
+  </data>
+  <data name="MftRecordReader_TruncatedFinalRecord" xml:space="preserve">
+    <value>最後のレコードが途中で切れています。</value>
+    <comment>src/Something.Ntfs/MftRecordReader.cs:79 ReadAsync
+Original: Truncated final record</comment>
+  </data>
+  <data name="FileAttributionPolicy_ObservationFieldsMustBeInitializedAndHaveKnownStates" xml:space="preserve">
+    <value>観測フィールドは初期化済みで、既知の状態である必要があります。</value>
+    <comment>src/Something.Statistics/FileAttributionPolicy.cs:109 Attribute
+Original: Observation fields must be initialized and have known states.</comment>
+  </data>
+  <data name="FileAttributionPolicy_UnresolvedObservationsMustNotContainPartialStreamCapacities" xml:space="preserve">
+    <value>未解決の観測結果に部分的なストリーム容量を含めることはできません。</value>
+    <comment>src/Something.Statistics/FileAttributionPolicy.cs:114 Attribute
+Original: Unresolved observations must not contain partial stream capacities.</comment>
+  </data>
+  <data name="FileAttributionPolicy_FileKindConflictsWithTheFolderGraph" xml:space="preserve">
+    <value>ファイルの種類がフォルダ階層の情報と一致しません。</value>
+    <comment>src/Something.Statistics/FileAttributionPolicy.cs:118 Attribute
+Original: File kind conflicts with the folder graph.</comment>
+  </data>
+  <data name="FileAttributionPolicy_DuplicateDATAStreamInOneFileObservation" xml:space="preserve">
+    <value>1件のファイル観測内に重複するDATAストリームがあります。</value>
+    <comment>src/Something.Statistics/FileAttributionPolicy.cs:130 Attribute
+Original: Duplicate DATA stream in one file observation.</comment>
+  </data>
+  <data name="FolderAccountingDiagnostics_AValidScopeFolderIsRequired" xml:space="preserve">
+    <value>対象フォルダが有効である必要があります。</value>
+    <comment>src/Something.Statistics/FolderAccountingDiagnostics.cs:78 Analyze
+Original: A valid scope folder is required.</comment>
+  </data>
+  <data name="FolderAccountingDiagnostics_DuplicateDiagnosticRecordIdentity" xml:space="preserve">
+    <value>診断対象のレコード識別情報が重複しています。</value>
+    <comment>src/Something.Statistics/FolderAccountingDiagnostics.cs:117 Analyze
+Original: Duplicate diagnostic record identity.</comment>
+  </data>
+  <data name="FolderAccountingDiagnostics_UnknownDiagnosticStorageTraits" xml:space="preserve">
+    <value>診断対象のストレージ特性が不明です。</value>
+    <comment>src/Something.Statistics/FolderAccountingDiagnostics.cs:134 Analyze
+Original: Unknown diagnostic storage traits.</comment>
+  </data>
+  <data name="FolderAccountingDiagnostics_DiagnosticAccountingIdentitiesDisagree" xml:space="preserve">
+    <value>容量診断の集計値が一致しません。</value>
+    <comment>src/Something.Statistics/FolderAccountingDiagnostics.cs:235 Analyze
+Original: Diagnostic accounting identities disagree.</comment>
+  </data>
+  <data name="FolderAggregator_DuplicateFileRecordIdentityInOneGeneration" xml:space="preserve">
+    <value>同じ世代内に重複するファイルのレコード識別情報があります。</value>
+    <comment>src/Something.Statistics/FolderAggregator.cs:94 Aggregate
+Original: Duplicate file record identity in one generation.</comment>
+  </data>
+  <data name="FolderGraph_FolderParentsMustBeInitialized" xml:space="preserve">
+    <value>親フォルダの情報が初期化されていません。</value>
+    <comment>src/Something.Statistics/FolderGraph.cs:64 Build
+Original: Folder parents must be initialized.</comment>
+  </data>
+  <data name="FolderGraph_DuplicateFolderRecordIdentityInOneGeneration" xml:space="preserve">
+    <value>同じ世代内に重複するフォルダのレコード識別情報があります。</value>
+    <comment>src/Something.Statistics/FolderGraph.cs:69 Build
+Original: Duplicate folder record identity in one generation.</comment>
+  </data>
+  <data name="MftObservationAdapter_InvalidScanEntry" xml:space="preserve">
+    <value>スキャンの項目が不正です。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:21 Convert
+Original: Invalid scan entry.</comment>
+  </data>
+  <data name="MftObservationAdapter_AnExtensionCannotCarryASeparateFileCapacity" xml:space="preserve">
+    <value>拡張レコードに独立したファイル容量を設定できません。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:30 Convert
+Original: An extension cannot carry a separate file capacity.</comment>
+  </data>
+  <data name="MftObservationAdapter_CompleteFileAndAcquisitionEvidenceDisagree" xml:space="preserve">
+    <value>完全なファイル情報と取得時の確認情報が一致しません。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:44 Convert
+Original: Complete file and acquisition evidence disagree.</comment>
+  </data>
+  <data name="MftObservationAdapter_AcquiredArraysMustBeInitialized" xml:space="preserve">
+    <value>取得結果の配列が初期化されていません。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:46 Convert
+Original: Acquired arrays must be initialized.</comment>
+  </data>
+  <data name="MftObservationAdapter_InvalidAcquiredFileName" xml:space="preserve">
+    <value>取得したファイル名が不正です。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:59 Convert
+Original: Invalid acquired file name.</comment>
+  </data>
+  <data name="MftObservationAdapter_UnresolvedScanEntriesCannotCarryCompleteCapacities" xml:space="preserve">
+    <value>未解決のスキャン項目に確定した容量を設定することはできません。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:99 Convert
+Original: Unresolved scan entries cannot carry complete capacities.</comment>
+  </data>
+  <data name="MftObservationAdapter_UnresolvedIdentityDiffersFromTheScanSlot" xml:space="preserve">
+    <value>未解決の識別情報がスキャンスロットと異なります。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:104 Convert
+Original: Unresolved identity differs from the scan slot.</comment>
+  </data>
+  <data name="MftObservationAdapter_UnknownMetadataClassification" xml:space="preserve">
+    <value>メタデータの分類が不明です。</value>
+    <comment>src/Something.Statistics/MftObservationAdapter.cs:123 Domain
+Original: Unknown metadata classification.</comment>
+  </data>
+  <data name="UnattributedDiagnostics_DiagnosticsRequireAMatchingUnattributedObservation" xml:space="preserve">
+    <value>診断には、対応する帰属未確定の観測結果が必要です。</value>
+    <comment>src/Something.Statistics/UnattributedDiagnostics.cs:59 Add
+Original: Diagnostics require a matching unattributed observation.</comment>
+  </data>
+  <data name="BufferedScan_BufferedEnumerationHasNotCompleted" xml:space="preserve">
+    <value>メモリへの列挙が完了していません。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:25 ReadAccountingDiagnostics
+src/Something.Storage/BufferedScan.cs:81 Aggregation
+src/Something.Storage/BufferedScan.cs:85 Diagnostics
+Original: Buffered enumeration has not completed.</comment>
+  </data>
+  <data name="BufferedScan_EstimateAfterCompletingBufferedAggregation" xml:space="preserve">
+    <value>メモリ上の集計が完了してから見積もってください。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:53 EstimateDatabaseBytes
+Original: Estimate after completing buffered aggregation.</comment>
+  </data>
+  <data name="BufferedScan_CompletedObservationsAreImmutable" xml:space="preserve">
+    <value>完了済みの観測結果は変更できません。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:94 Add
+Original: Completed observations are immutable.</comment>
+  </data>
+  <data name="BufferedScan_DuplicateBufferedRecordIdentity" xml:space="preserve">
+    <value>メモリ上のレコード識別情報が重複しています。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:97 Add
+Original: Duplicate buffered record identity.</comment>
+  </data>
+  <data name="BufferedScan_ACompleteRootObservationIsRequired" xml:space="preserve">
+    <value>ルートの完全な観測結果が必要です。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:132 Complete
+Original: A complete root observation is required.</comment>
+  </data>
+  <data name="BufferedScan_AValidRootHierarchyIsRequiredForPublication" xml:space="preserve">
+    <value>結果の公開には、ルートの有効な階層情報が必要です。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:153 Complete
+src/Something.Storage/ScanPublication.cs:22 CompleteScan
+Original: A valid root hierarchy is required for publication.</comment>
+  </data>
+  <data name="BufferedScan_BufferedAggregationDidNotConserveObservedDATA" xml:space="preserve">
+    <value>メモリ上の集計結果と観測したDATA容量の合計が一致しません。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:158 Complete
+Original: Buffered aggregation did not conserve observed DATA.</comment>
+  </data>
+  <data name="BufferedScan_UnattributedDiagnosticsDoNotMatchTheCapacityBucket" xml:space="preserve">
+    <value>帰属未確定の診断情報が容量の分類先と一致しません。</value>
+    <comment>src/Something.Storage/BufferedScan.cs:176 Complete
+Original: Unattributed diagnostics do not match the capacity bucket.</comment>
+  </data>
+  <data name="ComparisonSelection_TheEndpointMustBeRetainedInTheSelectedVolume" xml:space="preserve">
+    <value>比較する記録は選択中のボリュームの保存済み履歴である必要があります。</value>
+    <comment>src/Something.Storage/ComparisonSelection.cs:30 ResolveAtScan
+Original: The endpoint must be retained in the selected volume.</comment>
+  </data>
+  <data name="ComparisonSelection_ComparisonRequiresASingleVolume" xml:space="preserve">
+    <value>比較する記録は同じボリュームに属している必要があります。</value>
+    <comment>src/Something.Storage/ComparisonSelection.cs:73 Resolve
+Original: Comparison requires a single volume.</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_RequireClosed" xml:space="preserve">
+    <value>DBを参照中です。すべての履歴表示を解放してから最適化してください。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:37 RequireClosed</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_HistoryDatabaseDoesNotExist" xml:space="preserve">
+    <value>履歴DBが存在しません。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:76 OpenCore
+Original: History database does not exist.</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_DatabaseFilesMustNotBeReparsePoints" xml:space="preserve">
+    <value>DBファイルに再解析ポイントは使用できません。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:80 OpenCore
+Original: Database files must not be reparse points.</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_SQLiteHistoryIsPreservedItCannotBeOpenedAs" xml:space="preserve">
+    <value>SQLiteの履歴は保持されます。DuckDBとして開くことはできません。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:93 OpenCore
+Original: SQLite history is preserved; it cannot be opened as DuckDB.</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_DuckDBHistorySchemaIsUnsupportedPreserveTheFileAnd" xml:space="preserve">
+    <value>このDuckDB履歴のスキーマには対応していません。元のファイルを保持し、新しい履歴フォルダを使用してください。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:126 OpenCore
+Original: DuckDB history schema is unsupported. Preserve the file and use a new history directory.</comment>
+  </data>
+  <data name="DuckDatabaseBootstrap_DuckDBDatabaseIdentityIsUnsupported" xml:space="preserve">
+    <value>このDuckDBの識別情報には対応していません。</value>
+    <comment>src/Something.Storage/DuckDatabaseBootstrap.cs:133 OpenCore
+Original: DuckDB database identity is unsupported.</comment>
+  </data>
+  <data name="DuckModelInsert_AppenderRequiresAPublicationTransaction" xml:space="preserve">
+    <value>Appenderには公開用のトランザクションが必要です。</value>
+    <comment>src/Something.Storage/DuckModelInsert.cs:26 DuckModelInsert
+Original: Appender requires a publication transaction.</comment>
+  </data>
+  <data name="DuckModelInsert_AppenderColumnTypeAndTypedModelDisagree" xml:space="preserve">
+    <value>Appenderの列型と型付きモデルが一致しません。</value>
+    <comment>src/Something.Storage/DuckModelInsert.cs:48 DuckModelInsert
+Original: Appender column type and typed model disagree.</comment>
+  </data>
+  <data name="DuckModelInsert_AppenderSchemaAndTypedModelDisagree" xml:space="preserve">
+    <value>Appenderのスキーマと型付きモデルが一致しません。</value>
+    <comment>src/Something.Storage/DuckModelInsert.cs:52 DuckModelInsert
+Original: Appender schema and typed model disagree.</comment>
+  </data>
+  <data name="DuckModelInsert_UnsupportedAppenderMapping" xml:space="preserve">
+    <value>このAppenderの型マッピングには対応していません。</value>
+    <comment>src/Something.Storage/DuckModelInsert.cs:134 AddCore
+Original: Unsupported appender mapping.</comment>
+  </data>
+  <data name="DuckModelInsert_FullRangeCapacityAppendFailed" xml:space="preserve">
+    <value>全範囲の容量データの追加に失敗しました。</value>
+    <comment>src/Something.Storage/DuckModelInsert.cs:190 FlushAndClose
+Original: Full-range capacity append failed.</comment>
+  </data>
+  <data name="DuckReadModel_IncompleteGenerationRelationships" xml:space="preserve">
+    <value>世代間の参照関係が不完全です。</value>
+    <comment>src/Something.Storage/DuckReadModel.cs:50 CompleteWrite
+Original: Incomplete generation relationships.</comment>
+  </data>
+  <data name="EntryChanges_EmptyComparisonRow" xml:space="preserve">
+    <value>比較結果の行が空です。</value>
+    <comment>src/Something.Storage/EntryChanges.cs:14 Entry
+Original: Empty comparison row.</comment>
+  </data>
+  <data name="FolderChanges_SelectTwoDistinctScans" xml:space="preserve">
+    <value>異なる2回のスキャンを選択してください。</value>
+    <comment>src/Something.Storage/FolderChanges.cs:124 ReadFolderChanges
+Original: Select two distinct scans.</comment>
+  </data>
+  <data name="FolderChanges_TheComparisonBaselineIsNoLongerAvailable" xml:space="preserve">
+    <value>基準の記録は利用できなくなりました。</value>
+    <comment>src/Something.Storage/FolderChanges.cs:136 ReadFolderChanges
+Original: The comparison baseline is no longer available.</comment>
+  </data>
+  <data name="FolderChanges_TheComparisonEndpointIsNoLongerAvailable" xml:space="preserve">
+    <value>比較する記録は利用できなくなりました。</value>
+    <comment>src/Something.Storage/FolderChanges.cs:141 ReadFolderChanges
+Original: The comparison endpoint is no longer available.</comment>
+  </data>
+  <data name="FolderChanges_TheBaselineMustPrecedeTheEndpoint" xml:space="preserve">
+    <value>基準の記録は比較する記録より前である必要があります。</value>
+    <comment>src/Something.Storage/FolderChanges.cs:145 ReadFolderChanges
+Original: The baseline must precede the endpoint.</comment>
+  </data>
+  <data name="FolderChanges_HistoryPredatesPerNameAccountingAndCannotBeCompared" xml:space="preserve">
+    <value>この履歴は名前別集計に対応していないため比較できません。再スキャンして基準の記録を作成してください。</value>
+    <comment>src/Something.Storage/FolderChanges.cs:291 ReadComparisonFolders
+Original: History predates per-name accounting and cannot be compared. Rescan to establish a baseline.</comment>
+  </data>
+  <data name="FolderContents_FolderIdentityIsNotPresentInThisCompletedGeneration" xml:space="preserve">
+    <value>この完了済みの世代に、指定したフォルダの識別情報がありません。</value>
+    <comment>src/Something.Storage/FolderContents.cs:62 ReadParentFolder
+src/Something.Storage/FolderContents.cs:171 ReadFolderEntriesCore
+Original: Folder identity is not present in this completed generation.</comment>
+  </data>
+  <data name="FolderRanking_ThisGenerationHasNoPerNameAggregation" xml:space="preserve">
+    <value>この世代には名前別の集計結果がありません。</value>
+    <comment>src/Something.Storage/FolderRanking.cs:26 Data
+Original: This generation has no per-name aggregation.</comment>
+  </data>
+  <data name="FolderRanking_DepthMustBeAtLeastTheVolumeRootIs" xml:space="preserve">
+    <value>深さは1以上にしてください。ボリュームのルートは対象に含みません。</value>
+    <comment>src/Something.Storage/FolderRanking.cs:74 ReadRankedFolders
+Original: Depth must be at least 1; the volume root is excluded.</comment>
+  </data>
+  <data name="FolderRanking_ThisHistoricalGenerationHasNoPerNameAggregationRescan" xml:space="preserve">
+    <value>この履歴の世代には名前別の集計結果がありません。再スキャンするか、SingleCountAllDataを選択してください。</value>
+    <comment>src/Something.Storage/FolderRanking.cs:83 ReadRankedFolders
+Original: This historical generation has no per-name aggregation. Rescan or select SingleCountAllData.</comment>
+  </data>
+  <data name="HistoryCompaction_RecoverCompaction" xml:space="preserve">
+    <value>DB最適化のバックアップに予期しないWALがあります。復旧用ファイルを保持してください。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:26 RecoverCompaction</comment>
+  </data>
+  <data name="HistoryCompaction_RecoverCompaction_2" xml:space="preserve">
+    <value>DB最適化の復旧待ちです。元DBのバックアップとWALを保持してください。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:45 RecoverCompaction</comment>
+  </data>
+  <data name="HistoryCompaction_Compact" xml:space="preserve">
+    <value>未参照データを整理しています…</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:85 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_Compact_2" xml:space="preserve">
+    <value>別の履歴参照が残っているため最適化できません。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:98 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_Compact_3" xml:space="preserve">
+    <value>DB最適化用の空きディスク容量が不足しています。元のDBは保持されています。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:112 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_Compact_4" xml:space="preserve">
+    <value>DBを詰め直しています…</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:120 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_Compact_5" xml:space="preserve">
+    <value>コピーしたデータを検証しています…</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:130 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_Compact_6" xml:space="preserve">
+    <value>検証済みDBへ切り替えています…</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:152 Compact</comment>
+  </data>
+  <data name="HistoryCompaction_ValidateCopy" xml:space="preserve">
+    <value>コピー先のDBテーブル構成が一致しません。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:195 ValidateCopy</comment>
+  </data>
+  <data name="HistoryCompaction_ValidateCopy_2" xml:space="preserve">
+    <value>コピー先のDB内容が一致しません。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:212 ValidateCopy</comment>
+  </data>
+  <data name="HistoryCompaction_DBPathsMustReferToOrdinaryFilesNotDirectories" xml:space="preserve">
+    <value>DBのパスには、フォルダやリンクではなく通常のファイルを指定してください。</value>
+    <comment>src/Something.Storage/HistoryCompaction.cs:260 RequireOrdinaryFile
+Original: DB paths must refer to ordinary files, not directories or links.</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_RequireIdle" xml:space="preserve">
+    <value>DBを参照中です。履歴表示を解放してから操作してください。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:43 RequireIdle</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_RequireDatabaseFiles" xml:space="preserve">
+    <value>DB本体がないため、残っているWALを保持して操作を中止します。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:58 RequireDatabaseFiles</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_DeleteDatabase" xml:space="preserve">
+    <value>WALを確定できないためDBを削除できません。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:76 DeleteDatabase</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_Relocate" xml:space="preserve">
+    <value>DBの保存先にリンクフォルダは指定できません。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:116 Relocate</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_Relocate_2" xml:space="preserve">
+    <value>移動先にDBまたは復旧用ファイルがあります。上書きしません。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:127 Relocate</comment>
+  </data>
+  <data name="HistoryDatabaseFiles_Relocate_3" xml:space="preserve">
+    <value>WALを確定できないためDBを移動できません。</value>
+    <comment>src/Something.Storage/HistoryDatabaseFiles.cs:137 Relocate</comment>
+  </data>
+  <data name="HistoryManagement_SelectRange" xml:space="preserve">
+    <value>開始日時は終了日時以前にしてください。</value>
+    <comment>src/Something.Storage/HistoryManagement.cs:19 SelectRange</comment>
+  </data>
+  <data name="HistoryManagement_LocalInstant" xml:space="preserve">
+    <value>夏時間の切り替えで存在しない、または重複する日時です。別の日時を指定してください。</value>
+    <comment>src/Something.Storage/HistoryManagement.cs:34 LocalInstant</comment>
+  </data>
+  <data name="HistoryPublication_ImportSourceMustBeASeparateStore" xml:space="preserve">
+    <value>取り込み元には別のストアを指定してください。</value>
+    <comment>src/Something.Storage/HistoryPublication.cs:16 CopyHistoryGeneration
+Original: Import source must be a separate store.</comment>
+  </data>
+  <data name="HistoryPublication_HistoryMetadataAndSourceGenerationDisagree" xml:space="preserve">
+    <value>履歴のメタデータと元の世代が一致しません。</value>
+    <comment>src/Something.Storage/HistoryPublication.cs:23 CopyHistoryGeneration
+Original: History metadata and source generation disagree.</comment>
+  </data>
+  <data name="MemorySnapshot_SnapshotExportRequiresCompletedCommittedScans" xml:space="preserve">
+    <value>スナップショットの書き出しには、完了して確定したスキャンが必要です。</value>
+    <comment>src/Something.Storage/MemorySnapshot.cs:21 SaveNewSnapshot
+Original: Snapshot export requires completed, committed scans.</comment>
+  </data>
+  <data name="MemorySnapshot_SnapshotExportRequiresCompletedScans" xml:space="preserve">
+    <value>スナップショットの書き出しには完了済みのスキャンが必要です。</value>
+    <comment>src/Something.Storage/MemorySnapshot.cs:82 SaveNewDuckSnapshot
+Original: Snapshot export requires completed scans.</comment>
+  </data>
+  <data name="ModelInsert_PreparedInsertsRequireATransaction" xml:space="preserve">
+    <value>準備済み挿入にはトランザクションが必要です。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:41 ModelInsert
+Original: Prepared inserts require a transaction.</comment>
+  </data>
+  <data name="ModelInsert_PreparedInsertsRequireAnOpenSQLiteConnection" xml:space="preserve">
+    <value>準備済み挿入には開いているSQLite接続が必要です。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:45 ModelInsert
+Original: Prepared inserts require an open SQLite connection.</comment>
+  </data>
+  <data name="ModelInsert_InsertEntityIsAbsentFromTheEFModel" xml:space="preserve">
+    <value>挿入するエンティティがEFモデルにありません。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:49 ModelInsert
+Original: Insert entity is absent from the EF model.</comment>
+  </data>
+  <data name="ModelInsert_PreparedInsertsRequireExplicitScalarValues" xml:space="preserve">
+    <value>準備済み挿入には明示的なスカラー値が必要です。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:53 ModelInsert
+Original: Prepared inserts require explicit scalar values.</comment>
+  </data>
+  <data name="ModelInsert_UnsupportedPreparedInsertProviderMapping" xml:space="preserve">
+    <value>この準備済み挿入のプロバイダーマッピングには対応していません。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:81 ModelInsert
+Original: Unsupported prepared insert provider mapping.</comment>
+  </data>
+  <data name="ModelInsert_PreparedGUIDInsertsRequireTheProviderSTEXTMapping" xml:space="preserve">
+    <value>準備済みGUID挿入には、プロバイダーのTEXT型マッピングが必要です。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:85 ModelInsert
+Original: Prepared GUID inserts require the provider's TEXT mapping.</comment>
+  </data>
+  <data name="ModelInsert_SQLiteDidNotPrepareTheInsert" xml:space="preserve">
+    <value>SQLiteで挿入を準備できませんでした。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:111 ModelInsert
+Original: SQLite did not prepare the insert.</comment>
+  </data>
+  <data name="ModelInsert_PreparedInsertDidNotWriteExactlyOneRow" xml:space="preserve">
+    <value>準備済み挿入で1行だけを書き込めませんでした。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:134 Add
+Original: Prepared insert did not write exactly one row.</comment>
+  </data>
+  <data name="ModelInsert_UnsupportedPreparedInsertProviderValue" xml:space="preserve">
+    <value>この準備済み挿入のプロバイダー値には対応していません。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:173 Bind
+Original: Unsupported prepared insert provider value.</comment>
+  </data>
+  <data name="ModelInsert_PreparedModelInsertFailed" xml:space="preserve">
+    <value>準備済みモデルの挿入に失敗しました。</value>
+    <comment>src/Something.Storage/ModelInsert.cs:179 ThrowSqlite
+Original: Prepared model insert failed.</comment>
+  </data>
+  <data name="ScanHistoryArchive_ApplicationDataDirectoryIsUnavailable" xml:space="preserve">
+    <value>アプリのデータフォルダを利用できません。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:53 CreateDefault
+src/Something.Storage/ScanStore.cs:22 OpenDefault
+Original: Application data directory is unavailable.</comment>
+  </data>
+  <data name="ScanHistoryArchive_HistoryDirectoriesMustNotBeReparsePoints" xml:space="preserve">
+    <value>履歴フォルダに再解析ポイントは使用できません。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:64 OpenDatabase
+Original: History directories must not be reparse points.</comment>
+  </data>
+  <data name="ScanHistoryArchive_ThisDevelopmentHistoryUsesAnUnsupportedFormatPreserveThe" xml:space="preserve">
+    <value>この開発用履歴の形式には対応していません。古い履歴フォルダを保持し、空のフォルダで開始してください。自動変換は行いません。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:77 OpenDatabase
+Original: This development history uses an unsupported format. Preserve the old history directory and start with an empty one; automatic conversion is disabled.</comment>
+  </data>
+  <data name="ScanHistoryArchive_OnlyACompletedScanCanBeArchived" xml:space="preserve">
+    <value>完了したスキャンだけを履歴に保存できます。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:140 Save
+Original: Only a completed scan can be archived.</comment>
+  </data>
+  <data name="ScanHistoryArchive_ThisScanHasAlreadyBeenArchived" xml:space="preserve">
+    <value>このスキャンはすでに履歴へ保存されています。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:145 Save
+Original: This scan has already been archived.</comment>
+  </data>
+  <data name="ScanHistoryArchive_HistoryGenerationIsUnavailable" xml:space="preserve">
+    <value>この世代の履歴は利用できません。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:264 Open
+Original: History generation is unavailable.</comment>
+  </data>
+  <data name="ScanHistoryArchive_HistoryMetadataAndGenerationIdentitiesDisagree" xml:space="preserve">
+    <value>履歴のメタデータと世代の識別情報が一致しません。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:282 Open
+Original: History metadata and generation identities disagree.</comment>
+  </data>
+  <data name="ScanHistoryArchive_PersistentHistoryRequiresAStableVolumeIdentity" xml:space="preserve">
+    <value>履歴の保存には、安定したボリューム識別情報が必要です。</value>
+    <comment>src/Something.Storage/ScanHistoryArchive.cs:337 ValidateArguments
+Original: Persistent history requires a stable volume identity.</comment>
+  </data>
+  <data name="ScanPublication_CompletedScanLacksVolumeAggregation" xml:space="preserve">
+    <value>完了済みのスキャンにボリューム集計がありません。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:195 ReadAggregation
+Original: Completed scan lacks volume aggregation.</comment>
+  </data>
+  <data name="ScanPublication_MissingEntryCapacity" xml:space="preserve">
+    <value>項目の容量情報がありません。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:219 ReadEntrySample
+src/Something.Storage/ScanPublication.cs:223 ReadEntrySample
+src/Something.Storage/ScanPublication.cs:225 ReadEntrySample
+Original: Missing entry capacity.</comment>
+  </data>
+  <data name="ScanPublication_MissingEntryCount" xml:space="preserve">
+    <value>項目の件数情報がありません。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:230 ReadEntrySample
+src/Something.Storage/ScanPublication.cs:236 ReadEntrySample
+src/Something.Storage/ScanPublication.cs:242 ReadEntrySample
+src/Something.Storage/ScanPublication.cs:248 ReadEntrySample
+Original: Missing entry count.</comment>
+  </data>
+  <data name="ScanPublication_OnlyCompletedScansMayBeReadAsHistory" xml:space="preserve">
+    <value>履歴として読み取れるのは完了済みのスキャンだけです。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:289 RequireCompleted
+Original: Only completed scans may be read as history.</comment>
+  </data>
+  <data name="ScanPublication_CannotPruneARunningScan" xml:space="preserve">
+    <value>実行中のスキャンは整理できません。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:300 PruneDetailsBatch
+Original: Cannot prune a running scan.</comment>
+  </data>
+  <data name="ScanPublication_CannotPrunePublishedDetails" xml:space="preserve">
+    <value>公開済みの詳細データは整理できません。</value>
+    <comment>src/Something.Storage/ScanPublication.cs:302 PruneDetailsBatch
+Original: Cannot prune published details.</comment>
+  </data>
+  <data name="ScanStore_ScanRequiresAVolumeIdentityEpochNonemptyRangeAnd" xml:space="preserve">
+    <value>スキャンにはボリューム識別情報、エポック、空でない範囲、UTCの開始日時が必要です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:104 ValidateDescriptor
+Original: Scan requires a volume identity, epoch, nonempty range and UTC start.</comment>
+  </data>
+  <data name="ScanStore_ScanDoesNotExist" xml:space="preserve">
+    <value>スキャンが存在しません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:144 GetScan
+Original: Scan does not exist.</comment>
+  </data>
+  <data name="ScanStore_InvalidStoredScanState" xml:space="preserve">
+    <value>保存されたスキャンの状態が不正です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:146 GetScan
+Original: Invalid stored scan state.</comment>
+  </data>
+  <data name="ScanStore_HistoryReadersCannotModifyTheDatabase" xml:space="preserve">
+    <value>履歴の読み取り処理からDBを変更できません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:177 WriteCore
+Original: History readers cannot modify the database.</comment>
+  </data>
+  <data name="ScanStore_BatchContainsADuplicateRecordIdentity" xml:space="preserve">
+    <value>バッチ内に重複するレコード識別情報があります。</value>
+    <comment>src/Something.Storage/ScanStore.cs:229 StageBatch
+Original: Batch contains a duplicate record identity.</comment>
+  </data>
+  <data name="ScanStore_ObservationLiesOutsideTheScanOrHasAnInvalid" xml:space="preserve">
+    <value>観測結果がスキャン範囲外か、状態が不正です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:253 ValidateObservation
+Original: Observation lies outside the scan or has an invalid state.</comment>
+  </data>
+  <data name="ScanStore_StagedKindAndAcquisitionStateDisagree" xml:space="preserve">
+    <value>一時保存した種類と取得状態が一致しません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:270 ValidateObservation
+Original: Staged kind and acquisition state disagree.</comment>
+  </data>
+  <data name="ScanStore_InvalidStagedFileObservation" xml:space="preserve">
+    <value>一時保存したファイルの観測情報が不正です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:280 ValidateObservation
+Original: Invalid staged file observation.</comment>
+  </data>
+  <data name="ScanStore_StagedKindStateAndCapacityDisagree" xml:space="preserve">
+    <value>一時保存した種類・状態・容量が一致しません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:299 ValidateObservation
+Original: Staged kind, state and capacity disagree.</comment>
+  </data>
+  <data name="ScanStore_InvalidStagedName" xml:space="preserve">
+    <value>一時保存した名前が不正です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:302 ValidateObservation
+Original: Invalid staged name.</comment>
+  </data>
+  <data name="ScanStore_StoredFileStateOrCapacityIsInvalid" xml:space="preserve">
+    <value>保存されたファイルの状態または容量が不正です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:428 ReadFiles
+Original: Stored file state or capacity is invalid.</comment>
+  </data>
+  <data name="ScanStore_ACompleteRootObservationIsRequiredToAggregateA" xml:space="preserve">
+    <value>スキャンの集計には、ルートの完全な観測結果が必要です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:482 AggregateStage
+Original: A complete root observation is required to aggregate a scan.</comment>
+  </data>
+  <data name="ScanStore_FolderAggregationDidNotConserveObservedDATACapacity" xml:space="preserve">
+    <value>フォルダの集計結果と観測したDATA容量の合計が一致しません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:505 AggregateStage
+Original: Folder aggregation did not conserve observed DATA capacity.</comment>
+  </data>
+  <data name="ScanStore_ScanIsNoLongerRunning" xml:space="preserve">
+    <value>このスキャンはすでに実行中ではありません。</value>
+    <comment>src/Something.Storage/ScanStore.cs:564 RequireRunning
+Original: Scan is no longer running.</comment>
+  </data>
+  <data name="ScanStore_AScanForThisVolumeIsAlreadyRunning" xml:space="preserve">
+    <value>このボリュームはすでにスキャン中です。</value>
+    <comment>src/Something.Storage/ScanStore.cs:576 EnsureVolumeAvailable
+Original: A scan for this volume is already running.</comment>
+  </data>
+  <data name="ScanStore_EndMustBeUTCAndAtOrAfterThe" xml:space="preserve">
+    <value>終了日時はUTCで、開始日時以降である必要があります。</value>
+    <comment>src/Something.Storage/ScanStore.cs:583 ValidateEnd
+Original: End must be UTC and at or after the start.</comment>
+  </data>
+  <data name="ScanTimings_ACompleteTimingSnapshotIsRequired" xml:space="preserve">
+    <value>処理時間の完全な記録が必要です。</value>
+    <comment>src/Something.Storage/ScanTimings.cs:48 SaveTimings
+Original: A complete timing snapshot is required.</comment>
+  </data>
+  <data name="ScanTimings_InvalidStepTiming" xml:space="preserve">
+    <value>ステップの処理時間が不正です。</value>
+    <comment>src/Something.Storage/ScanTimings.cs:59 SaveTimings
+Original: Invalid step timing.</comment>
+  </data>
+  <data name="ScanTimings_StepDurationsDoNotConserveTotalElapsedTime" xml:space="preserve">
+    <value>各ステップの処理時間の合計が全体の経過時間と一致しません。</value>
+    <comment>src/Something.Storage/ScanTimings.cs:64 SaveTimings
+Original: Step durations do not conserve total elapsed time.</comment>
+  </data>
+  <data name="ScanTimings_OnlyCompletedScansCanHaveTimingDiagnostics" xml:space="preserve">
+    <value>処理時間の診断情報は完了済みのスキャンにだけ保存できます。</value>
+    <comment>src/Something.Storage/ScanTimings.cs:72 SaveTimings
+Original: Only completed scans can have timing diagnostics.</comment>
+  </data>
+  <data name="SharedHistoryPublication_SharedHistoryDidNotPreserveEveryIncomingObservation" xml:space="preserve">
+    <value>共有履歴にすべての入力観測を保存できませんでした。</value>
+    <comment>src/Something.Storage/SharedHistoryPublication.cs:159 Publish
+Original: Shared history did not preserve every incoming observation.</comment>
+  </data>
+  <data name="SharedHistoryPublication_IncompleteOrAmbiguousSharedHistoryRelationships" xml:space="preserve">
+    <value>共有履歴の参照関係が不完全か、一意に確定できません。</value>
+    <comment>src/Something.Storage/SharedHistoryPublication.cs:221 Validate
+Original: Incomplete or ambiguous shared history relationships.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_SnapshotDatabaseIdentityIsUnsupported" xml:space="preserve">
+    <value>このスナップショットDBの識別情報には対応していません。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:38 OpenSnapshotReadOnly
+Original: Snapshot database identity is unsupported.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_SnapshotDatabaseSchemaIsUnsupported" xml:space="preserve">
+    <value>このスナップショットDBのスキーマには対応していません。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:47 OpenSnapshotReadOnly
+Original: Snapshot database schema is unsupported.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_ACacheBudgetRequiresTheBoundedFileProfile" xml:space="preserve">
+    <value>キャッシュ予算には、上限付きファイルプロファイルが必要です。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:80 Open
+Original: A cache budget requires the bounded file profile.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_DatabaseIsNotAnEmptySomethingDatabase" xml:space="preserve">
+    <value>このDBは空のSomething用DBではありません。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:149 Open
+Original: Database is not an empty Something database.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_DatabaseIdentityOrSchemaVersionIsUnsupported" xml:space="preserve">
+    <value>このDBの識別情報またはスキーマのバージョンには対応していません。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:153 Open
+Original: Database identity or schema version is unsupported.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_DatabaseMigrationHistoryIsUnsupported" xml:space="preserve">
+    <value>このDBのマイグレーション履歴には対応していません。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:166 Open
+Original: Database migration history is unsupported.</comment>
+  </data>
+  <data name="SqliteDatabaseBootstrap_DatabaseCouldNotEnableTheRequestedJournalMode" xml:space="preserve">
+    <value>指定されたジャーナルモードをDBで有効にできませんでした。</value>
+    <comment>src/Something.Storage/SqliteDatabaseBootstrap.cs:187 Open
+Original: Database could not enable the requested journal mode.</comment>
+  </data>
+  <data name="StorageModels_InvalidAggregateCapacityEncoding" xml:space="preserve">
+    <value>集計容量のエンコードが不正です。</value>
+    <comment>src/Something.Storage/StorageModels.cs:63 Unsigned128
+Original: Invalid aggregate capacity encoding.</comment>
+  </data>
+  <data name="StorageModels_InvalidVolumeSerialEncoding" xml:space="preserve">
+    <value>ボリュームシリアル番号のエンコードが不正です。</value>
+    <comment>src/Something.Storage/StorageModels.cs:77 Unsigned64
+Original: Invalid volume serial encoding.</comment>
+  </data>
+  <data name="StorageModels_InvalidStoredNameEncoding" xml:space="preserve">
+    <value>保存された名前のエンコードが不正です。</value>
+    <comment>src/Something.Storage/StorageModels.cs:93 Name
+Original: Invalid stored name encoding.</comment>
+  </data>
+  <data name="TemporaryScanDatabase_ABoundedFileCacheCannotBeAppliedToA" xml:space="preserve">
+    <value>メモリDBにはファイル用のキャッシュ上限を適用できません。</value>
+    <comment>src/Something.Storage/TemporaryScanDatabase.cs:54 CreateCore
+Original: A bounded file cache cannot be applied to a memory database.</comment>
+  </data>
+  <data name="TemporaryScanDatabase_ACacheBudgetRequiresABoundedFileDatabase" xml:space="preserve">
+    <value>キャッシュ予算には、上限を設定したファイルDBが必要です。</value>
+    <comment>src/Something.Storage/TemporaryScanDatabase.cs:58 CreateCore
+Original: A cache budget requires a bounded file database.</comment>
+  </data>
+  <data name="TemporaryScanDatabase_OnlyAnInMemoryDiagnosticDatabaseNeedsExport" xml:space="preserve">
+    <value>書き出しが必要なのはメモリ上の診断用DBだけです。</value>
+    <comment>src/Something.Storage/TemporaryScanDatabase.cs:104 ExportSnapshot
+Original: Only an in-memory diagnostic database needs export.</comment>
+  </data>
+  <data name="TemporaryScanDatabase_TheMemorySnapshotHasNotBeenExported" xml:space="preserve">
+    <value>メモリ上のスナップショットが書き出されていません。</value>
+    <comment>src/Something.Storage/TemporaryScanDatabase.cs:116 OpenSnapshot
+Original: The memory snapshot has not been exported.</comment>
+  </data>
+  <data name="TemporaryScanDatabase_InvalidDiagnosticDatabaseCleanupPath" xml:space="preserve">
+    <value>診断用DBの削除対象パスが不正です。</value>
+    <comment>src/Something.Storage/TemporaryScanDatabase.cs:143 DeleteOwnedDirectory
+Original: Invalid diagnostic database cleanup path.</comment>
+  </data>
+  <data name="FileRecycleContracts_Validate" xml:space="preserve">
+    <value>削除対象のパスを安全に確認できません。</value>
+    <comment>src/Something.Windows/FileRecycleContracts.cs:55 Validate</comment>
+  </data>
+  <data name="FileRecycleContracts_Validate_2" xml:space="preserve">
+    <value>削除対象の名前を安全に確認できません。</value>
+    <comment>src/Something.Windows/FileRecycleContracts.cs:65 Validate</comment>
+  </data>
+  <data name="FileRecycleContracts_Validate_3" xml:space="preserve">
+    <value>デバイス名は削除対象にできません。</value>
+    <comment>src/Something.Windows/FileRecycleContracts.cs:76 Validate</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_OpenReadOnlyVolume" xml:space="preserve">
+    <value>読み取り専用ボリュームのオープン</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:35 Open
+Original: Open read-only volume</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_ReadNTFSMetadata" xml:space="preserve">
+    <value>NTFSメタデータの読み取り</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:66 Query
+Original: Read NTFS metadata</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_InvalidNativeResponseLength" xml:space="preserve">
+    <value>ネイティブAPIの応答長が不正です。</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:68 Query
+Original: Invalid native response length.</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_FailedWin32Error" xml:space="preserve">
+    <value>{0}に失敗しました（Win32 エラー {1}）。</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:73 Failure
+{0} = operation
+{1} = code
+Original: {0} failed (Win32 error {1}).</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_SeekReadOnlyVolume" xml:space="preserve">
+    <value>読み取り専用ボリュームのシーク</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:109 ReadVolumeBytes
+Original: Seek read-only volume</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_VolumeSeekReturnedAnUnexpectedPosition" xml:space="preserve">
+    <value>ボリュームのシークで予期しない位置が返されました。</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:111 ReadVolumeBytes
+Original: Volume seek returned an unexpected position.</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_ReadATTRIBUTELISTClusters" xml:space="preserve">
+    <value>ATTRIBUTE_LISTクラスターの読み取り</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:113 ReadVolumeBytes
+Original: Read ATTRIBUTE_LIST clusters</comment>
+  </data>
+  <data name="NativeNtfsVolumeIo_PartialRawVolumeRead" xml:space="preserve">
+    <value>ボリュームの直接読み取りが途中で終了しました。</value>
+    <comment>src/Something.Windows/NativeNtfsVolumeIo.cs:115 ReadVolumeBytes
+src/Something.Windows/WindowsMftRecordSource.cs:232 ReadClustersAsync
+Original: Partial raw volume read.</comment>
+  </data>
+  <data name="NtfsVolumeInfo_TruncatedNTFSVolumeResponse" xml:space="preserve">
+    <value>NTFSボリュームの応答が途中で切れています。</value>
+    <comment>src/Something.Windows/NtfsVolumeInfo.cs:23 Decode
+Original: Truncated NTFS volume response.</comment>
+  </data>
+  <data name="NtfsVolumeInfo_UnsupportedOrInconsistentNTFSVolumeGeometry" xml:space="preserve">
+    <value>NTFSボリュームの構造が未対応か、整合していません。</value>
+    <comment>src/Something.Windows/NtfsVolumeInfo.cs:48 Decode
+Original: Unsupported or inconsistent NTFS volume geometry.</comment>
+  </data>
+  <data name="StorageAlignment_TruncatedStorageAlignmentDescriptor" xml:space="preserve">
+    <value>記憶装置のアラインメント記述子が途中で切れています。</value>
+    <comment>src/Something.Windows/StorageAlignment.cs:11 Decode
+Original: Truncated storage alignment descriptor.</comment>
+  </data>
+  <data name="StorageAlignment_UnsupportedOrInconsistentStorageAlignment" xml:space="preserve">
+    <value>記憶装置のアラインメントが未対応か、整合していません。</value>
+    <comment>src/Something.Windows/StorageAlignment.cs:27 Decode
+Original: Unsupported or inconsistent storage alignment.</comment>
+  </data>
+  <data name="WindowsFileMetadata_InvalidFileStorageResponseLength" xml:space="preserve">
+    <value>ファイルの記憶領域情報の応答長が不正です。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:58 Decode
+Original: Invalid file storage response length.</comment>
+  </data>
+  <data name="WindowsFileMetadata_InvalidFileStorageSize" xml:space="preserve">
+    <value>ファイルの記憶領域サイズが不正です。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:61 Decode
+Original: Invalid file storage size.</comment>
+  </data>
+  <data name="WindowsFileMetadata_InvalidStandardFileResponseLength" xml:space="preserve">
+    <value>標準ファイル情報の応答長が不正です。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:86 Decode
+Original: Invalid standard file response length.</comment>
+  </data>
+  <data name="WindowsFileMetadata_InvalidStandardFileResponseFields" xml:space="preserve">
+    <value>標準ファイル情報の応答フィールドが不正です。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:90 Decode
+Original: Invalid standard file response fields.</comment>
+  </data>
+  <data name="WindowsFileMetadata_InvalidFileMetadataResponseLength" xml:space="preserve">
+    <value>ファイルメタデータの応答長が不正です。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:129 Decode
+Original: Invalid file metadata response length.</comment>
+  </data>
+  <data name="WindowsFileMetadata_FileSizeExceedsTheSupportedRange" xml:space="preserve">
+    <value>ファイルサイズが扱える範囲を超えています。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:140 Decode
+Original: File size exceeds the supported range.</comment>
+  </data>
+  <data name="WindowsFileMetadata_OpenedFileReferenceDiffersFromTheRequestedIdentity" xml:space="preserve">
+    <value>開いたファイルの参照が要求した識別情報と異なります。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:195 OpenByReference
+Original: Opened file reference differs from the requested identity.</comment>
+  </data>
+  <data name="WindowsFileMetadata_SpecifyAnAbsoluteFilePathOnTheSelectedDrive" xml:space="preserve">
+    <value>選択したドライブ上のファイルを絶対パスで指定してください。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:231 OpenCore
+Original: Specify an absolute file path on the selected drive.</comment>
+  </data>
+  <data name="WindowsFileMetadata_ReadFileMetadataFailedWin32Error" xml:space="preserve">
+    <value>ファイルメタデータの読み取りに失敗しました（Win32 エラー {0}）。</value>
+    <comment>src/Something.Windows/WindowsFileMetadata.cs:290 Failure
+{0} = code
+Original: Read file metadata failed (Win32 error {0}).</comment>
+  </data>
+  <data name="WindowsMftRecordSource_RawVolumeReadsAreUnavailable" xml:space="preserve">
+    <value>ボリュームの直接読み取りを利用できません。</value>
+    <comment>src/Something.Windows/WindowsMftRecordSource.cs:15 ReadVolumeBytes
+Original: Raw volume reads are unavailable.</comment>
+  </data>
+  <data name="WindowsMftRecordSource_SpecifyALocalDriveLetterSuchAsC" xml:space="preserve">
+    <value>C: のようなローカルドライブのドライブ文字を指定してください。</value>
+    <comment>src/Something.Windows/WindowsMftRecordSource.cs:69 DevicePath
+Original: Specify a local drive letter such as C:.</comment>
+  </data>
+  <data name="WindowsMftRecordSource_TruncatedNTFSRecordResponseHeader" xml:space="preserve">
+    <value>NTFSレコードの応答ヘッダーが途中で切れています。</value>
+    <comment>src/Something.Windows/WindowsMftRecordSource.cs:177 ValidateRecordResponse
+Original: Truncated NTFS record response header.</comment>
+  </data>
+  <data name="WindowsMftRecordSource_InconsistentNTFSRecordResponse" xml:space="preserve">
+    <value>NTFSレコードの応答に整合性がありません。</value>
+    <comment>src/Something.Windows/WindowsMftRecordSource.cs:181 ValidateRecordResponse
+Original: Inconsistent NTFS record response.</comment>
+  </data>
+  <data name="WindowsMftRecordSource_ClusterReadIsOutsideTheVolumeOrAcquisitionLimit" xml:space="preserve">
+    <value>クラスターの読み取り範囲がボリューム外か、取得上限を超えています。</value>
+    <comment>src/Something.Windows/WindowsMftRecordSource.cs:211 ReadClustersAsync
+Original: Cluster read is outside the volume or acquisition limit.</comment>
+  </data>
+  <data name="WindowsRecycleBackend_SomethingRecycleOperation" xml:space="preserve">
+    <value>Something：ゴミ箱への移動</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:81 RecycleAsync
+Original: Something recycle operation</comment>
+  </data>
+  <data name="WindowsRecycleBackend_Recycle" xml:space="preserve">
+    <value>ゴミ箱への移動を確認できませんでした。完全削除への切り替えは行いません。</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:136 Recycle</comment>
+  </data>
+  <data name="WindowsRecycleBackend_ParentLease" xml:space="preserve">
+    <value>リンクやジャンクションを経由するパスは削除できません。</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:171 ParentLease</comment>
+  </data>
+  <data name="WindowsRecycleBackend_PreDeleteItem" xml:space="preserve">
+    <value>この項目はゴミ箱へ移動できません。完全削除は行いません。</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:206 PreDeleteItem</comment>
+  </data>
+  <data name="WindowsRecycleBackend_PreDeleteItem_2" xml:space="preserve">
+    <value>削除対象のパスが変更されました。</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:219 PreDeleteItem</comment>
+  </data>
+  <data name="WindowsRecycleBackend_PostDeleteItem" xml:space="preserve">
+    <value>ゴミ箱への移動に失敗しました。</value>
+    <comment>src/Something.Windows/WindowsRecycleBackend.cs:235 PostDeleteItem</comment>
+  </data>
+  <data name="WindowsVolumeIdentity_VolumeMountChangedWhileReadingIdentity" xml:space="preserve">
+    <value>識別情報を読み取る間にボリュームのマウント先が変わりました。</value>
+    <comment>src/Something.Windows/WindowsVolumeIdentity.cs:15 ReadHistoryKey
+Original: Volume mount changed while reading identity.</comment>
+  </data>
+  <data name="WindowsVolumeIdentity_ReadVolumeIdentityFailed" xml:space="preserve">
+    <value>ボリュームの識別情報を読み取れませんでした。</value>
+    <comment>src/Something.Windows/WindowsVolumeIdentity.cs:24 ReadKey
+Original: Read volume identity failed.</comment>
+  </data>
+  <data name="WindowsVolumeIdentity_WindowsReturnedAnInvalidVolumeIdentity" xml:space="preserve">
+    <value>Windowsが不正なボリューム識別情報を返しました。</value>
+    <comment>src/Something.Windows/WindowsVolumeIdentity.cs:35 ReadKey
+Original: Windows returned an invalid volume identity.</comment>
+  </data>
+</root>
