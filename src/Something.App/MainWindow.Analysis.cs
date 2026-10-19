@@ -203,21 +203,33 @@ public sealed partial class MainWindow
                     "Analysis parent navigation did not restore its scope."
                 );
 
+            // Expectations come from the displayed scan: with a demo history, earlier checks
+            // rescan the drive, so its files and sizes are those of a later demo stage.
+            var files = await current.ReadFileAnalysisAsync(lifetime.Token);
             AnalysisFoldersOnlyBox.IsChecked = false;
             await LoadRankingAsync();
             var mixed = Ranking.Items.Cast<RankingRow>().ToArray();
             if (
-                mixed.Length != facts.Length + 4
-                || mixed.Count(row => !row.IsDirectory) != 4
+                files.Length == 0
+                || mixed.Length != facts.Length + files.Length
+                || mixed.Count(row => !row.IsDirectory) != files.Length
+                || !files.All(file =>
+                    mixed.Any(row => !row.IsDirectory && row.RelativePath == file.RelativePath)
+                )
                 || !AnalysisNameHeader
                     .Content.ToString()!
                     .StartsWith("名前", StringComparison.Ordinal)
             )
                 throw new InvalidOperationException(
-                    "Mixed analysis did not include all recursive files."
+                    $"Mixed analysis did not include all recursive files: rows={mixed.Length}, folders={facts.Length}, files={mixed.Count(row => !row.IsDirectory)} of {files.Length} [{string.Join(", ", mixed.Where(row => !row.IsDirectory).Select(row => row.RelativePath))}], header={AnalysisNameHeader.Content}."
                 );
             var capture = mixed.Single(row => row.RelativePath == @"Media\capture.mp4");
-            if (capture.IsDirectory || capture.Size != DisplayText.Bytes((UInt128)4_831_838_208))
+            var captureFile = files.Single(file => file.RelativePath == capture.RelativePath);
+            if (
+                capture.IsDirectory
+                || captureFile.Entry.Data is not { } captureData
+                || capture.Size != DisplayText.Bytes(captureData.AllocatedBytes)
+            )
                 throw new InvalidOperationException(
                     "Analysis used folder type or incorrect capacity for a file."
                 );
@@ -233,9 +245,16 @@ public sealed partial class MainWindow
                     "A realized analysis file row retained folder visuals."
                 );
             await LoadFolderAsync(((FolderNode)projects.Content).Location, true);
+            int nestedFolders = facts.Count(folder =>
+                folder.RelativePath.StartsWith(@"Projects\", StringComparison.Ordinal)
+            );
+            int nestedFiles = files.Count(file =>
+                file.RelativePath.StartsWith(@"Projects\", StringComparison.Ordinal)
+            );
             if (
-                Ranking.Items.Count != 3
-                || Ranking.Items.Cast<RankingRow>().Count(row => !row.IsDirectory) != 2
+                nestedFiles == 0
+                || Ranking.Items.Count != nestedFolders + nestedFiles
+                || Ranking.Items.Cast<RankingRow>().Count(row => !row.IsDirectory) != nestedFiles
             )
                 throw new InvalidOperationException(
                     "Mixed analysis lost nested files or escaped the selected scope."
@@ -243,7 +262,7 @@ public sealed partial class MainWindow
             AnalysisFoldersOnlyBox.IsChecked = true;
             await LoadRankingAsync();
             if (
-                Ranking.Items.Count != 1
+                Ranking.Items.Count != nestedFolders
                 || Ranking.Items.Cast<RankingRow>().Any(row => !row.IsDirectory)
             )
                 throw new InvalidOperationException(

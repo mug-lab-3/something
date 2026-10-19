@@ -141,6 +141,9 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            // The checks compare rescans and fixed demo files; the changing demo data does not fit.
+            if (!Environment.GetCommandLineArgs().Contains("--demo-static"))
+                throw new InvalidOperationException("Smoke checks require --demo-static.");
             if (
                 session is null
                 || Entries.Items.Count != 3

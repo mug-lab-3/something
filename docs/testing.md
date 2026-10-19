@@ -44,7 +44,18 @@ dotnet build src/Something.App -c Release
 
 デモは仮想ディスクのマウントではなく、メモリ上の合成観測です。三つのドライブを表示し、スキャンごとに初期・増減／追加・削除／移動の状態を繰り返します。`run-demo.bat` は `artifacts/demo-history` に専用履歴を残します。通常の実ファイルや通常の設定を読み書きしません。
 
-`--demo-static` を加えると固定データになります。画面テスト用の `--smoke-*` 引数は `Something.App` の各 `*.Smoke.cs` に実装されています。検証用マニフェストで別出力先へビルドする場合、配布用の昇格マニフェストを上書きしないでください。
+`--demo-static` を加えると固定データになります。画面テスト用の `--smoke-*` 引数は `Something.App` の各 `*.Smoke.cs` に実装されています。
+
+画面スモークテストは、再スキャンしてもデモのデータが変わらない前提で比較するため、`--demo-static` が必須です（指定しないと開始時に失敗します）。結果は `<出力先>.result` に書き出し、成功時は終了コード 0 で終了します。アプリは管理者権限を要求するため、起動時に UAC の確認が表示されます。
+
+```powershell
+$exe = 'src\Something.App\bin\Release\net10.0-windows10.0.26100.0\win-x64\Something.App.exe'
+Start-Process $exe -Wait -ArgumentList '--demo','--demo-static','--demo-history','artifacts\smoke\history',
+    '--smoke-test','artifacts\smoke\run','--smoke-comparison','--smoke-history-management','--smoke-scan-animation'
+Get-Content artifacts\smoke\run.result
+```
+
+`--smoke-comparison` は比較と読み込み表示の時間規則、`--smoke-history-management` は履歴削除・最適化のアニメーション、`--smoke-scan-animation` はスキャンのアニメーションを追加で確認します。比較は `--demo-history` が必要です。検証用マニフェストで別出力先へビルドする場合、配布用の昇格マニフェストを上書きしないでください。
 
 ## 明示的なライブ確認
 
