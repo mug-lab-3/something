@@ -5,6 +5,9 @@ on:
 
 permissions:
   contents: write
+  # Build provenance: sign an attestation for the published files with the workflow identity.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release
@@ -63,6 +66,21 @@ jobs:
           $archive = Join-Path $PWD "artifacts/Something-$env:RELEASE_TAG-win-x64.zip"
           Compress-Archive -LiteralPath $files -DestinationPath $archive -CompressionLevel Optimal
           "RELEASE_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # sha256sum format, so users can verify both the archive and the executable inside it.
+          $sums = Join-Path $PWD 'artifacts/SHA256SUMS.txt'
+          $lines = foreach ($file in @($archive, 'artifacts/publish/win-x64/Something.App.exe')) {
+              $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $(Split-Path -Leaf $file)"
+          }
+          [IO.File]::WriteAllText($sums, ($lines -join "`n") + "`n")
+          "RELEASE_SUMS=$sums" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            artifacts/Something-v*-win-x64.zip
+            artifacts/publish/win-x64/Something.App.exe
 
       # Upload directly to Releases: no Actions artifact or dependency cache is created.
       - name: Create or update GitHub Release
@@ -96,19 +114,20 @@ jobs:
               $release = $items | Where-Object { $_.tag_name -ceq $env:RELEASE_TAG } | Select-Object -First 1
               $page++
           } while (!$release -and $items.Count -eq 100)
-          if ($release) {
-              if ($release.immutable) {
-                  throw 'This release is immutable. Disable release immutability or use a new version.'
-              }
-              # Hide an existing release until its replacement asset is ready. Keep its notes.
-              Invoke-RestMethod -Method Patch -Uri "$api/releases/$($release.id)" -Headers $headers `
-                  -ContentType 'application/json' -Body (@{ draft = $true } | ConvertTo-Json) | Out-Null
+          # A published version is never rebuilt or replaced; bump the version instead.
+          # Only a draft left by an interrupted run of the same commit may be resumed.
+          if ($release -and !$release.draft) {
+              throw "Release $env:RELEASE_TAG is already published. Use a new version."
           }
           $reference = Get-OptionalGitHubItem "$api/git/ref/tags/$env:RELEASE_TAG"
           if ($reference) {
-              $body = @{ sha = $env:GITHUB_SHA; force = $true } | ConvertTo-Json
-              Invoke-RestMethod -Method Patch -Uri "$api/git/refs/tags/$env:RELEASE_TAG" `
-                  -Headers $headers -ContentType 'application/json' -Body $body | Out-Null
+              $target = $reference.object
+              if ($target.type -eq 'tag') {
+                  $target = (Invoke-RestMethod -Uri $target.url -Headers $headers).object
+              }
+              if ($target.sha -ne $env:GITHUB_SHA) {
+                  throw "Tag $env:RELEASE_TAG already points to $($target.sha); it is not moved."
+              }
           } else {
               $body = @{ ref = "refs/tags/$env:RELEASE_TAG"; sha = $env:GITHUB_SHA } | ConvertTo-Json
               Invoke-RestMethod -Method Post -Uri "$api/git/refs" -Headers $headers `
@@ -121,7 +140,7 @@ jobs:
                   throw "GitHub Release creation failed (exit $LASTEXITCODE)."
               }
           }
-          & gh release upload $env:RELEASE_TAG $env:RELEASE_ARCHIVE --clobber
+          & gh release upload $env:RELEASE_TAG $env:RELEASE_ARCHIVE $env:RELEASE_SUMS --clobber
           if ($LASTEXITCODE -ne 0) {
               throw "Release upload failed; the release remains a draft (exit $LASTEXITCODE)."
           }
