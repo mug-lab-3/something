@@ -46,13 +46,23 @@ public sealed partial class RecordLoadingAnimation : UserControl
             {
                 LoadingAnimationKind.Inspect => 136,
                 LoadingAnimationKind.ScanDisk => 70,
+                LoadingAnimationKind.DeleteHistory => 96,
                 _ => 94,
             };
-            ChickMotion.TranslateY = ActiveKind == LoadingAnimationKind.ScanDisk ? 40 : 22;
+            ChickMotion.TranslateY = ActiveKind switch
+            {
+                LoadingAnimationKind.ScanDisk => 40,
+                LoadingAnimationKind.DeleteHistory => 43,
+                _ => 22,
+            };
             FrontSprite.Opacity = 1;
             SideSprite.Opacity = 0;
             GateReady.Opacity = ActiveKind == LoadingAnimationKind.Inspect ? 1 : 0;
-            CarriedRecords.Opacity = ActiveKind == LoadingAnimationKind.DeleteHistory ? 1 : 0;
+            if (ActiveKind == LoadingAnimationKind.DeleteHistory)
+            {
+                DefaultChick.SetFarewellPose(true);
+                Farewell.Opacity = 1;
+            }
             return;
         }
         settling = new(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -34,7 +34,9 @@ public sealed partial class MainWindow
                             "Nested refresh replaced the maintenance animation."
                         );
                 }
-                ViewLoadingAnimation.PauseForPreview(.7);
+                ViewLoadingAnimation.PauseForPreview(
+                    kind == LoadingAnimationKind.DeleteHistory ? 1.5 : .7
+                );
                 try
                 {
                     await Task.Delay(80, lifetime.Token);
@@ -84,7 +86,7 @@ public sealed partial class MainWindow
         {
             await using (BeginViewUpdate("Optimize", LoadingAnimationKind.OptimizeDatabase))
             {
-                await Task.Delay(1500, lifetime.Token);
+                await Task.Delay(3200, lifetime.Token);
                 if (
                     ViewLoadingAnimation.IsPlaying
                     && ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.OptimizeDatabase

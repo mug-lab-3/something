@@ -16,13 +16,22 @@ public sealed partial class AnimationPreviewWindow
                 Restart();
                 if (!Animation.IsPlaying)
                     throw new InvalidOperationException("Standalone preview did not start.");
-                double[] frames = index == 3 ? [.4, 1.15, 2.5, 2.86, 3.85, 4.8] : [.6];
+                double[] frames = index switch
+                {
+                    2 => [.4, 1.5, 2.5, 3.08],
+                    3 => [.4, 1.15, 2.5, 2.86, 3.85, 4.8],
+                    _ => [.6],
+                };
                 foreach (double frame in frames)
                 {
                     Animation.PauseForPreview(frame);
                     await Task.Delay(80);
                     if (index == 3)
                         Animation.VerifyOptimizationPose(frame);
+                    else if (index == 2)
+                        Animation.VerifyDeletionPose(frame);
+                    if (index != 2)
+                        Animation.VerifyDepartureAccessoriesHidden();
                     await CaptureAsync($"{path}.{index}-{frame:F2}.png");
                 }
                 Animation.ResumeAfterPreview();
@@ -34,6 +43,8 @@ public sealed partial class AnimationPreviewWindow
                 Restart();
                 if (Animation.IsPlaying || !Animation.WaitForSettledAsync().IsCompleted)
                     throw new InvalidOperationException("Static preview started an animation.");
+                if (index == 2)
+                    Animation.VerifyDeletionPose(1.5);
                 StaticBox.IsChecked = false;
             }
             KindBox.SelectedIndex = 3;
@@ -42,10 +53,16 @@ public sealed partial class AnimationPreviewWindow
             Animation.PauseForPreview(2.86);
             await Task.Delay(80);
             await CaptureAsync(path + ".light.png");
+            KindBox.SelectedIndex = 2;
+            Restart();
+            Animation.PauseForPreview(1.5);
+            await Task.Delay(80);
+            Animation.VerifyDeletionPose(1.5);
+            await CaptureAsync(path + ".farewell-light.png");
             Animation.Cancel();
             await File.WriteAllTextAsync(
                 path + ".result",
-                "Standalone animation preview passed: all four modes, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
+                "Standalone animation preview passed: all four modes, backpack departure and raised-wing farewell, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
             );
         }
         catch (Exception error)

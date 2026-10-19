@@ -15,8 +15,28 @@
   </UserControl.Resources>
   <Canvas>
     <Canvas x:Name="FrontSprite">
+      <Canvas x:Name="FrontBackpack" Visibility="Collapsed">
+        <Rectangle
+          Canvas.Left="-7"
+          Canvas.Top="25"
+          Width="68"
+          Height="32"
+          RadiusX="9"
+          RadiusY="9"
+          Fill="#A9876F"
+          Stroke="#E2C4A3"
+        />
+        <Path Data="M 18,26 V 22 Q 27,16 36,22 V 26" Stroke="#E2C4A3" StrokeThickness="3" />
+      </Canvas>
       <Ellipse Canvas.Left="-4" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
-      <Ellipse Canvas.Left="45" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B" />
+      <Ellipse
+        x:Name="RestingRightWing"
+        Canvas.Left="45"
+        Canvas.Top="28"
+        Width="13"
+        Height="27"
+        Fill="#B75B9B"
+      />
       <Rectangle
         Width="54"
         Height="60"
@@ -35,12 +55,61 @@
         StrokeStartLineCap="Round"
         StrokeEndLineCap="Round"
       />
+      <Canvas x:Name="FrontStraps" Visibility="Collapsed">
+        <Path
+          Data="M 9,27 Q 10,38 13,48 M 45,27 Q 44,38 41,48"
+          Stroke="#E2C4A3"
+          StrokeThickness="3"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+        <Path Data="M 12,45 H 16 M 38,45 H 42" Stroke="#92715E" StrokeThickness="3" />
+      </Canvas>
+      <Canvas x:Name="GreetingWing" Opacity="0">
+        <Ellipse Canvas.Left="45" Canvas.Top="28" Width="13" Height="27" Fill="#B75B9B">
+          <Ellipse.RenderTransform>
+            <RotateTransform x:Name="GreetingWingMotion" CenterX="4" CenterY="3" />
+          </Ellipse.RenderTransform>
+        </Ellipse>
+      </Canvas>
     </Canvas>
     <!-- A separate silhouette makes the walking direction readable even at small sizes. -->
     <Canvas x:Name="SideSprite" Opacity="0">
       <Canvas.RenderTransform>
         <ScaleTransform x:Name="SideDirection" CenterX="27" ScaleX="1" />
       </Canvas.RenderTransform>
+      <Canvas x:Name="SideBackpack" Visibility="Collapsed">
+        <Path Data="M -8,25 V 20 Q 0,14 8,20 V 25" Stroke="#E2C4A3" StrokeThickness="3" />
+        <Rectangle
+          Canvas.Left="-15"
+          Canvas.Top="23"
+          Width="28"
+          Height="34"
+          RadiusX="7"
+          RadiusY="7"
+          Fill="#B59579"
+          Stroke="#E2C4A3"
+        />
+        <Path Data="M -14,31 Q -1,38 12,31" Stroke="#E2C4A3" StrokeThickness="2" />
+        <Rectangle
+          Canvas.Left="-10"
+          Canvas.Top="41"
+          Width="18"
+          Height="11"
+          RadiusX="3"
+          RadiusY="3"
+          Fill="#9F7B65"
+        />
+        <Rectangle
+          Canvas.Left="-3"
+          Canvas.Top="30"
+          Width="5"
+          Height="8"
+          RadiusX="2"
+          RadiusY="2"
+          Fill="#F0D4AA"
+        />
+      </Canvas>
       <Path Data="M 6,39 Q -12,28 -9,39 Q -7,48 9,48 Z" Fill="#B75B9B" />
       <Path
         Data="M 8,29 C 6,12 17,1 34,1 C 48,1 54,12 53,27 C 61,41 54,59 35,60 L 21,60 C 5,60 -1,43 8,29 Z"

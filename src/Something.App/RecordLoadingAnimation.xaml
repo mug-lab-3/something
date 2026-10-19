@@ -250,29 +250,6 @@
         <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />
       </Canvas.RenderTransform>
       <local:ChickFigure x:Name="DefaultChick" />
-      <Canvas x:Name="CarriedRecords" Canvas.Left="30" Canvas.Top="31" Opacity="0">
-        <Canvas.RenderTransform>
-          <TranslateTransform x:Name="CarriedMotion" />
-        </Canvas.RenderTransform>
-        <Rectangle Width="36" Height="16" RadiusX="4" RadiusY="4" Fill="#E8DAF5" Stroke="#B99AD2" />
-        <Rectangle
-          Canvas.Top="12"
-          Width="36"
-          Height="16"
-          RadiusX="4"
-          RadiusY="4"
-          Fill="#E8DAF5"
-          Stroke="#B99AD2"
-        />
-        <Path
-          Data="M 6,6 L 12,6 M 17,6 L 29,6 M 6,19 L 12,19 M 17,19 L 29,19"
-          Stroke="#A47BBF"
-          StrokeThickness="3"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
-        <Path Data="M -1,12 Q 10,10 13,18 Q 8,25 -1,22" Fill="#B75B9B" />
-      </Canvas>
     </Canvas>
     <local:ChickFigure x:Name="OptimizeFirst" Canvas.Top="80" Visibility="Collapsed">
       <local:ChickFigure.RenderTransform>
@@ -481,28 +458,26 @@
         />
       </Canvas>
     </Canvas>
-    <Canvas x:Name="SortingBox" Canvas.Left="239" Canvas.Top="99" Visibility="Collapsed">
-      <Path Data="M 0,8 L 9,0 L 50,0 L 56,8 Z" Fill="#9C7EB5" />
-      <Rectangle
-        Canvas.Left="9"
-        Canvas.Top="-7"
-        Width="36"
-        Height="23"
-        RadiusX="3"
-        RadiusY="3"
-        Fill="#E8DAF5"
-        Stroke="#B99AD2"
+    <Canvas
+      x:Name="Farewell"
+      Canvas.Left="174"
+      Canvas.Top="27"
+      Canvas.ZIndex="2"
+      Visibility="Collapsed"
+      Opacity="0"
+    >
+      <Path
+        Data="M 0,0 H 76 Q 82,0 82,6 V 23 Q 82,29 76,29 H 28 L 18,37 L 20,29 H 6 Q 0,29 0,23 Z"
+        Fill="#574360"
+        Stroke="#D2B3E3"
       />
-      <Path Data="M 15,0 L 21,0 M 27,0 L 38,0" Stroke="#A47BBF" StrokeThickness="3" />
-      <Rectangle Canvas.Top="8" Width="56" Height="37" RadiusX="5" RadiusY="5" Fill="#C4A6DC" />
-      <Rectangle
-        Canvas.Left="19"
-        Canvas.Top="19"
-        Width="18"
-        Height="5"
-        RadiusX="2.5"
-        RadiusY="2.5"
-        Fill="#9470AF"
+      <TextBlock
+        Canvas.Left="10"
+        Canvas.Top="4"
+        Text="じゃっ！"
+        FontSize="14"
+        FontWeight="SemiBold"
+        Foreground="#E8D7EF"
       />
     </Canvas>
     <Canvas x:Name="ScanBeam" Canvas.Left="187" Canvas.Top="55" Opacity="0">

@@ -96,4 +96,60 @@ public sealed partial class RecordLoadingAnimation
                 "A chick remained outside the DB at the cycle boundary."
             );
     }
+
+    internal void VerifyDeletionPose(double seconds)
+    {
+        if (
+            ActiveKind != LoadingAnimationKind.DeleteHistory
+            || !DefaultChick.HasBackpack
+            || Width != 300
+            || ChickMotion.ScaleX != 1
+            || ChickMotion.ScaleY != 1
+        )
+            throw new InvalidOperationException(
+                "Farewell did not preserve the shared full-size chick with a backpack."
+            );
+        if (
+            seconds is > 1.49 and < 1.51
+            && (
+                DefaultChick.RaisedWing.Opacity != 1
+                || DefaultChick.WaveMotion.Angle > -120
+                || FrontSprite.Opacity != 1
+                || Farewell.Opacity < .9
+                || Math.Abs(ChickMotion.TranslateX - 96) > .1
+            )
+        )
+            throw new InvalidOperationException(
+                "The chick did not stop, raise its wing and greet the viewer."
+            );
+        if (
+            seconds is > 2.49 and < 2.51
+            && (
+                SideSprite.Opacity != 1
+                || Farewell.Opacity != 0
+                || ChickMotion.TranslateX <= 96
+                || DefaultChick.RaisedWing.Opacity != 0
+            )
+        )
+            throw new InvalidOperationException(
+                "The departing chick did not turn and walk away after greeting."
+            );
+        if (seconds > 3.07 && 61 + ChickMotion.TranslateX - 16 <= Width)
+            throw new InvalidOperationException(
+                "The chick or backpack reset before leaving the canvas."
+            );
+    }
+
+    internal void VerifyDepartureAccessoriesHidden()
+    {
+        if (
+            DefaultChick.HasBackpack
+            || DefaultChick.RaisedWing.Opacity != 0
+            || Farewell.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+            || OptimizationChicks.Any(chick => chick.Figure.HasBackpack)
+        )
+            throw new InvalidOperationException(
+                "Farewell accessories leaked into another animation mode."
+            );
+    }
 }
