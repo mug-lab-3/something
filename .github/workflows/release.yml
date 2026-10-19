@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+
+    steps:
+      - name: Check out selected source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Read release version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml] $project = Get-Content src/Something.App/Something.App.csproj -Raw
+          $version = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') {
+              throw "Unsupported release version: $version"
+          }
+          "RELEASE_TAG=v$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install pinned SDK and native runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dotnet = & ./scripts/setup-system-sdk.ps1
+          Split-Path -Parent $dotnet | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & ./scripts/setup-native-runtime.ps1
+
+      - name: Publish single-file application
+        run: ./scripts/publish-app.ps1
+
+      - name: Package application and license notices
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @(
+              'artifacts/publish/win-x64/Something.App.exe'
+              'LICENSE'
+              'THIRD-PARTY-NOTICES.md'
+          )
+          foreach ($file in $files) {
+              if (!(Test-Path -LiteralPath $file -PathType Leaf)) {
+                  throw "Missing release file: $file"
+              }
+          }
+          $archive = Join-Path $PWD "artifacts/Something-$env:RELEASE_TAG-win-x64.zip"
+          Compress-Archive -LiteralPath $files -DestinationPath $archive -CompressionLevel Optimal
+          "RELEASE_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # Upload directly to Releases: no Actions artifact or dependency cache is created.
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $api = "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY"
+          function Get-OptionalGitHubItem([string] $Uri) {
+              try {
+                  Invoke-RestMethod -Uri $Uri -Headers $headers
+              } catch {
+                  if ($null -ne $_.Exception.Response -and
+                      [int]$_.Exception.Response.StatusCode -eq 404) {
+                      return $null
+                  }
+                  throw
+              }
+          }
+          # Listing also finds drafts left by an interrupted upload.
+          $release = $null
+          $page = 1
+          do {
+              $items = Invoke-RestMethod -Uri "$api/releases?per_page=100&page=$page" -Headers $headers
+              $release = $items | Where-Object { $_.tag_name -ceq $env:RELEASE_TAG } | Select-Object -First 1
+              $page++
+          } while (!$release -and $items.Count -eq 100)
+          if ($release) {
+              if ($release.immutable) {
+                  throw 'This release is immutable. Disable release immutability or use a new version.'
+              }
+              # Hide an existing release until its replacement asset is ready. Keep its notes.
+              Invoke-RestMethod -Method Patch -Uri "$api/releases/$($release.id)" -Headers $headers `
+                  -ContentType 'application/json' -Body (@{ draft = $true } | ConvertTo-Json) | Out-Null
+          }
+          $reference = Get-OptionalGitHubItem "$api/git/ref/tags/$env:RELEASE_TAG"
+          if ($reference) {
+              $body = @{ sha = $env:GITHUB_SHA; force = $true } | ConvertTo-Json
+              Invoke-RestMethod -Method Patch -Uri "$api/git/refs/tags/$env:RELEASE_TAG" `
+                  -Headers $headers -ContentType 'application/json' -Body $body | Out-Null
+          } else {
+              $body = @{ ref = "refs/tags/$env:RELEASE_TAG"; sha = $env:GITHUB_SHA } | ConvertTo-Json
+              Invoke-RestMethod -Method Post -Uri "$api/git/refs" -Headers $headers `
+                  -ContentType 'application/json' -Body $body | Out-Null
+          }
+          if (!$release) {
+              & gh release create $env:RELEASE_TAG --verify-tag --draft --generate-notes `
+                  --title "Something $env:RELEASE_TAG"
+              if ($LASTEXITCODE -ne 0) {
+                  throw "GitHub Release creation failed (exit $LASTEXITCODE)."
+              }
+          }
+          & gh release upload $env:RELEASE_TAG $env:RELEASE_ARCHIVE --clobber
+          if ($LASTEXITCODE -ne 0) {
+              throw "Release upload failed; the release remains a draft (exit $LASTEXITCODE)."
+          }
+          $prerelease = $env:RELEASE_TAG.Contains('-').ToString().ToLowerInvariant()
+          & gh release edit $env:RELEASE_TAG --draft=false "--prerelease=$prerelease" `
+              --target $env:GITHUB_SHA --title "Something $env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) {
+              throw "GitHub Release publication failed (exit $LASTEXITCODE)."
+          }

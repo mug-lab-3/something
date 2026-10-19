@@ -16,6 +16,30 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
 
 出力は `artifacts/publish/win-x64/Something.App.exe` です。発行用の bin / obj / 復元結果は `artifacts/publish-build` に分離します。スクリプトはロック付き復元を行い、新しい出力が exe 一つだけであることを検証してから前回の発行フォルダを置き換えます。失敗時は前回の出力を維持します。生成専用フォルダに手作業のファイルを置かないでください。
 
+## GitHub Release
+
+[release.yml](../.github/workflows/release.yml) は GitHub の Actions 画面から手動実行します。選択したコミットの `Something.App.csproj` の `<Version>` を読み取り、`1.0.0` なら `v1.0.0` のタグとリリースを自動作成します。タグやバージョンの手入力は不要です。
+
+1. 必要ならバージョンを更新し、変更をコミットして GitHub へ push する。初回はワークフローをデフォルトブランチに含める。
+2. GitHub の **Actions → Release → Run workflow** を開く。
+3. 発行するブランチを選択して **Run workflow** を押す。
+
+Windows ランナーで、既存のハッシュ検証付きセットアップを使って固定 SDK とネイティブランタイムを準備し、単一 exe を発行します。このワークフローではテストを実行しません。`Something-v1.0.0-win-x64.zip` に次の三ファイルを同梱し、生成したリリースノートとともに GitHub Release へ直接添付します。
+
+```text
+Something.App.exe
+LICENSE
+THIRD-PARTY-NOTICES.md
+```
+
+`1.1.0-beta.1` のようなバージョンはプレリリースにします。同じバージョンが既にある場合は、タグを実行対象のコミットへ付け直し、既存リリースの同名 ZIP を上書きします。リリースノートと他の名前の添付物は保持します。
+
+ビルドと ZIP 作成が成功してからリモートを変更します。差し替え中は下書きとし、アップロード成功後に公開します。途中で失敗した場合は下書きが残ることがあり、同じワークフローの再実行で更新できます。不変リリースやタグ保護で変更が禁止されている場合は停止します。上書き運用では、それらの保護設定を適用しないでください。
+
+Actions のアーティファクトと依存キャッシュは作成せず、削除待ちの保存領域を残しません。Release に添付した ZIP は配布物として保持します。実行ログは通常の Actions の保持設定に従います。
+
+認証は組み込みの `GITHUB_TOKEN` と `contents: write` を使用し、追加の個人トークンは不要です。リポジトリ・組織のポリシーで Actions の書き込みを許可している必要があります。コマンドの仕様は [GitHub CLI: release create](https://cli.github.com/manual/gh_release_create) を参照してください。
+
 ## ランタイムと展開
 
 `Properties/PublishProfiles/SingleFile.pubxml` は .NET と Windows App SDK を自己完結で含め、ネイティブ依存とコンテンツの自己展開を有効にします。WinUI、DuckDB、PRI / XBF、ライセンス通知もバンドルします。トリミングは無効です。
