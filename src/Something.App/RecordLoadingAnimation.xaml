@@ -362,30 +362,33 @@
       Visibility="Collapsed"
       Opacity="0"
     >
-      <Canvas.RenderTransform>
-        <CompositeTransform x:Name="WhistleMotion" CenterX="18" CenterY="23" />
-      </Canvas.RenderTransform>
-      <Ellipse Canvas.Top="15" Width="27" Height="24" Fill="#C9B0E5" />
-      <Path Data="M 17,16 L 33,7 L 40,15 L 24,29 Z" Fill="#C9B0E5" />
-      <Rectangle
-        Canvas.Left="8"
-        Canvas.Top="20"
-        Width="10"
-        Height="5"
-        RadiusX="2"
-        RadiusY="2"
-        Fill="#745486"
-      />
-      <Path
-        Data="M 40,3 L 46,0 M 45,13 L 54,11 M 43,22 L 50,26"
-        Stroke="#D9C6EC"
-        StrokeThickness="2.5"
-        StrokeStartLineCap="Round"
-        StrokeEndLineCap="Round"
-      />
+      <!-- The mouthpiece faces right, while the sound travels left toward the chicks. -->
+      <Canvas>
+        <Canvas.RenderTransform>
+          <CompositeTransform x:Name="WhistleMotion" CenterX="18" CenterY="23" />
+        </Canvas.RenderTransform>
+        <Ellipse Canvas.Top="15" Width="27" Height="24" Fill="#C9B0E5" />
+        <Path Data="M 17,16 L 33,7 L 40,15 L 24,29 Z" Fill="#C9B0E5" />
+        <Rectangle
+          Canvas.Left="8"
+          Canvas.Top="20"
+          Width="10"
+          Height="5"
+          RadiusX="2"
+          RadiusY="2"
+          Fill="#745486"
+        />
+        <Path
+          Data="M -4,15 L -12,11 M -5,24 L -18,24 M -3,32 L -11,37"
+          Stroke="#D9C6EC"
+          StrokeThickness="2.5"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+      </Canvas>
       <TextBlock
-        Canvas.Left="58"
-        Canvas.Top="2"
+        Canvas.Left="-70"
+        Canvas.Top="8"
         Text="ピーッ ♪"
         FontSize="14"
         Foreground="#D9C6EC"
