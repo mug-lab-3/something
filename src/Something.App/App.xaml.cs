@@ -14,7 +14,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        window = new MainWindow();
+        window = Environment.GetCommandLineArgs().Contains("--animation-preview")
+            ? new AnimationPreviewWindow()
+            : new MainWindow();
         window.Closed += (_, _) => window = null;
         window.Activate();
     }

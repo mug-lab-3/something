@@ -28,6 +28,8 @@ Everythingをもじった、Windows向けのディスク使用量・フォルダ
 
 ## アプリの起動
 
+アニメーションだけを確認する場合は、リポジトリ直下の `run-animation-preview.bat` を開きます。読み込み・スキャン・履歴削除・DB最適化を切り替え、一時停止・区切りまで再生して停止・静止表示・ライト／ダーク表示を確認できます。通常アプリやデモと別のウィンドウで起動し、実ディスクや履歴DBは開きません。Release版が未ビルドなら `dotnet build src/Something.App -c Release` を実行してください。直接起動する場合の引数は `--animation-preview` です。通常版と同じexeのため、UAC確認は表示されます。
+
 ダミーの3ドライブで操作を確認する場合は、リポジトリ直下の `run-demo.bat` をダブルクリックしてください。Release版をデモモードで起動し、デモ専用の履歴を `artifacts\demo-history` に保存します。通常の履歴DBとは分離され、実ディスクはスキャンしません。Release版が未ビルドの場合は、先に `dotnet build src/Something.App -c Release` を実行してください。通常版と同じ実行ファイルを使うため、起動時のUAC確認は表示されます。
 
 デモは各ドライブのスキャンごとに「初期状態 → サイズ増減・追加 → 削除・移動 → 初期状態」の順で変化します。2回目は `Media\capture.mp4` が1 GiB増え、`Projects\Archive\source.zip` が512 MiB減り、`Media\render.mov`（256 MiB）が追加されます。3回目は `Projects\preview.png` を削除し、同じファイル識別情報のまま `source.zip` を `Media` に移します。スキャンボタンのツールチップで次の状態を確認できます。「比較：任意のスキャン」で変更前後の記録を選んで増減を確認してください。既存のデモ履歴は残し、再起動時は初期状態から新しい記録を追加します。画面テストで従来の固定データを使う場合だけ `--demo-static` を追加します。

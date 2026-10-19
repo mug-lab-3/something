@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.UI.ViewManagement;
 
@@ -15,10 +16,18 @@ public sealed partial class RecordLoadingAnimation : UserControl
     internal bool IsPlaying { get; private set; }
     internal int CompletedCycles { get; private set; }
     internal event EventHandler? Settled;
+    private FrameworkElement FrontSprite => DefaultChick.Front;
+    private FrameworkElement SideSprite => DefaultChick.Side;
+    private RotateTransform LeftFootMotion => DefaultChick.LeftFoot;
+    private RotateTransform RightFootMotion => DefaultChick.RightFoot;
 
     public RecordLoadingAnimation()
     {
         InitializeComponent();
+        Storyboard.SetTarget(FrontFacingCycle, FrontSprite);
+        Storyboard.SetTarget(SideFacingCycle, SideSprite);
+        Storyboard.SetTarget(LeftFootCycle, LeftFootMotion);
+        Storyboard.SetTarget(RightFootCycle, RightFootMotion);
         Unloaded += (_, _) => Stop();
     }
 
@@ -60,6 +69,16 @@ public sealed partial class RecordLoadingAnimation : UserControl
     }
 
     internal Task WaitForSettledAsync() => settling?.Task ?? Task.CompletedTask;
+
+    internal void SetPlaybackPaused(bool paused)
+    {
+        if (!IsPlaying)
+            return;
+        if (paused)
+            activeCycle?.Pause();
+        else
+            activeCycle?.Resume();
+    }
 
     internal void Cancel() => Stop();
 

@@ -16,7 +16,9 @@ internal static class Program
         using var process = Process.GetCurrentProcess();
         string key = $"Something.Main.{identity.User!.Value}.{process.SessionId}";
         // Synthetic previews never redirect a real user's running application.
-        if (args.Contains("--demo"))
+        if (args.Contains("--animation-preview"))
+            key += ".AnimationPreview";
+        else if (args.Contains("--demo"))
             key += ".Demo";
         var instance = AppInstance.FindOrRegisterForKey(key);
         if (!instance.IsCurrent)
