@@ -54,6 +54,7 @@ public sealed partial class RecordLoadingAnimation
         bool deleting = ActiveKind == LoadingAnimationKind.DeleteHistory;
         DefaultChick.WearBackpack(deleting);
         DefaultChick.SetFarewellPose(false);
+        DefaultChick.Gaze.X = 0;
         Farewell.Visibility = deleting ? Visibility.Visible : Visibility.Collapsed;
         Farewell.Opacity = 0;
     }

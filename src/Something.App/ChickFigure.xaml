@@ -45,9 +45,14 @@
         Fill="{StaticResource ChickBrush}"
       />
       <Path Data="M 23,3 Q 20,-7 25,-3 Q 29,-10 30,3" Fill="#E58CBF" />
-      <Ellipse Canvas.Left="13" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
-      <Ellipse Canvas.Left="36" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
-      <Path Data="M 23,23 Q 27,20 31,23 L 27,28 Z" Fill="#FFDBA9" />
+      <Canvas>
+        <Canvas.RenderTransform>
+          <TranslateTransform x:Name="FrontFaceMotion" />
+        </Canvas.RenderTransform>
+        <Ellipse Canvas.Left="13" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+        <Ellipse Canvas.Left="36" Canvas.Top="16" Width="5" Height="6" Fill="#45253F" />
+        <Path Data="M 23,23 Q 27,20 31,23 L 27,28 Z" Fill="#FFDBA9" />
+      </Canvas>
       <Path
         Data="M 16,38 Q 20,43 24,38 M 29,38 Q 33,43 37,38 M 22,46 Q 27,51 32,46"
         Stroke="#EDAFD0"

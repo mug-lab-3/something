@@ -8,6 +8,8 @@ namespace Something.App;
 
 public sealed partial class RecordLoadingAnimation : UserControl
 {
+    private const double InspectPlaybackSpeedRatio = .55;
+    internal const double InspectCycleSeconds = 1.82 / InspectPlaybackSpeedRatio;
     private bool busy;
     private TaskCompletionSource? settling;
     private Storyboard? activeCycle;
@@ -24,6 +26,9 @@ public sealed partial class RecordLoadingAnimation : UserControl
     public RecordLoadingAnimation()
     {
         InitializeComponent();
+        // Preserve synchronized poses and scanner effects; match the departure to ~190 DIP/s.
+        Cycle.SpeedRatio = InspectPlaybackSpeedRatio;
+        Storyboard.SetTarget(InspectGazeCycle, DefaultChick.Gaze);
         Storyboard.SetTarget(FrontFacingCycle, FrontSprite);
         Storyboard.SetTarget(SideFacingCycle, SideSprite);
         Storyboard.SetTarget(LeftFootCycle, LeftFootMotion);

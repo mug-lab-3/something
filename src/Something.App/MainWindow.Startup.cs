@@ -163,7 +163,7 @@ public sealed partial class MainWindow
         }
         finally
         {
-            // One existing chick cycle lasts 1.2s. Finish the current cycle, without an extra loop.
+            // Finish the current chick cycle without starting an extra loop.
             StartupAnimation.SetBusy(false);
             await StartupAnimation.WaitForSettledAsync();
             if (!closed)

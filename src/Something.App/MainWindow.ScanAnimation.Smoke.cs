@@ -120,7 +120,10 @@ public sealed partial class MainWindow
             await publication
                 .DisposeAsync()
                 .AsTask()
-                .WaitAsync(TimeSpan.FromSeconds(2), lifetime.Token);
+                .WaitAsync(
+                    TimeSpan.FromSeconds(RecordLoadingAnimation.InspectCycleSeconds + 1),
+                    lifetime.Token
+                );
             if (ViewLoadingOverlay.Visibility != Visibility.Visible || !HasScanPresentation)
                 throw new InvalidOperationException(
                     "Publication lost the owning scan's animation."

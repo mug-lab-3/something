@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
@@ -18,6 +19,7 @@ public sealed partial class AnimationPreviewWindow
                     throw new InvalidOperationException("Standalone preview did not start.");
                 double[] frames = index switch
                 {
+                    0 => [.2, .33, .54, .67, .84, .98, 1.22, 1.52],
                     1 => [.55, .98, 1.6, 2.45, 2.8, 3.2, 3.7],
                     2 => [.4, 1.5, 2.5, 3.08],
                     3 => [.4, 1.15, 2.5, 2.86, 3.85, 4.8],
@@ -33,6 +35,8 @@ public sealed partial class AnimationPreviewWindow
                         Animation.VerifyDeletionPose(frame);
                     else if (index == 1)
                         Animation.VerifyScanPose(frame);
+                    else
+                        Animation.VerifyInspectPose(frame);
                     if (index != 2)
                         Animation.VerifyDepartureAccessoriesHidden();
                     await CaptureAsync($"{path}.{index}-{frame:F2}.png");
@@ -65,6 +69,21 @@ public sealed partial class AnimationPreviewWindow
             await Task.Delay(80);
             Animation.VerifyDeletionPose(1.5);
             await CaptureAsync(path + ".farewell-light.png");
+            KindBox.SelectedIndex = 0;
+            Restart();
+            var readTimer = Stopwatch.StartNew();
+            Animation.SetBusy(false);
+            await Animation.WaitForSettledAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            readTimer.Stop();
+            Animation.VerifySettledPose();
+            if (readTimer.Elapsed.TotalSeconds < RecordLoadingAnimation.InspectCycleSeconds - .15)
+                throw new InvalidOperationException(
+                    "Loading cycle completed faster than its playback speed."
+                );
+            await File.WriteAllTextAsync(
+                path + ".loading-timing.txt",
+                $"Loading cycle: expected={RecordLoadingAnimation.InspectCycleSeconds:F3}s; observed={readTimer.Elapsed.TotalSeconds:F3}s; scan cycle remains 3.800s."
+            );
             Animation.Cancel();
             await File.WriteAllTextAsync(
                 path + ".result",

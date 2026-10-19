@@ -10,6 +10,7 @@ public sealed partial class ChickFigure : UserControl
 
     internal FrameworkElement Front => FrontSprite;
     internal FrameworkElement Side => SideSprite;
+    internal TranslateTransform Gaze => FrontFaceMotion;
     internal RotateTransform LeftFoot => LeftFootMotion;
     internal RotateTransform RightFoot => RightFootMotion;
     internal ScaleTransform Direction => SideDirection;

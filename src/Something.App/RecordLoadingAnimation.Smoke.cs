@@ -2,6 +2,66 @@ namespace Something.App;
 
 public sealed partial class RecordLoadingAnimation
 {
+    internal void VerifyInspectPose(double seconds)
+    {
+        if (
+            ActiveKind != LoadingAnimationKind.Inspect
+            || ChickMotion.ScaleX != 1
+            || ChickMotion.ScaleY != 1
+        )
+            throw new InvalidOperationException(
+                "Loading did not preserve the shared full-size chick."
+            );
+        if (
+            seconds is >= .2 and <= .67
+            && (
+                Math.Abs(ChickMotion.TranslateY - 20) > .1
+                || Chick.Opacity < .99
+                || Math.Abs(ChickMotion.TranslateX) > .1
+            )
+        )
+            throw new InvalidOperationException("The chick did not pause to peek over the DB rim.");
+        if (
+            (
+                seconds is .2 or .33
+                && (DefaultChick.Gaze.X > -4.9 || Math.Abs(ChickMotion.Rotation + 2) > .1)
+            )
+            || (
+                seconds is .54 or .67
+                && (DefaultChick.Gaze.X < 4.9 || Math.Abs(ChickMotion.Rotation - 2) > .1)
+            )
+            || (seconds >= .98 && Math.Abs(DefaultChick.Gaze.X) > .1)
+        )
+            throw new InvalidOperationException(
+                "The chick did not look left, right and then forward before jumping."
+            );
+        if (
+            seconds == .84
+            && (
+                ChickMotion.TranslateY < 27
+                || LeftFootMotion.Angle > -15
+                || RightFootMotion.Angle < 15
+            )
+        )
+            throw new InvalidOperationException("The chick did not crouch before jumping.");
+        if (seconds == .98 && (ChickMotion.TranslateY > -37 || ChickMotion.TranslateX <= 0))
+            throw new InvalidOperationException(
+                "The chick did not leap forward after pushing off."
+            );
+        if (
+            seconds == 1.22
+            && (
+                Math.Abs(ChickMotion.TranslateX - 136) > .1
+                || Math.Abs(ChickMotion.TranslateY - 22) > .1
+                || FrontSprite.Opacity != 1
+                || ScanBeam.Opacity <= 0
+            )
+        )
+            throw new InvalidOperationException("The chick did not land facing the scanner.");
+        if (seconds == 1.52 && (SideSprite.Opacity != 1 || ScanBeam.Opacity != 0))
+            throw new InvalidOperationException("The chick departed before the scan finished.");
+    }
+
     internal void VerifyScanPose(double seconds)
     {
         if (
@@ -61,7 +121,13 @@ public sealed partial class RecordLoadingAnimation
         if (!IsPlaying)
             return;
         activeCycle?.Pause();
-        activeCycle?.Seek(TimeSpan.FromSeconds(seconds));
+        activeCycle?.Seek(
+            TimeSpan.FromSeconds(
+                ActiveKind == LoadingAnimationKind.Inspect
+                    ? seconds / InspectPlaybackSpeedRatio
+                    : seconds
+            )
+        );
     }
 
     internal void ResumeAfterPreview()

@@ -20,115 +20,146 @@
     </Canvas.Clip>
     <Canvas.Resources>
       <Storyboard x:Name="Cycle" Completed="OnCycleCompleted">
+        <DoubleAnimationUsingKeyFrames x:Name="InspectGazeCycle" Storyboard.TargetProperty="X">
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.08" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.14" Value="-5" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.36" Value="-5" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.48" Value="5" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.7" Value="5" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.78" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
+        </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           x:Name="FrontFacingCycle"
           Storyboard.TargetProperty="Opacity"
         >
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="1" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.46" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames x:Name="SideFacingCycle" Storyboard.TargetProperty="Opacity">
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:0.84" Value="1" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.46" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.82" Value="1" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
           Storyboard.TargetProperty="TranslateX"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.24" Value="0" KeySpline="0.2,0,0.2,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="136" KeySpline="0.2,0,0.2,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="136" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="260" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.86" Value="0" KeySpline="0.2,0,0.2,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.14" Value="136" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="136" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="260" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
           Storyboard.TargetProperty="TranslateY"
         >
-          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="35" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.22" Value="-16" KeySpline="0.2,0,0.2,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.36" Value="-38" KeySpline="0.2,0,0.6,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.52" Value="22" KeySpline="0.4,0,0.8,1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="22" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.88" Value="19" KeySpline="0.2,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:0.94" Value="22" KeySpline="0.2,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1" Value="19" KeySpline="0.2,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.06" Value="22" KeySpline="0.2,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.12" Value="19" KeySpline="0.2,0,0.8,1" />
-          <SplineDoubleKeyFrame KeyTime="0:0:1.2" Value="22" KeySpline="0.2,0,0.8,1" />
+          <!-- Peek over the rim, look around, dip to push off, then leap forward. -->
+          <LinearDoubleKeyFrame KeyTime="0:0:0" Value="42" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.08" Value="20" KeySpline="0.2,0,0.2,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.78" Value="20" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.84" Value="28" KeySpline="0.4,0,0.8,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.86" Value="30" />
+          <SplineDoubleKeyFrame KeyTime="0:0:0.98" Value="-38" KeySpline="0,0.65,0.25,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.14" Value="22" KeySpline="0.4,0,0.8,1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="22" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.5" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.56" Value="22" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.62" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.68" Value="22" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.74" Value="19" KeySpline="0.2,0,0.8,1" />
+          <SplineDoubleKeyFrame KeyTime="0:0:1.82" Value="22" KeySpline="0.2,0,0.8,1" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ChickMotion"
           Storyboard.TargetProperty="Rotation"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.52" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="3" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-3" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="3" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="-3" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="3" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.08" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.14" Value="-2" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.36" Value="-2" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.48" Value="2" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.7" Value="2" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.78" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.86" Value="7" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-7" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.14" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.5" Value="3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.56" Value="-3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.62" Value="3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.68" Value="-3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.74" Value="3" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="Chick"
           Storyboard.TargetProperty="Opacity"
         >
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.12" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.19" Value="1" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.04" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.81" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames x:Name="LeftFootCycle" Storyboard.TargetProperty="Angle">
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="-25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="-25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="-25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.78" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.86" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.98" Value="15" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.5" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.56" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.62" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.68" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.74" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames x:Name="RightFootCycle" Storyboard.TargetProperty="Angle">
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.88" Value="25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.94" Value="-25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1" Value="25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.06" Value="-25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="25" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.78" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.86" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:0.98" Value="-15" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.1" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.5" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.56" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.62" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.68" Value="-25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.74" Value="25" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ScanBeamMotion"
           Storyboard.TargetProperty="Y"
         >
           <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.5" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.82" Value="64" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="64" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.12" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.44" Value="64" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="64" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="ScanBeam"
           Storyboard.TargetProperty="Opacity"
         >
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:0.5" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.8" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:0.84" Value="0" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.12" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.42" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.46" Value="0" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
         <DoubleAnimationUsingKeyFrames
           Storyboard.TargetName="GateReady"
           Storyboard.TargetProperty="Opacity"
         >
           <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:0.82" Value="1" />
-          <LinearDoubleKeyFrame KeyTime="0:0:1.19" Value="1" />
-          <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="0" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.44" Value="1" />
+          <LinearDoubleKeyFrame KeyTime="0:0:1.81" Value="1" />
+          <DiscreteDoubleKeyFrame KeyTime="0:0:1.82" Value="0" />
         </DoubleAnimationUsingKeyFrames>
       </Storyboard>
     </Canvas.Resources>
