@@ -23,18 +23,11 @@ internal sealed class ModelInsert<T> : IDisposable
     {
         if (context is DuckScanDbContext native)
         {
-            string? target =
-                context is SharedHistoryDbContext
-                    ? typeof(T).Name switch
-                    {
-                        nameof(ObservationEntity) => "incoming_observation",
-                        nameof(FileNameEntity) => "incoming_file_name",
-                        nameof(StreamEntity) => "incoming_stream",
-                        nameof(FolderSampleEntity) => "incoming_folder_sample",
-                        _ => null,
-                    }
-                    : null;
-            duck = new(native, target);
+            if (context is SharedHistoryDbContext)
+                throw new InvalidOperationException(
+                    "Shared history writes only through SharedHistoryPublication."
+                );
+            duck = new(native);
             return;
         }
         if (context.Database.CurrentTransaction is null)

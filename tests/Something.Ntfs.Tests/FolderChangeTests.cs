@@ -185,11 +185,16 @@ public sealed class FolderChangeTests
         {
             var db = Assert.IsType<SharedHistoryDbContext>(writer.HistoryContext);
             var version = db
-                .SharedFolders.Single(row => row.ScanId == baseline.Id && row.RecordIndex == 20)
+                .SharedFolders.Single(row =>
+                    row.Generation == SharedHistoryPublication.GenerationOf(db, baseline.Id)
+                    && row.RecordIndex == 20
+                )
                 .SampleVersion;
-            var folder = db.Samples.Single(row => row.ScanId == version && row.RecordIndex == 20);
-            folder.EntrySubtreeAllocated = UInt128.MaxValue;
-            writer.HistoryContext.SaveChanges();
+            // States are keyless and untracked; rewrite the stored row directly.
+            db.Samples.Where(row => row.Version == version && row.RecordIndex == 20)
+                .ExecuteUpdate(row =>
+                    row.SetProperty(r => r.EntrySubtreeAllocated, UInt128.MaxValue)
+                );
         }
 
         var report = fixture.Archive.ReadFolderChanges(
@@ -259,18 +264,23 @@ public sealed class FolderChangeTests
         {
             var db = Assert.IsType<SharedHistoryDbContext>(writer.HistoryContext);
             var version = db
-                .SharedFolders.Single(row => row.ScanId == old.Id && row.RecordIndex == 20)
+                .SharedFolders.Single(row =>
+                    row.Generation == SharedHistoryPublication.GenerationOf(db, old.Id)
+                    && row.RecordIndex == 20
+                )
                 .SampleVersion;
-            var folder = db.Samples.Single(row => row.ScanId == version && row.RecordIndex == 20);
-            folder.EntrySubtreeAllocated = null;
-            folder.EntrySubtreeLogical = null;
-            folder.EntryDirectAllocated = null;
-            folder.EntryDirectLogical = null;
-            folder.EntryDirectFiles = null;
-            folder.EntrySubtreeFiles = null;
-            folder.EntryDirectUnresolved = null;
-            folder.EntrySubtreeUnresolved = null;
-            writer.HistoryContext.SaveChanges();
+            // States are keyless and untracked; rewrite the stored row directly.
+            db.Samples.Where(row => row.Version == version && row.RecordIndex == 20)
+                .ExecuteUpdate(row =>
+                    row.SetProperty(r => r.EntrySubtreeAllocated, (UInt128?)null)
+                        .SetProperty(r => r.EntrySubtreeLogical, (UInt128?)null)
+                        .SetProperty(r => r.EntryDirectAllocated, (UInt128?)null)
+                        .SetProperty(r => r.EntryDirectLogical, (UInt128?)null)
+                        .SetProperty(r => r.EntryDirectFiles, (long?)null)
+                        .SetProperty(r => r.EntrySubtreeFiles, (long?)null)
+                        .SetProperty(r => r.EntryDirectUnresolved, (long?)null)
+                        .SetProperty(r => r.EntrySubtreeUnresolved, (long?)null)
+                );
         }
         Assert.Throws<InvalidOperationException>(() =>
             fixture.Archive.ReadFolderChanges(

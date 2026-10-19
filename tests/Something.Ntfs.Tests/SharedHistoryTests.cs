@@ -291,7 +291,9 @@ public sealed class SharedHistoryTests
             Assert.NotEmpty(remaining.ReadFiles(otherVolume.Id, Token));
             Assert.Equal(
                 ListingIds(db, second.Id).Length,
-                db.Listings.Count(row => row.ScanId == second.Id)
+                db.Listings.Count(row =>
+                    row.Generation == SharedHistoryPublication.GenerationOf(db, second.Id)
+                )
             );
         }
         Assert.Empty(fixture.Archive.Delete([first.Id], Token));
@@ -647,7 +649,11 @@ public sealed class SharedHistoryTests
             "CREATE TEMP TABLE wrong_width AS SELECT * EXCLUDE(Attributes),Attributes::UINTEGER Attributes FROM state_file_name WHERE FALSE;"
         );
         Assert.Throws<InvalidDataException>(() =>
-            new DuckModelInsert<FileNameEntity>(db, "wrong_width")
+            new DuckModelInsert<FileNameEntity>(db, "wrong_width", ("Version", 1))
+        );
+        // A state table cannot be written without naming the integer version column.
+        Assert.Throws<InvalidDataException>(() =>
+            new DuckModelInsert<FileNameEntity>(db, "state_file_name")
         );
         transaction.Rollback();
         Assert.Equal(6, db.States.Count());
@@ -746,6 +752,224 @@ public sealed class SharedHistoryTests
     }
 
     [Fact]
+    public void SharedPublicationSpillsToDiskOnlyAfterBudgetGrowthIsUnavailable()
+    {
+        using var fixture = new Fixture();
+        var previous = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        string spill = DuckDatabaseBootstrap.SpillDirectory(fixture.Archive.DatabasePath);
+        var error = DuckStorageTests.NativeAppenderMessage(
+            "Failed to append: could not allocate block of size 256.0 KiB (1.0 GiB/1.0 GiB used)"
+        );
+        int growthRequests = 0;
+        var observed = new List<(int Attempt, bool Spilling, string Setting)>();
+        var saved = fixture.Archive.Publish(
+            Buffer("size"),
+            Now.AddMinutes(-1),
+            "Demo",
+            TimeSpan.FromSeconds(1),
+            1UL << 30,
+            Token,
+            progress: p =>
+            {
+                if (p.Stage != ScanWorkStage.BuildingFolderList || p.Completed != 0)
+                    return;
+                using var inspector = fixture.Writer();
+                using var command = inspector
+                    .HistoryContext.Database.GetDbConnection()
+                    .CreateCommand();
+                command.CommandText = "SELECT current_setting('temp_directory')";
+                observed.Add((p.RetryAttempt, p.SpillingToDisk, (string)command.ExecuteScalar()!));
+                if (p.RetryAttempt == 0)
+                    throw error;
+            },
+            reserveMemoryGrowth: _ =>
+            {
+                growthRequests++;
+                return null;
+            }
+        );
+        Assert.Equal(1, growthRequests);
+        Assert.Equal(2, observed.Count);
+        Assert.Equal((0, false, ""), observed[0]);
+        Assert.Equal((1, true, spill), observed[1]);
+        Assert.False(Directory.Exists(spill));
+        using var result = fixture.Archive.Open(saved.Id, Token);
+        Assert.Equal(
+            8192,
+            result
+                .Store.ReadFiles(saved.Id, Token)
+                .Single(f => f.Reference.RecordIndex == 1000)
+                .Streams[0]
+                .AllocatedBytes
+        );
+        Assert.NotEqual(previous.Id, saved.Id);
+    }
+
+    [Fact]
+    public void SpillFallbackIsBoundedToOneDiskAttempt()
+    {
+        using var fixture = new Fixture();
+        var previous = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        var error = DuckStorageTests.NativeAppenderMessage(
+            "Failed to append: could not allocate block of size 256.0 KiB (1.0 GiB/1.0 GiB used)"
+        );
+        int attempts = 0;
+        Assert.Throws<DuckDB.NET.Data.DuckDBException>(() =>
+            fixture.Archive.Publish(
+                Buffer("size"),
+                Now.AddMinutes(-1),
+                "Demo",
+                TimeSpan.FromSeconds(1),
+                1UL << 30,
+                Token,
+                progress: p =>
+                {
+                    if (p.Stage == ScanWorkStage.BuildingFolderList)
+                    {
+                        attempts++;
+                        throw error;
+                    }
+                }
+            )
+        );
+        Assert.Equal(2, attempts);
+        Assert.False(
+            Directory.Exists(DuckDatabaseBootstrap.SpillDirectory(fixture.Archive.DatabasePath))
+        );
+        Assert.Equal(
+            previous.Id,
+            Assert.Single(fixture.Archive.List(previous.VolumeKey, Token)).Id
+        );
+    }
+
+    [Fact]
+    public void StaleSpillDirectoryIsRemovedWhenTheEngineOpens()
+    {
+        using var fixture = new Fixture();
+        string spill = DuckDatabaseBootstrap.SpillDirectory(
+            Path.GetFullPath(fixture.Archive.DatabasePath)
+        );
+        Directory.CreateDirectory(spill);
+        File.WriteAllText(Path.Combine(spill, "duckdb_temp_storage-0.tmp"), "stale");
+        fixture.Save(Buffer(), Now.AddMinutes(-1));
+        Assert.False(Directory.Exists(spill));
+    }
+
+    [Theory]
+    [InlineData(true, false, "extra-stream")]
+    [InlineData(false, true, "")]
+    [InlineData(true, true, "")]
+    public void ChangedNameOrStreamCountsCreateNewStatesInEitherDirection(
+        bool beforeAliases,
+        bool afterAliases,
+        string afterChange
+    )
+    {
+        using var fixture = new Fixture();
+        var before = fixture.Save(Buffer(aliases: beforeAliases), Now.AddMinutes(-2));
+        var after = fixture.Save(Buffer(afterChange, aliases: afterAliases), Now.AddMinutes(-1));
+        using var store = fixture.Writer();
+        var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
+        var old = store.ReadFiles(before.Id, Token).Single(f => f.Reference.RecordIndex == 1000);
+        var current = store.ReadFiles(after.Id, Token).Single(f => f.Reference.RecordIndex == 1000);
+        Assert.Equal(beforeAliases ? 3 : 1, old.Names.Length);
+        Assert.Equal(afterAliases ? 3 : 1, current.Names.Length);
+        Assert.Equal(afterChange == "extra-stream" ? 3 : 2, current.Streams.Length);
+        bool changed = beforeAliases != afterAliases || afterChange.Length != 0;
+        Assert.Equal(changed ? 7 : 6, db.States.Count());
+        Assert.Equal(changed, !Equal(old, current));
+    }
+
+    [Fact]
+    public void DuplicateStreamNamesAreRejectedWithoutChangingHistory()
+    {
+        using var fixture = new Fixture();
+        var previous = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        Assert.Throws<InvalidDataException>(() =>
+            fixture.Save(Buffer("duplicate-stream"), Now.AddMinutes(-1))
+        );
+        using var store = fixture.Writer();
+        var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
+        Assert.Equal(previous.Id, Assert.Single(db.Published).ScanId);
+        Assert.Equal(6, db.States.Count());
+        Assert.Equal(6, db.Members.Count());
+    }
+
+    [Fact]
+    public void ValidationRejectsMembersWithoutExactlyOneState()
+    {
+        using var fixture = new Fixture();
+        var saved = fixture.Save(Buffer(), Now.AddMinutes(-1));
+        using var store = fixture.Writer();
+        var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
+        using (var transaction = db.Database.BeginTransaction())
+        {
+            SharedHistoryPublication.Execute(
+                db,
+                "INSERT INTO state_observation SELECT * FROM state_observation WHERE RecordIndex=1000"
+            );
+            db.DirtyGenerations.Add(saved.Id);
+            Assert.Throws<InvalidDataException>(() =>
+                SharedHistoryPublication.Validate(db, Token, null)
+            );
+            transaction.Rollback();
+        }
+        db.DirtyGenerations.Clear();
+        using (var transaction = db.Database.BeginTransaction())
+        {
+            SharedHistoryPublication.Execute(
+                db,
+                "DELETE FROM state_observation WHERE RecordIndex=1000"
+            );
+            db.DirtyGenerations.Add(saved.Id);
+            Assert.Throws<InvalidDataException>(() =>
+                SharedHistoryPublication.Validate(db, Token, null)
+            );
+            transaction.Rollback();
+        }
+    }
+
+    [Fact]
+    public void RepeatedPreviousMembershipIsRejectedInsteadOfGuessingAVersion()
+    {
+        using var fixture = new Fixture();
+        var previous = fixture.Save(Buffer(), Now.AddMinutes(-2));
+        using (var store = fixture.Writer())
+        {
+            var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
+            SharedHistoryPublication.Execute(
+                db,
+                "INSERT INTO generation_observation SELECT * FROM generation_observation WHERE RecordIndex=1000"
+            );
+        }
+        Assert.Throws<InvalidDataException>(() => fixture.Save(Buffer("size"), Now.AddMinutes(-1)));
+        using var check = fixture.Writer();
+        Assert.Equal(
+            previous.Id,
+            Assert
+                .Single(Assert.IsType<SharedHistoryDbContext>(check.HistoryContext).Published)
+                .ScanId
+        );
+    }
+
+    [Fact]
+    public void LargeSharedTablesHaveNoResidentKeysOrIndexes()
+    {
+        using var fixture = new Fixture();
+        fixture.Save(Buffer(), Now.AddMinutes(-1));
+        using var store = fixture.Writer();
+        using var command = store.HistoryContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = """
+            SELECT count(*) FROM (
+                SELECT table_name FROM duckdb_constraints() WHERE constraint_type IN ('PRIMARY KEY','UNIQUE','FOREIGN KEY')
+                UNION ALL SELECT table_name FROM duckdb_indexes())
+            WHERE table_name IN ('state_observation','state_file_name','state_stream','state_folder_sample',
+                'generation_observation','scan_folder_ref','scan_listing_ref','shared_entry')
+            """;
+        Assert.Equal(0L, Convert.ToInt64(command.ExecuteScalar()));
+    }
+
+    [Fact]
     public void LargeFolderCopiesOnlyTheChangedBlockAndKeepsPagingAndSortingCorrect()
     {
         using var fixture = new Fixture();
@@ -754,16 +978,22 @@ public sealed class SharedHistoryTests
         using var store = fixture.Writer();
         var db = Assert.IsType<SharedHistoryDbContext>(store.HistoryContext);
         var old = db
-            .Listings.Where(r => r.ScanId == before.Id && r.ParentIndex == 20)
+            .Listings.Where(r =>
+                r.Generation == SharedHistoryPublication.GenerationOf(db, before.Id)
+                && r.ParentIndex == 20
+            )
             .OrderBy(r => r.Bucket)
             .ToArray();
         var current = db
-            .Listings.Where(r => r.ScanId == after.Id && r.ParentIndex == 20)
+            .Listings.Where(r =>
+                r.Generation == SharedHistoryPublication.GenerationOf(db, after.Id)
+                && r.ParentIndex == 20
+            )
             .OrderBy(r => r.Bucket)
             .ToArray();
         Assert.True(old.Length > 1);
         Assert.All(old, r => Assert.True(r.Bucket > 0));
-        Assert.Single(old.Zip(current), pair => pair.First.ListingId != pair.Second.ListingId);
+        Assert.Single(old.Zip(current), pair => pair.First.Listing != pair.Second.Listing);
         var page = store.ReadFolderEntries(
             after.Id,
             Folder,
@@ -798,13 +1028,13 @@ public sealed class SharedHistoryTests
         && a.Names.AsSpan().SequenceEqual(b.Names.AsSpan())
         && a.Streams.AsSpan().SequenceEqual(b.Streams.AsSpan());
 
-    private static Guid[] ListingIds(SharedHistoryDbContext db, Guid scan) =>
+    private static long[] ListingIds(SharedHistoryDbContext db, Guid scan) =>
         db
-            .Listings.Where(r => r.ScanId == scan)
+            .Listings.Where(r => r.Generation == SharedHistoryPublication.GenerationOf(db, scan))
             .OrderBy(r => r.ParentIndex)
             .ThenBy(r => r.ParentSequence)
             .ThenBy(r => r.Bucket)
-            .Select(r => r.ListingId)
+            .Select(r => r.Listing)
             .ToArray();
 
     private static BufferedScan Buffer(
@@ -885,8 +1115,11 @@ public sealed class SharedHistoryTests
                     CapacityDomain.Ordinary,
                     unresolved ? CapacityResolution.Unresolved : CapacityResolution.Resolved,
                     [.. names],
-                    unresolved
-                        ? []
+                    unresolved ? []
+                        : changed && change == "duplicate-stream"
+                            ? [new("", size - 1, size), new("ads", 32, 0), new("ads", 32, 0)]
+                        : changed && change == "extra-stream"
+                            ? [new("", size - 1, size), new("ads", 32, 0), new("more", 1, 0)]
                         :
                         [
                             new("", size - 1, size),

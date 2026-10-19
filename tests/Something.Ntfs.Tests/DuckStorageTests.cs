@@ -151,6 +151,79 @@ public sealed class DuckStorageTests
         Assert.Equal(0, growthRequests);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CommitFailureRetriesOnlyWhenTheDatabaseShowsNoPublication(bool committed)
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        int attempts = 0,
+            checks = 0;
+
+        int result = DuckMemoryRecovery.Run(
+            (DuckScanDbContext)database.Store.HistoryContext,
+            report =>
+            {
+                report?.Invoke(new(ScanWorkStage.Committing, 0, null));
+                if (++attempts == 1)
+                    throw CreateMemoryError();
+                return 2;
+            },
+            limit => null,
+            null,
+            Token,
+            readCommitted: () =>
+            {
+                checks++;
+                return (committed, 1);
+            }
+        );
+
+        Assert.Equal(1, checks);
+        Assert.Equal(committed ? 1 : 2, attempts);
+        Assert.Equal(committed ? 1 : 2, result);
+    }
+
+    [Fact]
+    public void PublicationThatCommittedBeforeTheErrorIsReturnedWithoutRepublishing()
+    {
+        using var database = TemporaryScanDatabase.Create(Token);
+        var store = database.Store;
+        var buffer = Buffer();
+        int attempts = 0;
+
+        var id = store.PublishHistoryBuffer(
+            buffer,
+            Start.AddSeconds(1),
+            new()
+            {
+                VolumeKey = "synthetic:A",
+                Drive = "Synthetic",
+                CompletedUtcTicks = Start.AddSeconds(1).UtcTicks,
+                LocalDay = 739902,
+            },
+            Token,
+            progress: p =>
+            {
+                // Simulates an error reported after the native commit already succeeded.
+                if (p.Stage == ScanWorkStage.Committing && ++attempts == 1)
+                {
+                    var context = store.HistoryContext;
+                    context.Database.CommitTransaction();
+                    context.Database.BeginTransaction();
+                    throw CreateMemoryError();
+                }
+            }
+        );
+
+        Assert.Equal(1, attempts);
+        Assert.Single(store.HistoryContext.Scans);
+        Assert.Equal(
+            id,
+            store.GetPublishedScan(buffer.Descriptor.VolumeKey, buffer.Descriptor.Range)
+        );
+    }
+
     private static DuckDBException CreateMemoryError() =>
         CreateQueryError("SELECT i, count(*) FROM range(100000) t(i) GROUP BY i", lowMemory: true);
 
@@ -263,7 +336,16 @@ public sealed class DuckStorageTests
         else
             Assert.Throws<DuckDBException>(publish);
 
-        Assert.Equal(failure == 1 ? 4 : 1, attempts);
+        // Growth attempts first, then one disk-spill attempt; cancellation stops immediately.
+        Assert.Equal(
+            failure switch
+            {
+                0 => 2,
+                1 => DuckMemoryRecovery.MaximumGrowthAttempts + 2,
+                _ => 1,
+            },
+            attempts
+        );
         Assert.Single(store.HistoryContext.Scans);
         Assert.Empty(store.HistoryContext.HistorySnapshots);
         Assert.Equal(
@@ -307,6 +389,10 @@ public sealed class DuckStorageTests
     )]
     [InlineData(
         "Failed to append: could not allocate block of size 256.0 KiB (1.0 GiB/1.0 GiB used)",
+        true
+    )]
+    [InlineData(
+        "TransactionContext Error: Failed to commit: failed to pin block of size 256.0 KiB (1023.8 MiB/1.0 GiB used)",
         true
     )]
     [InlineData("Failed to append: Current transaction is aborted (please ROLLBACK)", false)]

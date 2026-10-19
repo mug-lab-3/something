@@ -176,7 +176,7 @@ internal sealed class HistoryDedupStore : IDisposable
             if (context is SharedHistoryDbContext shared)
             {
                 NewFacts = shared.States.LongCount();
-                NewListings = shared.Entries.Select(e => e.ScanId).Distinct().LongCount();
+                NewListings = shared.Entries.Select(e => e.Listing).Distinct().LongCount();
             }
             else
                 NewFacts += buffer.Count;
@@ -451,15 +451,15 @@ internal sealed class HistoryDedupStore : IDisposable
                     "published_generation",
                     "scan_step_timing",
                     "scan_timing",
-                    "scan_listing_ref",
-                    "auxiliary_ref",
-                    "scan_folder_ref",
                     "volume_sample",
                 }
             )
                 Delete(table);
             using var collect = connection.CreateCommand();
-            collect.CommandText = SharedHistoryPublication.CollectSql;
+            collect.CommandText = $"SELECT Number FROM scan WHERE Id='{id:D}'::UUID";
+            collect.CommandText = SharedHistoryPublication.DeleteGenerationSql(
+                Convert.ToInt32(collect.ExecuteScalar())
+            );
             collect.ExecuteNonQuery();
             Delete("history_snapshot", "Id");
         }

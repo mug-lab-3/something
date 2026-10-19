@@ -3,39 +3,42 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
-// Version IDs identify immutable data, never the lifetime of their originating scan.
+// Internal integer keys: a generation is scan.Number; a state version is the number of the
+// generation that first stored it; a listing is (generation << 32) | ordinal. Versions identify
+// immutable data, never the lifetime of their originating scan.
 internal sealed class SharedFolderReferenceEntity
 {
-    public Guid ScanId { get; set; }
+    public int Generation { get; set; }
     public long RecordIndex { get; set; }
     public ushort Sequence { get; set; }
-    public Guid? ObservationVersion { get; set; }
-    public Guid SampleVersion { get; set; }
+    public int? ObservationVersion { get; set; }
+    public int SampleVersion { get; set; }
 }
 
-internal sealed class SharedAuxiliaryReferenceEntity
+// Every observation of a generation, including those absent from listings and folders.
+internal sealed class GenerationObservationEntity
 {
-    public Guid ScanId { get; set; }
+    public int Generation { get; set; }
     public long RecordIndex { get; set; }
-    public Guid VersionId { get; set; }
+    public int Version { get; set; }
 }
 
 internal sealed class SharedListingReferenceEntity
 {
-    public Guid ScanId { get; set; }
+    public int Generation { get; set; }
     public long ParentIndex { get; set; }
     public ushort ParentSequence { get; set; }
     public long Bucket { get; set; }
-    public Guid ListingId { get; set; }
+    public long Listing { get; set; }
 }
 
 internal sealed class SharedEntryEntity
 {
     public uint? StandardFileAttributes { get; set; }
-    public Guid ScanId { get; set; }
+    public long Listing { get; set; }
     public long RecordIndex { get; set; }
     public int Ordinal { get; set; }
-    public Guid ObservationVersion { get; set; }
+    public int ObservationVersion { get; set; }
     public string Name { get; set; } = "";
     public ushort Sequence { get; set; }
     public bool IsDirectory { get; set; }
@@ -48,7 +51,7 @@ internal sealed class SharedEntryEntity
 internal sealed class StateObservationEntity
 {
     public uint? StandardFileAttributes { get; set; }
-    public Guid ScanId { get; set; }
+    public int Version { get; set; }
     public long RecordIndex { get; set; }
     public MftScanEntryKind Kind { get; set; }
     public LiveFileReadStatus Status { get; set; }
@@ -62,7 +65,7 @@ internal sealed class StateObservationEntity
 
 internal sealed class StateFileNameEntity
 {
-    public Guid ScanId { get; set; }
+    public int Version { get; set; }
     public long RecordIndex { get; set; }
     public int Ordinal { get; set; }
     public long ParentIndex { get; set; }
@@ -74,7 +77,7 @@ internal sealed class StateFileNameEntity
 
 internal sealed class StateStreamEntity
 {
-    public Guid ScanId { get; set; }
+    public int Version { get; set; }
     public long RecordIndex { get; set; }
     public int Ordinal { get; set; }
     public string Name { get; set; } = "";
@@ -84,7 +87,7 @@ internal sealed class StateStreamEntity
 
 internal sealed class StateFolderSampleEntity
 {
-    public Guid ScanId { get; set; }
+    public int Version { get; set; }
     public long RecordIndex { get; set; }
     public ushort Sequence { get; set; }
     public UInt128 DirectLogical { get; set; }

@@ -51,7 +51,7 @@ public sealed partial class AnimationPreviewWindow
                 await CaptureAsync($"{path}.{index}-settled.png");
                 StaticBox.IsChecked = true;
                 Restart();
-                if (Animation.IsPlaying || !Animation.WaitForSettledAsync().IsCompleted)
+                if (Animation.IsAnimating)
                     throw new InvalidOperationException("Static preview started an animation.");
                 if (index == 2)
                     Animation.VerifyDeletionPose(1.5);
@@ -76,13 +76,22 @@ public sealed partial class AnimationPreviewWindow
             await Animation.WaitForSettledAsync().WaitAsync(TimeSpan.FromSeconds(5));
             readTimer.Stop();
             Animation.VerifySettledPose();
-            if (readTimer.Elapsed.TotalSeconds < RecordLoadingAnimation.InspectCycleSeconds - .15)
+            // Ending mid-cycle waits only for the minimum display time and the fade.
+            var longest =
+                RecordLoadingAnimation.MinimumVisible
+                + RecordLoadingAnimation.FadeOut
+                + TimeSpan.FromMilliseconds(400);
+            if (
+                readTimer.Elapsed
+                    < RecordLoadingAnimation.MinimumVisible - TimeSpan.FromMilliseconds(50)
+                || readTimer.Elapsed > longest
+            )
                 throw new InvalidOperationException(
-                    "Loading cycle completed faster than its playback speed."
+                    "Loading did not end after its minimum display time and fade."
                 );
             await File.WriteAllTextAsync(
                 path + ".loading-timing.txt",
-                $"Loading cycle: expected={RecordLoadingAnimation.InspectCycleSeconds:F3}s; observed={readTimer.Elapsed.TotalSeconds:F3}s; scan cycle remains 3.800s."
+                $"Loading end: minimum={RecordLoadingAnimation.MinimumVisible.TotalSeconds:F3}s; fade={RecordLoadingAnimation.FadeOut.TotalSeconds:F3}s; observed={readTimer.Elapsed.TotalSeconds:F3}s; full cycle {RecordLoadingAnimation.InspectCycleSeconds:F3}s is no longer awaited."
             );
             Animation.Cancel();
             await File.WriteAllTextAsync(

@@ -163,7 +163,7 @@ public sealed partial class MainWindow
         }
         finally
         {
-            // Finish the current chick cycle without starting an extra loop.
+            // Ends after the minimum display time and a short fade, wherever the cycle is.
             StartupAnimation.SetBusy(false);
             await StartupAnimation.WaitForSettledAsync();
             if (!closed)

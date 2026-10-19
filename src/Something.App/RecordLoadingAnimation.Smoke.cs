@@ -105,20 +105,16 @@ public sealed partial class RecordLoadingAnimation
     {
         if (IsPlaying)
             throw new InvalidOperationException("Animation is still playing after settling.");
-        if (ActiveKind == LoadingAnimationKind.OptimizeDatabase)
-            VerifyOptimizationPose(4.9);
-        else if (Chick.Opacity != 0 || Farewell.Opacity != 0)
-            throw new InvalidOperationException("A chick or farewell reappeared after settling.");
-        if (
-            ActiveKind == LoadingAnimationKind.Inspect
-            && (ScanBeam.Opacity != 0 || GateReady.Opacity != 0)
-        )
-            throw new InvalidOperationException("Scanner effects remained visible after settling.");
+        // Presentations end wherever the cycle is; settling hides the whole scene instead.
+        if (Target.Opacity != 0)
+            throw new InvalidOperationException("The animation remained visible after settling.");
+        if (LastPresentedFor > TimeSpan.Zero && LastPresentedFor < MinimumVisible)
+            throw new InvalidOperationException("A shown animation ended before its minimum time.");
     }
 
     internal void PauseForPreview(double seconds)
     {
-        if (!IsPlaying)
+        if (!IsPresented)
             return;
         activeCycle?.Pause();
         activeCycle?.Seek(
@@ -132,7 +128,7 @@ public sealed partial class RecordLoadingAnimation
 
     internal void ResumeAfterPreview()
     {
-        if (IsPlaying)
+        if (IsPresented)
             activeCycle?.Resume();
     }
 

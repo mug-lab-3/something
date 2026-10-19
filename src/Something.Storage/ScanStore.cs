@@ -364,6 +364,12 @@ public sealed partial class ScanStore : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         _ = GetScan(scanId);
+        if (context is DuckScanDbContext)
+        {
+            foreach (var file in ReadFilesNative(scanId, cancellationToken))
+                yield return file;
+            yield break;
+        }
         // Three ordered readers, not thousands of page queries against shared history
         // views. Merge by full scan membership and record index; retain one file at a time.
         using var names = context

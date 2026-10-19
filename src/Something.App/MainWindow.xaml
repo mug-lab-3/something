@@ -690,7 +690,13 @@
           Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
           Visibility="Collapsed"
         >
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+          <StackPanel
+            x:Name="ViewLoadingContent"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="12"
+            Opacity="0"
+          >
             <local:RecordLoadingAnimation x:Name="ViewLoadingAnimation" />
             <TextBlock
               x:Name="ViewLoadingTitle"

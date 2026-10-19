@@ -151,17 +151,26 @@ public sealed partial class MainWindow
         closingAnimation.Cancel();
         if (closingAnimation.IsPlaying || !closingWait.IsCompleted)
             throw new InvalidOperationException("Closing left an animation waiter blocked.");
-        int completedCycles = ViewLoadingAnimation.CompletedCycles;
         var quick = BeginViewUpdate("Instant completion");
-        bool animated = ViewLoadingAnimation.IsPlaying;
+        Verify(true);
         quick.Dispose();
-        if (animated)
-            Verify(true);
+        // Work that ends before the appearance delay never shows or waits for the animation.
+        if (ViewLoadingAnimation.IsPlaying)
+            throw new InvalidOperationException("Instant work presented the loading animation.");
+        Verify(false);
+        var shown = BeginViewUpdate("Shown completion");
+        await Task.Delay(
+            RecordLoadingAnimation.DefaultAppearDelay + TimeSpan.FromMilliseconds(100)
+        );
+        if (!ViewLoadingAnimation.IsPresented)
+            throw new InvalidOperationException("Slow work did not present the animation.");
+        shown.Dispose();
+        Verify(true);
         await ViewLoadingAnimation.WaitForSettledAsync();
         Verify(false);
-        if (animated && ViewLoadingAnimation.CompletedCycles != completedCycles + 1)
+        if (ViewLoadingAnimation.LastPresentedFor < RecordLoadingAnimation.MinimumVisible)
             throw new InvalidOperationException(
-                "Instant work did not finish exactly one animation cycle."
+                "A shown animation ended before its minimum display time."
             );
         using (var older = BeginViewUpdate("Earlier request"))
         {
@@ -253,7 +262,6 @@ public sealed partial class MainWindow
         await Task.Delay(400, lifetime.Token);
         VerifyRegion(true, true);
         bool localAnimated = EntryLoadingRegion.IsPlaying;
-        int localCycles = EntryLoadingRegion.CompletedCycles;
         var second = EntryLoadingRegion.BeginUpdate();
         first.Dispose();
         VerifyRegion(true, true);
@@ -262,9 +270,12 @@ public sealed partial class MainWindow
             VerifyRegion(true, true);
         await EntryLoadingRegion.WaitForSettledAsync();
         VerifyRegion(false, false);
-        if (localAnimated && EntryLoadingRegion.CompletedCycles != localCycles + 1)
+        if (
+            localAnimated
+            && EntryLoadingRegion.LastPresentedFor < RecordLoadingAnimation.MinimumVisible
+        )
             throw new InvalidOperationException(
-                "Local loading did not finish its current chick cycle."
+                "Local loading ended before its minimum display time."
             );
 
         var cancelled = EntryLoadingRegion.BeginUpdate();

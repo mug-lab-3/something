@@ -139,11 +139,14 @@ public sealed partial class ScanStore
         {
             context.StepTimings.Where(row => row.ScanId == id).ExecuteDelete();
             context.Timings.Where(row => row.ScanId == id).ExecuteDelete();
-            shared.Listings.Where(row => row.ScanId == id).ExecuteDelete();
-            shared.Auxiliary.Where(row => row.ScanId == id).ExecuteDelete();
-            shared.SharedFolders.Where(row => row.ScanId == id).ExecuteDelete();
             context.Volumes.Where(row => row.ScanId == id).ExecuteDelete();
-            SharedHistoryPublication.Collect(shared);
+            // Called only inside retention's transaction after the generation became unleased.
+            SharedHistoryPublication.Execute(
+                shared,
+                SharedHistoryPublication.DeleteGenerationSql(
+                    SharedHistoryPublication.GenerationOf(shared, id)
+                )
+            );
         }
         else if (context is DuckScanDbContext)
         {

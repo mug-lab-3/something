@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Something.Ntfs;
 
@@ -39,7 +40,7 @@ public sealed record CapacityBucket(
 
 /// <summary>Known DATA totals only. Missing observations and unresolved capacity remain separate from known zero.</summary>
 public sealed record FolderAggregationResult(
-    ImmutableDictionary<FileReference, FolderCapacitySample> Folders,
+    FrozenDictionary<FileReference, FolderCapacitySample> Folders,
     CapacityBucket Metadata,
     CapacityBucket Unattributed,
     bool HasUnknownAttribution
@@ -240,7 +241,7 @@ public sealed class FolderAggregator(FolderGraph graph)
             };
         }
         onRollup?.Invoke(graph.ParentFirst.Length, graph.ParentFirst.Length);
-        return new(folders.ToImmutableDictionary(), metadata, unattributed, unknownAttribution);
+        return new(folders.ToFrozenDictionary(), metadata, unattributed, unknownAttribution);
     }
 
     private static CapacityBucket Add(CapacityBucket bucket, CapacityAmount? capacity) =>

@@ -8,8 +8,14 @@ namespace Something.Storage;
 /// Complete only after successful enumeration. Cancellation before publication never writes a generation.</summary>
 public sealed class BufferedScan
 {
-    private readonly List<StagedObservation> observations = [];
-    private readonly HashSet<ulong> indices = [];
+    // Ranges up to this many records track identities in a bitmap (8 MiB at most) instead of a
+    // hash set (about 30 bytes per record); larger, unusual ranges keep the hash set.
+    internal const ulong BitmapRecordLimit = 64UL << 20;
+    internal const ulong InitialObservationLimit = 4UL << 20;
+
+    private readonly List<StagedObservation> observations;
+    private ulong[]? seen;
+    private HashSet<ulong>? indices;
     private readonly StoredScan validation;
     private FolderAggregationResult? aggregation;
     private ImmutableArray<UnattributedSummary> diagnostics;
@@ -40,6 +46,19 @@ public sealed class BufferedScan
         ScanStore.ValidateDescriptor(descriptor);
         Descriptor = descriptor;
         validation = new(Guid.Empty, descriptor, StoredScanState.Running, null);
+        ulong records = descriptor.Range.RecordCount;
+        if (records <= BitmapRecordLimit)
+        {
+            seen = new ulong[(records + 63) / 64];
+            // Observations never exceed the MFT range; reserving it avoids growth copies. The cap
+            // bounds the reservation (32 MiB of references) when much of the MFT is free.
+            observations = new((int)Math.Min(records, InitialObservationLimit));
+        }
+        else
+        {
+            indices = [];
+            observations = [];
+        }
     }
 
     public ScanDescriptor Descriptor { get; }
@@ -93,9 +112,23 @@ public sealed class BufferedScan
         if (aggregation is not null)
             throw new InvalidOperationException("Completed observations are immutable.");
         ScanStore.ValidateObservation(observation, validation);
-        if (!indices.Add(observation.RecordIndex))
+        if (!MarkSeen(observation.RecordIndex))
             throw new InvalidDataException("Duplicate buffered record identity.");
         observations.Add(observation);
+    }
+
+    // The index is validated to lie inside the descriptor range before it is marked.
+    private bool MarkSeen(ulong recordIndex)
+    {
+        if (seen is null)
+            return indices!.Add(recordIndex);
+        ulong offset = recordIndex - Descriptor.Range.StartIndex;
+        ref ulong word = ref seen[offset / 64];
+        ulong bit = 1UL << (int)(offset % 64);
+        if ((word & bit) != 0)
+            return false;
+        word |= bit;
+        return true;
     }
 
     public FolderAggregationResult Complete(
@@ -182,8 +215,8 @@ public sealed class BufferedScan
                 || observations.Any(o => o.Kind == MftScanEntryKind.Unresolved && o.File is null),
         };
         completedGraph = graph;
-        indices.Clear();
-        indices.TrimExcess();
+        seen = null;
+        indices = null;
         return aggregation;
 
         IEnumerable<FileCapacityObservation> ResolvedFiles()

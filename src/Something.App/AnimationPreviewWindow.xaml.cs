@@ -12,6 +12,8 @@ public sealed partial class AnimationPreviewWindow : Window
     public AnimationPreviewWindow()
     {
         InitializeComponent();
+        // The preview shows motion at once; production hosts keep the appearance delay.
+        Animation.AppearDelay = TimeSpan.Zero;
         Title = $"{AppVersion.WindowTitle} · アニメーションプレビュー";
         AppWindow.Resize(new SizeInt32(780, 560));
         KindBox.SelectedIndex = 3;

@@ -10,6 +10,8 @@ if (args.FirstOrDefault() == "--history-dedup")
     return await HistoryDedupBenchmark.RunAsync(args[1..]);
 if (args.FirstOrDefault() == "--visibility")
     return VisibilityBenchmark.Run(args[1..]);
+if (args.FirstOrDefault() == "--app-paths")
+    return AppPathBenchmark.Run(args[1..]);
 
 int count = 100_000,
     repeats = 3,

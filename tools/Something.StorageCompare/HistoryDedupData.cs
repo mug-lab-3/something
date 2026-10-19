@@ -42,10 +42,13 @@ internal static class HistoryDedupData
             token.ThrowIfCancellationRequested();
             bool directory = i % 10 == 0;
             var reference = FileReference.Create((ulong)i + 32, (ushort)(i % 20 + 1));
-            var parent =
-                directory ? Root
-                : shape == "wide" ? FileReference.Create(32, 1)
-                : FileReference.Create((ulong)(i / 10 * 10) + 32, (ushort)(i / 10 * 10 % 20 + 1));
+            var parent = directory
+                ? shape == "deep" && i != 0
+                    ? Directory((i / 10 - 1) / 8 * 10)
+                    : Root
+                : shape == "wide"
+                    ? FileReference.Create(32, 1)
+                    : Directory(i / 10 * 10);
             int rate = (generation % 6) switch
             {
                 2 => 100,
@@ -107,6 +110,10 @@ internal static class HistoryDedupData
         }
         buffer.Complete(token);
         return buffer;
+
+        // "deep" nests directories eight per parent, so paths have realistic depth.
+        static FileReference Directory(int i) =>
+            FileReference.Create((ulong)i + 32, (ushort)(i % 20 + 1));
 
         void Add(FileCapacityObservation file) =>
             buffer.Add(

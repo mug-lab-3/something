@@ -25,10 +25,14 @@ public sealed partial class DelayedLoadingRegion : UserControl
     internal bool IsIndicatorVisible => Indicator.Visibility == Visibility.Visible;
     internal bool IsPlaying => Animation.IsPlaying;
     internal int CompletedCycles => Animation.CompletedCycles;
+    internal TimeSpan LastPresentedFor => Animation.LastPresentedFor;
 
     public DelayedLoadingRegion()
     {
         InitializeComponent();
+        // DelayedActivity already waits before showing the indicator; do not delay twice.
+        Animation.AppearDelay = TimeSpan.Zero;
+        Animation.PresentationTarget = IndicatorPanel;
         activity = new(
             (pending, visible) =>
             {

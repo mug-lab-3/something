@@ -234,6 +234,23 @@ namespace Something.Storage.SharedMigrations
                     b.ToView("folder_sample", (string)null);
                 });
 
+            modelBuilder.Entity("Something.Storage.GenerationObservationEntity", b =>
+                {
+                    b.Property<int>("Generation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.ToTable("generation_observation", null, t =>
+                        {
+                            t.HasCheckConstraint("member_identity", "Generation > 0 AND Version > 0 AND RecordIndex BETWEEN 0 AND 281474976710655");
+                        });
+                });
+
             modelBuilder.Entity("Something.Storage.HistorySnapshotEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -356,6 +373,9 @@ namespace Something.Storage.SharedMigrations
                     b.Property<Guid>("Epoch")
                         .HasColumnType("UUID");
 
+                    b.Property<int>("Number")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ObservationMode")
                         .IsRequired()
                         .HasColumnType("VARCHAR");
@@ -383,11 +403,16 @@ namespace Something.Storage.SharedMigrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Number")
+                        .IsUnique();
+
                     b.HasIndex("VolumeKey");
 
                     b.ToTable("scan", null, t =>
                         {
                             t.HasCheckConstraint("scan_identity", "length(VolumeKey) > 0 AND octet_length(Serial) = 8 AND ObservationMode = 'OptimisticLive'");
+
+                            t.HasCheckConstraint("scan_number", "Number > 0");
 
                             t.HasCheckConstraint("scan_range", "RangeStart BETWEEN 0 AND 281474976710655 AND RangeCount > 0 AND RangeCount <= 281474976710656 - RangeStart");
 
@@ -445,48 +470,29 @@ namespace Something.Storage.SharedMigrations
                         });
                 });
 
-            modelBuilder.Entity("Something.Storage.SharedAuxiliaryReferenceEntity", b =>
-                {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
-                    b.Property<Guid>("VersionId")
-                        .HasColumnType("UUID");
-
-                    b.HasKey("ScanId", "RecordIndex");
-
-                    b.ToTable("auxiliary_ref", null, t =>
-                        {
-                            t.HasCheckConstraint("auxiliary_identity", "RecordIndex BETWEEN 0 AND 281474976710655");
-                        });
-                });
-
             modelBuilder.Entity("Something.Storage.SharedEntryEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
-                    b.Property<int>("Ordinal")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsDirectory")
                         .HasColumnType("BOOLEAN");
 
                     b.Property<bool>("LinksComplete")
                         .HasColumnType("BOOLEAN");
 
+                    b.Property<long>("Listing")
+                        .HasColumnType("BIGINT");
+
                     b.Property<byte[]>("Name")
                         .IsRequired()
                         .HasColumnType("BLOB");
 
-                    b.Property<Guid>("ObservationVersion")
-                        .HasColumnType("UUID");
+                    b.Property<int>("ObservationVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
 
                     b.Property<int>("Resolution")
                         .HasColumnType("INTEGER");
@@ -503,11 +509,9 @@ namespace Something.Storage.SharedMigrations
                     b.Property<long?>("StreamLogical")
                         .HasColumnType("BIGINT");
 
-                    b.HasKey("ScanId", "RecordIndex", "Ordinal");
-
                     b.ToTable("shared_entry", null, t =>
                         {
-                            t.HasCheckConstraint("entry_identity", "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535 AND Ordinal >= 0");
+                            t.HasCheckConstraint("entry_identity", "Listing > 0 AND ObservationVersion > 0 AND RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535 AND Ordinal >= 0");
 
                             t.HasCheckConstraint("entry_value", "octet_length(Name) > 0 AND octet_length(Name) % 2 = 0 AND Resolution IN (0,1) AND (StreamLogical IS NULL OR StreamLogical >= 0) AND (StreamAllocated IS NULL OR StreamAllocated >= 0)");
                         });
@@ -515,33 +519,37 @@ namespace Something.Storage.SharedMigrations
 
             modelBuilder.Entity("Something.Storage.SharedFolderReferenceEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
+                    b.Property<int>("Generation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ObservationVersion")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("RecordIndex")
                         .HasColumnType("BIGINT");
 
-                    b.Property<Guid?>("ObservationVersion")
-                        .HasColumnType("UUID");
-
-                    b.Property<Guid>("SampleVersion")
-                        .HasColumnType("UUID");
+                    b.Property<int>("SampleVersion")
+                        .HasColumnType("INTEGER");
 
                     b.Property<ushort>("Sequence")
                         .HasColumnType("USMALLINT");
 
-                    b.HasKey("ScanId", "RecordIndex");
-
                     b.ToTable("scan_folder_ref", null, t =>
                         {
-                            t.HasCheckConstraint("shared_folder_identity", "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535");
+                            t.HasCheckConstraint("shared_folder_identity", "Generation > 0 AND SampleVersion > 0 AND (ObservationVersion IS NULL OR ObservationVersion > 0) AND RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535");
                         });
                 });
 
             modelBuilder.Entity("Something.Storage.SharedListingReferenceEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
+                    b.Property<long>("Bucket")
+                        .HasColumnType("BIGINT");
+
+                    b.Property<int>("Generation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Listing")
+                        .HasColumnType("BIGINT");
 
                     b.Property<long>("ParentIndex")
                         .HasColumnType("BIGINT");
@@ -549,33 +557,14 @@ namespace Something.Storage.SharedMigrations
                     b.Property<ushort>("ParentSequence")
                         .HasColumnType("USMALLINT");
 
-                    b.Property<long>("Bucket")
-                        .HasColumnType("BIGINT");
-
-                    b.Property<Guid>("ListingId")
-                        .HasColumnType("UUID");
-
-                    b.HasKey("ScanId", "ParentIndex", "ParentSequence", "Bucket");
-
-                    b.HasIndex("ParentIndex");
-
                     b.ToTable("scan_listing_ref", null, t =>
                         {
-                            t.HasCheckConstraint("listing_identity", "ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Bucket >= 0");
+                            t.HasCheckConstraint("listing_identity", "Generation > 0 AND Listing > 0 AND ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Bucket >= 0");
                         });
                 });
 
             modelBuilder.Entity("Something.Storage.StateFileNameEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
-                    b.Property<int>("Ordinal")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long>("Attributes")
                         .HasColumnType("BIGINT");
 
@@ -586,18 +575,25 @@ namespace Something.Storage.SharedMigrations
                     b.Property<byte>("Namespace")
                         .HasColumnType("UTINYINT");
 
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long>("ParentIndex")
                         .HasColumnType("BIGINT");
 
                     b.Property<ushort>("ParentSequence")
                         .HasColumnType("USMALLINT");
 
-                    b.HasKey("ScanId", "RecordIndex", "Ordinal");
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
 
-                    b.HasIndex("ScanId", "ParentIndex", "ParentSequence");
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
 
                     b.ToTable("state_file_name", null, t =>
                         {
+                            t.HasCheckConstraint("state_file_name_version", "Version > 0");
+
                             t.HasCheckConstraint("state_name_identity", "RecordIndex BETWEEN 0 AND 281474976710655 AND ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Ordinal >= 0");
 
                             t.HasCheckConstraint("state_name_value", "octet_length(Name) > 0 AND octet_length(Name) % 2 = 0 AND Namespace BETWEEN 0 AND 3 AND Attributes BETWEEN 0 AND 4294967295");
@@ -606,12 +602,6 @@ namespace Something.Storage.SharedMigrations
 
             modelBuilder.Entity("Something.Storage.StateFolderSampleEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
                     b.Property<long>("AssignedCount")
                         .HasColumnType("BIGINT");
 
@@ -657,6 +647,9 @@ namespace Something.Storage.SharedMigrations
                     b.Property<long?>("EntrySubtreeUnresolved")
                         .HasColumnType("BIGINT");
 
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
+
                     b.Property<ushort>("Sequence")
                         .HasColumnType("USMALLINT");
 
@@ -681,7 +674,8 @@ namespace Something.Storage.SharedMigrations
                     b.Property<long>("UnobservedDirectories")
                         .HasColumnType("BIGINT");
 
-                    b.HasKey("ScanId", "RecordIndex");
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
 
                     b.ToTable("state_folder_sample", null, t =>
                         {
@@ -692,17 +686,13 @@ namespace Something.Storage.SharedMigrations
                             t.HasCheckConstraint("state_folder_entries", "(EntryDirectLogical IS NULL AND EntryDirectAllocated IS NULL AND EntrySubtreeLogical IS NULL AND EntrySubtreeAllocated IS NULL AND EntryDirectFiles IS NULL AND EntrySubtreeFiles IS NULL AND EntryDirectUnresolved IS NULL AND EntrySubtreeUnresolved IS NULL) OR (EntryDirectLogical IS NOT NULL AND EntryDirectAllocated IS NOT NULL AND EntrySubtreeLogical IS NOT NULL AND EntrySubtreeAllocated IS NOT NULL AND EntryDirectFiles IS NOT NULL AND EntrySubtreeFiles IS NOT NULL AND EntryDirectUnresolved IS NOT NULL AND EntrySubtreeUnresolved IS NOT NULL AND TRUE AND TRUE AND TRUE AND TRUE AND EntryDirectFiles >= 0 AND EntrySubtreeFiles >= 0 AND EntryDirectUnresolved >= 0 AND EntrySubtreeUnresolved >= 0)");
 
                             t.HasCheckConstraint("state_folder_identity", "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535");
+
+                            t.HasCheckConstraint("state_folder_sample_version", "Version > 0");
                         });
                 });
 
             modelBuilder.Entity("Something.Storage.StateObservationEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
                     b.Property<int?>("Domain")
                         .HasColumnType("INTEGER");
 
@@ -718,6 +708,9 @@ namespace Something.Storage.SharedMigrations
                     b.Property<ushort?>("ObservedLinkCount")
                         .HasColumnType("USMALLINT");
 
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
+
                     b.Property<int?>("Resolution")
                         .HasColumnType("INTEGER");
 
@@ -730,7 +723,8 @@ namespace Something.Storage.SharedMigrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("ScanId", "RecordIndex");
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
 
                     b.ToTable("state_observation", null, t =>
                         {
@@ -743,20 +737,13 @@ namespace Something.Storage.SharedMigrations
                             t.HasCheckConstraint("state_observation_links", "ObservedLinkCount IS NULL OR ObservedLinkCount BETWEEN 0 AND 65535");
 
                             t.HasCheckConstraint("state_observation_state", "Kind BETWEEN 0 AND 2 AND Status BETWEEN 0 AND 8");
+
+                            t.HasCheckConstraint("state_observation_version", "Version > 0");
                         });
                 });
 
             modelBuilder.Entity("Something.Storage.StateStreamEntity", b =>
                 {
-                    b.Property<Guid>("ScanId")
-                        .HasColumnType("UUID");
-
-                    b.Property<long>("RecordIndex")
-                        .HasColumnType("BIGINT");
-
-                    b.Property<int>("Ordinal")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long>("Allocated")
                         .HasColumnType("BIGINT");
 
@@ -767,14 +754,20 @@ namespace Something.Storage.SharedMigrations
                         .IsRequired()
                         .HasColumnType("BLOB");
 
-                    b.HasKey("ScanId", "RecordIndex", "Ordinal");
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
 
-                    b.HasIndex("ScanId", "RecordIndex", "Name")
-                        .IsUnique();
+                    b.Property<long>("RecordIndex")
+                        .HasColumnType("BIGINT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
 
                     b.ToTable("state_stream", null, t =>
                         {
                             t.HasCheckConstraint("state_stream_sizes", "Logical >= 0 AND Allocated >= 0 AND Ordinal >= 0 AND octet_length(Name) % 2 = 0");
+
+                            t.HasCheckConstraint("state_stream_version", "Version > 0");
                         });
                 });
 

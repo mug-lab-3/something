@@ -15,7 +15,6 @@ public sealed partial class MainWindow
             }
         )
         {
-            int cycles = ViewLoadingAnimation.CompletedCycles;
             bool animated;
             await using (
                 BeginViewUpdate(
@@ -34,6 +33,10 @@ public sealed partial class MainWindow
                             "Nested refresh replaced the maintenance animation."
                         );
                 }
+                await Task.Delay(
+                    RecordLoadingAnimation.DefaultAppearDelay + TimeSpan.FromMilliseconds(100),
+                    lifetime.Token
+                );
                 ViewLoadingAnimation.PauseForPreview(
                     kind == LoadingAnimationKind.DeleteHistory ? 1.5 : .7
                 );
@@ -57,10 +60,13 @@ public sealed partial class MainWindow
             }
             if (
                 ViewLoadingAnimation.IsPlaying
-                || (animated && ViewLoadingAnimation.CompletedCycles != cycles + 1)
+                || (
+                    animated
+                    && ViewLoadingAnimation.LastPresentedFor < RecordLoadingAnimation.MinimumVisible
+                )
             )
                 throw new InvalidOperationException(
-                    "Maintenance did not finish at its cycle boundary."
+                    "Maintenance ended before its minimum display time."
                 );
 
             var reduced = new RecordLoadingAnimation();
@@ -86,7 +92,11 @@ public sealed partial class MainWindow
         {
             await using (BeginViewUpdate("Optimize", LoadingAnimationKind.OptimizeDatabase))
             {
-                await Task.Delay(3200, lifetime.Token);
+                // The first cycle starts after the appearance delay.
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(3200) + RecordLoadingAnimation.DefaultAppearDelay,
+                    lifetime.Token
+                );
                 if (
                     ViewLoadingAnimation.IsPlaying
                     && ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.OptimizeDatabase

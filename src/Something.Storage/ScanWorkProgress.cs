@@ -25,6 +25,9 @@ public readonly record struct ScanWorkProgress(ScanWorkStage Stage, long Complet
 {
     public int RetryAttempt { get; init; }
     public ulong? MemoryLimitBytes { get; init; }
+
+    /// <summary>True only after memory-only attempts failed and the engine may offload to disk.</summary>
+    public bool SpillingToDisk { get; init; }
     public double? Fraction =>
         Total is { } total
             ? total == 0

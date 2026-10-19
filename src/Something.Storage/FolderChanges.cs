@@ -293,7 +293,7 @@ public sealed partial class ScanHistoryArchive
         bool unknownAttribution =
             aggregation.HasUnknownAttribution || aggregation.Unattributed.UnresolvedCount != 0;
         var folders = store
-            .ReadRankedFolders(id, int.MaxValue, token)
+            .ReadRankedFolders(id, int.MaxValue, token, aggregation: aggregation)
             .ToDictionary(
                 row => row.Sample.Reference,
                 row => new ComparisonFolder(

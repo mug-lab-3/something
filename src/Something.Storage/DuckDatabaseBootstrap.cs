@@ -14,7 +14,12 @@ internal static class DuckDatabaseBootstrap
     {
         internal ulong Limit = limit;
         internal int Connections;
+        internal bool Spilling;
     }
+
+    // Last-resort spill area beside the database (or its private memory key).
+    // Memory stays the normal path; this directory exists only after a memory fallback.
+    internal static string SpillDirectory(string key) => key + ".spill";
 
     private static readonly Dictionary<string, EngineMemory> Engines = new(
         StringComparer.OrdinalIgnoreCase
@@ -129,7 +134,7 @@ internal static class DuckDatabaseBootstrap
             {
                 identity.CommandText =
                     "SELECT Version FROM something_format WHERE Application='Something';";
-                if (Convert.ToInt64(identity.ExecuteScalar()) != (sharedHistory ? 4 : 3))
+                if (Convert.ToInt64(identity.ExecuteScalar()) != (sharedHistory ? 6 : 3))
                     throw new InvalidDataException("DuckDB database identity is unsupported.");
             }
             RegisterMemory(context, path, budget);
@@ -159,10 +164,12 @@ internal static class DuckDatabaseBootstrap
             lock (Engines)
             {
                 bool known = Engines.TryGetValue(key, out var state);
+                if (!known)
+                    DeleteSpill(key); // Left by an earlier process that ended abnormally.
                 state ??= new(Math.Max(budget ?? 1UL << 30, 1UL << 30));
                 ulong desired = Math.Max(state.Limit, budget ?? state.Limit);
                 if (!known || desired > state.Limit)
-                    SetMemoryLimit(context, desired);
+                    SetMemoryLimit(context, desired, state.Spilling);
                 state.Limit = desired;
                 state.Connections++;
                 Engines[key] = state;
@@ -172,7 +179,10 @@ internal static class DuckDatabaseBootstrap
                 lock (Gate(key))
                     lock (Engines)
                         if (--Engines[key].Connections == 0)
+                        {
                             Engines.Remove(key);
+                            DeleteSpill(key);
+                        }
             };
             context.MemoryKey = key;
         }
@@ -195,17 +205,76 @@ internal static class DuckDatabaseBootstrap
                 var state = Engines[context.MemoryKey];
                 if (bytes <= state.Limit)
                     throw new ArgumentOutOfRangeException(nameof(bytes));
-                SetMemoryLimit(context, bytes);
+                SetMemoryLimit(context, bytes, state.Spilling);
                 state.Limit = bytes;
             }
     }
 
-    private static void SetMemoryLimit(DuckScanDbContext context, ulong bytes)
+    internal static bool IsSpilling(DuckScanDbContext context)
     {
+        lock (Gate(context.MemoryKey))
+            lock (Engines)
+                return Engines[context.MemoryKey].Spilling;
+    }
+
+    /// <summary>Lets the engine offload blocks to disk for the rest of its lifetime.
+    /// Used only after memory-only attempts failed; the directory is removed when the engine closes.</summary>
+    internal static void EnableSpill(DuckScanDbContext context)
+    {
+        lock (Gate(context.MemoryKey))
+            lock (Engines)
+            {
+                var state = Engines[context.MemoryKey];
+                if (state.Spilling)
+                    return;
+                using (var current = context.Database.GetDbConnection().CreateCommand())
+                {
+                    // Diagnostic file databases keep DuckDB's default spill directory.
+                    current.CommandText = "SELECT current_setting('temp_directory');";
+                    if (current.ExecuteScalar() is string { Length: > 0 })
+                    {
+                        state.Spilling = true;
+                        return;
+                    }
+                }
+                string directory = SpillDirectory(context.MemoryKey);
+                Directory.CreateDirectory(directory);
+                if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
+                    throw new InvalidOperationException(
+                        "Spill directories must not be reparse points."
+                    );
+                using var settings = context.Database.GetDbConnection().CreateCommand();
+                settings.CommandText = $"SET temp_directory='{directory.Replace("'", "''")}';";
+                settings.ExecuteNonQuery();
+                state.Spilling = true;
+            }
+    }
+
+    private static void DeleteSpill(string key)
+    {
+        string directory = SpillDirectory(key);
+        try
+        {
+            if (
+                Directory.Exists(directory)
+                && (File.GetAttributes(directory) & FileAttributes.ReparsePoint) == 0
+            )
+                Directory.Delete(directory, recursive: true);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private static void SetMemoryLimit(DuckScanDbContext context, ulong bytes, bool spilling)
+    {
+        // Shared history keeps insertion order: only then does DuckDB write completed row groups
+        // of an uncommitted append to the database file (measured 54 MiB vs 453 MiB resident for
+        // 3 million rows). Publication appends; it no longer bulk-copies with INSERT ... SELECT.
+        bool shared = context is SharedHistoryDbContext;
         using var settings = context.Database.GetDbConnection().CreateCommand();
         settings.CommandText =
-            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order=false;"
-            + (context is SharedHistoryDbContext ? " SET temp_directory='';" : "");
+            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order={(shared ? "true" : "false")};"
+            + (shared && !spilling ? " SET temp_directory='';" : "");
         settings.ExecuteNonQuery();
     }
 }

@@ -964,6 +964,37 @@ public sealed class ScanStoreTests
         Assert.Equal(new CapacityAmount(1, 1), buffer.Complete(token).Folders[Root].SubtreeData);
     }
 
+    [Theory]
+    [InlineData(0UL, 1000UL)]
+    [InlineData(7UL, 130UL)]
+    [InlineData(0UL, BufferedScan.BitmapRecordLimit + 1)]
+    public void BufferedScan_RejectsDuplicatesAtRangeEdgesWithBitmapOrLargeRangeFallback(
+        ulong start,
+        ulong count
+    )
+    {
+        var token = TestContext.Current.CancellationToken;
+        var buffer = new BufferedScan(Descriptor(range: new(start, count)));
+        ulong last = start + count - 1;
+        static StagedObservation Extension(ulong index) =>
+            new(
+                index,
+                MftScanEntryKind.ExtensionRecord,
+                LiveFileReadStatus.ObservedUnchanged,
+                null
+            );
+        foreach (ulong index in new[] { start, start + 63, start + 64, last }.Distinct())
+        {
+            buffer.Add(Extension(index), token);
+            Assert.Throws<InvalidDataException>(() => buffer.Add(Extension(index), token));
+        }
+        Assert.Throws<ArgumentException>(() => buffer.Add(Extension(last + 1), token));
+        Assert.Equal(
+            new[] { start, start + 63, start + 64, last }.Distinct().Count(),
+            buffer.Count
+        );
+    }
+
     [Fact]
     public void PreparedInserts_PreserveConversionsNullTransitionsAndConstraintErrors()
     {

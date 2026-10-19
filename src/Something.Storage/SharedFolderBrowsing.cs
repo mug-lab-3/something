@@ -11,26 +11,40 @@ public sealed partial class ScanStore
     {
         var db = (SharedHistoryDbContext)context;
         long parentIndex = checked((long)parent.RecordIndex);
-        Guid[] lists = db
+        int generation = SharedHistoryPublication.GenerationOf(db, scanId);
+        long[] lists = db
             .Listings.AsNoTracking()
             .Where(r =>
-                r.ScanId == scanId
+                r.Generation == generation
                 && r.ParentIndex == parentIndex
                 && r.ParentSequence == parent.SequenceNumber
             )
-            .Select(r => r.ListingId)
+            .Select(r => r.Listing)
             .ToArray();
-        var entries = db.Entries.AsNoTracking().Where(e => lists.Contains(e.ScanId));
+        var entries = db.Entries.AsNoTracking().Where(e => lists.Contains(e.Listing));
+        // Sample states grow with history. Resolve the few versions this listing's folders use,
+        // so zone maps skip every other version instead of probing the whole state table.
+        var directories = entries.Where(e => e.IsDirectory).Select(e => e.RecordIndex);
+        var references = db
+            .SharedFolders.AsNoTracking()
+            .Where(r => r.Generation == generation && directories.Contains(r.RecordIndex))
+            .Select(r => new { r.RecordIndex, r.SampleVersion })
+            .ToArray();
+        int[] versions = [.. references.Select(r => r.SampleVersion).Distinct()];
+        long[] records = [.. references.Select(r => r.RecordIndex)];
+        var used = db
+            .Samples.AsNoTracking()
+            .Where(s => versions.Contains(s.Version) && records.Contains(s.RecordIndex));
         var folders =
             from e in entries
-            join r in db.SharedFolders.AsNoTracking().Where(r => r.ScanId == scanId)
+            join r in db.SharedFolders.AsNoTracking().Where(r => r.Generation == generation)
                 on e.RecordIndex equals r.RecordIndex
-                into references
-            from r in references.DefaultIfEmpty()
-            join s in db.Samples.AsNoTracking()
-                on new { ScanId = r.SampleVersion, r.RecordIndex } equals new
+                into referenced
+            from r in referenced.DefaultIfEmpty()
+            join s in used
+                on new { Version = r.SampleVersion, r.RecordIndex } equals new
                 {
-                    s.ScanId,
+                    s.Version,
                     s.RecordIndex,
                 }
                 into samples

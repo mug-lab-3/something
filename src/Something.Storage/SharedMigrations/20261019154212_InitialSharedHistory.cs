@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Numerics;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -12,23 +12,24 @@ namespace Something.Storage.SharedMigrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Hand-edited: physical foreign keys and cascades are intentionally omitted; publication
+            // validates logical relationships and deletion removes dependent rows explicitly.
             migrationBuilder.Sql(
-                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY,Version INTEGER NOT NULL); INSERT INTO something_format VALUES ('Something',4);"
+                "CREATE TABLE something_format(Application VARCHAR PRIMARY KEY,Version INTEGER NOT NULL); INSERT INTO something_format VALUES ('Something',6);"
             );
             migrationBuilder.CreateTable(
-                name: "auxiliary_ref",
+                name: "generation_observation",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Generation = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
-                    VersionId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Version = table.Column<int>(type: "INTEGER", nullable: false),
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_auxiliary_ref", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
-                        "auxiliary_identity",
-                        "RecordIndex BETWEEN 0 AND 281474976710655"
+                        "member_identity",
+                        "Generation > 0 AND Version > 0 AND RecordIndex BETWEEN 0 AND 281474976710655"
                     );
                 }
             );
@@ -76,6 +77,7 @@ namespace Something.Storage.SharedMigrations
                     ObservationMode = table.Column<string>(type: "VARCHAR", nullable: false),
                     AttributionPolicy = table.Column<string>(type: "VARCHAR", nullable: false),
                     CapacityPolicy = table.Column<string>(type: "VARCHAR", nullable: false),
+                    Number = table.Column<int>(type: "INTEGER", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -84,6 +86,7 @@ namespace Something.Storage.SharedMigrations
                         "scan_identity",
                         "length(VolumeKey) > 0 AND octet_length(Serial) = 8 AND ObservationMode = 'OptimisticLive'"
                     );
+                    table.CheckConstraint("scan_number", "Number > 0");
                     table.CheckConstraint(
                         "scan_range",
                         "RangeStart BETWEEN 0 AND 281474976710655 AND RangeCount > 0 AND RangeCount <= 281474976710656 - RangeStart"
@@ -99,18 +102,17 @@ namespace Something.Storage.SharedMigrations
                 name: "scan_folder_ref",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Generation = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Sequence = table.Column<ushort>(type: "USMALLINT", nullable: false),
-                    ObservationVersion = table.Column<Guid>(type: "UUID", nullable: true),
-                    SampleVersion = table.Column<Guid>(type: "UUID", nullable: false),
+                    ObservationVersion = table.Column<int>(type: "INTEGER", nullable: true),
+                    SampleVersion = table.Column<int>(type: "INTEGER", nullable: false),
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_scan_folder_ref", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
                         "shared_folder_identity",
-                        "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535"
+                        "Generation > 0 AND SampleVersion > 0 AND (ObservationVersion IS NULL OR ObservationVersion > 0) AND RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535"
                     );
                 }
             );
@@ -119,27 +121,17 @@ namespace Something.Storage.SharedMigrations
                 name: "scan_listing_ref",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Generation = table.Column<int>(type: "INTEGER", nullable: false),
                     ParentIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     ParentSequence = table.Column<ushort>(type: "USMALLINT", nullable: false),
                     Bucket = table.Column<long>(type: "BIGINT", nullable: false),
-                    ListingId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Listing = table.Column<long>(type: "BIGINT", nullable: false),
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey(
-                        "PK_scan_listing_ref",
-                        x => new
-                        {
-                            x.ScanId,
-                            x.ParentIndex,
-                            x.ParentSequence,
-                            x.Bucket,
-                        }
-                    );
                     table.CheckConstraint(
                         "listing_identity",
-                        "ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Bucket >= 0"
+                        "Generation > 0 AND Listing > 0 AND ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Bucket >= 0"
                     );
                 }
             );
@@ -149,10 +141,10 @@ namespace Something.Storage.SharedMigrations
                 columns: table => new
                 {
                     StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Listing = table.Column<long>(type: "BIGINT", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Ordinal = table.Column<int>(type: "INTEGER", nullable: false),
-                    ObservationVersion = table.Column<Guid>(type: "UUID", nullable: false),
+                    ObservationVersion = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<byte[]>(type: "BLOB", nullable: false),
                     Sequence = table.Column<ushort>(type: "USMALLINT", nullable: false),
                     IsDirectory = table.Column<bool>(type: "BOOLEAN", nullable: false),
@@ -163,18 +155,9 @@ namespace Something.Storage.SharedMigrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey(
-                        "PK_shared_entry",
-                        x => new
-                        {
-                            x.ScanId,
-                            x.RecordIndex,
-                            x.Ordinal,
-                        }
-                    );
                     table.CheckConstraint(
                         "entry_identity",
-                        "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535 AND Ordinal >= 0"
+                        "Listing > 0 AND ObservationVersion > 0 AND RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535 AND Ordinal >= 0"
                     );
                     table.CheckConstraint(
                         "entry_value",
@@ -187,7 +170,7 @@ namespace Something.Storage.SharedMigrations
                 name: "state_file_name",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Version = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Ordinal = table.Column<int>(type: "INTEGER", nullable: false),
                     ParentIndex = table.Column<long>(type: "BIGINT", nullable: false),
@@ -198,15 +181,7 @@ namespace Something.Storage.SharedMigrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey(
-                        "PK_state_file_name",
-                        x => new
-                        {
-                            x.ScanId,
-                            x.RecordIndex,
-                            x.Ordinal,
-                        }
-                    );
+                    table.CheckConstraint("state_file_name_version", "Version > 0");
                     table.CheckConstraint(
                         "state_name_identity",
                         "RecordIndex BETWEEN 0 AND 281474976710655 AND ParentIndex BETWEEN 0 AND 281474976710655 AND ParentSequence BETWEEN 0 AND 65535 AND Ordinal >= 0"
@@ -222,7 +197,7 @@ namespace Something.Storage.SharedMigrations
                 name: "state_folder_sample",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Version = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Sequence = table.Column<ushort>(type: "USMALLINT", nullable: false),
                     DirectLogical = table.Column<BigInteger>(type: "UHUGEINT", nullable: false),
@@ -262,10 +237,6 @@ namespace Something.Storage.SharedMigrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey(
-                        "PK_state_folder_sample",
-                        x => new { x.ScanId, x.RecordIndex }
-                    );
                     table.CheckConstraint(
                         "state_folder_capacities",
                         "TRUE AND TRUE AND TRUE AND TRUE AND TRUE AND TRUE AND TRUE AND TRUE"
@@ -282,6 +253,7 @@ namespace Something.Storage.SharedMigrations
                         "state_folder_identity",
                         "RecordIndex BETWEEN 0 AND 281474976710655 AND Sequence BETWEEN 0 AND 65535"
                     );
+                    table.CheckConstraint("state_folder_sample_version", "Version > 0");
                 }
             );
 
@@ -290,7 +262,7 @@ namespace Something.Storage.SharedMigrations
                 columns: table => new
                 {
                     StandardFileAttributes = table.Column<long>(type: "BIGINT", nullable: true),
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Version = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Kind = table.Column<int>(type: "INTEGER", nullable: false),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
@@ -307,7 +279,6 @@ namespace Something.Storage.SharedMigrations
                         "state_observation_attributes",
                         "StandardFileAttributes IS NULL OR (Sequence IS NOT NULL AND StandardFileAttributes BETWEEN 0 AND 4294967295)"
                     );
-                    table.PrimaryKey("PK_state_observation", x => new { x.ScanId, x.RecordIndex });
                     table.CheckConstraint(
                         "state_observation_identity",
                         "(Sequence IS NULL AND IsDirectory IS NULL AND Domain IS NULL AND Resolution IS NULL AND LinksComplete IS NULL AND ObservedLinkCount IS NULL) OR (Sequence BETWEEN 0 AND 65535 AND IsDirectory IN (0,1) AND Domain BETWEEN 0 AND 2 AND Resolution IN (0,1) AND LinksComplete IN (0,1) AND Sequence IS NOT NULL AND IsDirectory IS NOT NULL AND Domain IS NOT NULL AND Resolution IS NOT NULL AND LinksComplete IS NOT NULL)"
@@ -324,6 +295,7 @@ namespace Something.Storage.SharedMigrations
                         "state_observation_state",
                         "Kind BETWEEN 0 AND 2 AND Status BETWEEN 0 AND 8"
                     );
+                    table.CheckConstraint("state_observation_version", "Version > 0");
                 }
             );
 
@@ -331,7 +303,7 @@ namespace Something.Storage.SharedMigrations
                 name: "state_stream",
                 columns: table => new
                 {
-                    ScanId = table.Column<Guid>(type: "UUID", nullable: false),
+                    Version = table.Column<int>(type: "INTEGER", nullable: false),
                     RecordIndex = table.Column<long>(type: "BIGINT", nullable: false),
                     Ordinal = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<byte[]>(type: "BLOB", nullable: false),
@@ -340,19 +312,11 @@ namespace Something.Storage.SharedMigrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey(
-                        "PK_state_stream",
-                        x => new
-                        {
-                            x.ScanId,
-                            x.RecordIndex,
-                            x.Ordinal,
-                        }
-                    );
                     table.CheckConstraint(
                         "state_stream_sizes",
                         "Logical >= 0 AND Allocated >= 0 AND Ordinal >= 0 AND octet_length(Name) % 2 = 0"
                     );
+                    table.CheckConstraint("state_stream_version", "Version > 0");
                 }
             );
 
@@ -458,28 +422,16 @@ namespace Something.Storage.SharedMigrations
             );
 
             migrationBuilder.CreateIndex(
+                name: "IX_scan_Number",
+                table: "scan",
+                column: "Number",
+                unique: true
+            );
+
+            migrationBuilder.CreateIndex(
                 name: "IX_scan_VolumeKey",
                 table: "scan",
                 column: "VolumeKey"
-            );
-
-            migrationBuilder.CreateIndex(
-                name: "IX_scan_listing_ref_ParentIndex",
-                table: "scan_listing_ref",
-                column: "ParentIndex"
-            );
-
-            migrationBuilder.CreateIndex(
-                name: "IX_state_file_name_ScanId_ParentIndex_ParentSequence",
-                table: "state_file_name",
-                columns: new[] { "ScanId", "ParentIndex", "ParentSequence" }
-            );
-
-            migrationBuilder.CreateIndex(
-                name: "IX_state_stream_ScanId_RecordIndex_Name",
-                table: "state_stream",
-                columns: new[] { "ScanId", "RecordIndex", "Name" },
-                unique: true
             );
             migrationBuilder.Sql(SharedHistoryViews.Sql);
         }
@@ -487,10 +439,8 @@ namespace Something.Storage.SharedMigrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(
-                "DROP VIEW browser; DROP VIEW folder_name_history; DROP VIEW folder_sample; DROP VIEW stream; DROP VIEW file_name; DROP VIEW observation; DROP VIEW observation_ref; DROP TABLE something_format;"
-            );
-            migrationBuilder.DropTable(name: "auxiliary_ref");
+            migrationBuilder.Sql(SharedHistoryViews.DropSql + " DROP TABLE something_format;");
+            migrationBuilder.DropTable(name: "generation_observation");
 
             migrationBuilder.DropTable(name: "history_snapshot");
 

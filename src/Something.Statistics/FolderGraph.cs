@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Something.Ntfs;
 
@@ -31,7 +32,9 @@ public sealed record FolderNode(
 public sealed class FolderGraph
 {
     public FileReference Root { get; }
-    public ImmutableDictionary<FileReference, FolderNode> Nodes { get; }
+
+    // Frozen: immutable like before, but built and queried several times faster for large volumes.
+    public FrozenDictionary<FileReference, FolderNode> Nodes { get; }
     internal ImmutableArray<FileReference> ParentFirst { get; }
 
     private FolderGraph(
@@ -41,7 +44,7 @@ public sealed class FolderGraph
     )
     {
         Root = root;
-        Nodes = nodes.ToImmutableDictionary();
+        Nodes = nodes.ToFrozenDictionary();
         ParentFirst = order.ToImmutableArray();
     }
 

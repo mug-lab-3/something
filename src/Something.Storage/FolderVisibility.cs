@@ -15,6 +15,12 @@ public sealed partial class ScanStore
     {
         token.ThrowIfCancellationRequested();
         _ = GetScan(scanId);
+        if (context is DuckScanDbContext)
+        {
+            foreach (var folder in ReadVisibilityFoldersNative(scanId, token))
+                yield return folder;
+            yield break;
+        }
         foreach (
             var folder in context
                 .Observations.AsNoTracking()

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore;
 using Something.Ntfs;
@@ -181,9 +182,11 @@ public sealed partial class ScanStore
     {
         cancellationToken.ThrowIfCancellationRequested();
         RequireCompleted(scanId);
-        var folders = ImmutableDictionary.CreateBuilder<FileReference, FolderCapacitySample>();
+        var folders = new Dictionary<FileReference, FolderCapacitySample>();
         foreach (
-            var row in context.Folders.AsNoTracking().Where(f => f.ScanId == scanId).AsEnumerable()
+            var row in context is DuckScanDbContext
+                ? ReadSamplesNative(scanId, cancellationToken)
+                : context.Folders.AsNoTracking().Where(f => f.ScanId == scanId).AsEnumerable()
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -194,7 +197,7 @@ public sealed partial class ScanStore
             context.Volumes.AsNoTracking().SingleOrDefault(v => v.ScanId == scanId)
             ?? throw new InvalidDataException("Completed scan lacks volume aggregation.");
         return new(
-            folders.ToImmutable(),
+            folders.ToFrozenDictionary(),
             new(
                 new(summary.MetadataLogical, summary.MetadataAllocated),
                 checked((ulong)summary.MetadataResolved),

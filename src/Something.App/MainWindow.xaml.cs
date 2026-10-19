@@ -69,6 +69,8 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The overlay covers the view at once; the chick and captions appear and fade together.
+        ViewLoadingAnimation.PresentationTarget = ViewLoadingContent;
         InitializeDisplaySettings();
         UpdateSortHeaders();
         InitializeNotifications();

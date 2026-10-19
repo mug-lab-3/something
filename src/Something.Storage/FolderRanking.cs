@@ -58,7 +58,8 @@ public sealed partial class ScanStore
         CancellationToken cancellationToken,
         FolderRankingMetric metric = FolderRankingMetric.PerVisibleNameUnnamedData,
         FolderRankingFilter? filter = null,
-        FolderEntrySort sort = FolderEntrySort.AllocatedBytes
+        FolderEntrySort sort = FolderEntrySort.AllocatedBytes,
+        FolderAggregationResult? aggregation = null
     )
     {
         if (count < 1)
@@ -74,7 +75,7 @@ public sealed partial class ScanStore
                 "Depth must be at least 1; the volume root is excluded."
             );
         cancellationToken.ThrowIfCancellationRequested();
-        var aggregation = ReadAggregation(scanId, cancellationToken);
+        aggregation ??= ReadAggregation(scanId, cancellationToken);
         if (
             metric == FolderRankingMetric.PerVisibleNameUnnamedData
             && aggregation.Folders.Values.Any(f => f.Entries is null)
@@ -158,35 +159,45 @@ public sealed partial class ScanStore
             .ThenBy(s => s.Reference.RecordIndex)
             .Take(count)
             .ToArray();
+        // Each ancestor's path is built once and shared, so all folders cost O(folders), not O(folders × depth).
+        var paths = new Dictionary<FileReference, string> { [root] = "" };
+        var pending = new Stack<FileReference>();
         var result = ImmutableArray.CreateBuilder<RankedFolder>();
         foreach (var sample in largest)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var components = new Stack<string>();
             var current = sample.Reference;
-            while (current != root)
+            while (!paths.ContainsKey(current))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var parent = graph.Nodes[current].Parent!.Value;
-                var name = names[current.RecordIndex]
-                    .Where(n =>
-                        n.Namespace != FileNameNamespace.Dos
-                        && (ulong)n.ParentIndex == parent.RecordIndex
-                        && n.ParentSequence == parent.SequenceNumber
-                    )
-                    .OrderBy(n =>
-                        n.Namespace == FileNameNamespace.Win32
-                        || n.Namespace == FileNameNamespace.Win32AndDos
-                            ? 0
-                            : 1
-                    )
-                    .ThenBy(n => n.Name, StringComparer.Ordinal)
-                    .First();
-                components.Push(name.Name);
-                current = parent;
+                pending.Push(current);
+                current = graph.Nodes[current].Parent!.Value;
             }
-            result.Add(new(string.Join('\\', components), sample) { Metric = metric });
+            while (pending.TryPop(out var child))
+            {
+                var parent = graph.Nodes[child].Parent!.Value;
+                string name = DisplayName(names[child.RecordIndex], parent);
+                paths[child] = parent == root ? name : paths[parent] + '\\' + name;
+            }
+            result.Add(new(paths[sample.Reference], sample) { Metric = metric });
         }
         return result.ToImmutable();
     }
+
+    private static string DisplayName(List<FolderNameEntity> names, FileReference parent) =>
+        names
+            .Where(n =>
+                n.Namespace != FileNameNamespace.Dos
+                && (ulong)n.ParentIndex == parent.RecordIndex
+                && n.ParentSequence == parent.SequenceNumber
+            )
+            .OrderBy(n =>
+                n.Namespace == FileNameNamespace.Win32
+                || n.Namespace == FileNameNamespace.Win32AndDos
+                    ? 0
+                    : 1
+            )
+            .ThenBy(n => n.Name, StringComparer.Ordinal)
+            .First()
+            .Name;
 }
