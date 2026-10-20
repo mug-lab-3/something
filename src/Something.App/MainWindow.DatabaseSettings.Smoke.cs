@@ -1,4 +1,6 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
 
@@ -98,15 +100,16 @@ public sealed partial class MainWindow
             || HistoryManagement.Visibility != Visibility.Visible
         )
             throw new InvalidOperationException("Closing settings did not restore the workspace.");
-        var confirmation = ConfirmDeleteDatabaseAsync();
-        await Task.Delay(300, lifetime.Token);
-        if (databaseDeleteDialog is null)
-            throw new InvalidOperationException("DB deletion did not request confirmation.");
-        await CaptureStartupFrameAsync(capture + ".database-delete");
-        databaseDeleteDialog.Hide();
-        if (await confirmation || !File.Exists(source))
+        await InvokeMaintenanceAsync("DeleteDatabaseButton", confirm: false);
+        if (!File.Exists(source))
             throw new InvalidOperationException("Cancelling DB deletion changed the database.");
-        await ManageDatabaseAsync(Path.Combine(ownedRoot, "relocated-history"));
+        SetSettingsOpen(true);
+        ((TextBox)SettingsPage.FindName("DirectoryBox")).Text = Path.Combine(
+            ownedRoot,
+            "relocated-history"
+        );
+        await Task.Delay(100, lifetime.Token); // Let TextChanged enable the move action.
+        await InvokeMaintenanceAsync("MoveButton", confirm: true);
         if (File.Exists(source) || databaseSettings.LoadDirectory() != history.DirectoryPath)
             throw new InvalidOperationException(
                 "DB relocation did not persist its location and remove its source."
@@ -119,7 +122,7 @@ public sealed partial class MainWindow
                     )
             )
                 throw new InvalidOperationException("DB relocation lost a drive's history.");
-        await ManageDatabaseAsync(null);
+        await InvokeMaintenanceAsync("DeleteDatabaseButton", confirm: true);
         if (
             history.ReadDatabaseInfo().TotalBytes != 0
             || sessions.Count != 0
@@ -156,5 +159,60 @@ public sealed partial class MainWindow
             "Database size, settings page, search, immediate display settings, cancelled delete confirmation, all-volume relocation, settings persistence, full deletion, empty views, rescan and busy controls passed. Synthetic history only.",
             lifetime.Token
         );
+
+        async Task InvokeMaintenanceAsync(string buttonName, bool confirm)
+        {
+            await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());
+            SetSettingsOpen(true);
+            var button = (Button)SettingsPage.FindName(buttonName);
+            if (!button.IsEnabled)
+                throw new InvalidOperationException(
+                    $"Settings action is unexpectedly disabled: {buttonName}; idle={DatabaseWorkIdle}; ready={CanManageDatabase}; history-tasks={historyTasks.Count}; settings-tasks={settingsTasks.Count}; target={SettingsPage.DirectoryPath}; source={history.DirectoryPath}."
+                );
+            Invoke(button);
+            for (int wait = 0; wait < 30 && databaseDeleteDialog is null; wait++)
+                await Task.Delay(100, lifetime.Token);
+            var dialog =
+                databaseDeleteDialog
+                ?? throw new InvalidOperationException(
+                    $"Settings action did not request confirmation: {buttonName}."
+                );
+            await Task.Delay(150, lifetime.Token);
+            var pending = historyTasks.Concat(settingsTasks).ToArray();
+            if (pending.Length == 0)
+                throw new InvalidOperationException(
+                    "Settings action was not tracked while awaiting confirmation."
+                );
+            await CaptureStartupFrameAsync(
+                capture + "." + buttonName + (confirm ? ".confirm" : ".cancel")
+            );
+            if (confirm)
+                Invoke(
+                    FindTreePart<Button>(dialog, "PrimaryButton")
+                        ?? throw new InvalidOperationException(
+                            "Settings confirmation button was not loaded."
+                        )
+                );
+            else
+                dialog.Hide();
+            await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(30), lifetime.Token);
+            for (
+                int wait = 0;
+                wait < 30
+                    && pending.Any(task =>
+                        historyTasks.Contains(task) || settingsTasks.Contains(task)
+                    );
+                wait++
+            )
+                await Task.Delay(10, lifetime.Token);
+            if (pending.Any(task => historyTasks.Contains(task) || settingsTasks.Contains(task)))
+                throw new InvalidOperationException("Settings command tracking did not finish.");
+        }
+
+        static void Invoke(Button button)
+        {
+            var peer = new ButtonAutomationPeer(button);
+            ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
+        }
     }
 }

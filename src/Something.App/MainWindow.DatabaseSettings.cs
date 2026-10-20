@@ -10,6 +10,10 @@ public sealed partial class MainWindow
     private DatabaseSettingsStore? databaseSettings;
     private ContentDialog? databaseDeleteDialog;
 
+    // Settings actions are awaited at shutdown. Unlike historyTasks, they do not block the
+    // database operation they confirm themselves.
+    private readonly HashSet<Task> settingsTasks = [];
+
     private ScanHistoryArchive CreateConfiguredHistory()
     {
         databaseSettings = new(
@@ -86,7 +90,7 @@ public sealed partial class MainWindow
     private async void RunSettingsAction(Func<Task> action)
     {
         var task = action();
-        historyTasks.Add(task);
+        settingsTasks.Add(task);
         try
         {
             await task;
@@ -101,7 +105,7 @@ public sealed partial class MainWindow
         }
         finally
         {
-            historyTasks.Remove(task);
+            settingsTasks.Remove(task);
             if (SettingsOpen)
                 SettingsPage.Present(
                     visibilityOptions,
@@ -113,6 +117,9 @@ public sealed partial class MainWindow
     }
 
     private bool CanManageDatabase =>
+        DatabaseWorkIdle && settingsTasks.All(task => task.IsCompleted);
+
+    private bool DatabaseWorkIdle =>
         scans.Count == 0
         && startupTask.IsCompleted
         && !historyMaintenance
@@ -175,7 +182,7 @@ public sealed partial class MainWindow
 
     private async Task ManageDatabaseAsync(string? destination)
     {
-        if (history is null || !CanManageDatabase)
+        if (history is null || !DatabaseWorkIdle)
             throw new InvalidOperationException(Strings.Get("Database_OperationBusy"));
         historyMaintenance = true;
         WorkspaceTabs.IsEnabled = SettingsButton.IsEnabled = false;

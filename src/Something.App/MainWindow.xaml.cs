@@ -1931,7 +1931,7 @@ public sealed partial class MainWindow : Window
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;
-        await Task.WhenAll(historyTasks.ToArray());
+        await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());
         if (historicalSession is not null)
             await historicalSession.DisposeAsync();
         if (comparisonBaseline is not null)
