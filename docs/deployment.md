@@ -17,9 +17,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
 スクリプトは、ランタイムを含む自己完結のアプリをフォルダー形式で発行し、そのフォルダーから全ユーザー向けの MSI インストーラーを作ります。
 
 ```text
-artifacts/publish/win-x64/                         発行フォルダー（MSI の中身と同じ）
-artifacts/publish/Something-v1.1.5-win-x64.msi     配布用インストーラー
+artifacts/publish/win-x64/                             発行フォルダー（MSI の中身と同じ）
+artifacts/publish/Something-v<Version>-win-x64.msi     配布用インストーラー
 ```
+
+`<Version>` は `Something.App.csproj` の `<Version>` です。
 
 発行用の bin / obj / 復元結果は、`artifacts/publish-build` に分けて置きます。スクリプトはロック付きで復元し、exe・PRI・ライセンス通知・アイコンがそろっていてシンボルを含まないことを確認してから、前回の発行フォルダーを置き換えます。失敗した場合は、前回の出力をそのまま残します。
 
@@ -63,7 +65,7 @@ WinUI の DLL が宣言する言語の数が多いことなどで出る既知の
 2. GitHub の **Actions → Release → Run workflow** を開く。
 3. 発行するブランチを選択して **Run workflow** を押す。
 
-Windows ランナー上で、ハッシュ検証付きの既存のセットアップを使って、版を固定した SDK とネイティブランタイムを準備し、`scripts/publish-app.ps1` で MSI を作ります。このワークフローではテストを実行しません。`Something-v1.0.0-win-x64.msi` を、自動生成したリリースノートとともに GitHub Release に添付します。ライセンス通知は MSI に含まれ、アプリと一緒にインストールされます。
+Windows ランナー上で、ハッシュ検証付きの既存のセットアップを使って、版を固定した SDK とネイティブランタイムを準備し、`scripts/publish-app.ps1` で MSI を作ります。このワークフローではテストを実行しません。`Something-v<Version>-win-x64.msi` を、自動生成したリリースノートとともに GitHub Release に添付します。ライセンス通知は MSI に含まれ、アプリと一緒にインストールされます。
 
 アプリは起動時に、このリポジトリの最新の正式リリースのタグを読んで新しい版を知らせます（[更新の確認](user-interface.md#更新の確認)）。タグの形式（`vX.Y.Z`）やリポジトリ名を変えると、配布済みのアプリが新しい版を見つけられなくなります。
 
@@ -77,8 +79,8 @@ GitHub 上のタグやリリースは、ビルドと MSI の作成が成功し�
 MSI の SHA-256 を記載した `SHA256SUMS.txt` を同じリリースに添付し、MSI にはビルドの来歴（GitHub Artifact Attestations）を付けます。利用者は次のどちらかの方法で、配布物がこのリポジトリのワークフローで作られたことを確認できます。
 
 ```powershell
-Get-FileHash .\Something-v1.0.0-win-x64.msi -Algorithm SHA256
-gh attestation verify .\Something-v1.0.0-win-x64.msi --repo mug-lab-3/something
+Get-FileHash .\Something-v<Version>-win-x64.msi -Algorithm SHA256
+gh attestation verify .\Something-v<Version>-win-x64.msi --repo mug-lab-3/something
 ```
 
 > [!NOTE]
