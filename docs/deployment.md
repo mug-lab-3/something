@@ -18,7 +18,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-app.ps1
 
 ```text
 artifacts/publish/win-x64/                         発行フォルダー（MSI の中身と同じ）
-artifacts/publish/Something-v1.1.4-win-x64.msi     配布用インストーラー
+artifacts/publish/Something-v1.1.5-win-x64.msi     配布用インストーラー
 ```
 
 発行用の bin / obj / 復元結果は、`artifacts/publish-build` に分けて置きます。スクリプトはロック付きで復元し、exe・PRI・ライセンス通知・アイコンがそろっていてシンボルを含まないことを確認してから、前回の発行フォルダーを置き換えます。失敗した場合は、前回の出力をそのまま残します。

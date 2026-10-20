@@ -45,10 +45,10 @@ Something は、Windows のドライブを調べて、どのフォルダーや�
 リリースページにある `SHA256SUMS.txt` に、正しいファイルの識別番号（ハッシュ値）が書かれています。PowerShell で次のコマンドを実行し、表示された値が同じであれば、ダウンロードしたファイルは本物です。
 
 ```powershell
-Get-FileHash .\Something-v1.1.4-win-x64.msi -Algorithm SHA256
+Get-FileHash .\Something-v1.1.5-win-x64.msi -Algorithm SHA256
 ```
 
-GitHub CLI を使える場合は、`gh attestation verify .\Something-v1.1.4-win-x64.msi --repo mug-lab-3/something` でも確認できます。詳しくは[配布の説明](docs/deployment.md#github-release)を参照してください。
+GitHub CLI を使える場合は、`gh attestation verify .\Something-v1.1.5-win-x64.msi --repo mug-lab-3/something` でも確認できます。詳しくは[配布の説明](docs/deployment.md#github-release)を参照してください。
 
 </details>
 
