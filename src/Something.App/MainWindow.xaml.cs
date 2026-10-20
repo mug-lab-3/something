@@ -108,9 +108,9 @@ public sealed partial class MainWindow : Window
         var choices = demo
             ? new DriveChoice[]
             {
-                new("Demo", "合成データ", 10L << 30, 4L << 30, true),
-                new("Demo2", "別の合成データ", 20L << 30, 15L << 30, true),
-                new("Demo3", "アーカイブ（合成）", 100L << 30, 80L << 30, true),
+                new("Demo", Strings.Get("Demo_Drive1Label"), 10L << 30, 4L << 30, true),
+                new("Demo2", Strings.Get("Demo_Drive2Label"), 20L << 30, 15L << 30, true),
+                new("Demo3", Strings.Get("Demo_Drive3Label"), 100L << 30, 80L << 30, true),
             }
             : LocalDrives();
         cards = choices.Select(choice => new DriveCard(choice)).ToArray();
@@ -130,10 +130,7 @@ public sealed partial class MainWindow : Window
         RootLayout.Loaded += OnStartupLoaded;
         if (demo)
         {
-            ToolTipService.SetToolTip(
-                AppTitleBar,
-                "デモモード。実ディスクやファイルは読み取りません。"
-            );
+            ToolTipService.SetToolTip(AppTitleBar, Strings.Get("Demo_Notice"));
         }
     }
 
@@ -317,7 +314,7 @@ public sealed partial class MainWindow : Window
             await using var loadingPreview = Environment
                 .GetCommandLineArgs()
                 .Contains("--smoke-loading")
-                ? BeginViewUpdate("レコードを確認しています · アニメーションのプレビュー")
+                ? BeginViewUpdate(Strings.Get("Preview_LoadingMessage"))
                 : null;
             if (loadingPreview is not null)
                 await Task.Delay(660, lifetime.Token);
@@ -411,7 +408,7 @@ public sealed partial class MainWindow : Window
                         new(
                             drive.Name[..2],
                             string.IsNullOrWhiteSpace(drive.VolumeLabel)
-                                ? "ローカルディスク"
+                                ? Strings.Get("Drive_LocalDisk")
                                 : drive.VolumeLabel,
                             drive.TotalSize,
                             drive.TotalFreeSpace
@@ -481,12 +478,12 @@ public sealed partial class MainWindow : Window
     {
         if (history is null)
             return;
-        await using var viewUpdate = BeginViewUpdate("ドライブの保存済み情報を読み込んでいます…");
+        await using var viewUpdate = BeginViewUpdate(Strings.Get("Startup_LoadingDrives"));
         foreach (var card in cards)
         {
             card.IsEnabled = false;
             if (!sessions.ContainsKey(card.Choice.Drive) && !scans.ContainsKey(card))
-                card.SetState("履歴を確認中");
+                card.SetState(Strings.Get("DriveCard_CheckingHistory"));
         }
         try
         {
@@ -501,7 +498,7 @@ public sealed partial class MainWindow : Window
                 && sessions.TryGetValue(selected.Choice.Drive, out var latest)
             )
             {
-                SetStartupMessage("ファイル一覧を準備しています…");
+                SetStartupMessage(Strings.Get("Startup_PreparingFiles"));
                 session = latest;
                 await ShowSessionAsync(latest);
             }
@@ -529,7 +526,7 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                SetStartupMessage($"{card.Choice.Drive} のスキャン履歴を読み込んでいます…");
+                SetStartupMessage(Strings.Format("Startup_LoadingHistory", card.Choice.Drive));
                 lifetime.Token.ThrowIfCancellationRequested();
                 string key = demo
                     ? $"demo:{card.Choice.Drive}"
@@ -574,14 +571,17 @@ public sealed partial class MainWindow : Window
             }
             catch (Exception error)
             {
-                card.SetState("履歴を読み込めません", error.Message);
-                failures.Add(new IOException($"{card.Choice.Drive}: {error.Message}", error));
+                card.SetState(
+                    Strings.Get("DriveCard_HistoryUnavailable"),
+                    StatusText.Describe(error)
+                );
+                failures.Add(
+                    new IOException($"{card.Choice.Drive}: {StatusText.Describe(error)}", error)
+                );
             }
         }
         if (failures.Count > 0 && !closed)
-            ShowError(
-                new AggregateException("一部のドライブの履歴を読み込めませんでした。", failures)
-            );
+            ShowError(new AggregateException(Strings.Get("Startup_HistoryFailed"), failures));
     }
 
     private async Task RefreshHistoryChoicesAsync(DriveCard card)
@@ -638,7 +638,7 @@ public sealed partial class MainWindow : Window
     private async Task ChangeHistoryAsync(HistoryRow row)
     {
         await using var viewUpdate = BeginViewUpdate(
-            $"{row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} のスキャンを読み込んでいます…"
+            Strings.Format("History_LoadingScan", row.Entry.CompletedLocal)
         );
         var task = LoadHistorySelectionAsync(row);
         historyTasks.Add(task);
@@ -725,7 +725,7 @@ public sealed partial class MainWindow : Window
         if (closed || card == selectedCard)
             return;
         await using var viewUpdate = BeginViewUpdate(
-            $"{card.Choice.Drive} の表示に切り替えています…"
+            Strings.Format("View_SwitchingDrive", card.Choice.Drive)
         );
         selectedCard = card;
         UpdateScanActivity();
@@ -772,7 +772,7 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            PathText.Text = "未スキャン";
+            PathText.Text = Strings.Get("Drive_NotScanned");
             EntryCountText.DataContext = null;
             BackButton.IsEnabled = false;
             EmptyScanText.Visibility = Visibility.Visible;
@@ -788,12 +788,20 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowSessionAsync(ScanSession current)
     {
-        await using var viewUpdate = BeginViewUpdate($"{current.Drive} の結果を表示しています…");
+        await using var viewUpdate = BeginViewUpdate(
+            Strings.Format("View_ShowingResult", current.Drive)
+        );
         await current.SetVisibilityAsync(visibilityOptions, lifetime.Token);
         EmptyScanText.Visibility = Visibility.Collapsed;
         ToolTipService.SetToolTip(
             HistoryBox,
-            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1} 秒 · 読み取れなかった管理情報 {current.MetadataUnresolved:N0} 件\n直近 7 日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
+            Strings.Format(
+                "History_ScanDetails",
+                current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss")
+                    ?? Strings.Get("History_CurrentScan"),
+                current.Elapsed.TotalSeconds,
+                current.MetadataUnresolved
+            )
         );
         navigation.Clear();
         forwardHistory.Clear();
@@ -852,7 +860,7 @@ public sealed partial class MainWindow : Window
         scans.Add(card, operation);
         card.SetBusy(true);
         card.SetProgress(true);
-        card.SetState("準備中");
+        card.SetState(Strings.Get("Scan_Preparing"));
         UpdateScanActivity();
         operation.Task = RunScanAsync(card, operation);
         return operation.Task;
@@ -920,7 +928,7 @@ public sealed partial class MainWindow : Window
                 if (selectedCard == card)
                 {
                     await using var viewUpdate = BeginViewUpdate(
-                        $"{drive} のスキャン結果を反映しています…"
+                        Strings.Format("Scan_ApplyingDrive", drive)
                     );
                     historyVersion++;
                     var oldHistory = historicalSession;
@@ -945,7 +953,7 @@ public sealed partial class MainWindow : Window
                         ShowToast(
                             cleanupError,
                             InfoBarSeverity.Warning,
-                            "履歴は保存しましたが、古い履歴を整理できませんでした"
+                            Strings.Get("Scan_CleanupFailed")
                         );
                     }
                 }
@@ -955,7 +963,7 @@ public sealed partial class MainWindow : Window
                     await RefreshHistoryChoicesAsync(selected);
                 }
                 ShowToast(
-                    $"{drive} のスキャンが完了しました（{next.Elapsed.TotalSeconds:F1} 秒）。",
+                    Strings.Format("Scan_Completed", drive, next.Elapsed.TotalSeconds),
                     InfoBarSeverity.Success
                 );
             }
@@ -969,10 +977,7 @@ public sealed partial class MainWindow : Window
         {
             if (!closed)
             {
-                ShowToast(
-                    $"{drive} のスキャンをキャンセルしました。前回の結果はそのまま残っています。",
-                    InfoBarSeverity.Informational
-                );
+                ShowToast(Strings.Format("Scan_Cancelled", drive), InfoBarSeverity.Informational);
                 card.SetResult(sessions.GetValueOrDefault(drive));
             }
         }
@@ -980,7 +985,9 @@ public sealed partial class MainWindow : Window
         {
             card.SetResult(sessions.GetValueOrDefault(drive));
             if (!closed)
-                ShowError(new InvalidOperationException($"{drive}: {error.Message}", error));
+                ShowError(
+                    new InvalidOperationException($"{drive}: {StatusText.Describe(error)}", error)
+                );
         }
         finally
         {
@@ -1008,40 +1015,49 @@ public sealed partial class MainWindow : Window
         card.SetProgress(true);
         string phase = progress.Phase switch
         {
-            ScanPhase.SavingHistory => "履歴を保存中",
-            ScanPhase.WaitingForMemory => "メモリの空きを待機中",
-            ScanPhase.Reading => "ファイル情報を読み取り中",
-            ScanPhase.Aggregating => "フォルダー容量を集計中",
-            ScanPhase.Saving => "結果を保存中",
-            ScanPhase.WritingSnapshot => "結果をファイルへ書き出し中",
-            _ => "スキャン完了",
+            ScanPhase.SavingHistory => Strings.Get("ScanPhase_SavingHistory"),
+            ScanPhase.WaitingForMemory => Strings.Get("ScanPhase_WaitingForMemory"),
+            ScanPhase.Reading => Strings.Get("ScanPhase_Reading"),
+            ScanPhase.Aggregating => Strings.Get("ScanPhase_Aggregating"),
+            ScanPhase.Saving => Strings.Get("ScanPhase_Saving"),
+            ScanPhase.WritingSnapshot => Strings.Get("ScanPhase_WritingSnapshot"),
+            _ => Strings.Get("ScanPhase_Completed"),
         };
         string? detail = progress.Work?.Stage switch
         {
-            ScanWorkStage.CollectingFolders => "フォルダーを抽出中",
-            ScanWorkStage.BuildingHierarchy => "階層を構築中",
-            ScanWorkStage.AggregatingFiles => "ファイル容量を集計中",
-            ScanWorkStage.RollingUpFolders => "サブフォルダーを集計中",
-            ScanWorkStage.ValidatingAggregation => "集計結果を検証中",
-            ScanWorkStage.WritingFiles => "ファイル情報を保存中",
-            ScanWorkStage.WritingFolders => "フォルダー容量を保存中",
-            ScanWorkStage.WritingFolderNames => "フォルダー名を保存中",
-            ScanWorkStage.FlushingRows => "保存データを反映中",
-            ScanWorkStage.ValidatingRelationships => "保存データを検証中",
-            ScanWorkStage.BuildingFolderList => "一覧用データを生成中",
-            ScanWorkStage.Committing => "保存を確定中",
-            ScanWorkStage.MaintainingHistory => "履歴を整理中",
+            ScanWorkStage.CollectingFolders => Strings.Get("ScanStage_CollectingFolders"),
+            ScanWorkStage.BuildingHierarchy => Strings.Get("ScanStage_BuildingHierarchy"),
+            ScanWorkStage.AggregatingFiles => Strings.Get("ScanStage_AggregatingFiles"),
+            ScanWorkStage.RollingUpFolders => Strings.Get("ScanStage_RollingUpFolders"),
+            ScanWorkStage.ValidatingAggregation => Strings.Get("ScanStage_ValidatingAggregation"),
+            ScanWorkStage.WritingFiles => Strings.Get("ScanStage_WritingFiles"),
+            ScanWorkStage.WritingFolders => Strings.Get("ScanStage_WritingFolders"),
+            ScanWorkStage.WritingFolderNames => Strings.Get("ScanStage_WritingFolderNames"),
+            ScanWorkStage.FlushingRows => Strings.Get("ScanStage_FlushingRows"),
+            ScanWorkStage.ValidatingRelationships => Strings.Get(
+                "ScanStage_ValidatingRelationships"
+            ),
+            ScanWorkStage.BuildingFolderList => Strings.Get("ScanStage_BuildingFolderList"),
+            ScanWorkStage.Committing => Strings.Get("ScanStage_Committing"),
+            ScanWorkStage.MaintainingHistory => Strings.Get("ScanStage_MaintainingHistory"),
             _ => null,
         };
         string percentage = progress.Fraction is { } value ? $" {Math.Clamp(value, 0, 1):P0}" : "";
         string counts = progress.Work is { Total: { } total } work
-            ? $" · {work.Completed:N0}/{total:N0} 件"
-            : $" · {progress.Candidates:N0} 件";
+            ? Strings.Format("ScanProgress_WorkCount", work.Completed, total)
+            : Strings.Format("ScanProgress_CandidateCount", progress.Candidates);
         var step = progress.Step;
         string retry = progress.Work is { RetryAttempt: > 0 } retrying
-            ? $" · 再試行 {retrying.RetryAttempt} 回目（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
+            ? Strings.Format(
+                "ScanProgress_Retry",
+                retrying.RetryAttempt,
+                retrying.MemoryLimitBytes / (double)(1UL << 30)
+            )
             : "";
-        string stepText = step.Number == 0 ? "準備中" : $"ステップ {step.Number}/{step.Total}";
+        string stepText =
+            step.Number == 0
+                ? Strings.Get("Scan_Preparing")
+                : Strings.Format("ScanProgress_Step", step.Number, step.Total);
         card.SetState(
             (step.Number == 0 ? "" : $"{step.Number}/{step.Total} · ")
                 + (
@@ -1049,18 +1065,30 @@ public sealed partial class MainWindow : Window
                         ? detail + percentage
                         : progress.Phase switch
                         {
-                            ScanPhase.SavingHistory => "履歴保存中",
-                            ScanPhase.WaitingForMemory => "メモリ待ち",
+                            ScanPhase.SavingHistory => Strings.Get("ScanShort_SavingHistory"),
+                            ScanPhase.WaitingForMemory => Strings.Get("ScanShort_WaitingForMemory"),
                             ScanPhase.Reading when progress.Fraction is { } fraction =>
-                                $"走査中 {Math.Clamp(fraction, 0, 1):P0}",
-                            ScanPhase.Reading => "走査中",
-                            ScanPhase.Aggregating => "集計中",
-                            ScanPhase.Saving => "保存中",
-                            ScanPhase.WritingSnapshot => "書き出し中",
-                            _ => "スキャン完了",
+                                Strings.Format(
+                                    "ScanShort_ReadingPercent",
+                                    Math.Clamp(fraction, 0, 1)
+                                ),
+                            ScanPhase.Reading => Strings.Get("ScanShort_Reading"),
+                            ScanPhase.Aggregating => Strings.Get("ScanShort_Aggregating"),
+                            ScanPhase.Saving => Strings.Get("ScanShort_Saving"),
+                            ScanPhase.WritingSnapshot => Strings.Get("ScanShort_WritingSnapshot"),
+                            _ => Strings.Get("ScanPhase_Completed"),
                         }
                 ),
-            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒"
+            Strings.Format(
+                "ScanProgress_Details",
+                stepText,
+                phase,
+                (detail is null ? "" : $" · {detail}"),
+                percentage,
+                counts,
+                retry,
+                progress.Elapsed.TotalSeconds
+            )
         );
         if (selectedCard == card)
             UpdateScanActivity();
@@ -1298,7 +1326,7 @@ public sealed partial class MainWindow : Window
             rows.Count != 600
             || rows.HasMoreItems
             || rows.Select(row => row.Entry.Reference).Distinct().Count() != 600
-            || EntryCountText.Text != $"{600:N0} 件"
+            || EntryCountText.Text != Strings.Format("Count_Items", 600)
         )
             throw new InvalidOperationException(
                 "Scrolling did not load every row and update the total count."
@@ -1393,7 +1421,7 @@ public sealed partial class MainWindow : Window
                     new TreeViewNode
                     {
                         Content = new FolderNode(
-                            "さらに読み込む…",
+                            Strings.Get("List_LoadMore"),
                             folder.Location,
                             nextPage + 1,
                             true
@@ -1492,7 +1520,7 @@ public sealed partial class MainWindow : Window
         };
         var open = new MenuFlyoutItem
         {
-            Text = "開く",
+            Text = Strings.Get("Menu_Open"),
             Icon = new SymbolIcon(isDirectory ? Symbol.Folder : Symbol.OpenFile),
         };
         // Capture the clicked row's original path, independently of later selection changes.
@@ -1507,8 +1535,11 @@ public sealed partial class MainWindow : Window
             menu.Items.Add(item);
         }
         if (directoryPath is not null)
-            AddCopy("フォルダーのパスをコピー", directoryPath);
-        AddCopy(directoryPath is null ? "パスをコピー" : "ファイルのパスをコピー", path);
+            AddCopy(Strings.Get("Menu_CopyFolderPath"), directoryPath);
+        AddCopy(
+            directoryPath is null ? Strings.Get("Menu_CopyPath") : Strings.Get("Menu_CopyFilePath"),
+            path
+        );
         if (args.TryGetPosition(target, out var position))
             menu.ShowAt(target, new FlyoutShowOptions { Position = position });
         else
@@ -1587,9 +1618,9 @@ public sealed partial class MainWindow : Window
                     await LoadFolderAsync(new(row.Entry.Reference, path), true);
                 else if (!row.Entry.CanBrowse)
                     ShowToast(
-                        "このスキャンではフォルダーの内容を取得できません。",
+                        Strings.Get("Open_FolderContentsUnavailable"),
                         InfoBarSeverity.Informational,
-                        "フォルダーを開けませんでした"
+                        Strings.Get("Open_FolderFailedTitle")
                     );
             }
             else
@@ -1607,12 +1638,12 @@ public sealed partial class MainWindow : Window
                 {
                     // Paths are passed directly to the Windows shell, never through a command shell.
                     if (!Path.IsPathFullyQualified(path))
-                        throw new IOException("開く項目の場所を取得できませんでした。");
+                        throw new IOException(Strings.Get("Open_LocationUnavailable"));
                     ProcessStartInfo start;
                     if (isDirectory)
                     {
                         if ((File.GetAttributes(path) & FileAttributes.Directory) == 0)
-                            throw new IOException("現在の項目はフォルダーではありません。");
+                            throw new IOException(Strings.Get("Open_NotFolder"));
                         start = new(
                             Path.Combine(
                                 Environment.GetFolderPath(Environment.SpecialFolder.Windows),
@@ -1627,7 +1658,7 @@ public sealed partial class MainWindow : Window
                     else
                     {
                         if ((File.GetAttributes(path) & FileAttributes.Directory) != 0)
-                            throw new IOException("現在の項目はファイルではありません。");
+                            throw new IOException(Strings.Get("Open_NotFile"));
                         start = new(path) { UseShellExecute = true, Verb = "open" };
                     }
                     using var process = Process.Start(start);
@@ -1643,7 +1674,11 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            ShowToast(error.Message, InfoBarSeverity.Error, "開けませんでした");
+            ShowToast(
+                StatusText.Describe(error),
+                InfoBarSeverity.Error,
+                Strings.Get("Open_FailedTitle")
+            );
         }
     }
 
@@ -1835,7 +1870,7 @@ public sealed partial class MainWindow : Window
             () => !closed && version == rankingVersion && current == session,
             lifetime.Token
         );
-        AnalysisCountText.Text = $"{count:N0} 件";
+        AnalysisCountText.Text = Strings.Format("Count_Items", count);
     }
 
     private void ShowError(Exception error)
@@ -1846,11 +1881,9 @@ public sealed partial class MainWindow : Window
             error is UnauthorizedAccessException
             || error.InnerException is Win32Exception { NativeErrorCode: 5 };
         ShowToast(
-            denied
-                ? "アプリを管理者として起動してください。ドライブへのアクセスは読み取り専用です。"
-                : error.Message,
+            denied ? Strings.Get("Scan_AdminRequiredMessage") : StatusText.Describe(error),
             InfoBarSeverity.Error,
-            denied ? "スキャンには管理者権限が必要です" : "処理を完了できませんでした"
+            denied ? Strings.Get("Scan_AdminRequiredTitle") : Strings.Get("Error_Title")
         );
     }
 

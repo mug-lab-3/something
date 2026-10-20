@@ -42,11 +42,11 @@ public sealed partial class FolderEntryCollection
     }
 
     public bool HasMoreItems => hasMore && !navigationToken.IsCancellationRequested;
-    public string TotalCountText => $"{totalCount:N0} 件";
+    public string TotalCountText => Strings.Format("Count_Items", totalCount);
     public string CountDescription =>
         Count < totalCount
-            ? $"{totalCount:N0} 件 · {Count:N0} 件読み込み済み"
-            : $"{totalCount:N0} 件";
+            ? Strings.Format("Count_ItemsLoaded", totalCount, Count)
+            : Strings.Format("Count_Items", totalCount);
 
     public IAsyncOperation<LoadMoreItemsResult> LoadMoreItemsAsync(uint count) =>
         AsyncInfo.Run(async requestToken =>

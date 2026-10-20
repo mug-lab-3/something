@@ -17,13 +17,4 @@ public static class DemoScanScenario
             DemoScanStage.RemovedAndMoved => DemoScanStage.Initial,
             _ => throw new ArgumentOutOfRangeException(nameof(stage)),
         };
-
-    public static string Describe(DemoScanStage stage) =>
-        stage switch
-        {
-            DemoScanStage.Initial => "初期状態",
-            DemoScanStage.ResizedAndAdded => "サイズ増減・ファイル追加",
-            DemoScanStage.RemovedAndMoved => "ファイル削除・移動",
-            _ => throw new ArgumentOutOfRangeException(nameof(stage)),
-        };
 }

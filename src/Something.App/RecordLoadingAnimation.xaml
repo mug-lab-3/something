@@ -486,9 +486,9 @@
           />
         </Canvas>
         <TextBlock
+          x:Uid="RecordLoading_Whistle"
           Canvas.Left="-70"
           Canvas.Top="8"
-          Text="ピーッ ♪"
           FontSize="14"
           Foreground="#D9C6EC"
         />
@@ -574,9 +574,9 @@
           Stroke="#D2B3E3"
         />
         <TextBlock
+          x:Uid="RecordLoading_Done"
           Canvas.Left="10"
           Canvas.Top="4"
-          Text="じゃっ！"
           FontSize="14"
           FontWeight="SemiBold"
           Foreground="#E8D7EF"

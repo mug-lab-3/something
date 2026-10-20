@@ -39,8 +39,8 @@ internal static class DuckDatabaseBootstrap
         lock (Engines)
             if (Engines.ContainsKey(Path.GetFullPath(path)))
                 throw new InvalidOperationException(
-                    "データベースを使用中です。履歴の表示が終わってから最適化してください。"
-                );
+                    "The history database is open in a history view."
+                ).WithFailure(HistoryFailure.DatabaseInUse);
     }
 
     internal static void ForgetValidation(string path) =>

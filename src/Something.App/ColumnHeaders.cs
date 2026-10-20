@@ -17,13 +17,15 @@ internal static class ColumnHeaders
                     : ""
             );
         string next =
-            selected && descending ? "昇順"
-            : selected ? "降順"
-            : "並べ替え";
+            selected && descending ? Strings.Get("Sort_Ascending")
+            : selected ? Strings.Get("Sort_Descending")
+            : Strings.Get("Sort_Action");
         AutomationProperties.SetName(
             button,
-            selected ? $"{label} · {(descending ? "降順" : "昇順")}" : label
+            selected
+                ? $"{label} · {(descending ? Strings.Get("Sort_Descending") : Strings.Get("Sort_Ascending"))}"
+                : label
         );
-        AutomationProperties.SetHelpText(button, $"クリックして{label}で{next}");
+        AutomationProperties.SetHelpText(button, Strings.Format("Sort_Help", label, next));
     }
 }

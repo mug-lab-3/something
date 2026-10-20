@@ -40,8 +40,8 @@ public sealed partial class ScanHistoryArchive
         DuckDatabaseBootstrap.RequireClosed(DatabasePath);
         if (readers.Count != 0)
             throw new InvalidOperationException(
-                "データベースを使用中です。履歴の表示が終わってから操作してください。"
-            );
+                "The history database is open in a history view."
+            ).WithFailure(HistoryFailure.DatabaseInUse);
     }
 
     private void RequireDatabaseFiles()
@@ -55,8 +55,8 @@ public sealed partial class ScanHistoryArchive
             && File.Exists(DatabasePath + ".wal")
         )
             throw new InvalidDataException(
-                "データベース本体がないため、残っている WAL を保持して操作を中止しました。"
-            );
+                "The database file is missing; the remaining WAL was kept and the operation stopped."
+            ).WithFailure(HistoryFailure.MissingDatabaseWithWal);
     }
 
     /// <summary>Deletes only this catalog after recovering/checkpointing it and verifying its identity.</summary>
@@ -73,7 +73,9 @@ public sealed partial class ScanHistoryArchive
             RequireIdle();
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
-                throw new IOException("WAL を確定できないため、データベースを削除できません。");
+                throw new IOException(
+                    "The WAL could not be checkpointed, so the database was not deleted."
+                ).WithFailure(HistoryFailure.WalNotCheckpointedForDelete);
             token.ThrowIfCancellationRequested();
             File.Delete(DatabasePath);
             DuckDatabaseBootstrap.ForgetValidation(DatabasePath);
@@ -91,9 +93,9 @@ public sealed partial class ScanHistoryArchive
         ArgumentNullException.ThrowIfNull(saveLocation);
         if (!Path.IsPathFullyQualified(directory))
             throw new ArgumentException(
-                "データベースの保存先は絶対パスで指定してください。",
+                "The database location must be an absolute path.",
                 nameof(directory)
-            );
+            ).WithFailure(HistoryFailure.RelativeLocation);
         var target = new ScanHistoryArchive(directory, clock, timeZone);
         lock (LocationOperations)
             lock (sync)
@@ -114,8 +116,8 @@ public sealed partial class ScanHistoryArchive
                     Directory.CreateDirectory(target.root);
                     if ((File.GetAttributes(target.root) & FileAttributes.ReparsePoint) != 0)
                         throw new IOException(
-                            "データベースの保存先にリンクフォルダーは指定できません。"
-                        );
+                            "The database location must not be a link."
+                        ).WithFailure(HistoryFailure.LinkedLocation);
                     foreach (
                         string path in new[]
                         {
@@ -126,8 +128,8 @@ public sealed partial class ScanHistoryArchive
                     )
                         if (File.Exists(path) || Directory.Exists(path))
                             throw new IOException(
-                                "移動先にデータベースまたは復旧用ファイルがあるため、上書きしません。"
-                            );
+                                "The destination already has a database or recovery files."
+                            ).WithFailure(HistoryFailure.DestinationOccupied);
                     if (!HasDatabaseFiles)
                     {
                         saveLocation(target.root);
@@ -137,8 +139,8 @@ public sealed partial class ScanHistoryArchive
                     RequireIdle();
                     if (File.Exists(DatabasePath + ".wal"))
                         throw new IOException(
-                            "WAL を確定できないため、データベースを移動できません。"
-                        );
+                            "The WAL could not be checkpointed, so the database was not moved."
+                        ).WithFailure(HistoryFailure.WalNotCheckpointedForMove);
                     string temporary = Path.Combine(
                         target.root,
                         $".moving-{Guid.NewGuid():N}.duckdb"

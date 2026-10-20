@@ -218,7 +218,7 @@ public sealed partial class MainWindow
                 )
                 || !AnalysisNameHeader
                     .Content.ToString()!
-                    .StartsWith("名前", StringComparison.Ordinal)
+                    .StartsWith(Strings.Get("Column_Name"), StringComparison.Ordinal)
             )
                 throw new InvalidOperationException(
                     $"Mixed analysis did not include all recursive files: rows={mixed.Length}, folders={facts.Length}, files={mixed.Count(row => !row.IsDirectory)} of {files.Length} [{string.Join(", ", mixed.Where(row => !row.IsDirectory).Select(row => row.RelativePath))}], header={AnalysisNameHeader.Content}."

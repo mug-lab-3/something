@@ -13,8 +13,8 @@ internal sealed class HistoryPickerRow(HistoryRow history, bool current) : INoti
     public string TimeText =>
         History.Entry.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss")
         + (
-            current ? " · 選択中"
-            : History.IsLatest ? " · 最新"
+            current ? Strings.Get("HistorySelection_CurrentSuffix")
+            : History.IsLatest ? Strings.Get("HistorySelection_LatestSuffix")
             : ""
         );
     public string CountText { get; private set; } = "—";
@@ -89,8 +89,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
     {
         DialogContent.Width = Math.Min(860, Math.Max(320, XamlRoot.Size.Width - 96));
         DialogContent.Height = Math.Min(500, Math.Max(240, XamlRoot.Size.Height - 220));
-        ContextText.Text =
-            OtherEndpoint ?? "一覧からスキャンを選び、「選択」で表示を切り替えます。";
+        ContextText.Text = OtherEndpoint ?? Strings.Get("HistorySelection_Instructions");
         calendar = new CalendarView
         {
             SelectionMode = CalendarViewSelectionMode.Single,
@@ -135,7 +134,12 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         var brush = (SolidColorBrush)
             Microsoft.UI.Xaml.Application.Current.Resources["SystemControlHighlightAccentBrush"];
         args.Item.SetDensityColors(hasRecords ? [brush.Color] : []);
-        ToolTipService.SetToolTip(args.Item, hasRecords ? "スキャンがあります" : "スキャンなし");
+        ToolTipService.SetToolTip(
+            args.Item,
+            hasRecords
+                ? Strings.Get("HistorySelection_DayHasScans")
+                : Strings.Get("HistoryPicker_None")
+        );
     }
 
     private void OnPeriod(object sender, RoutedEventArgs args)
@@ -161,10 +165,10 @@ public sealed partial class HistorySelectionDialog : ContentDialog
             start is { } from ? rows.Where(row => DayOf(row) >= from && DayOf(row) <= today) : rows,
             period switch
             {
-                "Week" => "直近 7 日",
-                "Month" => "今月",
-                "Year" => "今年",
-                _ => "すべてのスキャン",
+                "Week" => Strings.Get("Period_Last7Days"),
+                "Month" => Strings.Get("Period_ThisMonth"),
+                "Year" => Strings.Get("Period_ThisYear"),
+                _ => Strings.Get("HistorySelection_AllScans"),
             }
         );
     }
@@ -193,9 +197,9 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         visible = matches.ToArray();
         var groups = visible
             .GroupBy(row =>
-                DayOf(row) == today ? "今日"
-                : DayOf(row) == today.AddDays(-1) ? "昨日"
-                : DayOf(row).ToString("yyyy年M月")
+                DayOf(row) == today ? Strings.Get("Period_Today")
+                : DayOf(row) == today.AddDays(-1) ? Strings.Get("Period_Yesterday")
+                : DayOf(row).ToString(Strings.Get("HistorySelection_MonthFormat"))
             )
             .Select(group => new HistoryPickerGroup(group.Key, group))
             .ToArray();
@@ -205,7 +209,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         // Opening and clearing a filter always show the newest records first.
         if (visible.Length > 0)
             Records.ScrollIntoView(visible[0]);
-        RangeText.Text = $"{label} · {visible.Length:N0} 件";
+        RangeText.Text = Strings.Format("HistorySelection_RangeCount", label, visible.Length);
         EmptyText.Visibility = visible.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         IsPrimaryButtonEnabled = Records.SelectedItem is not null;
     }

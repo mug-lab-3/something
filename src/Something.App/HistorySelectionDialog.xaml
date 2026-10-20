@@ -1,11 +1,10 @@
 <ContentDialog
+  x:Uid="HistorySelectionDialog"
   x:Class="Something.App.HistorySelectionDialog"
   Style="{StaticResource DefaultContentDialogStyle}"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Something.App"
-  PrimaryButtonText="選択"
-  CloseButtonText="キャンセル"
   DefaultButton="None"
   Opened="OnOpened"
   Closed="OnClosed"
@@ -42,15 +41,30 @@
     />
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
       <ToggleButton
+        x:Uid="HistorySelection_AllButton"
         x:Name="AllButton"
-        Content="すべて"
         Tag="All"
         Click="OnPeriod"
         IsChecked="True"
       />
-      <ToggleButton x:Name="WeekButton" Content="直近 7 日" Tag="Week" Click="OnPeriod" />
-      <ToggleButton x:Name="MonthButton" Content="今月" Tag="Month" Click="OnPeriod" />
-      <ToggleButton x:Name="YearButton" Content="今年" Tag="Year" Click="OnPeriod" />
+      <ToggleButton
+        x:Uid="HistorySelection_WeekButton"
+        x:Name="WeekButton"
+        Tag="Week"
+        Click="OnPeriod"
+      />
+      <ToggleButton
+        x:Uid="HistorySelection_MonthButton"
+        x:Name="MonthButton"
+        Tag="Month"
+        Click="OnPeriod"
+      />
+      <ToggleButton
+        x:Uid="HistorySelection_YearButton"
+        x:Name="YearButton"
+        Tag="Year"
+        Click="OnPeriod"
+      />
     </StackPanel>
     <Grid Grid.Row="2" ColumnSpacing="24">
       <Grid.ColumnDefinitions>
@@ -58,10 +72,10 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
       <StackPanel Spacing="12">
-        <TextBlock Text="日付で絞り込む" FontWeight="SemiBold" />
+        <TextBlock x:Uid="HistorySelection_FilterHeader" FontWeight="SemiBold" />
         <Border x:Name="CalendarHost" />
         <TextBlock
-          Text="印のある日にスキャンがあります。"
+          x:Uid="HistorySelection_CalendarLegend"
           FontSize="12"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
         />
@@ -80,9 +94,12 @@
           Style="{StaticResource ListHeaderBandStyle}"
         >
           <Grid Padding="{StaticResource ListContentPadding}">
-            <TextBlock Text="スキャン日時" Style="{StaticResource ListHeaderTextStyle}" />
             <TextBlock
-              Text="レコード数"
+              x:Uid="HistorySelection_CompletedHeader"
+              Style="{StaticResource ListHeaderTextStyle}"
+            />
+            <TextBlock
+              x:Uid="HistorySelection_CountHeader"
               HorizontalAlignment="Right"
               Style="{StaticResource ListHeaderTextStyle}"
             />
@@ -138,17 +155,17 @@
           </ListView.ItemTemplate>
         </ListView>
         <TextBlock
+          x:Uid="HistorySelection_EmptyText"
           x:Name="EmptyText"
           Grid.Row="2"
-          Text="この期間のスキャンはありません。"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
         />
         <TextBlock
+          x:Uid="HistorySelection_CountError"
           x:Name="CountError"
           Grid.Row="3"
-          Text="レコード数を取得できませんでした。日時からスキャンを選択できます。"
           Visibility="Collapsed"
           TextWrapping="Wrap"
           Foreground="{ThemeResource SystemFillColorCriticalBrush}"

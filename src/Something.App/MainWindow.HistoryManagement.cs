@@ -34,13 +34,11 @@ public sealed partial class MainWindow
     private async Task<HistoryCompactionResult> OptimizeHistoryAsync()
     {
         if (history is null || closed)
-            throw new InvalidOperationException("履歴データベースを使用できません。");
+            throw new InvalidOperationException(Strings.Get("Database_Unavailable"));
         if (scans.Count != 0 || !startupTask.IsCompleted)
-            throw new InvalidOperationException(
-                "スキャンや起動時の読み込みが完了してから、データベースを最適化してください。"
-            );
+            throw new InvalidOperationException(Strings.Get("Database_OptimizeBusy"));
         await using var update = BeginViewUpdate(
-            "データベースを最適化しています…",
+            Strings.Get("Database_Optimizing"),
             LoadingAnimationKind.OptimizeDatabase
         );
         Guid? selectedScan = session?.ScanId;
@@ -81,9 +79,7 @@ public sealed partial class MainWindow
                 );
             ulong limit = Math.Min(MaximumNativeMemoryLimit, available / 4 * 3) / 16384 * 16384;
             if (limit < 16384)
-                throw new InvalidOperationException(
-                    "データベースの最適化に必要なメモリが不足しています。"
-                );
+                throw new InvalidOperationException(Strings.Get("Database_OptimizeMemory"));
             return await Task.Run(
                 () =>
                     history.Compact(
@@ -93,7 +89,7 @@ public sealed partial class MainWindow
                             DispatcherQueue.TryEnqueue(() =>
                             {
                                 if (!closed)
-                                    ViewLoadingText.Text = stage;
+                                    ViewLoadingText.Text = StatusText.Describe(stage);
                             })
                     ),
                 lifetime.Token
@@ -251,7 +247,7 @@ public sealed partial class MainWindow
     {
         if (closed || history is null || deletedIds.Length == 0)
             return;
-        await using var update = BeginViewUpdate("削除後の履歴を反映しています…");
+        await using var update = BeginViewUpdate(Strings.Get("HistoryManagement_Refreshing"));
         var deleted = deletedIds.ToHashSet();
         bool viewingDeleted = session is { } viewing && deleted.Contains(viewing.ScanId);
         bool baselineDeleted =
@@ -333,7 +329,7 @@ public sealed partial class MainWindow
                 Ranking.ItemsSource = null;
                 AnalysisCountText.Text = "";
                 EntryCountText.DataContext = null;
-                PathText.Text = "未スキャン";
+                PathText.Text = Strings.Get("Drive_NotScanned");
                 BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
                 EmptyScanText.Visibility = Visibility.Visible;
             }

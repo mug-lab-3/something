@@ -82,23 +82,25 @@ public sealed partial class MainWindow
                 interruptCurrentCycle: presentation?.Kind == LoadingAnimationKind.Inspect
             );
             ViewLoadingTitle.Text = showingScan
-                ? $"{selectedCard!.Choice.Drive} をスキャン中"
+                ? Strings.Format("Scan_InProgress", selectedCard!.Choice.Drive)
                 : kind switch
                 {
-                    LoadingAnimationKind.DeleteHistory => "履歴を整理しています…",
-                    LoadingAnimationKind.OptimizeDatabase => "データベースを最適化しています…",
-                    _ => "表示を準備しています…",
+                    LoadingAnimationKind.DeleteHistory => Strings.Get(
+                        "HistoryManagement_Organizing"
+                    ),
+                    LoadingAnimationKind.OptimizeDatabase => Strings.Get("Database_Optimizing"),
+                    _ => Strings.Get("View_Preparing"),
                 };
             if (presentation is not null)
                 ViewLoadingText.Text = presentation.Message;
             else if (showingScan)
                 ViewLoadingText.Text = scans[selectedCard!].Finished
-                    ? viewUpdates.LastOrDefault()?.Message ?? "スキャン結果を反映しています…"
+                    ? viewUpdates.LastOrDefault()?.Message ?? Strings.Get("Scan_Applying")
                     : selectedCard!.StateDescription;
             ViewLoadingHint.Text =
                 kind == LoadingAnimationKind.Inspect
-                    ? "読み込みが完了すると、新しい表示に切り替わります。"
-                    : "処理が完了するまでお待ちください。";
+                    ? Strings.Get("View_LoadingHint")
+                    : Strings.Get("View_BusyHint");
         }
         ViewLoadingAnimation.SetBusy(loading);
         bool covered = loading || ViewLoadingAnimation.IsPlaying;
@@ -110,9 +112,7 @@ public sealed partial class MainWindow
 
     private async Task PreviewLoadingAnimationAsync()
     {
-        await using var preview = BeginViewUpdate(
-            "レコードを確認しています · アニメーションのプレビュー"
-        );
+        await using var preview = BeginViewUpdate(Strings.Get("Preview_LoadingMessage"));
         try
         {
             await Task.Delay(Timeout.InfiniteTimeSpan, lifetime.Token);

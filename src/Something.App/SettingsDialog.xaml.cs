@@ -53,7 +53,7 @@ public sealed partial class SettingsDialog : ContentDialog
         try
         {
             if (!Path.IsPathFullyQualified(DirectoryBox.Text.Trim()))
-                throw new ArgumentException("保存先を絶対パスで指定してください。");
+                throw new ArgumentException(Strings.Get("Settings_AbsolutePathRequired"));
             _ = DirectoryPath;
         }
         catch (Exception error) when (error is ArgumentException or NotSupportedException)
@@ -104,7 +104,7 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void ShowError(Exception error)
     {
-        ErrorText.Text = error.Message;
+        ErrorText.Text = StatusText.Describe(error);
         ErrorText.Visibility = Visibility.Visible;
     }
 }

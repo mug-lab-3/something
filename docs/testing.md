@@ -12,6 +12,12 @@ dotnet test --solution Something.slnx
 dotnet test --solution Something.slnx --coverage --coverage-output-format cobertura --coverage-settings tests/coverage.runsettings --results-directory artifacts/test-results
 ```
 
+画面の文言を変更したら、resw との対応を監査します（[表示文言のリソース](localization/README.md)）。
+
+```powershell
+dotnet run --project tools/Something.LocalizationAudit -- check .
+```
+
 パーサーのカバレッジ目標は行 95%・分岐 90% です。統計・保存層は分けて計測し、数値だけで検証の十分性を判断しません。テスト件数やカバレッジの実測値は、対象コミットと実行条件を伴う結果として扱います。
 
 ## 検証対象

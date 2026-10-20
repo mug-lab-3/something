@@ -46,12 +46,11 @@
           >
             <StackPanel Orientation="Horizontal" Spacing="4">
               <Button
+                x:Uid="HistoryManagement_FromRangeButton"
                 x:Name="FromRangeButton"
                 Background="Transparent"
                 BorderThickness="0"
                 Padding="12,8"
-                AutomationProperties.Name="範囲の開始日時"
-                ToolTipService.ToolTip="範囲の開始日時を編集"
               >
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE787;" FontSize="16" />
@@ -61,17 +60,16 @@
                   <Flyout Placement="Bottom">
                     <StackPanel Spacing="12">
                       <CalendarDatePicker
+                        x:Uid="HistoryManagement_FromDate"
                         x:Name="FromDate"
                         DateChanged="OnDateChanged"
                         Width="220"
-                        PlaceholderText="日付を選択"
-                        AutomationProperties.Name="開始日"
                       />
                       <TimePicker
+                        x:Uid="HistoryManagement_FromTime"
                         x:Name="FromTime"
                         ClockIdentifier="24HourClock"
                         TimeChanged="OnTimeChanged"
-                        AutomationProperties.Name="開始時刻"
                       />
                     </StackPanel>
                   </Flyout>
@@ -84,12 +82,11 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
               />
               <Button
+                x:Uid="HistoryManagement_EndRangeButton"
                 x:Name="EndRangeButton"
                 Background="Transparent"
                 BorderThickness="0"
                 Padding="12,8"
-                AutomationProperties.Name="範囲の終了日時"
-                ToolTipService.ToolTip="範囲の終了日時を編集"
               >
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE787;" FontSize="16" />
@@ -99,42 +96,39 @@
                   <Flyout Placement="Bottom">
                     <StackPanel Spacing="12">
                       <CalendarDatePicker
+                        x:Uid="HistoryManagement_EndDate"
                         x:Name="EndDate"
                         DateChanged="OnDateChanged"
                         Width="220"
-                        PlaceholderText="日付を選択"
-                        AutomationProperties.Name="終了日"
                       />
                       <TimePicker
+                        x:Uid="HistoryManagement_EndTime"
                         x:Name="EndTime"
                         ClockIdentifier="24HourClock"
                         TimeChanged="OnTimeChanged"
-                        AutomationProperties.Name="終了時刻"
                       />
                     </StackPanel>
                   </Flyout>
                 </Button.Flyout>
               </Button>
               <Button
+                x:Uid="HistoryManagement_ClearRangeButton"
                 x:Name="ClearRangeButton"
                 Click="OnClearRange"
                 Background="Transparent"
                 BorderThickness="0"
                 Padding="8"
                 VerticalAlignment="Center"
-                ToolTipService.ToolTip="範囲の入力をクリア"
-                AutomationProperties.Name="範囲の入力をクリア"
               >
                 <FontIcon Glyph="&#xE711;" FontSize="12" />
               </Button>
             </StackPanel>
           </Border>
           <Button
+            x:Uid="HistoryManagement_ApplyRangeButton"
             x:Name="ApplyRangeButton"
             Grid.Column="1"
             Style="{StaticResource GhostButtonStyle}"
-            ToolTipService.ToolTip="この範囲で選択"
-            AutomationProperties.Name="この範囲で選択"
             Width="36"
             Height="36"
             MinWidth="0"
@@ -145,16 +139,16 @@
             <FontIcon Glyph="&#xE73E;" FontSize="18" />
           </Button>
           <Button
+            x:Uid="HistoryManagement_OptimizeButton"
             x:Name="OptimizeButton"
             Style="{StaticResource GhostButtonStyle}"
             Grid.Column="4"
             Click="OnOptimize"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            ToolTipService.ToolTip="全ドライブ共通の履歴データベースから不要な領域を解放し、ファイルサイズを縮小します。"
           >
             <StackPanel Orientation="Horizontal" Spacing="8">
               <FontIcon Glyph="&#xE90F;" FontSize="16" />
-              <TextBlock Text="データベースを最適化" />
+              <TextBlock x:Uid="HistoryManagement_OptimizeButtonText" />
             </StackPanel>
           </Button>
           <TextBlock
@@ -173,30 +167,30 @@
           </Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Button
+              x:Uid="HistoryManagement_MonthPresetButton"
               x:Name="MonthPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1 か月以上前"
               Tag="1"
               Click="OnPresetClick"
             />
             <Button
+              x:Uid="HistoryManagement_ThreeMonthsPresetButton"
               x:Name="ThreeMonthsPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="3 か月以上前"
               Tag="3"
               Click="OnPresetClick"
             />
             <Button
+              x:Uid="HistoryManagement_HalfYearPresetButton"
               x:Name="HalfYearPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="半年以上前"
               Tag="6"
               Click="OnPresetClick"
             />
             <Button
+              x:Uid="HistoryManagement_YearPresetButton"
               x:Name="YearPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1 年以上前"
               Tag="12"
               Click="OnPresetClick"
             />
@@ -224,19 +218,19 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-            <TextBlock Text="スキャン履歴" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock x:Uid="HistoryManagement_Title" FontSize="20" FontWeight="SemiBold" />
             <TextBlock
+              x:Uid="HistoryManagement_TotalText"
               x:Name="TotalText"
               VerticalAlignment="Center"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-              Text="0 件"
             />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
             <TextBlock
+              x:Uid="HistoryManagement_SelectionCountText"
               x:Name="SelectionCountText"
               VerticalAlignment="Center"
-              Text="選択中 0 件"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
               AutomationProperties.LiveSetting="Polite"
             />
@@ -249,7 +243,7 @@
             >
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <FontIcon Glyph="&#xE74D;" FontSize="16" />
-                <TextBlock Text="履歴を削除" />
+                <TextBlock x:Uid="HistoryManagement_DeleteButtonText" />
               </StackPanel>
             </Button>
             <ProgressRing
@@ -274,6 +268,7 @@
               <ColumnDefinition Width="178" />
             </Grid.ColumnDefinitions>
             <CheckBox
+              x:Uid="HistoryManagement_SelectAllCheckBox"
               x:Name="SelectAllCheckBox"
               HorizontalAlignment="Left"
               Margin="16,0,0,0"
@@ -283,28 +278,25 @@
               IsEnabled="False"
               IsThreeState="False"
               Click="OnToggleAll"
-              ToolTipService.ToolTip="すべて選択"
-              AutomationProperties.Name="すべて選択"
             />
             <Button
+              x:Uid="HistoryManagement_CompletedHeader"
               x:Name="CompletedHeader"
               Padding="8,6,6,6"
               Grid.Column="1"
-              Content="スキャン日時 ▼"
               Tag="Completed"
               Click="OnHistorySort"
               Style="{StaticResource ColumnHeaderButtonStyle}"
             />
             <Button
+              x:Uid="HistoryManagement_RecordCountHeader"
               x:Name="RecordCountHeader"
               Padding="6,6,12,6"
               Grid.Column="2"
-              Content="レコード数"
               Tag="Count"
               Click="OnHistorySort"
               Style="{StaticResource ColumnHeaderButtonStyle}"
               HorizontalContentAlignment="Right"
-              ToolTipService.ToolTip="このスキャンで保存した MFT レコードの数です。"
             />
           </Grid>
         </Border>
@@ -334,9 +326,9 @@
           </ListView.ItemTemplate>
         </ListView>
         <TextBlock
+          x:Uid="HistoryManagement_EmptyText"
           x:Name="EmptyText"
           Grid.Row="2"
-          Text="このドライブには保存された履歴がありません。"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -344,8 +336,8 @@
       </Grid>
     </Border>
     <TextBlock
+      x:Uid="HistoryManagement_Footer"
       Grid.Row="3"
-      Text="スキャン履歴だけを削除します。ディスク上のファイルは削除されません。データベースの空き領域は再利用されるため、ファイルサイズがすぐに小さくなるとは限りません。"
       FontSize="12"
       TextWrapping="Wrap"
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"

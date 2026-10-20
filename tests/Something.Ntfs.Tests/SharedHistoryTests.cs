@@ -172,8 +172,13 @@ public sealed class SharedHistoryTests
         var saved = fixture.Save(Buffer(), Now.AddMinutes(-1));
         var other = new ScanHistoryArchive(fixture.RootPath);
         using (var reader = other.Open(saved.Id, Token))
-            Assert.Throws<InvalidOperationException>(() =>
-                fixture.Archive.Compact(256UL << 20, Token)
+            Assert.Equal(
+                HistoryFailure.DatabaseInUse,
+                HistoryFailures.Of(
+                    Assert.Throws<InvalidOperationException>(() =>
+                        fixture.Archive.Compact(256UL << 20, Token)
+                    )
+                )
             );
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(Token);
         Assert.Throws<OperationCanceledException>(() =>
@@ -182,7 +187,7 @@ public sealed class SharedHistoryTests
                 cancelled.Token,
                 stage =>
                 {
-                    if (stage.StartsWith("コピー", StringComparison.Ordinal))
+                    if (stage == HistoryCompactionStage.ValidatingCopy)
                         cancelled.Cancel();
                 }
             )

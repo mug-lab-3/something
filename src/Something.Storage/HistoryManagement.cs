@@ -16,7 +16,9 @@ public static class HistoryDeletion
     {
         ArgumentNullException.ThrowIfNull(entries);
         if (startInclusive > endInclusive)
-            throw new ArgumentException("開始日時には終了日時以前の日時を指定してください。");
+            throw new ArgumentException("The start must not be later than the end.").WithFailure(
+                HistoryFailure.StartAfterEnd
+            );
         return entries
             .Where(row =>
                 (!startInclusive.HasValue || row.CompletedUtc >= startInclusive.Value)
@@ -31,8 +33,8 @@ public static class HistoryDeletion
         var local = date.ToDateTime(time, DateTimeKind.Unspecified);
         if (zone.IsInvalidTime(local) || zone.IsAmbiguousTime(local))
             throw new ArgumentException(
-                "夏時間の切り替えで存在しない、または重複する日時です。別の日時を指定してください。"
-            );
+                "The local time is skipped or repeated by a daylight saving transition."
+            ).WithFailure(HistoryFailure.InvalidLocalTime);
         return new(local, zone.GetUtcOffset(local));
     }
 }

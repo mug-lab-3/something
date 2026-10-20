@@ -34,11 +34,6 @@
         Padding="24"
         RowSpacing="16"
       >
-        <Grid.Resources>
-          <x:String x:Key="SizeAccountingDescription">
-            サイズはディスク上の割り当て容量です。フォルダーはサブフォルダーを含めて集計し、ハードリンクは名前ごとに数えます。リンク先はたどりません。表示はスキャン時点の内容です。
-          </x:String>
-        </Grid.Resources>
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
@@ -70,9 +65,9 @@
             SelectionChanged="OnWorkspaceChanged"
           >
             <TabViewItem
+              x:Uid="Main_FilesTab"
               Style="{StaticResource UnderlineTabStyle}"
               IsClosable="False"
-              AutomationProperties.Name="ファイル"
             >
               <TabViewItem.Header>
                 <StackPanel Orientation="Horizontal" Spacing="10">
@@ -85,46 +80,45 @@
                       />
                     </Canvas>
                   </Viewbox>
-                  <TextBlock Text="ファイル" />
+                  <TextBlock x:Uid="Main_FilesTabText" />
                 </StackPanel>
               </TabViewItem.Header>
             </TabViewItem>
             <TabViewItem
+              x:Uid="Main_AnalysisTab"
               x:Name="AnalysisWorkspaceTab"
               Style="{StaticResource UnderlineTabStyle}"
               IsClosable="False"
-              AutomationProperties.Name="容量分析"
             >
               <TabViewItem.Header>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE9D9;" FontSize="18" />
-                  <TextBlock Text="容量分析" />
+                  <TextBlock x:Uid="Main_AnalysisTabText" />
                 </StackPanel>
               </TabViewItem.Header>
             </TabViewItem>
             <TabViewItem
+              x:Uid="Main_HistoryTab"
               x:Name="DatabaseWorkspaceTab"
               Style="{StaticResource UnderlineTabStyle}"
               IsClosable="False"
-              AutomationProperties.Name="履歴"
             >
               <TabViewItem.Header>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE1D3;" FontSize="18" />
-                  <TextBlock Text="履歴" />
+                  <TextBlock x:Uid="Main_HistoryTabText" />
                 </StackPanel>
               </TabViewItem.Header>
             </TabViewItem>
           </TabView>
           <Button
+            x:Uid="Main_SettingsButton"
             x:Name="SettingsButton"
             Click="OnOpenSettings"
             Grid.Column="1"
             Background="Transparent"
             BorderThickness="0"
             VerticalAlignment="Center"
-            AutomationProperties.Name="設定"
-            ToolTipService.ToolTip="設定"
           >
             <FontIcon Glyph="&#xE713;" FontSize="20" />
           </Button>
@@ -150,22 +144,18 @@
             <StackPanel x:Name="ViewControls" Grid.Row="0" Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <ComboBox
+                  x:Uid="Main_ComparisonPeriodBox"
                   x:Name="ComparisonPeriodBox"
-                  Header="比較"
                   Width="150"
                   SelectionChanged="OnComparisonPeriodChanged"
-                  AutomationProperties.Name="比較期間"
                 />
                 <ContentControl x:Name="NormalHistoryHost">
                   <local:HistoryPicker
+                    x:Uid="Main_HistoryBox"
                     x:Name="HistoryBox"
-                    ToolTipService.ToolTip="表示するスキャンを選択します。直近 7 日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
-                    Header="表示するスキャン"
                     Width="290"
-                    PlaceholderText="最新のスキャン"
                     IsEnabled="False"
                     SelectionChanged="OnHistoryChanged"
-                    AutomationProperties.Name="表示するスキャン"
                   />
                 </ContentControl>
                 <Border
@@ -180,21 +170,18 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <local:HistoryPicker
+                      x:Uid="Main_ComparisonBeforeBox"
                       x:Name="ComparisonBeforeBox"
-                      Header="比較元"
                       Width="290"
-                      PlaceholderText="比較元を選択"
                       SelectionChanged="OnComparisonOptionsChanged"
-                      AutomationProperties.Name="比較元"
-                      ToolTipService.ToolTip="比較元のスキャンを選択します。比較先のサイズから、このスキャンのサイズを差し引きます。"
                     />
                     <FontIcon
+                      x:Uid="Main_ComparisonArrow"
                       Grid.Column="1"
                       Glyph="&#xE72A;"
                       FontSize="18"
                       VerticalAlignment="Center"
                       Margin="0,24,0,0"
-                      AutomationProperties.Name="比較元から比較先への変化"
                     />
                     <ContentControl x:Name="CustomHistoryHost" Grid.Column="2" />
                   </Grid>
@@ -226,7 +213,11 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                   </Grid.RowDefinitions>
-                  <TextBlock Text="フォルダー" FontWeight="SemiBold" Margin="8,6,8,12" />
+                  <TextBlock
+                    x:Uid="Main_FolderTreeHeader"
+                    FontWeight="SemiBold"
+                    Margin="8,6,8,12"
+                  />
                   <TreeView
                     x:Name="Folders"
                     Grid.Row="1"
@@ -268,13 +259,13 @@
                             TextTrimming="CharacterEllipsis"
                           />
                           <ProgressRing
+                            x:Uid="Main_TreeLoadingRing"
                             x:Name="TreeLoadingRing"
                             Grid.Column="2"
                             Width="14"
                             Height="14"
                             IsActive="{Binding Content.IsLoading}"
                             Visibility="{Binding Content.LoadingVisibility}"
-                            AutomationProperties.Name="子フォルダーを読み込み中"
                           />
                         </Grid>
                       </DataTemplate>
@@ -306,37 +297,29 @@
                       </Style>
                     </StackPanel.Resources>
                     <Button
+                      x:Uid="Main_BackButton"
                       x:Name="BackButton"
                       Click="OnBack"
                       IsEnabled="False"
-                      ToolTipService.ToolTip="戻る"
-                      AutomationProperties.Name="戻る"
                     >
                       <FontIcon Glyph="&#xE72B;" FontSize="16" />
                     </Button>
                     <Button
+                      x:Uid="Main_ForwardButton"
                       x:Name="ForwardButton"
                       Click="OnForward"
                       IsEnabled="False"
-                      ToolTipService.ToolTip="進む"
-                      AutomationProperties.Name="進む"
                     >
                       <FontIcon Glyph="&#xE72A;" FontSize="16" />
                     </Button>
-                    <Button
-                      x:Name="UpButton"
-                      Click="OnUp"
-                      IsEnabled="False"
-                      ToolTipService.ToolTip="上へ"
-                      AutomationProperties.Name="親フォルダーへ移動"
-                    >
+                    <Button x:Uid="Main_UpButton" x:Name="UpButton" Click="OnUp" IsEnabled="False">
                       <FontIcon Glyph="&#xE74A;" FontSize="16" />
                     </Button>
                   </StackPanel>
                   <TextBlock
+                    x:Uid="Main_PathText"
                     x:Name="PathText"
                     Grid.Column="1"
-                    Text="未スキャン"
                     VerticalAlignment="Center"
                     TextTrimming="CharacterEllipsis"
                     ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
@@ -349,7 +332,7 @@
                     <RowDefinition Height="*" />
                   </Grid.RowDefinitions>
                   <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="フォルダー内" />
+                    <TextBlock x:Uid="Main_FolderContentsLabel" />
                     <TextBlock
                       x:Name="EntryCountText"
                       Text="{Binding TotalCountText}"
@@ -377,19 +360,19 @@
                               <ColumnDefinition x:Name="EntryActionsHeaderColumn" Width="66" />
                             </Grid.ColumnDefinitions>
                             <Button
+                              x:Uid="Main_EntryNameHeader"
                               x:Name="EntryNameHeader"
                               Padding="60,6,6,6"
-                              Content="名前"
                               Tag="Name"
                               Click="OnEntrySort"
                               Style="{StaticResource ColumnHeaderButtonStyle}"
                             />
                             <Button
+                              x:Uid="Main_SizeColumnText"
                               Grid.Column="1"
                               x:Name="SizeColumnText"
                               Padding="6"
                               HorizontalContentAlignment="Right"
-                              Content="サイズ"
                               Tag="Size"
                               Click="OnEntrySort"
                               Style="{StaticResource ColumnHeaderButtonStyle}"
@@ -397,7 +380,7 @@
                               <ToolTipService.ToolTip>
                                 <ToolTip>
                                   <TextBlock
-                                    Text="{StaticResource SizeAccountingDescription}"
+                                    x:Uid="Main_SizeAccounting"
                                     TextWrapping="Wrap"
                                     MaxWidth="360"
                                   />
@@ -405,12 +388,11 @@
                               </ToolTipService.ToolTip>
                             </Button>
                             <Button
+                              x:Uid="Main_ChangeHeader"
                               x:Name="ChangeHeader"
                               HorizontalContentAlignment="Right"
-                              ToolTipService.ToolTip="増減は「比較先 − 比較元」です。＋は増加、−は減少を表します。サイズ列は比較先の値です。"
                               Grid.Column="2"
                               Padding="6"
-                              Content="増減"
                               Visibility="Collapsed"
                               Tag="Change"
                               Click="OnEntrySort"
@@ -471,6 +453,7 @@
                                   ToolTipService.ToolTip="{x:Bind SizeDescription}"
                                 />
                                 <Button
+                                  x:Uid="Main_RecycleButton"
                                   x:Name="RecycleEntryButton"
                                   Grid.Column="4"
                                   Width="32"
@@ -480,8 +463,6 @@
                                   Background="Transparent"
                                   HorizontalAlignment="Right"
                                   VerticalAlignment="Center"
-                                  ToolTipService.ToolTip="ごみ箱に移動"
-                                  AutomationProperties.Name="ごみ箱に移動"
                                   IsEnabled="{x:Bind Removal.CanRecycle, Mode=OneWay}"
                                   Visibility="{x:Bind RecycleVisibility}"
                                   Click="OnRecycleEntry"
@@ -516,15 +497,15 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" Spacing="16">
                           <CheckBox
+                            x:Uid="Main_AnalysisFoldersOnlyBox"
                             x:Name="AnalysisFoldersOnlyBox"
-                            Content="フォルダーのみ"
                             IsChecked="True"
                             Checked="OnAnalysisFoldersOnlyChanged"
                             Unchecked="OnAnalysisFoldersOnlyChanged"
                           />
                           <CheckBox
+                            x:Uid="Main_LeafBox"
                             x:Name="LeafBox"
-                            Content="末端のフォルダーのみ"
                             Checked="OnLeafChanged"
                             Unchecked="OnLeafChanged"
                             VerticalAlignment="Bottom"
@@ -551,31 +532,30 @@
                             <ColumnDefinition x:Name="AnalysisActionsHeaderColumn" Width="66" />
                           </Grid.ColumnDefinitions>
                           <Button
+                            x:Uid="Main_AnalysisNameHeader"
                             x:Name="AnalysisNameHeader"
                             Padding="60,6,6,6"
-                            Content="フォルダー"
                             Tag="Name"
                             Click="OnAnalysisSort"
                             Style="{StaticResource ColumnHeaderButtonStyle}"
                           />
                           <Button
+                            x:Uid="Main_ChangeHeader"
                             x:Name="RankingChangeHeader"
                             HorizontalContentAlignment="Right"
-                            ToolTipService.ToolTip="増減は「比較先 − 比較元」です。＋は増加、−は減少を表します。サイズ列は比較先の値です。"
                             Grid.Column="2"
                             Padding="6"
-                            Content="増減"
                             Visibility="Collapsed"
                             Tag="Change"
                             Click="OnAnalysisSort"
                             Style="{StaticResource ColumnHeaderButtonStyle}"
                           />
                           <Button
+                            x:Uid="Main_AnalysisSizeHeader"
                             x:Name="AnalysisSizeHeader"
                             HorizontalContentAlignment="Right"
                             Grid.Column="1"
                             Padding="6"
-                            Content="サイズ"
                             Tag="Size"
                             Click="OnAnalysisSort"
                             Style="{StaticResource ColumnHeaderButtonStyle}"
@@ -583,7 +563,7 @@
                             <ToolTipService.ToolTip>
                               <ToolTip>
                                 <TextBlock
-                                  Text="{StaticResource SizeAccountingDescription}"
+                                  x:Uid="Main_SizeAccounting"
                                   TextWrapping="Wrap"
                                   MaxWidth="360"
                                 />
@@ -644,6 +624,7 @@
                                 ToolTipService.ToolTip="{x:Bind SizeDescription}"
                               />
                               <Button
+                                x:Uid="Main_RecycleButton"
                                 x:Name="RecycleAnalysisButton"
                                 Grid.Column="4"
                                 Width="32"
@@ -653,8 +634,6 @@
                                 Background="Transparent"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
-                                ToolTipService.ToolTip="ごみ箱に移動"
-                                AutomationProperties.Name="ごみ箱に移動"
                                 IsEnabled="{x:Bind Removal.CanRecycle, Mode=OneWay}"
                                 Visibility="{x:Bind RecycleVisibility}"
                                 Click="OnRecycleAnalysis"
@@ -672,9 +651,9 @@
               </Grid>
             </Grid>
             <TextBlock
+              x:Uid="Main_EmptyScanText"
               x:Name="EmptyScanText"
               Grid.Row="1"
-              Text="ドライブの右上にあるスキャンボタンから開始してください。"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -698,8 +677,8 @@
           >
             <local:RecordLoadingAnimation x:Name="ViewLoadingAnimation" />
             <TextBlock
+              x:Uid="Main_ViewLoadingTitle"
               x:Name="ViewLoadingTitle"
-              Text="表示を準備しています…"
               FontSize="18"
               FontWeight="SemiBold"
               HorizontalAlignment="Center"
@@ -712,8 +691,8 @@
               AutomationProperties.LiveSetting="Polite"
             />
             <TextBlock
+              x:Uid="Main_ViewLoadingHint"
               x:Name="ViewLoadingHint"
-              Text="読み込みが完了すると、新しい表示に切り替わります。"
               FontSize="12"
               HorizontalAlignment="Center"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -756,8 +735,8 @@
             />
           </StackPanel>
           <TextBlock
+            x:Uid="Main_StartupText"
             x:Name="StartupText"
-            Text="スキャン履歴を読み込んでいます…"
             TextWrapping="Wrap"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             AutomationProperties.LiveSetting="Polite"

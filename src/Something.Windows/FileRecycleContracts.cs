@@ -52,7 +52,9 @@ public static class RecyclePath
             || !path.StartsWith(target.Drive, StringComparison.OrdinalIgnoreCase)
             || target.Reference.RecordIndex < 16
         )
-            throw new ArgumentException("削除対象のパスを安全に確認できません。");
+            throw new ArgumentException(
+                "The recycle target path cannot be verified safely."
+            ).WithFailure(RecycleFailure.UnsafePath);
         foreach (string segment in path[3..].Split('\\'))
         {
             if (
@@ -62,7 +64,9 @@ public static class RecyclePath
                 || segment.EndsWith('.')
                 || segment.Any(c => c < 32 || "<>:\"/|?*".Contains(c))
             )
-                throw new ArgumentException("削除対象の名前を安全に確認できません。");
+                throw new ArgumentException(
+                    "A recycle target name cannot be verified safely."
+                ).WithFailure(RecycleFailure.UnsafeName);
             string stem = segment.Split('.')[0].TrimEnd(' ').ToUpperInvariant();
             if (
                 stem is "CON" or "PRN" or "AUX" or "NUL" or "CONIN$" or "CONOUT$"
@@ -73,7 +77,9 @@ public static class RecyclePath
                     )
                     && (stem[3] is >= '1' and <= '9' or '¹' or '²' or '³')
             )
-                throw new ArgumentException("デバイス名は削除対象にできません。");
+                throw new ArgumentException("Device names cannot be recycled.").WithFailure(
+                    RecycleFailure.DeviceName
+                );
         }
     }
 }

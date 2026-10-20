@@ -14,37 +14,39 @@ public sealed partial class MainWindow
     {
         ColumnHeaders.Update(
             EntryNameHeader,
-            "名前",
+            Strings.Get("Column_Name"),
             entryOrder.Column == BrowserColumn.Name,
             entryOrder.Descending
         );
         ColumnHeaders.Update(
             SizeColumnText,
-            "サイズ",
+            Strings.Get("Column_Size"),
             entryOrder.Column == BrowserColumn.Size,
             entryOrder.Descending
         );
         ColumnHeaders.Update(
             ChangeHeader,
-            "増減",
+            Strings.Get("Column_Change"),
             entryOrder.Column == BrowserColumn.Change,
             entryOrder.Descending
         );
         ColumnHeaders.Update(
             AnalysisNameHeader,
-            AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダー" : "名前",
+            AnalysisFoldersOnlyBox.IsChecked != false
+                ? Strings.Get("Column_Folder")
+                : Strings.Get("Column_Name"),
             analysisOrder.Column == BrowserColumn.Name,
             analysisOrder.Descending
         );
         ColumnHeaders.Update(
             AnalysisSizeHeader,
-            "サイズ",
+            Strings.Get("Column_Size"),
             analysisOrder.Column == BrowserColumn.Size,
             analysisOrder.Descending
         );
         ColumnHeaders.Update(
             RankingChangeHeader,
-            "増減",
+            Strings.Get("Column_Change"),
             analysisOrder.Column == BrowserColumn.Change,
             analysisOrder.Descending
         );

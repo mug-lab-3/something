@@ -39,7 +39,7 @@ public sealed partial class MainWindow
             card.IsEnabled = false;
         try
         {
-            await using var update = BeginViewUpdate("表示するファイルと容量を集計しています…");
+            await using var update = BeginViewUpdate(Strings.Get("Settings_Applying"));
             visibilityOptions = options;
 
             if (session is { } current)

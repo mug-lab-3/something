@@ -14,7 +14,7 @@ public sealed partial class AnimationPreviewWindow : Window
         InitializeComponent();
         // The preview shows motion at once; production hosts keep the appearance delay.
         Animation.AppearDelay = TimeSpan.Zero;
-        Title = $"{AppVersion.WindowTitle} · アニメーションプレビュー";
+        Title = Strings.Format("AnimationPreview_WindowTitle", AppVersion.WindowTitle);
         AppWindow.Resize(new SizeInt32(780, 560));
         KindBox.SelectedIndex = 3;
         Root.Loaded += OnLoaded;
@@ -43,7 +43,10 @@ public sealed partial class AnimationPreviewWindow : Window
         PauseButton.IsChecked = false;
         PauseButton.IsEnabled = StaticBox.IsChecked != true;
         Animation.SetBusy(true, animationsEnabled: StaticBox.IsChecked != true);
-        StateText.Text = StaticBox.IsChecked == true ? "静止表示" : "再生中";
+        StateText.Text =
+            StaticBox.IsChecked == true
+                ? Strings.Get("AnimationPreview_Static")
+                : Strings.Get("AnimationPreview_Playing");
     }
 
     private void OnKindChanged(object sender, SelectionChangedEventArgs args) => Restart();
@@ -62,7 +65,10 @@ public sealed partial class AnimationPreviewWindow : Window
     private void OnPause(object sender, RoutedEventArgs args)
     {
         Animation.SetPlaybackPaused(PauseButton.IsChecked == true);
-        StateText.Text = PauseButton.IsChecked == true ? "一時停止中" : "再生中";
+        StateText.Text =
+            PauseButton.IsChecked == true
+                ? Strings.Get("AnimationPreview_Paused")
+                : Strings.Get("AnimationPreview_Playing");
     }
 
     private async void OnFinish(object sender, RoutedEventArgs args)
@@ -74,7 +80,7 @@ public sealed partial class AnimationPreviewWindow : Window
         await Animation.WaitForSettledAsync();
         if (ready && version == playbackVersion)
         {
-            StateText.Text = "停止";
+            StateText.Text = Strings.Get("AnimationPreview_Stopped");
             PauseButton.IsEnabled = false;
         }
     }

@@ -23,8 +23,8 @@ public sealed partial class ScanHistoryArchive
         RequireOrdinaryFile(CompactionBackup);
         if (File.Exists(CompactionBackup + ".wal"))
             throw new InvalidDataException(
-                "データベース最適化のバックアップに予期しない WAL があります。復旧用ファイルを削除しないでください。"
-            );
+                "The compaction backup has an unexpected WAL; keep the recovery files."
+            ).WithFailure(HistoryFailure.UnexpectedCompactionBackupWal);
         // Never overwrite a surviving database with a malformed or unrelated backup file.
         using (
             var backup = ScanStore.OpenSharedHistoryReader(CompactionBackup, CancellationToken.None)
@@ -42,8 +42,8 @@ public sealed partial class ScanHistoryArchive
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
                 throw new InvalidDataException(
-                    "データベース最適化の復旧待ちです。元のデータベースのバックアップと WAL を削除しないでください。"
-                );
+                    "Compaction recovery is pending; keep the database backup and its WAL."
+                ).WithFailure(HistoryFailure.CompactionRecoveryPending);
             File.Replace(CompactionBackup, DatabasePath, null);
         }
         else
@@ -70,7 +70,7 @@ public sealed partial class ScanHistoryArchive
     public HistoryCompactionResult Compact(
         ulong memoryLimitBytes,
         CancellationToken token = default,
-        Action<string>? progress = null
+        Action<HistoryCompactionStage>? progress = null
     )
     {
         if (
@@ -82,7 +82,7 @@ public sealed partial class ScanHistoryArchive
         {
             token.ThrowIfCancellationRequested();
             DuckDatabaseBootstrap.RequireClosed(DatabasePath);
-            progress?.Invoke("未参照データを整理しています…");
+            progress?.Invoke(HistoryCompactionStage.CollectingUnreferenced);
             using (var store = OpenDatabase(token, memoryLimitBytes))
             {
                 // This exclusive engine can use the exact available-memory budget, including
@@ -95,8 +95,8 @@ public sealed partial class ScanHistoryArchive
                 CollectRetiredCore(store, token);
                 if (store.HistoryContext.HistorySnapshots.Any(row => row.Retired))
                     throw new InvalidOperationException(
-                        "データベースを使用中のため最適化できません。"
-                    );
+                        "Retired history is still referenced, so the database cannot be compacted."
+                    ).WithFailure(HistoryFailure.DatabaseInUse);
                 ExecuteMaintenance(
                     store.HistoryContext.Database.GetDbConnection(),
                     "CHECKPOINT",
@@ -109,15 +109,15 @@ public sealed partial class ScanHistoryArchive
             long required = checked(before + before / 4 + (64L << 20));
             if (new DriveInfo(Path.GetPathRoot(DatabasePath)!).AvailableFreeSpace < required)
                 throw new IOException(
-                    "データベースの最適化に必要な空きディスク容量が不足しています。元のデータベースはそのまま残っています。"
-                );
+                    "Not enough free disk space to compact the database; the original was kept."
+                ).WithFailure(HistoryFailure.InsufficientCompactionSpace);
             string work = Path.Combine(root, ".compaction-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(work);
             string candidate = Path.Combine(work, "compacted.duckdb");
             bool replaced = false;
             try
             {
-                progress?.Invoke("データベースを再構築しています…");
+                progress?.Invoke(HistoryCompactionStage.Rebuilding);
                 using (var connection = new DuckDBConnection("Data Source=:memory:"))
                 {
                     connection.Open();
@@ -127,7 +127,7 @@ public sealed partial class ScanHistoryArchive
                         $"ATTACH {SqlPath(DatabasePath)} AS source (READ_ONLY); ATTACH {SqlPath(candidate)} AS compacted; COPY FROM DATABASE source TO compacted;",
                         token
                     );
-                    progress?.Invoke("コピーしたデータを検証しています…");
+                    progress?.Invoke(HistoryCompactionStage.ValidatingCopy);
                     ValidateCopy(connection, token);
                     ExecuteMaintenance(
                         connection,
@@ -149,7 +149,7 @@ public sealed partial class ScanHistoryArchive
                 token.ThrowIfCancellationRequested();
                 if (after >= before)
                     return new(before, before, false);
-                progress?.Invoke("検証済みのデータベースに切り替えています…");
+                progress?.Invoke(HistoryCompactionStage.Switching);
                 token.ThrowIfCancellationRequested();
                 // No cancellation/progress callback after this boundary until reopening succeeds.
                 File.Replace(candidate, DatabasePath, CompactionBackup);
@@ -192,7 +192,9 @@ public sealed partial class ScanHistoryArchive
         }
         var tables = Tables("source");
         if (!tables.SequenceEqual(Tables("compacted")))
-            throw new InvalidDataException("コピー先のデータベースのテーブル構成が一致しません。");
+            throw new InvalidDataException("The compacted copy has different tables.").WithFailure(
+                HistoryFailure.CompactedTablesMismatch
+            );
         foreach (string table in tables)
         {
             token.ThrowIfCancellationRequested();
@@ -209,7 +211,9 @@ public sealed partial class ScanHistoryArchive
                         System.Globalization.CultureInfo.InvariantCulture
                     )
                 )
-                    throw new InvalidDataException("コピー先のデータベースの内容が一致しません。");
+                    throw new InvalidDataException(
+                        "The compacted copy has different contents."
+                    ).WithFailure(HistoryFailure.CompactedContentMismatch);
             }
             catch (DbException) when (token.IsCancellationRequested)
             {

@@ -94,7 +94,7 @@ public sealed partial class MainWindow
         if (
             recycleDialog is not null
             || backend.RecycleCalls != 2
-            || !MessageBar.Title.Contains("存在しません", StringComparison.Ordinal)
+            || MessageBar.Title != Strings.Get("Item_Missing")
         )
             throw new InvalidOperationException(
                 "An absent item showed a dialog or missed its toast."
@@ -104,10 +104,10 @@ public sealed partial class MainWindow
             "something-absent-" + Guid.NewGuid().ToString("N")
         );
         await OpenPathAsync(absent, false);
-        if (!MessageBar.Title.Contains("存在しません", StringComparison.Ordinal))
+        if (MessageBar.Title != Strings.Get("Item_Missing"))
             throw new InvalidOperationException("Opening an absent file did not show a toast.");
         await OpenPathAsync(absent, true);
-        if (!MessageBar.Title.Contains("存在しません", StringComparison.Ordinal))
+        if (MessageBar.Title != Strings.Get("Item_Missing"))
             throw new InvalidOperationException("Opening an absent folder did not show a toast.");
         backend.Inspection = FileRecycleResult.Ready;
         var hiddenTarget = fileTarget with { StandardFileAttributes = 2 };

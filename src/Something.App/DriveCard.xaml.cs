@@ -46,7 +46,7 @@ public sealed partial class DriveCard : UserControl
         ScanIconButton.IsEnabled = true;
         bool cancel = busy;
         ScanIcon.Glyph = cancel ? "\uE71A" : "\uE72C";
-        string label = cancel ? "スキャンをキャンセル" : "このドライブをスキャン";
+        string label = cancel ? Strings.Get("DriveCard_CancelScan") : Strings.Get("DriveCard_Scan");
         ToolTipService.SetToolTip(ScanIconButton, label);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             ScanIconButton,
@@ -57,7 +57,7 @@ public sealed partial class DriveCard : UserControl
     internal void SetDemoNextStage(DemoScanStage stage) =>
         ToolTipService.SetToolTip(
             ScanIconButton,
-            $"{Choice.Drive} 次のデモスキャン：{DemoScanScenario.Describe(stage)}"
+            Strings.Format("DriveCard_NextDemoScan", Choice.Drive, StatusText.Describe(stage))
         );
 
     internal void RefreshVolume()
@@ -80,17 +80,24 @@ public sealed partial class DriveCard : UserControl
             var used = checked((UInt128)(current.Total.Value - current.Free.Value));
             UsageBar.Value = (double)used / current.Total.Value * 100;
             UsageText.Text = DisplayText.CapacityRatio(used, (UInt128)current.Total.Value);
-            FreeText.Text = $"空き {DisplayText.Bytes((UInt128)current.Free.Value)}";
+            FreeText.Text = Strings.Format(
+                "DriveCard_Free",
+                DisplayText.Bytes((UInt128)current.Free.Value)
+            );
             ToolTipService.SetToolTip(
                 UsageText,
-                $"使用中 {DisplayText.Bytes(used)} / 合計 {DisplayText.Bytes((UInt128)current.Total.Value)}"
+                Strings.Format(
+                    "DriveCard_Usage",
+                    DisplayText.Bytes(used),
+                    DisplayText.Bytes((UInt128)current.Total.Value)
+                )
             );
         }
         else
         {
             UsageBar.Value = 0;
-            UsageText.Text = "ドライブ容量を取得できません";
-            FreeText.Text = "空き容量不明";
+            UsageText.Text = Strings.Get("DriveCard_CapacityUnavailable");
+            FreeText.Text = Strings.Get("DriveCard_FreeUnknown");
         }
     }
 
@@ -104,20 +111,31 @@ public sealed partial class DriveCard : UserControl
         SelectionOutline.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             CardButton,
-            $"{Choice.Drive} {Choice.Label}{(selected ? " 選択中" : "")}"
+            $"{Choice.Drive} {Choice.Label}{(selected ? Strings.Get("DriveCard_SelectedSuffix") : "")}"
         );
     }
 
     internal void SetResult(ScanSession? result)
     {
         ScanStateText.Text = result is null
-            ? "未スキャン"
-            : $"✓ 最終スキャン {result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm") ?? "日時不明"}";
+            ? Strings.Get("Drive_NotScanned")
+            : Strings.Format(
+                "DriveCard_LastScan",
+                result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm")
+                    ?? Strings.Get("DriveCard_UnknownTime")
+            );
         ToolTipService.SetToolTip(
             ScanStateText,
             result is null
-                ? "未スキャン"
-                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1} 秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"} 件\n読み取れなかった管理情報 {result.MetadataUnresolved:N0} 件"
+                ? Strings.Get("Drive_NotScanned")
+                : Strings.Format(
+                    "DriveCard_ScanDetails",
+                    result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss")
+                        ?? Strings.Get("DriveCard_UnknownTime"),
+                    result.Elapsed.TotalSeconds,
+                    result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—",
+                    result.MetadataUnresolved
+                )
         );
         ToolTipService.SetToolTip(ScanStatus, ToolTipService.GetToolTip(ScanStateText));
     }

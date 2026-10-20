@@ -248,17 +248,32 @@ public sealed class FileRecycleTests
     [InlineData(@"D:\data\file")]
     [InlineData(@"\\?\C:\data\file")]
     [InlineData(@"\\server\share\file")]
-    public void UnsafeOrAliasedPathsAreRejected(string path) =>
-        Assert.Throws<ArgumentException>(() => RecyclePath.Validate(Target with { Path = path }));
+    public void UnsafeOrAliasedPathsAreRejected(string path)
+    {
+        var error = Assert.Throws<ArgumentException>(() =>
+            RecyclePath.Validate(Target with { Path = path })
+        );
+
+        Assert.Contains(
+            RecycleFailures.Of(error),
+            new RecycleFailure?[]
+            {
+                RecycleFailure.UnsafePath,
+                RecycleFailure.UnsafeName,
+                RecycleFailure.DeviceName,
+            }
+        );
+    }
 
     [Fact]
     public void OrdinaryPathsAreAcceptedAndNtfsMetadataIsRejected()
     {
         RecyclePath.Validate(Target);
         RecyclePath.Validate(Target with { Path = @"C:\data\日本語.txt" });
-        Assert.Throws<ArgumentException>(() =>
+        var metadata = Assert.Throws<ArgumentException>(() =>
             RecyclePath.Validate(Target with { Reference = FileReference.Create(8, 1) })
         );
+        Assert.Equal(RecycleFailure.UnsafePath, RecycleFailures.Of(metadata));
     }
 
     [Fact]

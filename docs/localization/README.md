@@ -1,28 +1,32 @@
 # 表示文言のリソース
 
-## 定義と接続状態
+## 定義と参照
 
-日本語定義は [`Resources.resw`](../../src/Something.App/Strings/ja-JP/Resources.resw) に置きます。WinUI / MRT Core の XML リソース形式で、既定言語は `ja-JP` です。現在は文言の棚卸しと定義までで、画面・C# のハードコードからの参照への置換はまだ行っていません。
+画面の文言はすべて [`Resources.resw`](../../src/Something.App/Strings/ja-JP/Resources.resw) に置きます。WinUI / MRT Core の XML リソース形式で、既定言語は `ja-JP` です。文言を変えるときは resw だけを編集し、コードや XAML に日本語を直接書きません。
 
-[日本語リソース一覧](ja-JP-inventory.md)はキー・文言・出典を示します。[機械用一覧](source-inventory.json)は各ソース文字列をリソース、または除外理由へ対応付けます。この二つはコードとの対応を確認する参照資料です。
+| 参照元 | 書き方 | resw のキー |
+| --- | --- | --- |
+| XAML | 要素に `x:Uid="Settings_BrowseButton"` を付け、文言の属性は書かない | `Settings_BrowseButton.Content` |
+| XAML の添付プロパティ | 同上 | `Main_BackButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name`、`Main_BackButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip` |
+| C# | `Strings.Get("Recycle_Action")` | `Recycle_Action` |
+| C# の書式付き文言 | `Strings.Format("Scan_Completed", drive, seconds)` | `Scan_Completed`（値は `{0} のスキャンが完了しました（{1:F1} 秒）。`） |
 
-各 `<data>` の `<value>` がリソース値、`<comment>` は使用箇所・引数・翻訳者向け情報です。`comment` は通常画面に表示しません。`resheader` の `version=2.0` は形式の版であり、アプリの版や翻訳の更新回数ではありません。
+[`Strings`](../../src/Something.App/Strings.cs) は `ResourceLoader` で値を読み、キーがない場合は空文字を表示せずに例外にします。書式付き文言の `<comment>` には、各引数が何かを記録します。同じ `x:Uid` を複数の要素に付けると、同じ文言を共有できます。
 
-## 対象範囲
+`x:Uid` で設定した値は、コードで後から設定した値に上書きされます。読み込み中だけ表示する文言などは、XAML の初期値を resw に置いたうえで、切り替えはコードで行います。
 
-タブ・ボタン・列ヘッダー・設定・ダイアログ・トースト・ツールチップ・アクセシビリティ名称・進捗・日付書式を対象にします。アニメーションの `!`、`ピーッ ♪`、`じゃっ！`、単体プレビューとトーストプレビューの埋め込み XAML も含みます。
+## 下位層のエラー
 
-下位層の診断文言も保守的に定義していますが、接続時に下位層を UI リソースへ依存させません。診断コードと引数を UI 境界で翻訳する設計とし、英語メッセージの文字列照合を翻訳方法にしない方針です。
+Storage・Windows・Application は画面のリソースに依存しません。利用者に説明が必要な失敗は、例外の型を変えずにエラー種別を付けます。
 
-SQL、スキーマ、内部 ID、パスの実名、コマンドライン引数、ネイティブ API 名、アイコングリフ、アニメーションのプロパティ名、検証用アサーション等は除外理由を記録します。DuckDB の OOM 判定用トークンも翻訳しません。
+| 層 | エラー種別 | 付け方・取り出し方 |
+| --- | --- | --- |
+| Storage | `HistoryFailure` | `error.WithFailure(HistoryFailure.DatabaseInUse)` / `HistoryFailures.Of(error)` |
+| Windows | `RecycleFailure` | `error.WithFailure(RecycleFailure.PathChanged)` / `RecycleFailures.Of(error)` |
 
-実ファイル名・利用者データ・ボリューム名と、OS / .NET / DuckDB が実行時に生成するメッセージは静的リソースではありません。resw を追加しただけで外部エラーの全内容が翻訳されるわけではありません。
+例外のメッセージ自体は英語の診断文です。画面は [`StatusText.Describe`](../../src/Something.App/StatusText.cs) でエラー種別を resw の文言に変換し、種別のない例外は診断文をそのまま表示します。データベース最適化の進捗（`HistoryCompactionStage`）とデモの段階（`DemoScanStage`）も、画面側で文言に変換します。エラー種別や段階を追加したら、`StatusText` と resw に対応する文言を追加します。
 
-## 書式
-
-補間文字列は `{0}`、`{1:N0}` 等の複合書式へ変換しています。引数の並べ替えを可能にし、文章全体のリソースを優先します。連結されている既存文言は棚卸しに残していますが、接続時に語順が変わる言語を考慮してまとめ直します。
-
-空白・改行は `xml:space="preserve"` で保持します。同じ文字列と引数数で共有したキーは、文脈が異なる翻訳を必要とする場合に分割します。XAML のプロパティへ接続するキーや `x:Uid` も、その接続時に対応表を更新します。現時点では動的な言語選択は提供しません。
+OS / .NET / DuckDB が生成するメッセージ、実ファイル名・ボリューム名などの利用者データ、製品名「Something」は resw の対象外です。
 
 ## 監査
 
@@ -30,14 +34,13 @@ SQL、スキーマ、内部 ID、パスの実名、コマンドライン引数�
 dotnet run --project tools/Something.LocalizationAudit -- check .
 ```
 
-固定 SDK の Roslyn を使用し、`src` の C# リテラル・補間文字列、XAML の表示プロパティ・直接テキスト、静的 `XamlReader.Load` の文言を確認します。新しい独自コントロールの文字列プロパティを追加した場合は、抽出対象も見直します。
+固定 SDK の Roslyn で `src` の C# と XAML を解析し、次を検出します。
 
-未分類・古い出典、欠落・空値・重複キー・出典のない定義、書式引数の不一致を検出します。指紋はファイル・メンバー・文字列・引数式から生成し、行番号だけの移動では失敗しません。文言一覧の行番号は棚卸し時の位置です。
+- C# の文字列リテラルと XAML の文言に残った日本語。画面テスト（`*.Smoke.cs`）が表示する合成のサンプル文は除きます。
+- XAML の文言属性に直接書かれた文字。記号（`—` など）と製品名は除きます。
+- resw にない `x:Uid`・`Strings.Get`・`Strings.Format` のキーと、どこからも参照されない resw のキー。
+- 空の値・重複キー、`Strings.Format` の引数の数と書式の不一致、`Strings.Get` で書式付き文言を読んでいる箇所。
 
-```powershell
-dotnet run --project tools/Something.LocalizationAudit -- extract .
-```
-
-再調査結果は `artifacts/localization-extracted.json` に出力します。変更箇所を確認し、resw・機械用一覧・文言一覧を更新します。除外理由を自動的に正しいと決めつけません。チェック成功は対応の整合性を示し、翻訳の意味・レイアウト・実際のリソース接続を保証しません。
+キーは文字列リテラルで渡します。変数や式で組み立てたキーは監査できないため、エラーにします。チェック成功は参照の整合性を示すもので、文言の意味やレイアウトは画面で確認します。
 
 参照: [Microsoft: Localize strings in your UI](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/mrtcore/localize-strings)。

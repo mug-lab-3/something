@@ -62,7 +62,7 @@ public sealed partial class MainWindow
                 {
                     if (
                         ViewLoadingAnimation.ActiveKind != LoadingAnimationKind.Inspect
-                        || ViewLoadingTitle.Text != "表示を準備しています…"
+                        || ViewLoadingTitle.Text != Strings.Get("View_Preparing")
                         || ViewLoadingText.Text != "Load selected drive"
                     )
                         throw new InvalidOperationException(
@@ -89,7 +89,7 @@ public sealed partial class MainWindow
                 await Task.Delay(4050, lifetime.Token);
                 if (
                     ViewLoadingAnimation.ActiveKind != expected
-                    || ViewLoadingTitle.Text != $"{card.Choice.Drive} をスキャン中"
+                    || ViewLoadingTitle.Text != Strings.Format("Scan_InProgress", card.Choice.Drive)
                     || ViewLoadingText.Text != card.StateDescription
                 )
                     throw new InvalidOperationException(

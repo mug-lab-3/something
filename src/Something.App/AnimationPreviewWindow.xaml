@@ -17,19 +17,19 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
     <StackPanel Spacing="12">
-      <TextBlock Text="アニメーションプレビュー" FontSize="22" FontWeight="SemiBold" />
+      <TextBlock x:Uid="AnimationPreview_Title" FontSize="22" FontWeight="SemiBold" />
       <StackPanel Orientation="Horizontal" Spacing="12">
         <ComboBox x:Name="KindBox" Width="200" SelectionChanged="OnKindChanged">
-          <ComboBoxItem Content="読み込み" />
-          <ComboBoxItem Content="スキャン" />
-          <ComboBoxItem Content="履歴削除" />
-          <ComboBoxItem Content="DB最適化" />
+          <ComboBoxItem x:Uid="AnimationPreview_ModeLoading" />
+          <ComboBoxItem x:Uid="AnimationPreview_ModeScan" />
+          <ComboBoxItem x:Uid="AnimationPreview_ModeDeleteHistory" />
+          <ComboBoxItem x:Uid="AnimationPreview_ModeOptimize" />
         </ComboBox>
         <ComboBox x:Name="ThemeBox" Width="120" SelectedIndex="0" SelectionChanged="OnThemeChanged">
-          <ComboBoxItem Content="ダーク" />
-          <ComboBoxItem Content="ライト" />
+          <ComboBoxItem x:Uid="AnimationPreview_ThemeDark" />
+          <ComboBoxItem x:Uid="AnimationPreview_ThemeLight" />
         </ComboBox>
-        <CheckBox x:Name="StaticBox" Content="静止表示" Click="OnStaticChanged" />
+        <CheckBox x:Uid="AnimationPreview_StaticBox" x:Name="StaticBox" Click="OnStaticChanged" />
       </StackPanel>
     </StackPanel>
     <Viewbox Grid.Row="1" MaxWidth="480" MaxHeight="272">
@@ -43,13 +43,13 @@
     </Viewbox>
     <StackPanel Grid.Row="2" Spacing="12">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="最初から再生" Click="OnRestart" />
-        <ToggleButton x:Name="PauseButton" Content="一時停止" Click="OnPause" />
-        <Button Content="区切りまで再生して停止" Click="OnFinish" />
+        <Button x:Uid="AnimationPreview_RestartButton" Click="OnRestart" />
+        <ToggleButton x:Uid="AnimationPreview_PauseButton" x:Name="PauseButton" Click="OnPause" />
+        <Button x:Uid="AnimationPreview_FinishButton" Click="OnFinish" />
       </StackPanel>
       <TextBlock
+        x:Uid="AnimationPreview_StateText"
         x:Name="StateText"
-        Text="再生中"
         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
       />
     </StackPanel>

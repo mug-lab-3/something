@@ -24,7 +24,7 @@ public sealed partial class EntryRow(
         change is { Before: { } before, After: { } after } && before.Name != after.Name
             ? $"{DisplayText.Escape(before.Name)} → {DisplayText.Escape(after.Name)}"
             : Name;
-    public string Kind => Entry.IsDirectory ? "フォルダー" : "ファイル";
+    public string Kind => Entry.IsDirectory ? Strings.Get("Item_Folder") : Strings.Get("Item_File");
     public bool IsHidden => Entry.IsHidden == true;
     public bool IsSystem => Entry.IsSystem == true;
     public bool AttributesKnown => Entry.StandardFileAttributes is not null;
@@ -46,15 +46,11 @@ public sealed partial class EntryRow(
     public string SizeDescription =>
         (
             comparing
-                ? $"比較元：{BeforeSize}\nサイズ：{Size}\n増減：{Delta}（比較先 − 比較元）"
-                : "ディスク上の割り当て容量"
+                ? Strings.Format("Size_ComparisonDescription", BeforeSize, Size, Delta)
+                : Strings.Get("Size_AllocatedDescription")
         )
-        + (
-            Entry.CapacityIncomplete
-                ? "\nサイズを取得できなかった項目があり、その分は含まれていません。"
-                : ""
-        )
-        + (!Entry.NamesComplete ? "\n一部の名前を取得できていません。" : "");
+        + (Entry.CapacityIncomplete ? Strings.Get("Size_IncompleteNote") : "")
+        + (!Entry.NamesComplete ? Strings.Get("Size_NamesIncompleteNote") : "");
 }
 
 public sealed partial class RankingRow
@@ -100,8 +96,8 @@ public sealed partial class RankingRow
     public GridLength ComparisonWidth => new(item.Comparing ? 140 : 0);
     public string SizeDescription =>
         item.Comparing
-            ? $"比較元：{BeforeSize}\nサイズ：{Size}\n増減：{Delta}（比較先 − 比較元）"
-            : "ディスク上の割り当て容量";
+            ? Strings.Format("Size_ComparisonDescription", BeforeSize, Size, Delta)
+            : Strings.Get("Size_AllocatedDescription");
     public string BeforeSize =>
         item.Comparing ? DisplayText.Endpoint(item.BeforeBytes, item.HasBefore) : "";
     public string AfterSize =>
@@ -113,7 +109,7 @@ internal sealed record FolderLocation(FileReference Reference, string Path);
 internal sealed record HistoryRow(ScanHistoryEntry Entry, bool IsLatest = false)
 {
     public override string ToString() =>
-        (IsLatest ? "最新 · " : "")
+        (IsLatest ? Strings.Get("History_LatestPrefix") : "")
         + Entry.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture);
 }
 
@@ -173,22 +169,36 @@ internal sealed record FolderNode(
         : Comparison?.AllocatedDelta is { } delta
             ? delta.Sign switch
             {
-                > 0 => "容量が増加",
-                < 0 => "容量が減少",
-                _ => "変化なし",
+                > 0 => Strings.Get("Change_Increased"),
+                < 0 => Strings.Get("Change_Decreased"),
+                _ => Strings.Get("Change_Unchanged"),
             }
-        : Change ?? "比較できません";
+        : Change ?? Strings.Get("Change_Uncomparable");
     public string Description =>
         DisplayName
         + (
             LoadMore
                 ? ""
-                : $"\nサイズ：{(Comparing && Comparison is { AfterPath: null } ? "—" : DisplayText.Bytes(AllocatedBytes))}"
+                : Strings.Format(
+                    "FolderTip_Size",
+                    (
+                        Comparing && Comparison is { AfterPath: null }
+                            ? "—"
+                            : DisplayText.Bytes(AllocatedBytes)
+                    )
+                )
         )
-        + (CapacityIncomplete ? "（取得できた分のみ）" : "")
+        + (CapacityIncomplete ? Strings.Get("FolderTip_KnownOnly") : "")
         + (
             Comparing
-                ? $"\n比較元：{DisplayText.Endpoint(Comparison?.BeforeAllocatedBytes, Comparison?.BeforePath is not null)}\n増減：{Change}"
+                ? Strings.Format(
+                    "FolderTip_Comparison",
+                    DisplayText.Endpoint(
+                        Comparison?.BeforeAllocatedBytes,
+                        Comparison?.BeforePath is not null
+                    ),
+                    Change
+                )
                 : ""
         );
 
@@ -208,9 +218,9 @@ internal static class DisplayText
             ) + Bytes(UInt128.CreateChecked(BigInteger.Abs(value)))
             : status switch
             {
-                FolderChangeStatus.NotObservedBefore => "比較元になし",
-                FolderChangeStatus.NotObservedAfter => "比較先になし",
-                _ => "比較できません",
+                FolderChangeStatus.NotObservedBefore => Strings.Get("Change_MissingBefore"),
+                FolderChangeStatus.NotObservedAfter => Strings.Get("Change_MissingAfter"),
+                _ => Strings.Get("Change_Uncomparable"),
             };
 
     internal static string CapacityRatio(UInt128 used, UInt128 total)
@@ -239,7 +249,7 @@ internal static class DisplayText
     internal static string Bytes(UInt128? bytes)
     {
         if (bytes is null)
-            return "不明";
+            return Strings.Get("Size_Unknown");
         string[] units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
         double size = (double)bytes.Value;
         int unit = 0;

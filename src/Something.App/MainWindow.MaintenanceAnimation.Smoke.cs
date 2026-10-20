@@ -19,8 +19,8 @@ public sealed partial class MainWindow
             await using (
                 BeginViewUpdate(
                     kind == LoadingAnimationKind.DeleteHistory
-                        ? "スキャン履歴を削除しています…"
-                        : "データベースを最適化しています…",
+                        ? Strings.Get("HistoryManagement_Deleting")
+                        : Strings.Get("Database_Optimizing"),
                     kind
                 )
             )

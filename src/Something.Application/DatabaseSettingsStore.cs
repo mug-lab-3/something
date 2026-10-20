@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Something.Storage;
 
 namespace Something.Application;
 
@@ -34,9 +35,9 @@ public sealed class DatabaseSettingsStore(string path)
     {
         if (!Path.IsPathFullyQualified(directory))
             throw new ArgumentException(
-                "データベースの保存先は絶対パスで指定してください。",
+                "The database location must be an absolute path.",
                 nameof(directory)
-            );
+            ).WithFailure(HistoryFailure.RelativeLocation);
         string parent = Path.GetDirectoryName(Path.GetFullPath(path))!;
         Directory.CreateDirectory(parent);
         string temporary = Path.Combine(parent, $".database-settings-{Guid.NewGuid():N}.tmp");

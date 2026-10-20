@@ -110,21 +110,18 @@ public sealed partial class MainWindow
     private async Task<bool> ConfirmDeleteDatabaseAsync()
     {
         if (history is null || !CanManageDatabase)
-            throw new InvalidOperationException(
-                "スキャンや読み込みが完了してから、データベースを削除してください。"
-            );
+            throw new InvalidOperationException(Strings.Get("Database_DeleteBusy"));
         databaseDeleteDialog = new()
         {
-            Title = "履歴データベースを削除しますか？",
+            Title = Strings.Get("Database_DeleteTitle"),
             Content = new TextBlock
             {
-                Text =
-                    $"全ドライブのスキャン履歴をすべて削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。\n\n{history.DatabasePath}",
+                Text = Strings.Format("Database_DeleteMessage", history.DatabasePath),
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 520,
             },
-            PrimaryButtonText = "削除",
-            CloseButtonText = "キャンセル",
+            PrimaryButtonText = Strings.Get("Common_Delete"),
+            CloseButtonText = Strings.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.None,
             PrimaryButtonStyle = (Style)
                 Microsoft.UI.Xaml.Application.Current.Resources["ConfirmationDialogButtonStyle"],
@@ -146,9 +143,7 @@ public sealed partial class MainWindow
     private async Task ManageDatabaseAsync(string? destination)
     {
         if (history is null || !CanManageDatabase)
-            throw new InvalidOperationException(
-                "スキャンや読み込みが完了してから、データベースを操作してください。"
-            );
+            throw new InvalidOperationException(Strings.Get("Database_OperationBusy"));
         historyMaintenance = true;
         WorkspaceTabs.IsEnabled = SettingsButton.IsEnabled = false;
         foreach (var card in cards)
@@ -156,9 +151,7 @@ public sealed partial class MainWindow
         string previousPath = history.DatabasePath;
         bool succeeded = false;
         await using var update = BeginViewUpdate(
-            destination is null
-                ? "履歴データベースを削除しています…"
-                : "履歴データベースを移動しています…",
+            destination is null ? Strings.Get("Database_Deleting") : Strings.Get("Database_Moving"),
             destination is null
                 ? LoadingAnimationKind.DeleteHistory
                 : LoadingAnimationKind.OptimizeDatabase
@@ -211,10 +204,9 @@ public sealed partial class MainWindow
         }
         if (succeeded && !closed)
             ShowToast(
-                destination is null ? "全ドライブのスキャン履歴を削除しました。"
-                    : File.Exists(previousPath)
-                        ? "データベースを新しい保存先に切り替えました。元のデータベースは削除できなかったため、以前のフォルダーに残っています。"
-                    : "履歴データベースを新しい保存先に移動しました。",
+                destination is null ? Strings.Get("Database_Deleted")
+                    : File.Exists(previousPath) ? Strings.Get("Database_MovedOriginalKept")
+                    : Strings.Get("Database_Moved"),
                 destination is not null && File.Exists(previousPath)
                     ? InfoBarSeverity.Warning
                     : InfoBarSeverity.Success
@@ -250,7 +242,7 @@ public sealed partial class MainWindow
         Entries.ItemsSource = Ranking.ItemsSource = null;
         AnalysisCountText.Text = "";
         EntryCountText.DataContext = null;
-        PathText.Text = "未スキャン";
+        PathText.Text = Strings.Get("Drive_NotScanned");
         BackButton.IsEnabled = ForwardButton.IsEnabled = UpButton.IsEnabled = false;
         EmptyScanText.Visibility = Visibility.Visible;
         updatingHistoryChoices = true;

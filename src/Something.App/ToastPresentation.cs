@@ -14,10 +14,10 @@ internal static class ToastPresentation
     internal static string GetTitle(InfoBarSeverity severity) =>
         severity switch
         {
-            InfoBarSeverity.Success => "完了しました",
-            InfoBarSeverity.Informational => "お知らせ",
-            InfoBarSeverity.Warning => "確認してください",
-            InfoBarSeverity.Error => "処理できませんでした",
+            InfoBarSeverity.Success => Strings.Get("Toast_Success"),
+            InfoBarSeverity.Informational => Strings.Get("Toast_Information"),
+            InfoBarSeverity.Warning => Strings.Get("Toast_Warning"),
+            InfoBarSeverity.Error => Strings.Get("Toast_Error"),
             _ => throw new ArgumentOutOfRangeException(nameof(severity)),
         };
 }

@@ -76,14 +76,14 @@ public sealed partial class FileAttributeIcon : UserControl
         FolderLeft.Visibility = DocumentLeft.Visibility = Show(!(hidden && system));
         FolderRight.Visibility = DocumentRight.Visibility = Show(!(hidden || system));
 
-        string kind = IsDirectory ? "フォルダー" : "ファイル";
+        string kind = IsDirectory ? Strings.Get("Item_Folder") : Strings.Get("Item_File");
         string description = !AttributesKnown
-            ? $"{kind}（属性不明）"
+            ? Strings.Format("Attributes_Unknown", kind)
             : (hidden, system) switch
             {
-                (true, true) => $"システム・隠し{kind}",
-                (true, false) => $"隠し{kind}",
-                (false, true) => $"システム{kind}",
+                (true, true) => Strings.Format("Attributes_SystemHidden", kind),
+                (true, false) => Strings.Format("Attributes_Hidden", kind),
+                (false, true) => Strings.Format("Attributes_System", kind),
                 _ => kind,
             };
         ToolTipService.SetToolTip(this, description);

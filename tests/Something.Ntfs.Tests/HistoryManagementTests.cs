@@ -32,7 +32,10 @@ public sealed class HistoryManagementTests
         );
         Assert.Equal(new[] { first }, HistoryDeletion.SelectRange(entries, start, start));
         Assert.Empty(HistoryDeletion.SelectRange([], start, end));
-        Assert.Throws<ArgumentException>(() => HistoryDeletion.SelectRange(entries, end, start));
+        var reversed = Assert.Throws<ArgumentException>(() =>
+            HistoryDeletion.SelectRange(entries, end, start)
+        );
+        Assert.Equal(HistoryFailure.StartAfterEnd, HistoryFailures.Of(reversed));
     }
 
     [Fact]
@@ -65,12 +68,14 @@ public sealed class HistoryManagementTests
             "Test DST",
             [rule]
         );
-        Assert.Throws<ArgumentException>(() =>
+        var skipped = Assert.Throws<ArgumentException>(() =>
             HistoryDeletion.LocalInstant(new(2026, 3, 8), new(2, 30), zone)
         );
-        Assert.Throws<ArgumentException>(() =>
+        var repeated = Assert.Throws<ArgumentException>(() =>
             HistoryDeletion.LocalInstant(new(2026, 11, 1), new(1, 30), zone)
         );
+        Assert.Equal(HistoryFailure.InvalidLocalTime, HistoryFailures.Of(skipped));
+        Assert.Equal(HistoryFailure.InvalidLocalTime, HistoryFailures.Of(repeated));
         Assert.Equal(
             TimeSpan.FromHours(-4),
             HistoryDeletion.LocalInstant(new(2026, 7, 1), new(12, 0), zone).Offset

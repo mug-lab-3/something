@@ -74,17 +74,20 @@ public sealed partial class HistoryManagementView : UserControl
                 return;
             }
             var info = archive.ReadDatabaseInfo();
-            DatabaseSizeText.Text = $"データベース {DisplayText.Bytes((UInt128)info.TotalBytes)}";
+            DatabaseSizeText.Text = Strings.Format(
+                "HistoryManagement_DatabaseSize",
+                DisplayText.Bytes((UInt128)info.TotalBytes)
+            );
             ToolTipService.SetToolTip(
                 DatabaseSizeText,
-                $"全ドライブ共通の履歴データベース\n{info.Path}"
+                Strings.Format("HistoryManagement_DatabaseTip", info.Path)
             );
         }
         catch (Exception error)
             when (error is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            DatabaseSizeText.Text = "データベースのサイズを取得できません";
-            ToolTipService.SetToolTip(DatabaseSizeText, error.Message);
+            DatabaseSizeText.Text = Strings.Get("HistoryManagement_SizeUnavailable");
+            ToolTipService.SetToolTip(DatabaseSizeText, StatusText.Describe(error));
         }
     }
 
@@ -135,7 +138,7 @@ public sealed partial class HistoryManagementView : UserControl
         catch (Exception error)
         {
             if (version == loadVersion)
-                ShowNotice(error.Message, InfoBarSeverity.Error);
+                ShowNotice(StatusText.Describe(error), InfoBarSeverity.Error);
         }
         finally
         {
@@ -157,8 +160,8 @@ public sealed partial class HistoryManagementView : UserControl
             .SelectedItems.Cast<ManagedHistoryRow>()
             .Select(row => row.Entry.Id)
             .ToHashSet();
-        SelectionCountText.Text = $"選択中 {count:N0} 件";
-        TotalText.Text = $"{HistoryList.Items.Count:N0} 件";
+        SelectionCountText.Text = Strings.Format("HistoryManagement_SelectedCount", count);
+        TotalText.Text = Strings.Format("Count_Items", HistoryList.Items.Count);
         EmptyText.Visibility =
             !busy && HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DeleteButton.IsEnabled = !busy && count > 0;
@@ -179,8 +182,18 @@ public sealed partial class HistoryManagementView : UserControl
 
     private void UpdateHistorySortHeaders()
     {
-        ColumnHeaders.Update(CompletedHeader, "スキャン日時", !sortByRecordCount, sortDescending);
-        ColumnHeaders.Update(RecordCountHeader, "レコード数", sortByRecordCount, sortDescending);
+        ColumnHeaders.Update(
+            CompletedHeader,
+            Strings.Get("Column_ScanTime"),
+            !sortByRecordCount,
+            sortDescending
+        );
+        ColumnHeaders.Update(
+            RecordCountHeader,
+            Strings.Get("Column_RecordCount"),
+            sortByRecordCount,
+            sortDescending
+        );
     }
 
     private void OnHistorySort(object sender, RoutedEventArgs args)
@@ -211,7 +224,10 @@ public sealed partial class HistoryManagementView : UserControl
             : count == total ? true
             : null;
         SelectAllCheckBox.IsEnabled = !busy && total > 0;
-        string action = total > 0 && count == total ? "選択解除" : "すべて選択";
+        string action =
+            total > 0 && count == total
+                ? Strings.Get("HistoryManagement_ClearSelection")
+                : Strings.Get("HistoryManagement_SelectAll");
         ToolTipService.SetToolTip(SelectAllCheckBox, action);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SelectAllCheckBox, action);
     }
@@ -252,7 +268,7 @@ public sealed partial class HistoryManagementView : UserControl
         catch (ArgumentException error)
         {
             // A rejected input does not replace the user's current manual selection.
-            SelectionError.Text = error.Message;
+            SelectionError.Text = StatusText.Describe(error);
             SelectionError.Visibility = Visibility.Visible;
         }
     }
@@ -429,7 +445,10 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
-            showProgress("スキャン履歴を削除しています…", LoadingAnimationKind.DeleteHistory);
+            showProgress(
+                Strings.Get("HistoryManagement_Deleting"),
+                LoadingAnimationKind.DeleteHistory
+            );
             return await DeleteCoreAsync(
                 rows.Select(row => row.Id).ToArray(),
                 dialog.Optimize,
@@ -458,7 +477,7 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
-            showProgress("データベースを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
+            showProgress(Strings.Get("Database_Optimizing"), LoadingAnimationKind.OptimizeDatabase);
             return new OperationNotice(
                 OptimizationText(await optimize!()),
                 InfoBarSeverity.Success
@@ -492,7 +511,7 @@ public sealed partial class HistoryManagementView : UserControl
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
         {
-            notice = new(error.Message, InfoBarSeverity.Error);
+            notice = new(StatusText.Describe(error), InfoBarSeverity.Error);
         }
         finally
         {
@@ -529,17 +548,17 @@ public sealed partial class HistoryManagementView : UserControl
     )
     {
         var removed = await Task.Run(() => archive!.Delete(ids, token), token);
-        string completed = $"{removed.Length:N0} 件のスキャン履歴を削除しました。";
+        string completed = Strings.Format("HistoryManagement_Deleted", removed.Length);
         try
         {
             await refreshViews!(removed);
             int deferred = await Task.Run(() => archive!.CollectRetired(token), token);
             if (deferred > 0)
-                completed += $" 表示中の {deferred:N0} 件は、表示を切り替えた後に削除されます。";
+                completed += Strings.Format("HistoryManagement_DeferredCleanup", deferred);
             if (optimizeAfter)
             {
                 showProgress(
-                    "データベースを最適化しています…",
+                    Strings.Get("Database_Optimizing"),
                     LoadingAnimationKind.OptimizeDatabase
                 );
                 return new(
@@ -564,12 +583,25 @@ public sealed partial class HistoryManagementView : UserControl
             catch (Exception refreshError)
             {
                 return new(
-                    $"{completed} 表示の再読み込みに失敗しました：{refreshError.Message}",
+                    Strings.Format(
+                        "HistoryManagement_RefreshFailed",
+                        completed,
+                        StatusText.Describe(refreshError)
+                    ),
                     InfoBarSeverity.Warning
                 );
             }
             return new(
-                $"{completed} {(optimizeAfter ? "データベースの最適化" : "削除後の整理")}を完了できませんでした：{error.Message}",
+                Strings.Format(
+                    "HistoryManagement_FollowUpFailed",
+                    completed,
+                    (
+                        optimizeAfter
+                            ? Strings.Get("HistoryManagement_Optimization")
+                            : Strings.Get("HistoryManagement_Cleanup")
+                    ),
+                    StatusText.Describe(error)
+                ),
                 InfoBarSeverity.Warning
             );
         }
@@ -577,8 +609,13 @@ public sealed partial class HistoryManagementView : UserControl
 
     private static string OptimizationText(HistoryCompactionResult result) =>
         result.Replaced
-            ? $"データベースを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)} 削減）"
-            : "データベースはすでに最適化されています。";
+            ? Strings.Format(
+                "Database_Optimized",
+                DisplayText.Bytes((UInt128)result.BeforeBytes),
+                DisplayText.Bytes((UInt128)result.AfterBytes),
+                DisplayText.Bytes((UInt128)result.ReclaimedBytes)
+            )
+            : Strings.Get("Database_AlreadyOptimized");
 
     internal void CloseForShutdown()
     {

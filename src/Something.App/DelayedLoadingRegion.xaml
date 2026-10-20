@@ -24,7 +24,7 @@
         <StackPanel Spacing="8">
           <local:RecordLoadingAnimation x:Name="Animation" />
           <TextBlock
-            Text="読み込んでいます…"
+            x:Uid="DelayedLoading_Text"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             AutomationProperties.LiveSetting="Polite"

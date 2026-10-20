@@ -133,8 +133,8 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                 return FileRecycleResult.Cancelled;
             if (!sink.Recycled)
                 throw new IOException(
-                    "ごみ箱への移動を確認できませんでした。完全に削除する処理には切り替えません。"
-                );
+                    "The shell did not confirm recycling; permanent deletion is never used."
+                ).WithFailure(RecycleFailure.Unconfirmed);
             return FileRecycleResult.Recycled;
         }
         finally
@@ -168,8 +168,8 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                     var info = handle.Observe(token);
                     if (!info.IsDirectory || (info.FileAttributes & 0x400) != 0)
                         throw new IOException(
-                            "リンクやジャンクションを経由するパスは削除できません。"
-                        );
+                            "Paths through links or junctions cannot be recycled."
+                        ).WithFailure(RecycleFailure.LinkedPath);
                 }
             }
             catch
@@ -203,8 +203,8 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                 // Reject a shell operation that is no longer a recycling operation.
                 if ((flags & 0x80) == 0)
                     throw new IOException(
-                        "この項目はごみ箱に移動できません。完全に削除する処理は行いません。"
-                    );
+                        "The shell would not recycle this item; permanent deletion is never used."
+                    ).WithFailure(RecycleFailure.NotRecyclable);
                 item.GetDisplayName(0x80058000, out var name);
                 string? path;
                 try
@@ -216,7 +216,9 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                     Marshal.FreeCoTaskMem(name);
                 }
                 if (!string.Equals(path, target.Path, StringComparison.Ordinal))
-                    throw new IOException("削除対象のパスが変更されました。");
+                    throw new IOException("The recycle target path changed.").WithFailure(
+                        RecycleFailure.PathChanged
+                    );
                 State = Inspect(target, token);
                 return State == FileRecycleResult.Ready ? 0 : unchecked((int)0x80004004);
             }
@@ -232,7 +234,7 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
             if (result < 0)
                 Failure =
                     Marshal.GetExceptionForHR(result)
-                    ?? new IOException("ごみ箱への移動に失敗しました。");
+                    ?? new IOException("Recycling failed.").WithFailure(RecycleFailure.Failed);
             else
                 Recycled = recycled is not null;
             return 0;
