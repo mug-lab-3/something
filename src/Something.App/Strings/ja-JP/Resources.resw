@@ -1448,7 +1448,7 @@
     <value>起動時に新しいバージョンがあるか確認する</value>
   </data>
   <data name="Settings_UpdateCheckDescription.Text" xml:space="preserve">
-    <value>起動時に GitHub のリリース情報を確認し、新しいバージョンがあればお知らせします。スキャン結果やファイルの情報は送信しません。ダウンロードとインストールは自動では行いません。</value>
+    <value>GitHub で最新のバージョンを確認し、新しいバージョンがあればお知らせします。</value>
   </data>
   <data name="Settings_UpdateCheckTitle.Text" xml:space="preserve">
     <value>新しいバージョンの確認</value>
