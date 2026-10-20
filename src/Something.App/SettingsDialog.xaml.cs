@@ -42,10 +42,6 @@ public sealed partial class SettingsDialog : ContentDialog
         {
             var info = archive.ReadDatabaseInfo();
             SizeText.Text = DisplayText.Bytes((UInt128)info.TotalBytes);
-            ToolTipService.SetToolTip(
-                SizeText,
-                $"DB本体 {info.DatabaseBytes:N0} B / WAL {info.WalBytes:N0} B"
-            );
             CurrentPathText.Text = info.Path;
         }
     }

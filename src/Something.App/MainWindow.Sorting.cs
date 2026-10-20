@@ -32,7 +32,7 @@ public sealed partial class MainWindow
         );
         ColumnHeaders.Update(
             AnalysisNameHeader,
-            AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダ" : "名前",
+            AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダー" : "名前",
             analysisOrder.Column == BrowserColumn.Name,
             analysisOrder.Descending
         );

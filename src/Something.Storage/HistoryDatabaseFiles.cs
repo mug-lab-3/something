@@ -40,7 +40,7 @@ public sealed partial class ScanHistoryArchive
         DuckDatabaseBootstrap.RequireClosed(DatabasePath);
         if (readers.Count != 0)
             throw new InvalidOperationException(
-                "DBを参照中です。履歴表示を解放してから操作してください。"
+                "データベースを使用中です。履歴の表示が終わってから操作してください。"
             );
     }
 
@@ -55,7 +55,7 @@ public sealed partial class ScanHistoryArchive
             && File.Exists(DatabasePath + ".wal")
         )
             throw new InvalidDataException(
-                "DB本体がないため、残っているWALを保持して操作を中止します。"
+                "データベース本体がないため、残っているWALを保持して操作を中止しました。"
             );
     }
 
@@ -73,7 +73,7 @@ public sealed partial class ScanHistoryArchive
             RequireIdle();
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
-                throw new IOException("WALを確定できないためDBを削除できません。");
+                throw new IOException("WALを確定できないため、データベースを削除できません。");
             token.ThrowIfCancellationRequested();
             File.Delete(DatabasePath);
             DuckDatabaseBootstrap.ForgetValidation(DatabasePath);
@@ -91,7 +91,7 @@ public sealed partial class ScanHistoryArchive
         ArgumentNullException.ThrowIfNull(saveLocation);
         if (!Path.IsPathFullyQualified(directory))
             throw new ArgumentException(
-                "DBの保存先は絶対パスで指定してください。",
+                "データベースの保存先は絶対パスで指定してください。",
                 nameof(directory)
             );
         var target = new ScanHistoryArchive(directory, clock, timeZone);
@@ -113,7 +113,9 @@ public sealed partial class ScanHistoryArchive
                     target.RequireIdle();
                     Directory.CreateDirectory(target.root);
                     if ((File.GetAttributes(target.root) & FileAttributes.ReparsePoint) != 0)
-                        throw new IOException("DBの保存先にリンクフォルダは指定できません。");
+                        throw new IOException(
+                            "データベースの保存先にリンクフォルダーは指定できません。"
+                        );
                     foreach (
                         string path in new[]
                         {
@@ -124,7 +126,7 @@ public sealed partial class ScanHistoryArchive
                     )
                         if (File.Exists(path) || Directory.Exists(path))
                             throw new IOException(
-                                "移動先にDBまたは復旧用ファイルがあります。上書きしません。"
+                                "移動先にデータベースまたは復旧用ファイルがあるため、上書きしません。"
                             );
                     if (!HasDatabaseFiles)
                     {
@@ -134,7 +136,9 @@ public sealed partial class ScanHistoryArchive
                     Checkpoint(token);
                     RequireIdle();
                     if (File.Exists(DatabasePath + ".wal"))
-                        throw new IOException("WALを確定できないためDBを移動できません。");
+                        throw new IOException(
+                            "WALを確定できないため、データベースを移動できません。"
+                        );
                     string temporary = Path.Combine(
                         target.root,
                         $".moving-{Guid.NewGuid():N}.duckdb"

@@ -90,7 +90,7 @@ public sealed partial class DriveCard : UserControl
         {
             UsageBar.Value = 0;
             UsageText.Text = "ドライブ容量を取得できません";
-            FreeText.Text = "空き容量 不明";
+            FreeText.Text = "空き容量不明";
         }
     }
 
@@ -117,7 +117,7 @@ public sealed partial class DriveCard : UserControl
             ScanStateText,
             result is null
                 ? "未スキャン"
-                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件\n管理領域未解決 {result.MetadataUnresolved:N0} · 取得時点の観測です。"
+                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件\n読み取れなかった管理情報 {result.MetadataUnresolved:N0}件"
         );
         ToolTipService.SetToolTip(ScanStatus, ToolTipService.GetToolTip(ScanStateText));
     }

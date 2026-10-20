@@ -16,7 +16,7 @@ public static class HistoryDeletion
     {
         ArgumentNullException.ThrowIfNull(entries);
         if (startInclusive > endInclusive)
-            throw new ArgumentException("開始日時は終了日時以前にしてください。");
+            throw new ArgumentException("開始日時には終了日時以前の日時を指定してください。");
         return entries
             .Where(row =>
                 (!startInclusive.HasValue || row.CompletedUtc >= startInclusive.Value)

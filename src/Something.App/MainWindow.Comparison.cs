@@ -163,13 +163,13 @@ public sealed partial class MainWindow
             historyHost.Content = HistoryBox;
         }
         NormalHistoryHost.Visibility = Comparing ? Visibility.Collapsed : Visibility.Visible;
-        HistoryBox.Header = Comparing ? "比較する記録" : "表示する記録";
+        HistoryBox.Header = Comparing ? "比較先" : "表示するスキャン";
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(HistoryBox, HistoryBox.Header);
         ToolTipService.SetToolTip(
             HistoryBox,
             Comparing
-                ? "サイズ列はこの記録の値です。差分は「比較する記録 − 基準の記録」で、＋は増加、−は減少です。"
-                : "表示するスキャンの取得日時を選択します。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
+                ? "比較先のスキャンを選択します。サイズ列にはこのスキャンの値を表示します。"
+                : "表示するスキャンを選択します。直近7日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
         );
         var period = (ComparisonPeriodBox.SelectedItem as PeriodChoice)?.Period;
         var selection =
@@ -194,16 +194,16 @@ public sealed partial class MainWindow
         ToolTipService.SetToolTip(
             ComparisonBeforeBox,
             custom
-                ? "差分を計算する基準の記録です。右側の記録から、この記録のサイズを差し引きます。"
-                : "比較期間から自動的に選ばれた基準の記録です。手動で選ぶ場合は比較方式を「任意のスキャン」に切り替えてください。"
+                ? "比較元のスキャンを選択します。比較先のサイズから、このスキャンのサイズを差し引きます。"
+                : "比較期間から自動で選ばれた比較元です。手動で選ぶには、比較を「任意のスキャン」に切り替えてください。"
         );
         HistoryBox.OtherEndpoint =
             Comparing && before is not null
-                ? $"基準の記録：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+                ? $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
                 : null;
         ComparisonBeforeBox.OtherEndpoint = HistoryBox.DisplayedHistory is { } after
-            ? $"比較する記録：{after.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
-            : "比較する記録：記録なし";
+            ? $"比較先：{after.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss}"
+            : "比較先：なし";
         ComparisonStatusText.Visibility =
             Comparing && !(comparisonReport is { IsPartial: false, UncertainFolders.Length: 0 })
                 ? Visibility.Visible
@@ -296,7 +296,7 @@ public sealed partial class MainWindow
             );
             HistoryBox.OtherEndpoint = before is null
                 ? null
-                : $"基準の記録：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
+                : $"比較元：{before.CompletedLocal:yyyy/MM/dd HH:mm:ss}";
             comparisonSelectionKey = (
                 period,
                 before?.Id,
@@ -307,18 +307,18 @@ public sealed partial class MainWindow
             if (history is null || before is null || after is null || before.Id == after.Id)
             {
                 ComparisonStatusText.Text =
-                    "履歴不足：基準の記録と比較する記録には、異なる2回のスキャンが必要です。サイズ不明を0として差し引きません。";
+                    "スキャン履歴が足りません。比較元と比較先には、異なる2回のスキャンが必要です。";
                 await ShowSessionAsync(displayed);
                 return;
             }
             if (before.VolumeKey != after.VolumeKey || before.CompletedUtc > after.CompletedUtc)
             {
                 ComparisonStatusText.Text =
-                    "同じドライブで、基準の記録が比較する記録より古いスキャンを選択してください。";
+                    "同じドライブで、比較先より前のスキャンを比較元に選択してください。";
                 await ShowSessionAsync(displayed);
                 return;
             }
-            ComparisonStatusText.Text = "サイズの増減を集計中…";
+            ComparisonStatusText.Text = "サイズの増減を集計しています…";
             var report = await new FolderHistoryService(history).ReadChangesAsync(
                 before.VolumeKey,
                 before.Id,
@@ -367,7 +367,7 @@ public sealed partial class MainWindow
                         ? $"指定範囲：{requested.RequestedBeforeUtc.ToLocalTime():yyyy/MM/dd HH:mm} ～ {requested.RequestedAfterUtc.ToLocalTime():yyyy/MM/dd HH:mm} · "
                         : ""
                 )
-                + $"比較不能 {report.UncertainFolders.Length:N0} フォルダ";
+                + $"比較できないフォルダー {report.UncertainFolders.Length:N0}件";
             ToolTipService.SetToolTip(ComparisonPeriodBox, ComparisonStatusText.Text);
             ComparisonStatusText.Visibility =
                 !report.IsPartial && report.UncertainFolders.Length == 0
@@ -507,8 +507,8 @@ public sealed partial class MainWindow
             ) > 4
             || NormalHistoryHost.Visibility != Visibility.Collapsed
             || !ReferenceEquals(CustomHistoryHost.Content, HistoryBox)
-            || ComparisonBeforeBox.Header != "基準の記録"
-            || HistoryBox.Header != "比較する記録"
+            || ComparisonBeforeBox.Header != "比較元"
+            || HistoryBox.Header != "比較先"
         )
             throw new InvalidOperationException(
                 "Custom comparison endpoints were not grouped in baseline-to-target order."
@@ -604,7 +604,7 @@ public sealed partial class MainWindow
         await TrackComparisonAsync();
         if (
             comparisonReport is not null
-            || !ComparisonStatusText.Text.StartsWith("履歴不足")
+            || !ComparisonStatusText.Text.StartsWith("スキャン履歴が足りません")
             || ComparisonBeforeBox.DisplayedHistory?.Entry.Id != retainedChoices[0].Entry.Id
             || HistoryBox.DisplayedHistory is not null
             || HistoryBox.SelectedItem?.Entry.Id != retainedChoices[0].Entry.Id

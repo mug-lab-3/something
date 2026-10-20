@@ -89,7 +89,8 @@ public sealed partial class HistorySelectionDialog : ContentDialog
     {
         DialogContent.Width = Math.Min(860, Math.Max(320, XamlRoot.Size.Width - 96));
         DialogContent.Height = Math.Min(500, Math.Max(240, XamlRoot.Size.Height - 220));
-        ContextText.Text = OtherEndpoint ?? "一覧から記録を選び、「選択」で表示に反映します。";
+        ContextText.Text =
+            OtherEndpoint ?? "一覧からスキャンを選び、「選択」で表示を切り替えます。";
         calendar = new CalendarView
         {
             SelectionMode = CalendarViewSelectionMode.Single,
@@ -134,7 +135,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         var brush = (SolidColorBrush)
             Microsoft.UI.Xaml.Application.Current.Resources["SystemControlHighlightAccentBrush"];
         args.Item.SetDensityColors(hasRecords ? [brush.Color] : []);
-        ToolTipService.SetToolTip(args.Item, hasRecords ? "保存済みの記録があります" : "記録なし");
+        ToolTipService.SetToolTip(args.Item, hasRecords ? "スキャンがあります" : "スキャンなし");
     }
 
     private void OnPeriod(object sender, RoutedEventArgs args)
@@ -163,7 +164,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
                 "Week" => "直近7日",
                 "Month" => "今月",
                 "Year" => "今年",
-                _ => "すべての記録",
+                _ => "すべてのスキャン",
             }
         );
     }

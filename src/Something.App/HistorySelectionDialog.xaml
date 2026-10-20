@@ -61,7 +61,7 @@
         <TextBlock Text="日付で絞り込む" FontWeight="SemiBold" />
         <Border x:Name="CalendarHost" />
         <TextBlock
-          Text="印のある日に記録があります"
+          Text="印のある日にスキャンがあります。"
           FontSize="12"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
         />
@@ -82,7 +82,7 @@
           <Grid Padding="{StaticResource ListContentPadding}">
             <TextBlock Text="スキャン日時" Style="{StaticResource ListHeaderTextStyle}" />
             <TextBlock
-              Text="記録数"
+              Text="レコード数"
               HorizontalAlignment="Right"
               Style="{StaticResource ListHeaderTextStyle}"
             />
@@ -140,7 +140,7 @@
         <TextBlock
           x:Name="EmptyText"
           Grid.Row="2"
-          Text="この期間の記録はありません"
+          Text="この期間のスキャンはありません。"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -148,7 +148,7 @@
         <TextBlock
           x:Name="CountError"
           Grid.Row="3"
-          Text="記録数を取得できませんでした。日時から記録を選択できます。"
+          Text="レコード数を取得できませんでした。日時からスキャンを選択できます。"
           Visibility="Collapsed"
           TextWrapping="Wrap"
           Foreground="{ThemeResource SystemFillColorCriticalBrush}"

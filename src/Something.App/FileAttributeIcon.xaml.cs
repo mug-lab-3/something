@@ -76,7 +76,7 @@ public sealed partial class FileAttributeIcon : UserControl
         FolderLeft.Visibility = DocumentLeft.Visibility = Show(!(hidden && system));
         FolderRight.Visibility = DocumentRight.Visibility = Show(!(hidden || system));
 
-        string kind = IsDirectory ? "フォルダ" : "ファイル";
+        string kind = IsDirectory ? "フォルダー" : "ファイル";
         string description = !AttributesKnown
             ? $"{kind}（属性不明）"
             : (hidden, system) switch

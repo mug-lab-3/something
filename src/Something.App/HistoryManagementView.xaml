@@ -150,11 +150,11 @@
             Grid.Column="4"
             Click="OnOptimize"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            ToolTipService.ToolTip="全ドライブ共通の履歴DBを詰め直します。"
+            ToolTipService.ToolTip="全ドライブ共通の履歴データベースから不要な領域を解放し、ファイルサイズを縮小します。"
           >
             <StackPanel Orientation="Horizontal" Spacing="8">
               <FontIcon Glyph="&#xE90F;" FontSize="16" />
-              <TextBlock Text="DBを最適化" />
+              <TextBlock Text="データベースを最適化" />
             </StackPanel>
           </Button>
           <TextBlock
@@ -175,28 +175,28 @@
             <Button
               x:Name="MonthPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1か月前以前"
+              Content="1か月以上前"
               Tag="1"
               Click="OnPresetClick"
             />
             <Button
               x:Name="ThreeMonthsPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="3か月前以前"
+              Content="3か月以上前"
               Tag="3"
               Click="OnPresetClick"
             />
             <Button
               x:Name="HalfYearPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="半年前以前"
+              Content="半年以上前"
               Tag="6"
               Click="OnPresetClick"
             />
             <Button
               x:Name="YearPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1年前以前"
+              Content="1年以上前"
               Tag="12"
               Click="OnPresetClick"
             />
@@ -290,7 +290,7 @@
               x:Name="CompletedHeader"
               Padding="8,6,6,6"
               Grid.Column="1"
-              Content="スキャン完了日時 ▼"
+              Content="スキャン日時 ▼"
               Tag="Completed"
               Click="OnHistorySort"
               Style="{StaticResource ColumnHeaderButtonStyle}"
@@ -299,12 +299,12 @@
               x:Name="RecordCountHeader"
               Padding="6,6,12,6"
               Grid.Column="2"
-              Content="記録数"
+              Content="レコード数"
               Tag="Count"
               Click="OnHistorySort"
               Style="{StaticResource ColumnHeaderButtonStyle}"
               HorizontalContentAlignment="Right"
-              ToolTipService.ToolTip="保存したMFT観測レコード数。未解決・拡張レコードを含み、内部テーブルの行数合計ではありません。"
+              ToolTipService.ToolTip="このスキャンで保存したMFTレコードの数です。"
             />
           </Grid>
         </Border>
@@ -345,7 +345,7 @@
     </Border>
     <TextBlock
       Grid.Row="3"
-      Text="スキャン履歴のみを削除します。実ファイルには影響しません。DBの空き領域は再利用されるため、ファイル容量がすぐ縮むとは限りません。"
+      Text="スキャン履歴だけを削除します。ディスク上のファイルは削除されません。データベースの空き領域は再利用されるため、ファイルサイズがすぐに小さくなるとは限りません。"
       FontSize="12"
       TextWrapping="Wrap"
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"

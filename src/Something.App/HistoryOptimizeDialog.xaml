@@ -3,8 +3,8 @@
   Style="{StaticResource DefaultContentDialogStyle}"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  Title="DBを最適化しますか？"
-  PrimaryButtonText="最適化する"
+  Title="データベースを最適化しますか？"
+  PrimaryButtonText="最適化"
   CloseButtonText="キャンセル"
   DefaultButton="None"
   PrimaryButtonStyle="{StaticResource ConfirmationDialogButtonStyle}"
@@ -12,11 +12,11 @@
 >
   <StackPanel Spacing="12">
     <TextBlock
-      Text="全ドライブ共通の履歴DBを詰め直し、不要な領域を整理します。"
+      Text="全ドライブ共通の履歴データベースから不要な領域を解放し、ファイルサイズを縮小します。"
       TextWrapping="Wrap"
     />
     <TextBlock
-      Text="DBの容量や記録数によっては、処理に時間がかかる場合があります。追加の空き容量が必要です。"
+      Text="データベースのサイズによっては、時間がかかる場合があります。追加の空き容量が必要です。"
       TextWrapping="Wrap"
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
     />

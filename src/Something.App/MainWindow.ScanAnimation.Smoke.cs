@@ -89,7 +89,7 @@ public sealed partial class MainWindow
                 await Task.Delay(4050, lifetime.Token);
                 if (
                     ViewLoadingAnimation.ActiveKind != expected
-                    || ViewLoadingTitle.Text != $"{card.Choice.Drive} スキャン中"
+                    || ViewLoadingTitle.Text != $"{card.Choice.Drive} をスキャン中"
                     || ViewLoadingText.Text != card.StateDescription
                 )
                     throw new InvalidOperationException(

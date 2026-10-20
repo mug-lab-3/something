@@ -501,7 +501,7 @@ public sealed partial class MainWindow : Window
                 && sessions.TryGetValue(selected.Choice.Drive, out var latest)
             )
             {
-                SetStartupMessage("最初のファイル一覧を準備しています…");
+                SetStartupMessage("ファイル一覧を準備しています…");
                 session = latest;
                 await ShowSessionAsync(latest);
             }
@@ -638,7 +638,7 @@ public sealed partial class MainWindow : Window
     private async Task ChangeHistoryAsync(HistoryRow row)
     {
         await using var viewUpdate = BeginViewUpdate(
-            $"{row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} の記録を読み込んでいます…"
+            $"{row.Entry.CompletedLocal:yyyy/MM/dd HH:mm:ss} のスキャンを読み込んでいます…"
         );
         var task = LoadHistorySelectionAsync(row);
         historyTasks.Add(task);
@@ -793,7 +793,7 @@ public sealed partial class MainWindow : Window
         EmptyScanText.Visibility = Visibility.Collapsed;
         ToolTipService.SetToolTip(
             HistoryBox,
-            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1}秒 · 管理領域未解決 {current.MetadataUnresolved:N0}\n取得時点の観測です。履歴は直近7日間の全記録と、それ以前の各日の最終記録を保持します。"
+            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1}秒 · 読み取れなかった管理情報 {current.MetadataUnresolved:N0}件\n直近7日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
         );
         navigation.Clear();
         forwardHistory.Clear();
@@ -945,7 +945,7 @@ public sealed partial class MainWindow : Window
                         ShowToast(
                             cleanupError,
                             InfoBarSeverity.Warning,
-                            "履歴は保存済みですが、古い履歴の整理を完了できませんでした"
+                            "履歴は保存しましたが、古い履歴を整理できませんでした"
                         );
                     }
                 }
@@ -955,7 +955,7 @@ public sealed partial class MainWindow : Window
                     await RefreshHistoryChoicesAsync(selected);
                 }
                 ShowToast(
-                    $"{drive}: スキャンが完了しました（{next.Elapsed.TotalSeconds:F1}秒）。",
+                    $"{drive} のスキャンが完了しました（{next.Elapsed.TotalSeconds:F1}秒）。",
                     InfoBarSeverity.Success
                 );
             }
@@ -970,7 +970,7 @@ public sealed partial class MainWindow : Window
             if (!closed)
             {
                 ShowToast(
-                    $"{drive}: キャンセルしました。前の結果は保持しています。",
+                    $"{drive} のスキャンをキャンセルしました。前回の結果はそのまま残っています。",
                     InfoBarSeverity.Informational
                 );
                 card.SetResult(sessions.GetValueOrDefault(drive));
@@ -1009,23 +1009,23 @@ public sealed partial class MainWindow : Window
         string phase = progress.Phase switch
         {
             ScanPhase.SavingHistory => "履歴を保存中",
-            ScanPhase.WaitingForMemory => "メモリ予算の空きを待機中",
-            ScanPhase.Reading => "メタデータを取得中",
-            ScanPhase.Aggregating => "フォルダ容量を集計中",
+            ScanPhase.WaitingForMemory => "メモリの空きを待機中",
+            ScanPhase.Reading => "ファイル情報を読み取り中",
+            ScanPhase.Aggregating => "フォルダー容量を集計中",
             ScanPhase.Saving => "結果を保存中",
             ScanPhase.WritingSnapshot => "結果をファイルへ書き出し中",
             _ => "スキャン完了",
         };
         string? detail = progress.Work?.Stage switch
         {
-            ScanWorkStage.CollectingFolders => "フォルダを抽出中",
+            ScanWorkStage.CollectingFolders => "フォルダーを抽出中",
             ScanWorkStage.BuildingHierarchy => "階層を構築中",
             ScanWorkStage.AggregatingFiles => "ファイル容量を集計中",
-            ScanWorkStage.RollingUpFolders => "サブフォルダを集計中",
+            ScanWorkStage.RollingUpFolders => "サブフォルダーを集計中",
             ScanWorkStage.ValidatingAggregation => "集計結果を検証中",
             ScanWorkStage.WritingFiles => "ファイル情報を保存中",
-            ScanWorkStage.WritingFolders => "フォルダ容量を保存中",
-            ScanWorkStage.WritingFolderNames => "フォルダ名を保存中",
+            ScanWorkStage.WritingFolders => "フォルダー容量を保存中",
+            ScanWorkStage.WritingFolderNames => "フォルダー名を保存中",
             ScanWorkStage.FlushingRows => "保存データを反映中",
             ScanWorkStage.ValidatingRelationships => "保存データを検証中",
             ScanWorkStage.BuildingFolderList => "一覧用データを生成中",
@@ -1035,11 +1035,11 @@ public sealed partial class MainWindow : Window
         };
         string percentage = progress.Fraction is { } value ? $" {Math.Clamp(value, 0, 1):P0}" : "";
         string counts = progress.Work is { Total: { } total } work
-            ? $" · {work.Completed:N0}/{total:N0} 件"
-            : $" · {progress.Candidates:N0} 件";
+            ? $" · {work.Completed:N0}/{total:N0}件"
+            : $" · {progress.Candidates:N0}件";
         var step = progress.Step;
         string retry = progress.Work is { RetryAttempt: > 0 } retrying
-            ? $" · 再試行 {retrying.RetryAttempt}（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
+            ? $" · 再試行 {retrying.RetryAttempt}回目（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
             : "";
         string stepText = step.Number == 0 ? "準備中" : $"ステップ {step.Number}/{step.Total}";
         card.SetState(
@@ -1060,7 +1060,7 @@ public sealed partial class MainWindow : Window
                             _ => "スキャン完了",
                         }
                 ),
-            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒"
+            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1}秒"
         );
         if (selectedCard == card)
             UpdateScanActivity();
@@ -1298,7 +1298,7 @@ public sealed partial class MainWindow : Window
             rows.Count != 600
             || rows.HasMoreItems
             || rows.Select(row => row.Entry.Reference).Distinct().Count() != 600
-            || EntryCountText.Text != $"{600:N0} 件"
+            || EntryCountText.Text != $"{600:N0}件"
         )
             throw new InvalidOperationException(
                 "Scrolling did not load every row and update the total count."
@@ -1507,7 +1507,7 @@ public sealed partial class MainWindow : Window
             menu.Items.Add(item);
         }
         if (directoryPath is not null)
-            AddCopy("ディレクトリのパスをコピー", directoryPath);
+            AddCopy("フォルダーのパスをコピー", directoryPath);
         AddCopy(directoryPath is null ? "パスをコピー" : "ファイルのパスをコピー", path);
         if (args.TryGetPosition(target, out var position))
             menu.ShowAt(target, new FlyoutShowOptions { Position = position });
@@ -1587,9 +1587,9 @@ public sealed partial class MainWindow : Window
                     await LoadFolderAsync(new(row.Entry.Reference, path), true);
                 else if (!row.Entry.CanBrowse)
                     ShowToast(
-                        "このスキャンではフォルダの内容を取得できません。",
+                        "このスキャンではフォルダーの内容を取得できません。",
                         InfoBarSeverity.Informational,
-                        "フォルダを開けませんでした"
+                        "フォルダーを開けませんでした"
                     );
             }
             else
@@ -1607,12 +1607,12 @@ public sealed partial class MainWindow : Window
                 {
                     // Paths are passed directly to the Windows shell, never through a command shell.
                     if (!Path.IsPathFullyQualified(path))
-                        throw new IOException("開く対象の絶対パスを取得できませんでした。");
+                        throw new IOException("開く項目の場所を取得できませんでした。");
                     ProcessStartInfo start;
                     if (isDirectory)
                     {
                         if ((File.GetAttributes(path) & FileAttributes.Directory) == 0)
-                            throw new IOException("現在の項目はフォルダではありません。");
+                            throw new IOException("現在の項目はフォルダーではありません。");
                         start = new(
                             Path.Combine(
                                 Environment.GetFolderPath(Environment.SpecialFolder.Windows),
@@ -1835,8 +1835,7 @@ public sealed partial class MainWindow : Window
             () => !closed && version == rankingVersion && current == session,
             lifetime.Token
         );
-        AnalysisCountText.Text =
-            $"{count:N0} {(AnalysisFoldersOnlyBox.IsChecked != false ? "フォルダ" : "項目")}";
+        AnalysisCountText.Text = $"{count:N0}件";
     }
 
     private void ShowError(Exception error)

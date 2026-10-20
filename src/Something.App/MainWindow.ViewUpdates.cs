@@ -82,11 +82,11 @@ public sealed partial class MainWindow
                 interruptCurrentCycle: presentation?.Kind == LoadingAnimationKind.Inspect
             );
             ViewLoadingTitle.Text = showingScan
-                ? $"{selectedCard!.Choice.Drive} スキャン中"
+                ? $"{selectedCard!.Choice.Drive} をスキャン中"
                 : kind switch
                 {
                     LoadingAnimationKind.DeleteHistory => "履歴を整理しています…",
-                    LoadingAnimationKind.OptimizeDatabase => "DBを整理しています…",
+                    LoadingAnimationKind.OptimizeDatabase => "データベースを最適化しています…",
                     _ => "表示を準備しています…",
                 };
             if (presentation is not null)

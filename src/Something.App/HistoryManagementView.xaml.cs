@@ -74,16 +74,16 @@ public sealed partial class HistoryManagementView : UserControl
                 return;
             }
             var info = archive.ReadDatabaseInfo();
-            DatabaseSizeText.Text = $"DB {DisplayText.Bytes((UInt128)info.TotalBytes)}";
+            DatabaseSizeText.Text = $"データベース {DisplayText.Bytes((UInt128)info.TotalBytes)}";
             ToolTipService.SetToolTip(
                 DatabaseSizeText,
-                $"全ドライブ共通\nDB本体 {info.DatabaseBytes:N0} B / WAL {info.WalBytes:N0} B\n{info.Path}"
+                $"全ドライブ共通の履歴データベース\n{info.Path}"
             );
         }
         catch (Exception error)
             when (error is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            DatabaseSizeText.Text = "DBサイズ取得不可";
+            DatabaseSizeText.Text = "データベースのサイズを取得できません";
             ToolTipService.SetToolTip(DatabaseSizeText, error.Message);
         }
     }
@@ -179,13 +179,8 @@ public sealed partial class HistoryManagementView : UserControl
 
     private void UpdateHistorySortHeaders()
     {
-        ColumnHeaders.Update(
-            CompletedHeader,
-            "スキャン完了日時",
-            !sortByRecordCount,
-            sortDescending
-        );
-        ColumnHeaders.Update(RecordCountHeader, "記録数", sortByRecordCount, sortDescending);
+        ColumnHeaders.Update(CompletedHeader, "スキャン日時", !sortByRecordCount, sortDescending);
+        ColumnHeaders.Update(RecordCountHeader, "レコード数", sortByRecordCount, sortDescending);
     }
 
     private void OnHistorySort(object sender, RoutedEventArgs args)
@@ -463,7 +458,7 @@ public sealed partial class HistoryManagementView : UserControl
             token.ThrowIfCancellationRequested();
             if (result != ContentDialogResult.Primary)
                 return null;
-            showProgress("DBを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
+            showProgress("データベースを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
             return new OperationNotice(
                 OptimizationText(await optimize!()),
                 InfoBarSeverity.Success
@@ -540,10 +535,13 @@ public sealed partial class HistoryManagementView : UserControl
             await refreshViews!(removed);
             int deferred = await Task.Run(() => archive!.CollectRetired(token), token);
             if (deferred > 0)
-                completed += $" 使用中の{deferred:N0}件は参照解放後に整理します。";
+                completed += $" 表示中の{deferred:N0}件は、表示を切り替えた後に削除されます。";
             if (optimizeAfter)
             {
-                showProgress("DBを最適化しています…", LoadingAnimationKind.OptimizeDatabase);
+                showProgress(
+                    "データベースを最適化しています…",
+                    LoadingAnimationKind.OptimizeDatabase
+                );
                 return new(
                     completed + " " + OptimizationText(await optimize!()),
                     InfoBarSeverity.Success
@@ -566,12 +564,12 @@ public sealed partial class HistoryManagementView : UserControl
             catch (Exception refreshError)
             {
                 return new(
-                    $"{completed} 表示の再読み込みに失敗しました: {refreshError.Message}",
+                    $"{completed} 表示の再読み込みに失敗しました：{refreshError.Message}",
                     InfoBarSeverity.Warning
                 );
             }
             return new(
-                $"{completed} {(optimizeAfter ? "DB最適化" : "削除後の整理")}を完了できませんでした: {error.Message}",
+                $"{completed} {(optimizeAfter ? "データベースの最適化" : "削除後の整理")}を完了できませんでした：{error.Message}",
                 InfoBarSeverity.Warning
             );
         }
@@ -579,8 +577,8 @@ public sealed partial class HistoryManagementView : UserControl
 
     private static string OptimizationText(HistoryCompactionResult result) =>
         result.Replaced
-            ? $"DBを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)}削減）"
-            : "DBを確認しました。詰め直しによる縮小がないため、元のDBを維持しました。";
+            ? $"データベースを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)}削減）"
+            : "データベースはすでに最適化されています。";
 
     internal void CloseForShutdown()
     {

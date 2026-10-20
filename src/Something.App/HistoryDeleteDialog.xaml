@@ -5,7 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   PrimaryButtonStyle="{StaticResource ConfirmationDialogButtonStyle}"
   CloseButtonStyle="{StaticResource SecondaryDialogButtonStyle}"
-  PrimaryButtonText="削除する"
+  PrimaryButtonText="削除"
   CloseButtonText="キャンセル"
   DefaultButton="None"
 >
@@ -15,13 +15,20 @@
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
       TextWrapping="Wrap"
     />
-    <TextBlock Text="この操作は元に戻せません。実ファイルは削除されません。" TextWrapping="Wrap" />
+    <TextBlock
+      Text="この操作は元に戻せません。ディスク上のファイルは削除されません。"
+      TextWrapping="Wrap"
+    />
     <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
-    <CheckBox x:Name="OptimizeAfterDelete" Content="削除後にDBを最適化する" IsChecked="False" />
+    <CheckBox
+      x:Name="OptimizeAfterDelete"
+      Content="削除後にデータベースを最適化する"
+      IsChecked="False"
+    />
     <TextBlock
       Margin="32,0,0,0"
       FontSize="12"
-      Text="全ドライブ共通の履歴DBを詰め直します。追加の空き容量が必要で、処理に時間がかかる場合があります。"
+      Text="全ドライブ共通の履歴データベースから不要な領域を解放します。追加の空き容量が必要で、時間がかかる場合があります。"
       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
       TextWrapping="Wrap"
     />

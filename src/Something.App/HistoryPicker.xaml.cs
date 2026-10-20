@@ -28,7 +28,7 @@ public sealed partial class HistoryPicker : UserControl
         set => HeaderText.Text = value;
     }
 
-    public string PlaceholderText { get; set; } = "記録を選択";
+    public string PlaceholderText { get; set; } = "スキャンを選択";
 
     internal IEnumerable<HistoryRow>? ItemsSource
     {
@@ -87,7 +87,8 @@ public sealed partial class HistoryPicker : UserControl
     }
 
     private void UpdateValueText() =>
-        ValueText.Text = DisplayedHistory?.ToString() ?? (automatic ? "記録なし" : PlaceholderText);
+        ValueText.Text =
+            DisplayedHistory?.ToString() ?? (automatic ? "スキャンなし" : PlaceholderText);
 
     private HistorySelectionDialog CreateDialog() =>
         new(rows, selected, counts, LoadCounts)

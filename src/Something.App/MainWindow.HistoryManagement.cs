@@ -34,13 +34,13 @@ public sealed partial class MainWindow
     private async Task<HistoryCompactionResult> OptimizeHistoryAsync()
     {
         if (history is null || closed)
-            throw new InvalidOperationException("履歴DBを使用できません。");
+            throw new InvalidOperationException("履歴データベースを使用できません。");
         if (scans.Count != 0 || !startupTask.IsCompleted)
             throw new InvalidOperationException(
-                "スキャンや起動時の読み込みが完了してからDBを最適化してください。"
+                "スキャンや起動時の読み込みが完了してから、データベースを最適化してください。"
             );
         await using var update = BeginViewUpdate(
-            "DBを最適化しています…",
+            "データベースを最適化しています…",
             LoadingAnimationKind.OptimizeDatabase
         );
         Guid? selectedScan = session?.ScanId;
@@ -81,7 +81,9 @@ public sealed partial class MainWindow
                 );
             ulong limit = Math.Min(MaximumNativeMemoryLimit, available / 4 * 3) / 16384 * 16384;
             if (limit < 16384)
-                throw new InvalidOperationException("DB最適化用の空きメモリが不足しています。");
+                throw new InvalidOperationException(
+                    "データベースの最適化に必要なメモリが不足しています。"
+                );
             return await Task.Run(
                 () =>
                     history.Compact(

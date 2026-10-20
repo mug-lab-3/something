@@ -34,7 +34,7 @@ public sealed class DatabaseSettingsStore(string path)
     {
         if (!Path.IsPathFullyQualified(directory))
             throw new ArgumentException(
-                "DBの保存先は絶対パスで指定してください。",
+                "データベースの保存先は絶対パスで指定してください。",
                 nameof(directory)
             );
         string parent = Path.GetDirectoryName(Path.GetFullPath(path))!;

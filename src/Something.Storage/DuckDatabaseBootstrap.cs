@@ -39,7 +39,7 @@ internal static class DuckDatabaseBootstrap
         lock (Engines)
             if (Engines.ContainsKey(Path.GetFullPath(path)))
                 throw new InvalidOperationException(
-                    "DBを参照中です。すべての履歴表示を解放してから最適化してください。"
+                    "データベースを使用中です。履歴の表示が終わってから最適化してください。"
                 );
     }
 

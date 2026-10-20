@@ -94,7 +94,7 @@ public sealed partial class MainWindow
             {
                 bool accepted = await ConfirmRecycleAsync(item, token);
                 if (accepted)
-                    update = BeginViewUpdate("ゴミ箱に移動しています…");
+                    update = BeginViewUpdate("ごみ箱に移動しています…");
                 return accepted;
             }
             var result = await workflow.RunAsync(
@@ -109,7 +109,7 @@ public sealed partial class MainWindow
                 ShowToast(
                     DisplayText.Escape(target.Path),
                     InfoBarSeverity.Success,
-                    "ゴミ箱に移動しました",
+                    "ごみ箱に移動しました",
                     replacePersistent: true
                 );
             }
@@ -126,13 +126,13 @@ public sealed partial class MainWindow
                 );
             else if (result == FileRecycleResult.Protected)
                 ShowToast(
-                    "システム項目・Windowsの標準フォルダは削除できません。",
+                    "システムの項目やWindowsの標準フォルダーは削除できません。",
                     InfoBarSeverity.Warning,
                     "保護されている項目です"
                 );
             else if (result == FileRecycleResult.HiddenNeedsConfirmation)
                 ShowToast(
-                    "確認中に隠し属性が変更されました。もう一度削除ボタンを押して警告を確認してください。",
+                    "確認中に隠し属性が変更されました。もう一度「ごみ箱に移動」を実行して、警告を確認してください。",
                     InfoBarSeverity.Warning,
                     "属性が変更されています"
                 );
@@ -140,7 +140,7 @@ public sealed partial class MainWindow
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
         {
-            ShowToast(error.Message, InfoBarSeverity.Error, "ゴミ箱に移動できませんでした");
+            ShowToast(error.Message, InfoBarSeverity.Error, "ごみ箱に移動できませんでした");
         }
         finally
         {
@@ -161,7 +161,7 @@ public sealed partial class MainWindow
                     Severity = InfoBarSeverity.Warning,
                     Title = "隠し項目の削除に注意してください",
                     Message =
-                        "Windowsやアプリが使用するデータの可能性があります。ゴミ箱に移動すると、アプリの動作や設定に影響することがあります。内容を確認してください。",
+                        "Windowsやアプリが使用するデータの可能性があります。ごみ箱に移動すると、アプリの動作や設定に影響することがあります。内容を確認してください。",
                 }
             );
         content.Children.Add(
@@ -176,16 +176,16 @@ public sealed partial class MainWindow
             content.Children.Add(
                 new TextBlock
                 {
-                    Text = "フォルダ内のファイル・フォルダも移動します。",
+                    Text = "フォルダー内のファイルとフォルダーも移動します。",
                     TextWrapping = TextWrapping.Wrap,
                 }
             );
         var dialog = new ContentDialog
         {
             XamlRoot = RootLayout.XamlRoot,
-            Title = "ゴミ箱に移動しますか？",
+            Title = "ごみ箱に移動しますか？",
             Content = content,
-            PrimaryButtonText = "ゴミ箱に移動",
+            PrimaryButtonText = "ごみ箱に移動",
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.None,
             PrimaryButtonStyle = (Style)
@@ -210,7 +210,7 @@ public sealed partial class MainWindow
         ShowToast(
             DisplayText.Escape(path),
             InfoBarSeverity.Informational,
-            "このファイル・フォルダはすでに存在しません",
+            "この項目はすでに存在しません",
             replacePersistent: true
         );
 
@@ -222,7 +222,7 @@ public sealed partial class MainWindow
         {
             var attributes = await Task.Run(() => File.GetAttributes(path), lifetime.Token);
             if ((attributes & FileAttributes.Directory) == 0)
-                throw new IOException("現在の項目はフォルダではありません。");
+                throw new IOException("現在の項目はフォルダーではありません。");
             return true;
         }
         catch (IOException error)

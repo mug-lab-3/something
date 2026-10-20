@@ -111,19 +111,19 @@ public sealed partial class MainWindow
     {
         if (history is null || !CanManageDatabase)
             throw new InvalidOperationException(
-                "スキャンや読み込みが完了してからDBを削除してください。"
+                "スキャンや読み込みが完了してから、データベースを削除してください。"
             );
         databaseDeleteDialog = new()
         {
-            Title = "履歴DBを削除しますか？",
+            Title = "履歴データベースを削除しますか？",
             Content = new TextBlock
             {
                 Text =
-                    $"全ドライブのスキャン履歴をすべて削除します。この操作は取り消せません。実ファイルは削除しません。\n\n{history.DatabasePath}",
+                    $"全ドライブのスキャン履歴をすべて削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。\n\n{history.DatabasePath}",
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 520,
             },
-            PrimaryButtonText = "DBを削除",
+            PrimaryButtonText = "削除",
             CloseButtonText = "キャンセル",
             DefaultButton = ContentDialogButton.None,
             PrimaryButtonStyle = (Style)
@@ -147,7 +147,7 @@ public sealed partial class MainWindow
     {
         if (history is null || !CanManageDatabase)
             throw new InvalidOperationException(
-                "スキャンや読み込みが完了してからDBを操作してください。"
+                "スキャンや読み込みが完了してから、データベースを操作してください。"
             );
         historyMaintenance = true;
         WorkspaceTabs.IsEnabled = SettingsButton.IsEnabled = false;
@@ -156,7 +156,9 @@ public sealed partial class MainWindow
         string previousPath = history.DatabasePath;
         bool succeeded = false;
         await using var update = BeginViewUpdate(
-            destination is null ? "履歴DBを削除しています…" : "履歴DBを移動しています…",
+            destination is null
+                ? "履歴データベースを削除しています…"
+                : "履歴データベースを移動しています…",
             destination is null
                 ? LoadingAnimationKind.DeleteHistory
                 : LoadingAnimationKind.OptimizeDatabase
@@ -209,10 +211,10 @@ public sealed partial class MainWindow
         }
         if (succeeded && !closed)
             ShowToast(
-                destination is null ? "全ドライブのスキャン履歴DBを削除しました。"
+                destination is null ? "全ドライブのスキャン履歴を削除しました。"
                     : File.Exists(previousPath)
-                        ? "DBを新しい保存先に切り替えました。元DBは削除できず、旧フォルダに残っています。"
-                    : "履歴DBを新しい保存先へ移動しました。",
+                        ? "データベースを新しい保存先に切り替えました。元のデータベースは削除できなかったため、以前のフォルダーに残っています。"
+                    : "履歴データベースを新しい保存先に移動しました。",
                 destination is not null && File.Exists(previousPath)
                     ? InfoBarSeverity.Warning
                     : InfoBarSeverity.Success

@@ -133,7 +133,7 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                 return FileRecycleResult.Cancelled;
             if (!sink.Recycled)
                 throw new IOException(
-                    "ゴミ箱への移動を確認できませんでした。完全削除への切り替えは行いません。"
+                    "ごみ箱への移動を確認できませんでした。完全に削除する処理には切り替えません。"
                 );
             return FileRecycleResult.Recycled;
         }
@@ -203,7 +203,7 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                 // Reject a shell operation that is no longer a recycling operation.
                 if ((flags & 0x80) == 0)
                     throw new IOException(
-                        "この項目はゴミ箱へ移動できません。完全削除は行いません。"
+                        "この項目はごみ箱に移動できません。完全に削除する処理は行いません。"
                     );
                 item.GetDisplayName(0x80058000, out var name);
                 string? path;
@@ -232,7 +232,7 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
             if (result < 0)
                 Failure =
                     Marshal.GetExceptionForHR(result)
-                    ?? new IOException("ゴミ箱への移動に失敗しました。");
+                    ?? new IOException("ごみ箱への移動に失敗しました。");
             else
                 Recycled = recycled is not null;
             return 0;

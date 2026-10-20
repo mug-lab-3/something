@@ -20,7 +20,7 @@ public sealed partial class MainWindow
                 BeginViewUpdate(
                     kind == LoadingAnimationKind.DeleteHistory
                         ? "スキャン履歴を削除しています…"
-                        : "DBを最適化しています…",
+                        : "データベースを最適化しています…",
                     kind
                 )
             )

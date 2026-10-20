@@ -23,7 +23,7 @@ public sealed partial class ScanHistoryArchive
         RequireOrdinaryFile(CompactionBackup);
         if (File.Exists(CompactionBackup + ".wal"))
             throw new InvalidDataException(
-                "DB最適化のバックアップに予期しないWALがあります。復旧用ファイルを保持してください。"
+                "データベース最適化のバックアップに予期しないWALがあります。復旧用ファイルを削除しないでください。"
             );
         // Never overwrite a surviving database with a malformed or unrelated backup file.
         using (
@@ -42,7 +42,7 @@ public sealed partial class ScanHistoryArchive
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
                 throw new InvalidDataException(
-                    "DB最適化の復旧待ちです。元DBのバックアップとWALを保持してください。"
+                    "データベース最適化の復旧待ちです。元のデータベースのバックアップとWALを削除しないでください。"
                 );
             File.Replace(CompactionBackup, DatabasePath, null);
         }
@@ -95,7 +95,7 @@ public sealed partial class ScanHistoryArchive
                 CollectRetiredCore(store, token);
                 if (store.HistoryContext.HistorySnapshots.Any(row => row.Retired))
                     throw new InvalidOperationException(
-                        "別の履歴参照が残っているため最適化できません。"
+                        "データベースを使用中のため最適化できません。"
                     );
                 ExecuteMaintenance(
                     store.HistoryContext.Database.GetDbConnection(),
@@ -109,7 +109,7 @@ public sealed partial class ScanHistoryArchive
             long required = checked(before + before / 4 + (64L << 20));
             if (new DriveInfo(Path.GetPathRoot(DatabasePath)!).AvailableFreeSpace < required)
                 throw new IOException(
-                    "DB最適化用の空きディスク容量が不足しています。元のDBは保持されています。"
+                    "データベースの最適化に必要な空きディスク容量が不足しています。元のデータベースはそのまま残っています。"
                 );
             string work = Path.Combine(root, ".compaction-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(work);
@@ -117,7 +117,7 @@ public sealed partial class ScanHistoryArchive
             bool replaced = false;
             try
             {
-                progress?.Invoke("DBを詰め直しています…");
+                progress?.Invoke("データベースを再構築しています…");
                 using (var connection = new DuckDBConnection("Data Source=:memory:"))
                 {
                     connection.Open();
@@ -149,7 +149,7 @@ public sealed partial class ScanHistoryArchive
                 token.ThrowIfCancellationRequested();
                 if (after >= before)
                     return new(before, before, false);
-                progress?.Invoke("検証済みDBへ切り替えています…");
+                progress?.Invoke("検証済みのデータベースに切り替えています…");
                 token.ThrowIfCancellationRequested();
                 // No cancellation/progress callback after this boundary until reopening succeeds.
                 File.Replace(candidate, DatabasePath, CompactionBackup);
@@ -192,7 +192,7 @@ public sealed partial class ScanHistoryArchive
         }
         var tables = Tables("source");
         if (!tables.SequenceEqual(Tables("compacted")))
-            throw new InvalidDataException("コピー先のDBテーブル構成が一致しません。");
+            throw new InvalidDataException("コピー先のデータベースのテーブル構成が一致しません。");
         foreach (string table in tables)
         {
             token.ThrowIfCancellationRequested();
@@ -209,7 +209,7 @@ public sealed partial class ScanHistoryArchive
                         System.Globalization.CultureInfo.InvariantCulture
                     )
                 )
-                    throw new InvalidDataException("コピー先のDB内容が一致しません。");
+                    throw new InvalidDataException("コピー先のデータベースの内容が一致しません。");
             }
             catch (DbException) when (token.IsCancellationRequested)
             {
