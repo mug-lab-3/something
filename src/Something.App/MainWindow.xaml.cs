@@ -91,6 +91,7 @@ public sealed partial class MainWindow : Window
         InitializeComparisonControls();
         InitializeHistoryManagement();
         InitializeSettingsPage();
+        InitializeNavigationInput();
         if (demo && history is null)
             HistoryBox.Visibility = Visibility.Collapsed;
         Title = AppVersion.WindowTitle;
@@ -324,6 +325,8 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-navigation-input"))
+                await VerifyNavigationInputAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-clipboard"))
                 await VerifyClipboardAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-theme"))
