@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Something.Application.Export;
 
 namespace Something.App;
@@ -74,6 +76,82 @@ public sealed partial class MainWindow
                 );
             ((RadioButtons)dialog.FindName("ScopeChoice")).SelectedIndex = 1;
             await Task.Delay(200, lifetime.Token);
+            foreach (string name in new[] { "DepthBox", "MinimumSizeBox", "LimitBox" })
+            {
+                var box = (SteppingNumberBox)dialog.FindName(name);
+                box.Focus(FocusState.Programmatic);
+                await Task.Delay(100, lifetime.Token);
+                var input =
+                    FindTreePart<TextBox>(box, "InputBox")
+                    ?? throw new InvalidOperationException("Export numeric input was not loaded.");
+                if (
+                    FindTreePart<RepeatButton>(box, "UpSpinButton")?.Visibility
+                        == Visibility.Visible
+                    || FindTreePart<RepeatButton>(box, "DownSpinButton")?.Visibility
+                        == Visibility.Visible
+                    || FindTreePart<Popup>(box, "UpDownPopup")?.IsOpen == true
+                )
+                    throw new InvalidOperationException(
+                        "Export numeric input still shows spin buttons."
+                    );
+                input.Text = "200";
+                ((ComboBox)dialog.FindName("SortBox")).Focus(FocusState.Programmatic);
+                await Task.Delay(100, lifetime.Token);
+                if (box.Value != 200)
+                    throw new InvalidOperationException(
+                        $"Export numeric input did not accept text: {name}."
+                    );
+                input.Focus(FocusState.Programmatic);
+                input.Text = "";
+                ((ComboBox)dialog.FindName("SortBox")).Focus(FocusState.Programmatic);
+                await Task.Delay(100, lifetime.Token);
+                if (!double.IsNaN(box.Value))
+                    throw new InvalidOperationException(
+                        $"Clearing export numeric input did not restore the default: {name}."
+                    );
+                box.Step(1);
+                if (box.Value != Math.Max(box.Minimum, box.SmallChange))
+                    throw new InvalidOperationException(
+                        $"Stepping an empty export field failed: {name}."
+                    );
+                box.Value = 200;
+                box.Step(-1);
+                if (box.Value != 200 - box.SmallChange)
+                    throw new InvalidOperationException($"Export down stepping failed: {name}.");
+                box.Step(-10000);
+                if (box.Value != box.Minimum)
+                    throw new InvalidOperationException(
+                        $"Export stepping passed its lower bound: {name}."
+                    );
+                box.Value = 200;
+                box.ApplyWheelDelta(60);
+                if (box.Value != 200)
+                    throw new InvalidOperationException("A partial wheel notch stepped too early.");
+                box.ApplyWheelDelta(60);
+                if (box.Value != 200 + box.SmallChange)
+                    throw new InvalidOperationException(
+                        "Wheel deltas did not accumulate to one step."
+                    );
+                box.ApplyWheelDelta(-240);
+                if (box.Value != 200 - box.SmallChange)
+                    throw new InvalidOperationException(
+                        "Multiple wheel notches did not step correctly."
+                    );
+                input.Text = "300";
+                box.Step(1);
+                if (box.Value != 300 + box.SmallChange)
+                    throw new InvalidOperationException(
+                        "Stepping did not commit pending numeric input."
+                    );
+                box.Value = double.NaN;
+            }
+            if (
+                dialog.Options is not { MaximumDepth: null, Limit: null, MinimumBytes: var minimum }
+                || minimum != UInt128.Zero
+            )
+                throw new InvalidOperationException(
+                    "Empty export limits did not retain unlimited/zero semantics."
+                );
             await CaptureStartupFrameAsync(capture + ".export-dialog");
         }
         finally

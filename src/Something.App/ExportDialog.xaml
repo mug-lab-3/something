@@ -4,6 +4,7 @@
   Style="{StaticResource DefaultContentDialogStyle}"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
   DefaultButton="Primary"
   PrimaryButtonStyle="{StaticResource ConfirmationDialogButtonStyle}"
   CloseButtonStyle="{StaticResource SecondaryDialogButtonStyle}"
@@ -32,30 +33,33 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <NumberBox
+        <local:SteppingNumberBox
           x:Uid="Export_DepthBox"
           x:Name="DepthBox"
           Minimum="0"
           SmallChange="1"
-          SpinButtonPlacementMode="Compact"
+          SpinButtonPlacementMode="Hidden"
+          VerticalAlignment="Top"
           ValidationMode="InvalidInputOverwritten"
         />
-        <NumberBox
+        <local:SteppingNumberBox
           x:Uid="Export_MinimumSizeBox"
           x:Name="MinimumSizeBox"
           Grid.Column="1"
           Minimum="0"
           SmallChange="100"
-          SpinButtonPlacementMode="Compact"
+          SpinButtonPlacementMode="Hidden"
+          VerticalAlignment="Top"
           ValidationMode="InvalidInputOverwritten"
         />
-        <NumberBox
+        <local:SteppingNumberBox
           x:Uid="Export_LimitBox"
           x:Name="LimitBox"
           Grid.Column="2"
           Minimum="1"
           SmallChange="100"
-          SpinButtonPlacementMode="Compact"
+          SpinButtonPlacementMode="Hidden"
+          VerticalAlignment="Top"
           ValidationMode="InvalidInputOverwritten"
         />
       </Grid>
