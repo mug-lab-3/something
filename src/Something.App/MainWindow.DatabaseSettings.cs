@@ -35,6 +35,8 @@ public sealed partial class MainWindow
         SettingsPage.ThemeChanged += ChangeTheme;
         SettingsPage.SetFollowList(followListInTree);
         SettingsPage.FollowListChanged += ChangeFollowList;
+        SettingsPage.SetCheckForUpdates(checkForUpdates);
+        SettingsPage.CheckForUpdatesChanged += ChangeCheckForUpdates;
         SettingsPage.CloseRequested += () => SetSettingsOpen(false);
         SettingsPage.VisibilityChanged += options =>
             RunSettingsAction(() => ChangeVisibilityAsync(options));

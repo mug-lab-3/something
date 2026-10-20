@@ -24,6 +24,11 @@ public sealed class DisplaySettingsStore(string path)
     public void SaveFollowListInTree(bool follow) =>
         Write(Read() with { FollowListInTree = follow });
 
+    /// <summary>Whether the application asks GitHub for a newer release at startup.</summary>
+    public bool LoadCheckForUpdates() => Read().CheckForUpdates;
+
+    public void SaveCheckForUpdates(bool check) => Write(Read() with { CheckForUpdates = check });
+
     private Preferences Read()
     {
         try
@@ -83,6 +88,7 @@ public sealed class DisplaySettingsStore(string path)
         bool IncludeSystem = true,
         bool IncludeHidden = true,
         ThemePreference Theme = ThemePreference.System,
-        bool FollowListInTree = true
+        bool FollowListInTree = true,
+        bool CheckForUpdates = true
     );
 }

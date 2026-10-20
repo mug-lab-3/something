@@ -28,9 +28,10 @@ public sealed partial class MainWindow
             return;
         bool transient = severity is InfoBarSeverity.Success or InfoBarSeverity.Informational;
         // A different drive completing must not hide an error awaiting review.
-        if (transient && HasPersistentNotification && !replacePersistent)
+        if (transient && (HasPersistentNotification || ShowingUpdateNotice) && !replacePersistent)
             return;
         toastTimer.Stop();
+        MessageBar.ActionButton = null;
         MessageBar.Title = string.IsNullOrWhiteSpace(title)
             ? ToastPresentation.GetTitle(severity)
             : title;

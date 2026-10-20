@@ -29,6 +29,7 @@ public sealed partial class MainWindow
             visibilityOptions = displaySettings.Load();
             themePreference = displaySettings.LoadTheme();
             followListInTree = displaySettings.LoadFollowListInTree();
+            checkForUpdates = displaySettings.LoadCheckForUpdates();
         }
         ApplyTheme();
     }

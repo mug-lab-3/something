@@ -26,6 +26,7 @@ public sealed partial class SettingsView : UserControl
     internal event Action? CloseRequested;
     internal event Action<ThemePreference>? ThemeChanged;
     internal event Action<bool>? FollowListChanged;
+    internal event Action<bool>? CheckForUpdatesChanged;
     internal event Action<FileVisibilityOptions>? VisibilityChanged;
     internal event Action<string>? MoveRequested;
     internal event Action? DeleteRequested;
@@ -40,6 +41,8 @@ public sealed partial class SettingsView : UserControl
         InitializeComponent();
         var display = new Section(DisplayHeader, null, []);
         var database = new Section(DatabaseHeader, null, []);
+        var application = new Section(ApplicationHeader, null, []);
+        CurrentVersionText.Text = Strings.Format("Settings_CurrentVersion", AppVersion.Display);
         sections =
         [
             display,
@@ -49,6 +52,8 @@ public sealed partial class SettingsView : UserControl
             database,
             new(LocationHeader, database, [CurrentDatabaseItem, LocationItem]),
             new(ManagementHeader, database, [OpenFolderItem, DeleteDatabaseItem]),
+            application,
+            new(UpdatesHeader, application, [UpdateCheckItem]),
         ];
         ApplySearch();
     }
@@ -73,6 +78,19 @@ public sealed partial class SettingsView : UserControl
     {
         if (!updating)
             FollowListChanged?.Invoke(FollowListInTree.IsChecked == true);
+    }
+
+    internal void SetCheckForUpdates(bool check)
+    {
+        updating = true;
+        CheckForUpdates.IsChecked = check;
+        updating = false;
+    }
+
+    private void OnCheckForUpdatesChanged(object sender, RoutedEventArgs args)
+    {
+        if (!updating)
+            CheckForUpdatesChanged?.Invoke(CheckForUpdates.IsChecked == true);
     }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs args)

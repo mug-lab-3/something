@@ -333,6 +333,8 @@ public sealed partial class MainWindow : Window
                 await VerifyThemeSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
                 await VerifyDatabaseSettingsAsync(path);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-update"))
+                await VerifyUpdateNoticeAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-tree-follow"))
                 await VerifyTreeFollowsListAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-export"))
@@ -1967,7 +1969,7 @@ public sealed partial class MainWindow : Window
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;
         await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());
-        await Task.WhenAll([treeReveal, .. treeReads]);
+        await Task.WhenAll([treeReveal, updateCheck, .. treeReads]);
         if (historicalSession is not null)
             await historicalSession.DisposeAsync();
         if (comparisonBaseline is not null)

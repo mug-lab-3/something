@@ -46,6 +46,7 @@ dotnet run --project tools/Something.LocalizationAudit -- check .
 dotnet build src/Something.App -c Release
 .\run-demo.bat
 .\run-animation-preview.bat
+.\run-update-preview.bat
 ```
 
 デモは仮想ディスクをマウントするのではなく、メモリ上で合成した観測データを使います。3 つのドライブを表示し、スキャンのたびに「初期状態」「サイズ増減・ファイル追加」「ファイル削除・移動」を繰り返します。`run-demo.bat` は `artifacts/demo-history` に専用の履歴を残します。実際のファイルや通常の設定は読み書きしません。
@@ -61,7 +62,7 @@ Start-Process $exe -Wait -ArgumentList '--demo','--demo-static','--demo-history'
 Get-Content artifacts\smoke\run.result
 ```
 
-`--smoke-comparison` は比較と読み込み表示の時間の規則を、`--smoke-history-management` は履歴削除・最適化のアニメーションを、`--smoke-scan-animation` はスキャンのアニメーションを、`--smoke-export` はエクスポート（表示中の一覧とフォルダーの集計、6 つの形式すべての書き出し、ダイアログ）を、`--smoke-tree-follow` は一覧とツリーの連動（設定画面での切り替え、2 階層下までの展開と選択、「戻る」への追従、オフのときに展開しないこと）を追加で確認します。履歴削除・最適化の確認には、エクスポートのアニメーションも含まれます。比較の確認には `--demo-history` が必要です。
+`--smoke-comparison` は比較と読み込み表示の時間の規則を、`--smoke-history-management` は履歴削除・最適化のアニメーションを、`--smoke-scan-animation` はスキャンのアニメーションを、`--smoke-export` はエクスポート（表示中の一覧とフォルダーの集計、6 つの形式すべての書き出し、ダイアログ）を、`--smoke-tree-follow` は一覧とツリーの連動（設定画面での切り替え、2 階層下までの展開と選択、「戻る」への追従、オフのときに展開しないこと）を、`--smoke-update` は更新の確認（合成した応答による新しい版の通知、要求の形式、通知の優先順位、最新・失敗・不正な応答で通知しないこと、設定画面でのオフ）を追加で確認します。更新の確認のスモークテストはネットワークに接続しません。履歴削除・最適化の確認には、エクスポートのアニメーションも含まれます。比較の確認には `--demo-history` が必要です。
 
 > [!WARNING]
 > 管理者権限を求めない検証用のマニフェストで別の出力先にビルドする場合は、配布用のマニフェストを上書きしないでください。

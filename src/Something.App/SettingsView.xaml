@@ -283,6 +283,38 @@
                 </StackPanel>
               </Button>
             </StackPanel>
+
+            <TextBlock
+              x:Uid="Settings_ApplicationHeader"
+              x:Name="ApplicationHeader"
+              Margin="0,16,0,0"
+              Style="{StaticResource SubtitleTextBlockStyle}"
+            />
+            <TextBlock
+              x:Uid="Settings_UpdatesHeader"
+              x:Name="UpdatesHeader"
+              Style="{StaticResource SubsectionHeaderStyle}"
+            />
+            <StackPanel x:Name="UpdateCheckItem" Style="{StaticResource SettingItemStyle}">
+              <TextBlock
+                x:Uid="Settings_UpdateCheckTitle"
+                Style="{StaticResource SettingTitleStyle}"
+              />
+              <TextBlock
+                x:Uid="Settings_UpdateCheckDescription"
+                Style="{StaticResource SettingDescriptionStyle}"
+              />
+              <CheckBox
+                x:Uid="Settings_UpdateCheck"
+                x:Name="CheckForUpdates"
+                Checked="OnCheckForUpdatesChanged"
+                Unchecked="OnCheckForUpdatesChanged"
+              />
+              <TextBlock
+                x:Name="CurrentVersionText"
+                Style="{StaticResource SettingDescriptionStyle}"
+              />
+            </StackPanel>
           </StackPanel>
         </Grid>
       </ScrollViewer>

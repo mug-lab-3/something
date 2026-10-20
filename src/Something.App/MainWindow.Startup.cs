@@ -119,6 +119,7 @@ public sealed partial class MainWindow
         startupStarted = true;
         startupTask = RunStartupAsync();
         await startupTask;
+        StartUpdateCheck();
         if (!demo || closed)
             return;
         var arguments = Environment.GetCommandLineArgs();

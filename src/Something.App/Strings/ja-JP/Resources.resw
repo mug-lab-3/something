@@ -1319,6 +1319,9 @@
   <data name="Settings_AppearanceHeader.Text" xml:space="preserve">
     <value>外観</value>
   </data>
+  <data name="Settings_ApplicationHeader.Text" xml:space="preserve">
+    <value>アプリ</value>
+  </data>
   <data name="Settings_Applying" xml:space="preserve">
     <value>表示するファイルと容量を集計しています…</value>
   </data>
@@ -1336,6 +1339,10 @@
   </data>
   <data name="Settings_CurrentTitle.Text" xml:space="preserve">
     <value>現在のデータベース</value>
+  </data>
+  <data name="Settings_CurrentVersion" xml:space="preserve">
+    <value>現在のバージョン：{0}</value>
+    <comment>{0} = AppVersion.Display</comment>
   </data>
   <data name="Settings_DatabaseHeader.Text" xml:space="preserve">
     <value>履歴データベース</value>
@@ -1437,6 +1444,18 @@
   <data name="Settings_TreeHeader.Text" xml:space="preserve">
     <value>フォルダーツリー</value>
   </data>
+  <data name="Settings_UpdateCheck.Content" xml:space="preserve">
+    <value>起動時に新しいバージョンがあるか確認する</value>
+  </data>
+  <data name="Settings_UpdateCheckDescription.Text" xml:space="preserve">
+    <value>起動時に GitHub のリリース情報を確認し、新しいバージョンがあればお知らせします。スキャン結果やファイルの情報は送信しません。ダウンロードとインストールは自動では行いません。</value>
+  </data>
+  <data name="Settings_UpdateCheckTitle.Text" xml:space="preserve">
+    <value>新しいバージョンの確認</value>
+  </data>
+  <data name="Settings_UpdatesHeader.Text" xml:space="preserve">
+    <value>更新</value>
+  </data>
   <data name="Size_AllocatedDescription" xml:space="preserve">
     <value>ディスク上の割り当て容量</value>
   </data>
@@ -1494,6 +1513,16 @@
   </data>
   <data name="Toast_Warning" xml:space="preserve">
     <value>確認してください</value>
+  </data>
+  <data name="Update_AvailableMessage" xml:space="preserve">
+    <value>Something {0} が公開されています。リリースページからダウンロードできます。</value>
+    <comment>{0} = release version</comment>
+  </data>
+  <data name="Update_AvailableTitle" xml:space="preserve">
+    <value>新しいバージョンがあります</value>
+  </data>
+  <data name="Update_OpenReleasePage" xml:space="preserve">
+    <value>リリースページを開く</value>
   </data>
   <data name="View_BusyHint" xml:space="preserve">
     <value>処理が完了するまでお待ちください。</value>
