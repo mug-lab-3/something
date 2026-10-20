@@ -11,6 +11,7 @@ public sealed partial class MainWindow
     private FileVisibilityOptions visibilityOptions = new();
     private DisplaySettingsStore? displaySettings;
     private ThemePreference themePreference;
+    private bool followListInTree = true;
 
     private bool changingVisibility;
 
@@ -27,6 +28,7 @@ public sealed partial class MainWindow
             );
             visibilityOptions = displaySettings.Load();
             themePreference = displaySettings.LoadTheme();
+            followListInTree = displaySettings.LoadFollowListInTree();
         }
         ApplyTheme();
     }
@@ -58,6 +60,23 @@ public sealed partial class MainWindow
         catch (Exception error)
         {
             SettingsPage.SetTheme(themePreference);
+            ShowError(error);
+        }
+    }
+
+    private void ChangeFollowList(bool follow)
+    {
+        try
+        {
+            displaySettings?.SaveFollowListInTree(follow);
+            followListInTree = follow;
+            // Show the current folder right away when following is turned on.
+            if (follow && location is { } current)
+                RevealCurrentFolder(current);
+        }
+        catch (Exception error)
+        {
+            SettingsPage.SetFollowList(followListInTree);
             ShowError(error);
         }
     }

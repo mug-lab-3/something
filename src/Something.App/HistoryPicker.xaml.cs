@@ -19,7 +19,16 @@ public sealed partial class HistoryPicker : UserControl
     public HistoryPicker()
     {
         InitializeComponent();
-        Unloaded += (_, _) => activeDialog?.Hide();
+        Unloaded += (_, _) => CloseDialog();
+    }
+
+    // Hiding a dialog while the window tears down its content crashes natively, so the window
+    // calls this at shutdown before Unloaded can run.
+    internal void CloseDialog()
+    {
+        var dialog = activeDialog;
+        activeDialog = null;
+        dialog?.Hide();
     }
 
     public string Header

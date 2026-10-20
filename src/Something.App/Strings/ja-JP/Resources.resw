@@ -22,11 +22,11 @@
   <data name="AnimationPreview_ModeDeleteHistory.Content" xml:space="preserve">
     <value>履歴削除</value>
   </data>
-  <data name="AnimationPreview_ModeLoading.Content" xml:space="preserve">
-    <value>読み込み</value>
-  </data>
   <data name="AnimationPreview_ModeExport.Content" xml:space="preserve">
     <value>エクスポート</value>
+  </data>
+  <data name="AnimationPreview_ModeLoading.Content" xml:space="preserve">
+    <value>読み込み</value>
   </data>
   <data name="AnimationPreview_ModeOptimize.Content" xml:space="preserve">
     <value>DB最適化</value>
@@ -104,6 +104,12 @@
   </data>
   <data name="Change_Uncomparable" xml:space="preserve">
     <value>比較できません</value>
+  </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>パスをコピーしました</value>
+  </data>
+  <data name="Clipboard_CopyFailed" xml:space="preserve">
+    <value>パスをコピーできませんでした</value>
   </data>
   <data name="Column_Change" xml:space="preserve">
     <value>増減</value>
@@ -1310,6 +1316,9 @@
   <data name="Settings_AbsolutePathRequired" xml:space="preserve">
     <value>保存先を絶対パスで指定してください。</value>
   </data>
+  <data name="Settings_AppearanceHeader.Text" xml:space="preserve">
+    <value>外観</value>
+  </data>
   <data name="Settings_Applying" xml:space="preserve">
     <value>表示するファイルと容量を集計しています…</value>
   </data>
@@ -1351,6 +1360,12 @@
   </data>
   <data name="Settings_FilesHeader.Text" xml:space="preserve">
     <value>ファイルとフォルダー</value>
+  </data>
+  <data name="Settings_FollowList.Content" xml:space="preserve">
+    <value>一覧でフォルダーを移動したら、ツリーを展開して現在のフォルダーを選択する</value>
+  </data>
+  <data name="Settings_FollowListTitle.Text" xml:space="preserve">
+    <value>一覧とツリーの連動</value>
   </data>
   <data name="Settings_IncludeHidden.Content" xml:space="preserve">
     <value>隠し属性のファイルとフォルダーを一覧と集計に含める</value>
@@ -1401,8 +1416,26 @@
   <data name="Settings_SectionTree.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>設定のカテゴリ</value>
   </data>
+  <data name="Settings_ThemeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>アプリのテーマ</value>
+  </data>
+  <data name="Settings_ThemeDark.Content" xml:space="preserve">
+    <value>ダークモード</value>
+  </data>
+  <data name="Settings_ThemeLight.Content" xml:space="preserve">
+    <value>ライトモード</value>
+  </data>
+  <data name="Settings_ThemeSystem.Content" xml:space="preserve">
+    <value>システム設定に従う</value>
+  </data>
+  <data name="Settings_ThemeTitle.Text" xml:space="preserve">
+    <value>アプリのテーマ</value>
+  </data>
   <data name="Settings_Title.Text" xml:space="preserve">
     <value>設定</value>
+  </data>
+  <data name="Settings_TreeHeader.Text" xml:space="preserve">
+    <value>フォルダーツリー</value>
   </data>
   <data name="Size_AllocatedDescription" xml:space="preserve">
     <value>ディスク上の割り当て容量</value>
@@ -1478,29 +1511,5 @@
   <data name="View_SwitchingDrive" xml:space="preserve">
     <value>{0} の表示に切り替えています…</value>
     <comment>{0} = card.Choice.Drive</comment>
-  </data>
-  <data name="Settings_AppearanceHeader.Text" xml:space="preserve">
-    <value>外観</value>
-  </data>
-  <data name="Settings_ThemeTitle.Text" xml:space="preserve">
-    <value>アプリのテーマ</value>
-  </data>
-  <data name="Settings_ThemeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>アプリのテーマ</value>
-  </data>
-  <data name="Settings_ThemeSystem.Content" xml:space="preserve">
-    <value>システム設定に従う</value>
-  </data>
-  <data name="Settings_ThemeDark.Content" xml:space="preserve">
-    <value>ダークモード</value>
-  </data>
-  <data name="Settings_ThemeLight.Content" xml:space="preserve">
-    <value>ライトモード</value>
-  </data>
-  <data name="Clipboard_CopyFailed" xml:space="preserve">
-    <value>パスをコピーできませんでした</value>
-  </data>
-  <data name="Clipboard_Copied" xml:space="preserve">
-    <value>パスをコピーしました</value>
   </data>
 </root>

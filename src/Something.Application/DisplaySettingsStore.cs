@@ -18,6 +18,12 @@ public sealed class DisplaySettingsStore(string path)
         return Enum.IsDefined(theme) ? theme : ThemePreference.System;
     }
 
+    /// <summary>Whether moving between folders in the list reveals the folder in the tree.</summary>
+    public bool LoadFollowListInTree() => Read().FollowListInTree;
+
+    public void SaveFollowListInTree(bool follow) =>
+        Write(Read() with { FollowListInTree = follow });
+
     private Preferences Read()
     {
         try
@@ -76,6 +82,7 @@ public sealed class DisplaySettingsStore(string path)
     private sealed record Preferences(
         bool IncludeSystem = true,
         bool IncludeHidden = true,
-        ThemePreference Theme = ThemePreference.System
+        ThemePreference Theme = ThemePreference.System,
+        bool FollowListInTree = true
     );
 }

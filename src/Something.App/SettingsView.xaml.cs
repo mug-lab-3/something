@@ -25,6 +25,7 @@ public sealed partial class SettingsView : UserControl
 
     internal event Action? CloseRequested;
     internal event Action<ThemePreference>? ThemeChanged;
+    internal event Action<bool>? FollowListChanged;
     internal event Action<FileVisibilityOptions>? VisibilityChanged;
     internal event Action<string>? MoveRequested;
     internal event Action? DeleteRequested;
@@ -44,6 +45,7 @@ public sealed partial class SettingsView : UserControl
             display,
             new(AppearanceHeader, display, [ThemeItem]),
             new(FilesHeader, display, [IncludeSystemItem, IncludeHiddenItem]),
+            new(TreeHeader, display, [FollowListItem]),
             database,
             new(LocationHeader, database, [CurrentDatabaseItem, LocationItem]),
             new(ManagementHeader, database, [OpenFolderItem, DeleteDatabaseItem]),
@@ -58,6 +60,19 @@ public sealed partial class SettingsView : UserControl
         updating = true;
         ThemeBox.SelectedIndex = (int)theme;
         updating = false;
+    }
+
+    internal void SetFollowList(bool follow)
+    {
+        updating = true;
+        FollowListInTree.IsChecked = follow;
+        updating = false;
+    }
+
+    private void OnFollowListChanged(object sender, RoutedEventArgs args)
+    {
+        if (!updating)
+            FollowListChanged?.Invoke(FollowListInTree.IsChecked == true);
     }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs args)

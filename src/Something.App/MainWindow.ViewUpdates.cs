@@ -10,6 +10,9 @@ public sealed partial class MainWindow
     private readonly List<ViewUpdate> viewUpdates = [];
     private readonly Dictionary<TreeViewNode, DelayedActivity> treeLoads = [];
 
+    // Tree reads use the open sessions, so shutdown waits for them before disposing those.
+    private readonly HashSet<Task> treeReads = [];
+
     private sealed class ViewUpdate(MainWindow window, string message, LoadingAnimationKind kind)
         : IDisposable,
             IAsyncDisposable

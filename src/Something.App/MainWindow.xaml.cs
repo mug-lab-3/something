@@ -333,6 +333,8 @@ public sealed partial class MainWindow : Window
                 await VerifyThemeSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
                 await VerifyDatabaseSettingsAsync(path);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-tree-follow"))
+                await VerifyTreeFollowsListAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-export"))
                 await VerifyExportAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
@@ -1274,7 +1276,8 @@ public sealed partial class MainWindow : Window
             BackButton.IsEnabled = navigation.Count > 0;
             ForwardButton.IsEnabled = forwardHistory.Count > 0;
             UpButton.IsEnabled = parentLocation is not null;
-            SelectLoadedFolder(target);
+            // The list is shown already; the tree catches up without delaying it.
+            RevealCurrentFolder(target);
             if (Analyzing)
                 await LoadRankingAsync();
         }
@@ -1371,6 +1374,20 @@ public sealed partial class MainWindow : Window
     }
 
     private async Task LoadChildrenAsync(TreeViewNode parent, int nextPage)
+    {
+        var read = ReadTreeChildrenAsync(parent, nextPage);
+        treeReads.Add(read);
+        try
+        {
+            await read;
+        }
+        finally
+        {
+            treeReads.Remove(read);
+        }
+    }
+
+    private async Task ReadTreeChildrenAsync(TreeViewNode parent, int nextPage)
     {
         if (session is not { } current || parent.Content is not FolderNode folder || closed)
             return;
@@ -1943,11 +1960,14 @@ public sealed partial class MainWindow : Window
         recycleDialog?.Hide();
         databaseDeleteDialog?.Hide();
         exportDialog?.Hide();
+        HistoryBox.CloseDialog();
+        ComparisonBeforeBox.CloseDialog();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;
         await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());
+        await Task.WhenAll([treeReveal, .. treeReads]);
         if (historicalSession is not null)
             await historicalSession.DisposeAsync();
         if (comparisonBaseline is not null)

@@ -1,6 +1,9 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
+using Something.Application;
 using Windows.Foundation;
 
 namespace Something.App;
@@ -8,6 +11,9 @@ namespace Something.App;
 public sealed partial class MainWindow
 {
     private int treeScrollVersion;
+    private Task treeReveal = Task.CompletedTask;
+    private bool selectionMarkersPinned;
+    private (double Offset, int Rows) pinnedMarkers = (double.NaN, -1);
     private FolderLocation? pendingTreeLocation;
 
     private ListView? TreeList => FindTreePart<ListView>(Folders, "ListControl");
@@ -24,6 +30,37 @@ public sealed partial class MainWindow
         {
             scroll.HorizontalScrollMode = ScrollMode.Enabled;
             scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+            if (!selectionMarkersPinned)
+            {
+                selectionMarkersPinned = true;
+                scroll.ViewChanging += (_, change) =>
+                    PinSelectionMarkers(change.NextView.HorizontalOffset);
+                scroll.ViewChanged += (_, _) => PinSelectionMarkers(scroll.HorizontalOffset);
+                // New and recycled rows appear on layout passes rather than on scrolling.
+                Folders.LayoutUpdated += (_, _) => PinSelectionMarkers(scroll.HorizontalOffset);
+            }
+        }
+    }
+
+    // The selection marker is part of each row, so it scrolls out of view with long paths.
+    // Shift it by the horizontal offset to keep the current folder marked at the left edge.
+    private void PinSelectionMarkers(double offset)
+    {
+        if (closed || TreeList?.ItemsPanelRoot is not Panel rows)
+            return;
+        if (pinnedMarkers == (offset, rows.Children.Count))
+            return;
+        pinnedMarkers = (offset, rows.Children.Count);
+        foreach (var row in rows.Children)
+        {
+            if (
+                row is not TreeViewItem item
+                || FindTreePart<Rectangle>(item, "SelectionIndicator") is not { } marker
+            )
+                continue;
+            if (marker.RenderTransform is not TranslateTransform shift)
+                marker.RenderTransform = shift = new TranslateTransform();
+            shift.X = offset;
         }
     }
 
@@ -52,6 +89,101 @@ public sealed partial class MainWindow
                         pendingTreeLocation = null;
                 }
             }
+        }
+    }
+
+    // Shows the current folder in the tree. When following the list, the folders above it are
+    // loaded and expanded first; otherwise only a node that is already loaded is selected.
+    private void RevealCurrentFolder(FolderLocation target)
+    {
+        if (!followListInTree)
+        {
+            SelectLoadedFolder(target);
+            return;
+        }
+        treeReveal = RevealFolderInTreeAsync(target, navigationVersion, session);
+    }
+
+    private async Task RevealFolderInTreeAsync(
+        FolderLocation target,
+        int version,
+        ScanSession? current
+    )
+    {
+        // A newer navigation, drive or scan supersedes this reveal.
+        bool Current() =>
+            !closed && version == navigationVersion && session == current && location == target;
+        try
+        {
+            foreach (var root in Folders.RootNodes)
+            {
+                if (
+                    root.Content is not FolderNode { LoadMore: false } folder
+                    || FolderPathSteps.From(folder.Location.Path, target.Path) is not { } steps
+                )
+                    continue;
+                var node = root;
+                foreach (string step in steps.Skip(1))
+                {
+                    var child = await FindTreeChildAsync(node, step);
+                    if (!Current())
+                        return;
+                    if (child is null)
+                    {
+                        SelectLoadedFolder(target);
+                        return;
+                    }
+                    node.IsExpanded = true;
+                    node = child;
+                }
+                Folders.SelectedNode = node;
+                TreeList?.ScrollIntoView(node);
+                QueueTreeVisibility(node);
+                return;
+            }
+            SelectLoadedFolder(target);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            if (Current())
+                ShowError(error);
+        }
+    }
+
+    // Loads a node's children, and further pages, until the folder at the path appears.
+    private async Task<TreeViewNode?> FindTreeChildAsync(TreeViewNode parent, string path)
+    {
+        int loadedPage = -1;
+        while (true)
+        {
+            // Wait for an expansion that is already loading this node instead of skipping it.
+            while (treeLoads.ContainsKey(parent))
+                await Task.Delay(16, lifetime.Token);
+            if (parent.HasUnrealizedChildren)
+            {
+                if (loadedPage == 0)
+                    return null; // The load failed and has already been reported.
+                loadedPage = 0;
+                await LoadChildrenAsync(parent, 0);
+                continue;
+            }
+            foreach (var child in parent.Children)
+                if (
+                    child.Content is FolderNode { LoadMore: false } folder
+                    && folder.Location.Path == path
+                )
+                    return child;
+            if (
+                parent.Children.LastOrDefault()?.Content is FolderNode { LoadMore: true } more
+                && more.NextPage > loadedPage
+            )
+            {
+                loadedPage = more.NextPage;
+                await LoadChildrenAsync(parent, more.NextPage);
+                continue;
+            }
+            return null;
         }
     }
 
@@ -186,6 +318,14 @@ public sealed partial class MainWindow
             )
                 throw new InvalidOperationException(
                     $"Deep selection was clipped: offset={scroll.HorizontalOffset}; x={bounds.X}; right={bounds.Right}; viewport={scroll.ViewportWidth}; extent={scroll.ExtentWidth}."
+                );
+            var marker =
+                FindTreePart<Rectangle>(container, "SelectionIndicator")
+                ?? throw new InvalidOperationException("Tree selection marker was not found.");
+            double markerLeft = marker.TransformToVisual(scroll).TransformPoint(new Point()).X;
+            if (marker.Opacity < .99 || markerLeft < -.5 || markerLeft > 12)
+                throw new InvalidOperationException(
+                    $"The selection marker scrolled out of the visible left edge: x={markerLeft}; offset={scroll.HorizontalOffset}."
                 );
 
             leaf.Content = new FolderNode(

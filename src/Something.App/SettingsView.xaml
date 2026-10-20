@@ -157,6 +157,24 @@
             </StackPanel>
 
             <TextBlock
+              x:Uid="Settings_TreeHeader"
+              x:Name="TreeHeader"
+              Style="{StaticResource SubsectionHeaderStyle}"
+            />
+            <StackPanel x:Name="FollowListItem" Style="{StaticResource SettingItemStyle}">
+              <TextBlock
+                x:Uid="Settings_FollowListTitle"
+                Style="{StaticResource SettingTitleStyle}"
+              />
+              <CheckBox
+                x:Uid="Settings_FollowList"
+                x:Name="FollowListInTree"
+                Checked="OnFollowListChanged"
+                Unchecked="OnFollowListChanged"
+              />
+            </StackPanel>
+
+            <TextBlock
               x:Uid="Settings_DatabaseHeader"
               x:Name="DatabaseHeader"
               Margin="0,16,0,0"
