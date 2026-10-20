@@ -13,7 +13,7 @@ public sealed partial class MainWindow
         var preview = new Grid
         {
             Width = 1000,
-            Height = 600,
+            Height = 800,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -54,6 +54,8 @@ public sealed partial class MainWindow
                 (InfoBarSeverity.Informational, "このファイルはすでに存在しません。"),
                 (InfoBarSeverity.Warning, "ファイルが変更されたため、操作を中止しました。"),
                 (InfoBarSeverity.Error, "ファイルを開けませんでした。アクセスが拒否されました。"),
+                (InfoBarSeverity.Error, ""),
+                (InfoBarSeverity.Informational, " \t "),
             ];
             foreach (var (severity, message) in examples)
             {
@@ -117,6 +119,14 @@ public sealed partial class MainWindow
             {
                 var title = FindTreePart<TextBlock>(bar, "Title")!;
                 var message = FindTreePart<TextBlock>(bar, "Message")!;
+                if (string.IsNullOrWhiteSpace(bar.Message))
+                {
+                    if (message.Visibility != Visibility.Collapsed)
+                        throw new InvalidOperationException(
+                            "An empty preview toast retained its second row."
+                        );
+                    continue;
+                }
                 var titlePosition = title.TransformToVisual(bar).TransformPoint(default);
                 var messagePosition = message.TransformToVisual(bar).TransformPoint(default);
                 if (

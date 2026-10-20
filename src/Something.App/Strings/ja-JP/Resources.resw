@@ -1497,4 +1497,10 @@
   <data name="Settings_ThemeLight.Content" xml:space="preserve">
     <value>ライトモード</value>
   </data>
+  <data name="Clipboard_CopyFailed" xml:space="preserve">
+    <value>パスをコピーできませんでした</value>
+  </data>
+  <data name="Clipboard_Copied" xml:space="preserve">
+    <value>パスをコピーしました</value>
+  </data>
 </root>

@@ -1,7 +1,9 @@
 <ResourceDictionary
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
 >
+  <local:ToastContentVisibilityConverter x:Key="ToastContentVisibility" />
   <Style x:Key="ToastStyle" TargetType="InfoBar">
     <Setter Property="HorizontalAlignment" Value="Right" />
     <Setter Property="VerticalAlignment" Value="Bottom" />
@@ -205,13 +207,18 @@
                 />
                 <TextBlock
                   x:Name="Message"
+                  Visibility="{Binding Message, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ToastContentVisibility}}"
                   Text="{TemplateBinding Message}"
                   Foreground="{ThemeResource InfoBarMessageForeground}"
                   TextWrapping="WrapWholeWords"
                   FontWeight="{StaticResource InfoBarMessageFontWeight}"
                   FontSize="{StaticResource InfoBarMessageFontSize}"
                 />
-                <ContentPresenter VerticalAlignment="Top" Content="{TemplateBinding ActionButton}">
+                <ContentPresenter
+                  VerticalAlignment="Top"
+                  Content="{TemplateBinding ActionButton}"
+                  Visibility="{Binding ActionButton, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ToastContentVisibility}}"
+                >
                   <ContentPresenter.Resources>
                     <Style
                       TargetType="HyperlinkButton"

@@ -69,5 +69,24 @@ public sealed partial class MainWindow
         MessageBar.IsOpen = false;
         if (toastTimer.IsEnabled)
             throw new InvalidOperationException("Dismissed toast retained its timer.");
+        ShowToast("", InfoBarSeverity.Error);
+        RootLayout.UpdateLayout();
+        await Task.Delay(50, lifetime.Token);
+        var body =
+            FindTreePart<TextBlock>(MessageBar, "Message")
+            ?? throw new InvalidOperationException("Toast body was not loaded.");
+        double compactHeight = MessageBar.ActualHeight;
+        if (body.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException("An empty toast body retained its second row.");
+        ShowToast(" \t ", InfoBarSeverity.Error);
+        RootLayout.UpdateLayout();
+        if (body.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException("A whitespace toast body retained its second row.");
+        ShowToast("Synthetic detailed failure", InfoBarSeverity.Error);
+        RootLayout.UpdateLayout();
+        await Task.Delay(50, lifetime.Token);
+        if (body.Visibility != Visibility.Visible || MessageBar.ActualHeight <= compactHeight)
+            throw new InvalidOperationException("A detailed toast did not restore its second row.");
+        MessageBar.IsOpen = false;
     }
 }

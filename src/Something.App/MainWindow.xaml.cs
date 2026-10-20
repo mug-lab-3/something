@@ -11,7 +11,6 @@ using Something.Application;
 using Something.Ntfs;
 using Something.Storage;
 using Something.Windows;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics.Imaging;
 
 namespace Something.App;
@@ -325,6 +324,8 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-clipboard"))
+                await VerifyClipboardAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-theme"))
                 await VerifyThemeSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
@@ -1536,7 +1537,7 @@ public sealed partial class MainWindow : Window
         {
             var item = new MenuFlyoutItem { Text = label, Icon = new SymbolIcon(Symbol.Copy) };
             // Copy the original full path of this row, even if selection changes.
-            item.Click += (_, _) => CopyPath(value);
+            item.Click += async (_, _) => await CopyPathAsync(value);
             menu.Items.Add(item);
         }
         if (directoryPath is not null)
@@ -1594,18 +1595,30 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void CopyPath(string path)
+    private async Task CopyPathAsync(string path)
     {
         try
         {
-            var data = new DataPackage();
-            data.SetText(path);
-            Clipboard.SetContent(data);
-            Clipboard.Flush();
+            await WindowsTextClipboard.SetTextAsync(
+                WinRT.Interop.WindowNative.GetWindowHandle(this),
+                path,
+                lifetime.Token
+            );
+            ShowToast(
+                path,
+                InfoBarSeverity.Success,
+                Strings.Get("Clipboard_Copied"),
+                replacePersistent: true
+            );
         }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
         {
-            ShowError(error);
+            ShowToast(
+                StatusText.Describe(error),
+                InfoBarSeverity.Error,
+                Strings.Get("Clipboard_CopyFailed")
+            );
         }
     }
 
