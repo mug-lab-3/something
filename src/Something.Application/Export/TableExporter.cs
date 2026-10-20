@@ -113,7 +113,7 @@ public static class TableExporter
         builder.Append(
             $"""
             <!DOCTYPE html>
-            <html lang="ja">
+            <html lang="{Encode(table.Language)}">
             <head>
             <meta charset="utf-8">
             <meta name="generator" content="{ExportTable.FormatName} {ExportTable.FormatVersion}">

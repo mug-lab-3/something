@@ -33,6 +33,9 @@ public sealed partial class MainWindow
         SettingsPage.Configure(AppWindow.Id);
         SettingsPage.SetTheme(themePreference);
         SettingsPage.ThemeChanged += ChangeTheme;
+        SettingsPage.SetLanguage(languagePreference, false);
+        SettingsPage.LanguageChanged += ChangeLanguage;
+        SettingsPage.RestartRequested += () => _ = RestartForLanguageAsync();
         SettingsPage.SetFollowList(followListInTree);
         SettingsPage.FollowListChanged += ChangeFollowList;
         SettingsPage.SetCheckForUpdates(checkForUpdates);

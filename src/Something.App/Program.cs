@@ -38,6 +38,7 @@ internal static class Program
             }
         }
 
+        AppLanguage.Apply(args);
         App? app = null;
         void Activate(object? sender, AppActivationArguments arguments) =>
             app?.ActivateExistingWindow();
@@ -59,6 +60,8 @@ internal static class Program
             instance.Activated -= Activate;
             // Keep the registration until the UI and asynchronous shutdown have finished.
             instance.UnregisterKey();
+            // A restart starts only now, so the new instance does not redirect to this one.
+            AppLanguage.RestartIfRequested();
         }
     }
 }

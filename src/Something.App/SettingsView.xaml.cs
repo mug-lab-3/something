@@ -25,6 +25,8 @@ public sealed partial class SettingsView : UserControl
 
     internal event Action? CloseRequested;
     internal event Action<ThemePreference>? ThemeChanged;
+    internal event Action<LanguagePreference>? LanguageChanged;
+    internal event Action? RestartRequested;
     internal event Action<bool>? FollowListChanged;
     internal event Action<bool>? CheckForUpdatesChanged;
     internal event Action<FileVisibilityOptions>? VisibilityChanged;
@@ -46,7 +48,7 @@ public sealed partial class SettingsView : UserControl
         sections =
         [
             display,
-            new(AppearanceHeader, display, [ThemeItem]),
+            new(AppearanceHeader, display, [ThemeItem, LanguageItem]),
             new(FilesHeader, display, [IncludeSystemItem, IncludeHiddenItem]),
             new(TreeHeader, display, [FollowListItem]),
             database,
@@ -66,6 +68,22 @@ public sealed partial class SettingsView : UserControl
         ThemeBox.SelectedIndex = (int)theme;
         updating = false;
     }
+
+    internal void SetLanguage(LanguagePreference language, bool restartNeeded)
+    {
+        updating = true;
+        LanguageBox.SelectedIndex = (int)language;
+        updating = false;
+        LanguageRestartBar.IsOpen = restartNeeded;
+    }
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!updating && LanguageBox.SelectedIndex >= 0)
+            LanguageChanged?.Invoke((LanguagePreference)LanguageBox.SelectedIndex);
+    }
+
+    private void OnRestart(object sender, RoutedEventArgs args) => RestartRequested?.Invoke();
 
     internal void SetFollowList(bool follow)
     {
@@ -142,6 +160,8 @@ public sealed partial class SettingsView : UserControl
         canMaintain = maintainable && currentDirectory is not null;
         DirectoryBox.IsReadOnly = !canMaintain;
         BrowseButton.IsEnabled = DeleteDatabaseButton.IsEnabled = canMaintain;
+        // Restarting would cancel scans and history work, so it waits for them like the database.
+        RestartButton.IsEnabled = maintainable;
         OpenFolderButton.IsEnabled = currentDirectory is not null;
         BusyHint.Visibility =
             canMaintain || DatabaseHeader.Visibility != Visibility.Visible

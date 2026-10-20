@@ -345,7 +345,7 @@ public sealed partial class MainWindow
                 )
             );
         properties.AddRange(filters);
-        return new(title, properties, columns, rows);
+        return new(title, properties, columns, rows, AppLanguage.Current);
 
         static string YesNo(bool value) =>
             value ? Strings.Get("Export_Yes") : Strings.Get("Export_No");

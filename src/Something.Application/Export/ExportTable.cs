@@ -43,13 +43,15 @@ public sealed record ExportProperty(
 
 /// <summary>
 /// One exported table. Values are <see cref="string"/>, <see cref="bool"/>, integer types,
-/// <see cref="UInt128"/> or <see cref="BigInteger"/>, or null when unknown.
+/// <see cref="UInt128"/> or <see cref="BigInteger"/>, or null when unknown. Language is the
+/// BCP 47 tag of the titles and labels, such as "ja-JP".
 /// </summary>
 public sealed record ExportTable(
     string Title,
     IReadOnlyList<ExportProperty> Properties,
     IReadOnlyList<ExportColumn> Columns,
-    IReadOnlyList<object?[]> Rows
+    IReadOnlyList<object?[]> Rows,
+    string Language = "ja-JP"
 )
 {
     public const string FormatName = "something-export";

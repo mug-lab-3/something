@@ -4,8 +4,9 @@ using Microsoft.Windows.ApplicationModel.Resources;
 namespace Something.App;
 
 /// <summary>
-/// Display text from Strings/ja-JP/Resources.resw. XAML uses x:Uid; code uses these keys.
-/// A missing key fails loudly instead of showing a blank control.
+/// Display text from Strings/&lt;language&gt;/Resources.resw, in the language chosen by
+/// <see cref="AppLanguage"/>. XAML uses x:Uid; code uses these keys. A missing key fails loudly
+/// instead of showing a blank control.
 /// </summary>
 internal static class Strings
 {

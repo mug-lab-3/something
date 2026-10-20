@@ -147,6 +147,25 @@ public sealed class TableExportTests
         Assert.DoesNotContain("<script>", html, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("ja-JP", "<html lang=\"ja-JP\">")]
+    [InlineData("en-US", "<html lang=\"en-US\">")]
+    [InlineData("\"><x", "<html lang=\"&quot;&gt;&lt;x\">")]
+    public void Html_DeclaresTheLanguageOfItsLabels(string language, string expected)
+    {
+        // Arrange
+        var table = Table() with
+        {
+            Language = language,
+        };
+
+        // Act
+        string html = TableExporter.Html(table, Display);
+
+        // Assert
+        Assert.Contains(expected, html, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void PlainText_AlignsWideCharactersAndRightAlignsNumbers()
     {

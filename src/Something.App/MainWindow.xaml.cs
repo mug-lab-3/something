@@ -333,6 +333,8 @@ public sealed partial class MainWindow : Window
                 await VerifyThemeSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
                 await VerifyDatabaseSettingsAsync(path);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-language"))
+                await VerifyLanguageAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-update"))
                 await VerifyUpdateNoticeAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-tree-follow"))

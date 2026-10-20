@@ -126,6 +126,33 @@
                 <ComboBoxItem x:Uid="Settings_ThemeLight" />
               </ComboBox>
             </StackPanel>
+            <StackPanel x:Name="LanguageItem" Style="{StaticResource SettingItemStyle}">
+              <TextBlock
+                x:Uid="Settings_LanguageTitle"
+                Style="{StaticResource SettingTitleStyle}"
+              />
+              <ComboBox
+                x:Uid="Settings_LanguageBox"
+                x:Name="LanguageBox"
+                MinWidth="240"
+                SelectionChanged="OnLanguageChanged"
+              >
+                <ComboBoxItem x:Uid="Settings_LanguageSystem" />
+                <ComboBoxItem x:Uid="Settings_LanguageJapanese" />
+                <ComboBoxItem x:Uid="Settings_LanguageEnglish" />
+              </ComboBox>
+              <InfoBar
+                x:Uid="Settings_LanguageRestartBar"
+                x:Name="LanguageRestartBar"
+                Severity="Informational"
+                IsOpen="False"
+                IsClosable="False"
+              >
+                <InfoBar.ActionButton>
+                  <Button x:Uid="Settings_RestartButton" x:Name="RestartButton" Click="OnRestart" />
+                </InfoBar.ActionButton>
+              </InfoBar>
+            </StackPanel>
             <TextBlock
               x:Uid="Settings_FilesHeader"
               x:Name="FilesHeader"

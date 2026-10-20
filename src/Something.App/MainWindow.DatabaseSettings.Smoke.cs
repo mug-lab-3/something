@@ -52,12 +52,17 @@ public sealed partial class MainWindow
                 "Settings page did not replace the workspace with current preferences."
             );
         await CaptureStartupFrameAsync(capture + ".settings");
-        SettingsPage.Search("隠し");
+        // Search matches the displayed text, so the query follows the display language.
+        SettingsPage.Search(AppLanguage.Current == DisplayLanguage.English ? "hidden" : "隠し");
         await Task.Delay(200, lifetime.Token);
         string[] visibleItems =
         [
             .. new[]
             {
+                "ThemeItem",
+                "LanguageItem",
+                "FollowListItem",
+                "UpdateCheckItem",
                 "IncludeSystemItem",
                 "IncludeHiddenItem",
                 "CurrentDatabaseItem",

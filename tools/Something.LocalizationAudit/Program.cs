@@ -10,11 +10,16 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 // - no Japanese text in C# string literals or XAML text, except synthetic smoke-test samples;
 // - no literal words in XAML text properties (symbols such as "—" are allowed);
 // - x:Uid, Strings.Get and Strings.Format keys exist, and every resource is referenced;
-// - composite formats match the number of Strings.Format arguments.
+// - composite formats match the number of Strings.Format arguments;
+// - every translation has the same keys and format arguments as Japanese and no Japanese text.
 if (args.Length != 2 || args[0] != "check")
     throw new ArgumentException("Usage: Something.LocalizationAudit check <repository-root>");
 string root = Path.GetFullPath(args[1]);
-string resourcePath = Path.Combine(root, "src/Something.App/Strings/ja-JP/Resources.resw");
+string stringsPath = Path.Combine(root, "src/Something.App/Strings");
+string resourcePath = Path.Combine(stringsPath, "ja-JP/Resources.resw");
+
+// Language names are shown in their own language in every translation.
+string[] nativeNames = ["Settings_LanguageJapanese.Content"];
 var errors = new List<string>();
 var uids = new HashSet<string>(StringComparer.Ordinal);
 var codeKeys = new Dictionary<string, List<int?>>(StringComparer.Ordinal);
@@ -35,16 +40,7 @@ foreach (
         AuditXaml(relative, XDocument.Load(file, LoadOptions.SetLineInfo));
 }
 
-var resources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-foreach (var data in XDocument.Load(resourcePath).Root!.Elements("data"))
-{
-    string key = (string)data.Attribute("name")!;
-    string value = (string?)data.Element("value") ?? "";
-    if (!resources.TryAdd(key, value))
-        errors.Add($"Duplicate resource: {key}.");
-    if (string.IsNullOrWhiteSpace(value))
-        errors.Add($"Empty resource: {key}.");
-}
+var resources = LoadResources(resourcePath, "ja-JP");
 foreach (string uid in uids)
     if (!resources.Keys.Any(key => key.StartsWith(uid + ".", StringComparison.Ordinal)))
         errors.Add($"x:Uid has no resources: {uid}.");
@@ -97,10 +93,35 @@ foreach (var (key, calls) in codeKeys)
     }
 }
 
+int translations = 0;
+foreach (
+    string path in Directory
+        .EnumerateFiles(stringsPath, "Resources.resw", SearchOption.AllDirectories)
+        .Order(StringComparer.Ordinal)
+)
+{
+    string language = Path.GetFileName(Path.GetDirectoryName(path)!);
+    if (language == "ja-JP")
+        continue;
+    translations++;
+    var translated = LoadResources(path, language);
+    foreach (string key in resources.Keys.Except(translated.Keys, StringComparer.OrdinalIgnoreCase))
+        errors.Add($"Missing {language} resource: {key}.");
+    foreach (string key in translated.Keys.Except(resources.Keys, StringComparer.OrdinalIgnoreCase))
+        errors.Add($"Extra {language} resource: {key}.");
+    foreach (var (key, value) in translated)
+    {
+        if (HasJapanese(value) && !nativeNames.Contains(key, StringComparer.Ordinal))
+            errors.Add($"Japanese text in {language} resource: {key}.");
+        if (resources.TryGetValue(key, out string? source) && Holes(source) != Holes(value))
+            errors.Add($"Format arguments differ from Japanese in {language}: {key}.");
+    }
+}
+
 foreach (string error in errors.Distinct())
     Console.Error.WriteLine(error);
 Console.WriteLine(
-    $"Checked {resources.Count} resources, {uids.Count} x:Uid values and {codeKeys.Count} code keys; {errors.Count} errors."
+    $"Checked {resources.Count} resources in {translations + 1} languages, {uids.Count} x:Uid values and {codeKeys.Count} code keys; {errors.Count} errors."
 );
 return errors.Count == 0 ? 0 : 1;
 
@@ -179,6 +200,34 @@ void AuditXaml(string relative, XDocument document)
             errors.Add(
                 $"Literal XAML text; use x:Uid: {relative}:{((IXmlLineInfo)element).LineNumber} {element.Name.LocalName}."
             );
+    }
+}
+
+Dictionary<string, string> LoadResources(string path, string language)
+{
+    var loaded = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var data in XDocument.Load(path).Root!.Elements("data"))
+    {
+        string key = (string)data.Attribute("name")!;
+        string value = (string?)data.Element("value") ?? "";
+        if (!loaded.TryAdd(key, value))
+            errors.Add($"Duplicate {language} resource: {key}.");
+        if (string.IsNullOrWhiteSpace(value))
+            errors.Add($"Empty {language} resource: {key}.");
+    }
+    return loaded;
+}
+
+// The format holes a value uses, or -1 when it is not a composite format (plain text).
+static int Holes(string value)
+{
+    try
+    {
+        return CompositeFormat.Parse(value).MinimumArgumentCount;
+    }
+    catch (FormatException)
+    {
+        return -1;
     }
 }
 

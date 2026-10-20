@@ -6,6 +6,14 @@ namespace Something.Application;
 /// <summary>Small user preferences, separate from scan databases.</summary>
 public sealed class DisplaySettingsStore(string path)
 {
+    /// <summary>The per-user settings file of the installed application.</summary>
+    public static string DefaultPath { get; } =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Something",
+            "display-settings.json"
+        );
+
     public FileVisibilityOptions Load()
     {
         var settings = Read();
@@ -23,6 +31,19 @@ public sealed class DisplaySettingsStore(string path)
 
     public void SaveFollowListInTree(bool follow) =>
         Write(Read() with { FollowListInTree = follow });
+
+    public LanguagePreference LoadLanguage()
+    {
+        var language = Read().Language;
+        return Enum.IsDefined(language) ? language : LanguagePreference.System;
+    }
+
+    public void SaveLanguage(LanguagePreference language)
+    {
+        if (!Enum.IsDefined(language))
+            throw new ArgumentOutOfRangeException(nameof(language));
+        Write(Read() with { Language = language });
+    }
 
     /// <summary>Whether the application asks GitHub for a newer release at startup.</summary>
     public bool LoadCheckForUpdates() => Read().CheckForUpdates;
@@ -89,6 +110,7 @@ public sealed class DisplaySettingsStore(string path)
         bool IncludeHidden = true,
         ThemePreference Theme = ThemePreference.System,
         bool FollowListInTree = true,
-        bool CheckForUpdates = true
+        bool CheckForUpdates = true,
+        LanguagePreference Language = LanguagePreference.System
     );
 }

@@ -12,6 +12,7 @@ public sealed partial class MainWindow
     private DisplaySettingsStore? displaySettings;
     private ThemePreference themePreference;
     private bool followListInTree = true;
+    private LanguagePreference languagePreference = AppLanguage.Preference;
 
     private bool changingVisibility;
 
@@ -19,13 +20,7 @@ public sealed partial class MainWindow
     {
         if (!demo)
         {
-            displaySettings = new(
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Something",
-                    "display-settings.json"
-                )
-            );
+            displaySettings = new(DisplaySettingsStore.DefaultPath);
             visibilityOptions = displaySettings.Load();
             themePreference = displaySettings.LoadTheme();
             followListInTree = displaySettings.LoadFollowListInTree();
@@ -62,6 +57,37 @@ public sealed partial class MainWindow
         {
             SettingsPage.SetTheme(themePreference);
             ShowError(error);
+        }
+    }
+
+    // Text is resolved when the window loads, so a new language applies after a restart.
+    private void ChangeLanguage(LanguagePreference language)
+    {
+        try
+        {
+            displaySettings?.SaveLanguage(language);
+            languagePreference = language;
+        }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
+        SettingsPage.SetLanguage(languagePreference, AppLanguage.NeedsRestart(languagePreference));
+    }
+
+    private async Task RestartForLanguageAsync()
+    {
+        if (closed || !CanManageDatabase)
+            return;
+        AppLanguage.RequestRestart(demo, languagePreference);
+        try
+        {
+            await ShutdownAsync();
+        }
+        finally
+        {
+            allowClose = true;
+            Close();
         }
     }
 
