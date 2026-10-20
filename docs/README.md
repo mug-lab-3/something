@@ -19,10 +19,8 @@ Something は、Windows のローカル NTFS ドライブを解析し、フォ�
 | [アーキテクチャ](architecture.md) | プロジェクトの責務、スキャンから公開までの処理 |
 | [NTFS の取得と解析](ntfs.md) | 入力形式、検証規則、競合、対応範囲と根拠 |
 | [容量集計](capacity-accounting.md) | 名前別容量、共有容量、管理領域、不確実性 |
-| [履歴ストレージ](storage.md) | DuckDB、共有状態、トランザクション、メモリ予算 |
+| [履歴ストレージ](storage.md) | DuckDB の選定理由と要件、共有状態、トランザクション、メモリ予算、書き込み量 |
 | [履歴の比較と管理](history.md) | 期間の選択、保持規則、削除、最適化、保存先 |
-| [保存エンジンの選定](decisions/20261014-duckdb-storage.md) | DuckDB を採用した理由とトレードオフ |
-| [履歴 DB の高速化方針](decisions/20261019-storage-performance.md) | 保存・照会の遅延原因、新形式の方針、計測手順 |
 
 ## 検証・計測
 
