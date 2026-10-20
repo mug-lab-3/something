@@ -117,7 +117,7 @@ public sealed partial class DriveCard : UserControl
             ScanStateText,
             result is null
                 ? "未スキャン"
-                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1}秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"}件\n読み取れなかった管理情報 {result.MetadataUnresolved:N0}件"
+                : $"{result.CompletedLocal?.ToString("yyyy/MM/dd HH:mm:ss") ?? "日時不明"}\n処理時間 {result.Elapsed.TotalSeconds:F1} 秒 · {result.RootSample.Entries?.SubtreeFileCount.ToString("N0") ?? "—"} 件\n読み取れなかった管理情報 {result.MetadataUnresolved:N0} 件"
         );
         ToolTipService.SetToolTip(ScanStatus, ToolTipService.GetToolTip(ScanStateText));
     }

@@ -14,7 +14,7 @@ public sealed partial class HistoryDeleteDialog : ContentDialog
     internal HistoryDeleteDialog(ScanHistoryEntry[] rows)
     {
         InitializeComponent();
-        Title = $"{rows.Length:N0}件のスキャン履歴を削除しますか？";
+        Title = $"{rows.Length:N0} 件のスキャン履歴を削除しますか？";
         RangeText.Text =
             $"{rows.Min(row => row.CompletedUtc).ToLocalTime():yyyy/MM/dd HH:mm:ss} – {rows.Max(row => row.CompletedUtc).ToLocalTime():yyyy/MM/dd HH:mm:ss}";
     }

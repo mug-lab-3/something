@@ -793,7 +793,7 @@ public sealed partial class MainWindow : Window
         EmptyScanText.Visibility = Visibility.Collapsed;
         ToolTipService.SetToolTip(
             HistoryBox,
-            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1}秒 · 読み取れなかった管理情報 {current.MetadataUnresolved:N0}件\n直近7日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
+            $"{current.History?.CompletedLocal.ToString("yyyy/MM/dd HH:mm:ss") ?? "今回のスキャン"}\n処理時間 {current.Elapsed.TotalSeconds:F1} 秒 · 読み取れなかった管理情報 {current.MetadataUnresolved:N0} 件\n直近 7 日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
         );
         navigation.Clear();
         forwardHistory.Clear();
@@ -955,7 +955,7 @@ public sealed partial class MainWindow : Window
                     await RefreshHistoryChoicesAsync(selected);
                 }
                 ShowToast(
-                    $"{drive} のスキャンが完了しました（{next.Elapsed.TotalSeconds:F1}秒）。",
+                    $"{drive} のスキャンが完了しました（{next.Elapsed.TotalSeconds:F1} 秒）。",
                     InfoBarSeverity.Success
                 );
             }
@@ -1035,11 +1035,11 @@ public sealed partial class MainWindow : Window
         };
         string percentage = progress.Fraction is { } value ? $" {Math.Clamp(value, 0, 1):P0}" : "";
         string counts = progress.Work is { Total: { } total } work
-            ? $" · {work.Completed:N0}/{total:N0}件"
-            : $" · {progress.Candidates:N0}件";
+            ? $" · {work.Completed:N0}/{total:N0} 件"
+            : $" · {progress.Candidates:N0} 件";
         var step = progress.Step;
         string retry = progress.Work is { RetryAttempt: > 0 } retrying
-            ? $" · 再試行 {retrying.RetryAttempt}回目（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
+            ? $" · 再試行 {retrying.RetryAttempt} 回目（メモリ上限 {retrying.MemoryLimitBytes / (double)(1UL << 30):F1} GiB）"
             : "";
         string stepText = step.Number == 0 ? "準備中" : $"ステップ {step.Number}/{step.Total}";
         card.SetState(
@@ -1060,7 +1060,7 @@ public sealed partial class MainWindow : Window
                             _ => "スキャン完了",
                         }
                 ),
-            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1}秒"
+            $"{stepText} · {phase}{(detail is null ? "" : $" · {detail}")}{percentage}{counts}{retry} · {progress.Elapsed.TotalSeconds:F1} 秒"
         );
         if (selectedCard == card)
             UpdateScanActivity();
@@ -1298,7 +1298,7 @@ public sealed partial class MainWindow : Window
             rows.Count != 600
             || rows.HasMoreItems
             || rows.Select(row => row.Entry.Reference).Distinct().Count() != 600
-            || EntryCountText.Text != $"{600:N0}件"
+            || EntryCountText.Text != $"{600:N0} 件"
         )
             throw new InvalidOperationException(
                 "Scrolling did not load every row and update the total count."
@@ -1835,7 +1835,7 @@ public sealed partial class MainWindow : Window
             () => !closed && version == rankingVersion && current == session,
             lifetime.Token
         );
-        AnalysisCountText.Text = $"{count:N0}件";
+        AnalysisCountText.Text = $"{count:N0} 件";
     }
 
     private void ShowError(Exception error)

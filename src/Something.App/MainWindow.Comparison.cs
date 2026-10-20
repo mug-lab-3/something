@@ -69,10 +69,10 @@ public sealed partial class MainWindow
             ComparisonPeriodBox.ItemsSource = new PeriodChoice[]
             {
                 new("なし", null),
-                new("24時間", FolderChangePeriod.Last24Hours),
-                new("7日間", FolderChangePeriod.Last7Days),
-                new("30日間", FolderChangePeriod.Last30Days),
-                new("365日間", FolderChangePeriod.Last365Days),
+                new("24 時間", FolderChangePeriod.Last24Hours),
+                new("7 日間", FolderChangePeriod.Last7Days),
+                new("30 日間", FolderChangePeriod.Last30Days),
+                new("365 日間", FolderChangePeriod.Last365Days),
                 new("今日", FolderChangePeriod.Today),
                 new("今週", FolderChangePeriod.ThisWeek),
                 new("今月", FolderChangePeriod.ThisMonth),
@@ -169,7 +169,7 @@ public sealed partial class MainWindow
             HistoryBox,
             Comparing
                 ? "比較先のスキャンを選択します。サイズ列にはこのスキャンの値を表示します。"
-                : "表示するスキャンを選択します。直近7日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
+                : "表示するスキャンを選択します。直近 7 日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
         );
         var period = (ComparisonPeriodBox.SelectedItem as PeriodChoice)?.Period;
         var selection =
@@ -307,7 +307,7 @@ public sealed partial class MainWindow
             if (history is null || before is null || after is null || before.Id == after.Id)
             {
                 ComparisonStatusText.Text =
-                    "スキャン履歴が足りません。比較元と比較先には、異なる2回のスキャンが必要です。";
+                    "スキャン履歴が足りません。比較元と比較先には、異なる 2 回のスキャンが必要です。";
                 await ShowSessionAsync(displayed);
                 return;
             }
@@ -367,7 +367,7 @@ public sealed partial class MainWindow
                         ? $"指定範囲：{requested.RequestedBeforeUtc.ToLocalTime():yyyy/MM/dd HH:mm} ～ {requested.RequestedAfterUtc.ToLocalTime():yyyy/MM/dd HH:mm} · "
                         : ""
                 )
-                + $"比較できないフォルダー {report.UncertainFolders.Length:N0}件";
+                + $"比較できないフォルダー {report.UncertainFolders.Length:N0} 件";
             ToolTipService.SetToolTip(ComparisonPeriodBox, ComparisonStatusText.Text);
             ComparisonStatusText.Visibility =
                 !report.IsPartial && report.UncertainFolders.Length == 0

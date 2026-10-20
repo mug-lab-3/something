@@ -159,7 +159,7 @@
                 <ContentControl x:Name="NormalHistoryHost">
                   <local:HistoryPicker
                     x:Name="HistoryBox"
-                    ToolTipService.ToolTip="表示するスキャンを選択します。直近7日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
+                    ToolTipService.ToolTip="表示するスキャンを選択します。直近 7 日間はすべてのスキャン、それより前は各日の最後のスキャンを保存しています。"
                     Header="表示するスキャン"
                     Width="290"
                     PlaceholderText="最新のスキャン"

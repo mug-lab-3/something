@@ -48,7 +48,7 @@
         Click="OnPeriod"
         IsChecked="True"
       />
-      <ToggleButton x:Name="WeekButton" Content="直近7日" Tag="Week" Click="OnPeriod" />
+      <ToggleButton x:Name="WeekButton" Content="直近 7 日" Tag="Week" Click="OnPeriod" />
       <ToggleButton x:Name="MonthButton" Content="今月" Tag="Month" Click="OnPeriod" />
       <ToggleButton x:Name="YearButton" Content="今年" Tag="Year" Click="OnPeriod" />
     </StackPanel>

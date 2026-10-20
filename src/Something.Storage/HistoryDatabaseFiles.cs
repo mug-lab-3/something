@@ -55,7 +55,7 @@ public sealed partial class ScanHistoryArchive
             && File.Exists(DatabasePath + ".wal")
         )
             throw new InvalidDataException(
-                "データベース本体がないため、残っているWALを保持して操作を中止しました。"
+                "データベース本体がないため、残っている WAL を保持して操作を中止しました。"
             );
     }
 
@@ -73,7 +73,7 @@ public sealed partial class ScanHistoryArchive
             RequireIdle();
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
-                throw new IOException("WALを確定できないため、データベースを削除できません。");
+                throw new IOException("WAL を確定できないため、データベースを削除できません。");
             token.ThrowIfCancellationRequested();
             File.Delete(DatabasePath);
             DuckDatabaseBootstrap.ForgetValidation(DatabasePath);
@@ -137,7 +137,7 @@ public sealed partial class ScanHistoryArchive
                     RequireIdle();
                     if (File.Exists(DatabasePath + ".wal"))
                         throw new IOException(
-                            "WALを確定できないため、データベースを移動できません。"
+                            "WAL を確定できないため、データベースを移動できません。"
                         );
                     string temporary = Path.Combine(
                         target.root,

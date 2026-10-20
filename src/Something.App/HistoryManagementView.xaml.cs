@@ -157,8 +157,8 @@ public sealed partial class HistoryManagementView : UserControl
             .SelectedItems.Cast<ManagedHistoryRow>()
             .Select(row => row.Entry.Id)
             .ToHashSet();
-        SelectionCountText.Text = $"選択中 {count:N0}件";
-        TotalText.Text = $"{HistoryList.Items.Count:N0}件";
+        SelectionCountText.Text = $"選択中 {count:N0} 件";
+        TotalText.Text = $"{HistoryList.Items.Count:N0} 件";
         EmptyText.Visibility =
             !busy && HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DeleteButton.IsEnabled = !busy && count > 0;
@@ -529,13 +529,13 @@ public sealed partial class HistoryManagementView : UserControl
     )
     {
         var removed = await Task.Run(() => archive!.Delete(ids, token), token);
-        string completed = $"{removed.Length:N0}件のスキャン履歴を削除しました。";
+        string completed = $"{removed.Length:N0} 件のスキャン履歴を削除しました。";
         try
         {
             await refreshViews!(removed);
             int deferred = await Task.Run(() => archive!.CollectRetired(token), token);
             if (deferred > 0)
-                completed += $" 表示中の{deferred:N0}件は、表示を切り替えた後に削除されます。";
+                completed += $" 表示中の {deferred:N0} 件は、表示を切り替えた後に削除されます。";
             if (optimizeAfter)
             {
                 showProgress(
@@ -577,7 +577,7 @@ public sealed partial class HistoryManagementView : UserControl
 
     private static string OptimizationText(HistoryCompactionResult result) =>
         result.Replaced
-            ? $"データベースを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)}削減）"
+            ? $"データベースを最適化しました。{DisplayText.Bytes((UInt128)result.BeforeBytes)} → {DisplayText.Bytes((UInt128)result.AfterBytes)}（{DisplayText.Bytes((UInt128)result.ReclaimedBytes)} 削減）"
             : "データベースはすでに最適化されています。";
 
     internal void CloseForShutdown()

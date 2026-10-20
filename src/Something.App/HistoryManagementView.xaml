@@ -175,14 +175,14 @@
             <Button
               x:Name="MonthPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1か月以上前"
+              Content="1 か月以上前"
               Tag="1"
               Click="OnPresetClick"
             />
             <Button
               x:Name="ThreeMonthsPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="3か月以上前"
+              Content="3 か月以上前"
               Tag="3"
               Click="OnPresetClick"
             />
@@ -196,7 +196,7 @@
             <Button
               x:Name="YearPresetButton"
               Style="{StaticResource GhostButtonStyle}"
-              Content="1年以上前"
+              Content="1 年以上前"
               Tag="12"
               Click="OnPresetClick"
             />
@@ -229,14 +229,14 @@
               x:Name="TotalText"
               VerticalAlignment="Center"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-              Text="0件"
+              Text="0 件"
             />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
             <TextBlock
               x:Name="SelectionCountText"
               VerticalAlignment="Center"
-              Text="選択中 0件"
+              Text="選択中 0 件"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
               AutomationProperties.LiveSetting="Polite"
             />
@@ -304,7 +304,7 @@
               Click="OnHistorySort"
               Style="{StaticResource ColumnHeaderButtonStyle}"
               HorizontalContentAlignment="Right"
-              ToolTipService.ToolTip="このスキャンで保存したMFTレコードの数です。"
+              ToolTipService.ToolTip="このスキャンで保存した MFT レコードの数です。"
             />
           </Grid>
         </Border>

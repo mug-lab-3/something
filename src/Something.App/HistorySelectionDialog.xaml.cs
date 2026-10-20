@@ -161,7 +161,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
             start is { } from ? rows.Where(row => DayOf(row) >= from && DayOf(row) <= today) : rows,
             period switch
             {
-                "Week" => "直近7日",
+                "Week" => "直近 7 日",
                 "Month" => "今月",
                 "Year" => "今年",
                 _ => "すべてのスキャン",
@@ -205,7 +205,7 @@ public sealed partial class HistorySelectionDialog : ContentDialog
         // Opening and clearing a filter always show the newest records first.
         if (visible.Length > 0)
             Records.ScrollIntoView(visible[0]);
-        RangeText.Text = $"{label} · {visible.Length:N0}件";
+        RangeText.Text = $"{label} · {visible.Length:N0} 件";
         EmptyText.Visibility = visible.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         IsPrimaryButtonEnabled = Records.SelectedItem is not null;
     }

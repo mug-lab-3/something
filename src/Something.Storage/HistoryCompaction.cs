@@ -23,7 +23,7 @@ public sealed partial class ScanHistoryArchive
         RequireOrdinaryFile(CompactionBackup);
         if (File.Exists(CompactionBackup + ".wal"))
             throw new InvalidDataException(
-                "データベース最適化のバックアップに予期しないWALがあります。復旧用ファイルを削除しないでください。"
+                "データベース最適化のバックアップに予期しない WAL があります。復旧用ファイルを削除しないでください。"
             );
         // Never overwrite a surviving database with a malformed or unrelated backup file.
         using (
@@ -42,7 +42,7 @@ public sealed partial class ScanHistoryArchive
             RequireOrdinaryFile(DatabasePath);
             if (File.Exists(DatabasePath + ".wal"))
                 throw new InvalidDataException(
-                    "データベース最適化の復旧待ちです。元のデータベースのバックアップとWALを削除しないでください。"
+                    "データベース最適化の復旧待ちです。元のデータベースのバックアップと WAL を削除しないでください。"
                 );
             File.Replace(CompactionBackup, DatabasePath, null);
         }

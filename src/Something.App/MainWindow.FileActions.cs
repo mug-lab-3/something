@@ -126,7 +126,7 @@ public sealed partial class MainWindow
                 );
             else if (result == FileRecycleResult.Protected)
                 ShowToast(
-                    "システムの項目やWindowsの標準フォルダーは削除できません。",
+                    "システムの項目や Windows の標準フォルダーは削除できません。",
                     InfoBarSeverity.Warning,
                     "保護されている項目です"
                 );
@@ -161,7 +161,7 @@ public sealed partial class MainWindow
                     Severity = InfoBarSeverity.Warning,
                     Title = "隠し項目の削除に注意してください",
                     Message =
-                        "Windowsやアプリが使用するデータの可能性があります。ごみ箱に移動すると、アプリの動作や設定に影響することがあります。内容を確認してください。",
+                        "Windows やアプリが使用するデータの可能性があります。ごみ箱に移動すると、アプリの動作や設定に影響することがあります。内容を確認してください。",
                 }
             );
         content.Children.Add(
