@@ -19,6 +19,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             : new MainWindow();
         window.Closed += (_, _) => window = null;
         window.Activate();
+        // The UAC prompt can leave the elevated launch without foreground rights. Windows still
+        // decides: when it declines, it flashes the taskbar button instead of stealing input.
+        BringToFront(window);
     }
 
     internal void ActivateExistingWindow() =>
@@ -34,8 +37,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             )
                 presenter.Restore();
             current.Activate();
-            _ = SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(current));
+            BringToFront(current);
         });
+
+    private static void BringToFront(Window window) =>
+        _ = SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(window));
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
