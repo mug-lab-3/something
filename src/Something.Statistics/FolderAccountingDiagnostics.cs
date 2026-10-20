@@ -13,7 +13,7 @@ public enum FileStorageTraits
     ResidentData = 8,
 }
 
-/// <summary>Alternative accounting views of the same optimistic observations, not an Explorer emulation.</summary>
+/// <summary>Alternative accounting views of the same optimistic observations.</summary>
 public sealed record FolderAccountingSummary(
     CapacityAmount AssignedData,
     CapacityAmount AssignedNamedStreams,
