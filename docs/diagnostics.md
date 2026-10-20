@@ -2,13 +2,16 @@
 
 ## 前提
 
-セットアップは[開発環境](development.md)を参照してください。ライブ診断は Windows のローカル NTFS を対象とし、管理者 PowerShell から実行します。取得ハンドルは読み取り専用です。例の `C:` は実際に調べるドライブへ変更します。
+セットアップは[開発環境](development.md)を参照してください。ライブ診断は Windows のローカル NTFS が対象で、管理者として開いた PowerShell から実行します。ボリュームは読み取り専用で開きます。例の `C:` は、実際に調べるドライブに置き換えてください。
 
 ```powershell
 dotnet build tools/Something.LiveInspect -c Release
 ```
 
-以下の `--no-build` は、このビルドが完了している場合に使います。診断出力にはローカル情報が含まれ得るため、公開前に確認してください。MFT の生ダンプ・履歴 DB・実ファイル名のログはリポジトリへ含めません。
+以降の例の `--no-build` は、このビルドが済んでいることを前提にしています。
+
+> [!CAUTION]
+> 診断の出力には PC 固有の情報が含まれることがあるため、公開する前に確認してください。MFT の生ダンプ、履歴 DB、実際のファイル名を含むログは、リポジトリに含めません。
 
 ## 少数レコード
 
@@ -16,9 +19,9 @@ dotnet build tools/Something.LiveInspect -c Release
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: 0 32
 ```
 
-開始番号 0 から 32 スロットを確認します。個別表示の既定は開始 0・16 スロット、件数の上限は 4096 です。MFT スロットとファイル数は同じではありません。拡張レコード、未使用・返却なし、管理レコードを含みます。
+番号 0 から 32 スロット分を確認します。省略時は番号 0 から 16 スロットで、指定できる件数の上限は 4096 です。MFT のスロット数とファイル数は同じではなく、スロットには拡張レコード、未使用や返却されなかったもの、管理用のレコードも含まれます。
 
-ファイル一つの結合に必要な取得数の上限は別の値で、既定 1024 です。必要な場合だけ末尾に `--max-records <正の整数>` を指定します。上限超過は容量不明であり、ゼロサイズではありません。
+1 つのファイルを組み立てるために取得するレコード数の上限は別の値で、既定は 1024 です。必要な場合だけ、末尾に `--max-records <正の整数>` を指定します。上限を超えたファイルは容量が不明として扱い、ゼロにはしません。
 
 ## Windows API とのサイズ照合
 
@@ -26,15 +29,15 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: 0 3
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --file "$PWD\README.md"
 ```
 
-指定したファイルの参照を取得し、NTFS で組み立てた無名 DATA の論理・割り当て容量を Windows API と照合します。パスは対象ドライブの絶対パスを指定します。
+指定したファイルの参照番号を取得し、NTFS の情報から組み立てた無名 DATA の論理サイズと割り当てサイズを、Windows API の値と照合します。パスには、対象ドライブ上の絶対パスを指定します。
 
 ```powershell
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --record-file 100
 ```
 
-参照番号からファイルを開いて照合する形式です。番号 100 は例で、実在を保証しません。`allocation-source` は Windows 側の取得元を示し、通常は `FileStandardInfo`、圧縮・スパース等では `FileCompressionInfo` を使います。名前集合の診断も表示します。名前付きストリーム全体の独立照合ではありません。
+こちらは参照番号からファイルを開いて照合します。番号 100 は例で、その番号のファイルが存在するとは限りません。`allocation-source` は Windows 側の取得元で、通常は `FileStandardInfo`、圧縮・スパースなどの場合は `FileCompressionInfo` を使います。名前集合の診断も表示します。名前付きストリームまでは独立に照合しません。
 
-どちらも楽観的な二つの観測です。不一致は競合・再利用・未対応条件・実装不具合を調査する入口で、直ちにディスク破損を示すものではありません。
+どちらも、ある時点で別々に取得した 2 つの観測を比べるものです。不一致は、競合・再利用・未対応の条件・実装の不具合を調べるきっかけであり、すぐにディスクの破損を意味するものではありません。
 
 ## 全件走査
 
@@ -43,7 +46,7 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --s
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --scan 10000
 ```
 
-上は開始時の観測範囲全体、下は最初の 10000 スロットを走査します。5 秒ごとの進捗と最後の要約だけを出し、Ctrl+C に対応します。スキャンデータは保存しません。
+1 行目は開始時に観測した範囲全体を、2 行目は最初の 10000 スロットを走査します。5 秒ごとの進捗と最後の要約だけを出力し、Ctrl+C で中断できます。スキャンしたデータは保存しません。
 
 | 出力 | 意味 |
 | --- | --- |
@@ -58,7 +61,7 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --s
 | `managed-allocated-during-scan-bytes` | 累積 managed 割り当て量。保持量やピークメモリではない |
 | `process-lifetime-peak-working-set-bytes` | プロセス開始以降のピーク working set |
 
-## フォルダ集計
+## フォルダー集計
 
 ```powershell
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5
@@ -66,9 +69,9 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --t
 dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --top5 --leaf
 ```
 
-一時 DB で集計し、ルートを除く上位五フォルダを表示します。`--depth 1` はルート直下、`--leaf` は最下位フォルダです。`--memory-db` / `--file-db` はこの診断の DB 選択で、通常アプリの共有履歴方式を切り替えるものではありません。
+一時的な DB で集計し、ルートを除く上位 5 つのフォルダーを表示します。`--depth 1` はルート直下のフォルダー、`--leaf` は末端のフォルダーが対象です。`--memory-db` / `--file-db` はこの診断で使う DB の選択で、アプリの履歴の保存方式を切り替えるものではありません。
 
-この経路はバッファ・集計・保存・一覧取得を含みます。`--scan` 単独の時間と混同しません。フォルダの合計・管理 DATA・所属不明・保存則は[容量集計](capacity-accounting.md)を参照してください。結果は履歴として保持しません。
+この処理の時間には、バッファの作成・集計・保存・一覧の取得が含まれます。`--scan` だけの時間と混同しないでください。フォルダーの合計、管理用の DATA、所属不明、保存則については[容量集計](capacity-accounting.md)を参照してください。結果は履歴として残しません。
 
 ## オフライン解析
 
@@ -76,6 +79,6 @@ dotnet run --project tools/Something.LiveInspect -c Release --no-build -- C: --t
 dotnet run --project tools/Something.MftInspect -c Release -- 'artifacts/sample.mft' 1024
 ```
 
-自分で用意した raw `$MFT` ストリームを、指定レコード長で解析します。dd のディスク全体やパーティションイメージをそのまま指定する形式ではありません。出力の `deleted` は InUse の立っていないレコード数で、今回の走査でファイルを削除した意味ではありません。
+自分で用意した raw の `$MFT` ストリームを、指定したレコード長で解析します。dd で取得したディスク全体やパーティションのイメージを、そのまま指定することはできません。出力の `deleted` は InUse フラグが立っていないレコードの数で、走査によってファイルを削除したという意味ではありません。
 
-正常時 0、不正レコードがある場合 1、引数・I/O エラーは 2、キャンセルは 130 を返します。入力ファイルの所有者は呼び出し側で、検査は読み取り専用です。
+終了コードは、正常時が 0、不正なレコードがある場合が 1、引数や I/O のエラーが 2、キャンセルが 130 です。入力ファイルは読み取るだけで、変更しません。
