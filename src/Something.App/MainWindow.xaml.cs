@@ -325,6 +325,8 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-history-management"))
                 await VerifyHistoryManagementAsync();
             await VerifyNotificationsAsync();
+            if (Environment.GetCommandLineArgs().Contains("--smoke-theme"))
+                await VerifyThemeSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
                 await VerifyDatabaseSettingsAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-export"))

@@ -1479,4 +1479,22 @@
     <value>{0} の表示に切り替えています…</value>
     <comment>{0} = card.Choice.Drive</comment>
   </data>
+  <data name="Settings_AppearanceHeader.Text" xml:space="preserve">
+    <value>外観</value>
+  </data>
+  <data name="Settings_ThemeTitle.Text" xml:space="preserve">
+    <value>アプリのテーマ</value>
+  </data>
+  <data name="Settings_ThemeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>アプリのテーマ</value>
+  </data>
+  <data name="Settings_ThemeSystem.Content" xml:space="preserve">
+    <value>システム設定に従う</value>
+  </data>
+  <data name="Settings_ThemeDark.Content" xml:space="preserve">
+    <value>ダークモード</value>
+  </data>
+  <data name="Settings_ThemeLight.Content" xml:space="preserve">
+    <value>ライトモード</value>
+  </data>
 </root>

@@ -1,3 +1,4 @@
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
@@ -9,6 +10,7 @@ public sealed partial class MainWindow
 {
     private FileVisibilityOptions visibilityOptions = new();
     private DisplaySettingsStore? displaySettings;
+    private ThemePreference themePreference;
 
     private bool changingVisibility;
 
@@ -24,6 +26,39 @@ public sealed partial class MainWindow
                 )
             );
             visibilityOptions = displaySettings.Load();
+            themePreference = displaySettings.LoadTheme();
+        }
+        ApplyTheme();
+    }
+
+    private void ApplyTheme()
+    {
+        WindowLayout.RequestedTheme = themePreference switch
+        {
+            ThemePreference.Dark => ElementTheme.Dark,
+            ThemePreference.Light => ElementTheme.Light,
+            _ => ElementTheme.Default,
+        };
+        AppWindow.TitleBar.PreferredTheme = themePreference switch
+        {
+            ThemePreference.Dark => TitleBarTheme.Dark,
+            ThemePreference.Light => TitleBarTheme.Light,
+            _ => TitleBarTheme.UseDefaultAppMode,
+        };
+    }
+
+    private void ChangeTheme(ThemePreference theme)
+    {
+        try
+        {
+            displaySettings?.SaveTheme(theme);
+            themePreference = theme;
+            ApplyTheme();
+        }
+        catch (Exception error)
+        {
+            SettingsPage.SetTheme(themePreference);
+            ShowError(error);
         }
     }
 

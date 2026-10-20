@@ -27,6 +27,8 @@ public sealed partial class MainWindow
     private void InitializeSettingsPage()
     {
         SettingsPage.Configure(AppWindow.Id);
+        SettingsPage.SetTheme(themePreference);
+        SettingsPage.ThemeChanged += ChangeTheme;
         SettingsPage.CloseRequested += () => SetSettingsOpen(false);
         SettingsPage.VisibilityChanged += options =>
             RunSettingsAction(() => ChangeVisibilityAsync(options));

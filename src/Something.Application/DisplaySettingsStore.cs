@@ -8,10 +8,22 @@ public sealed class DisplaySettingsStore(string path)
 {
     public FileVisibilityOptions Load()
     {
+        var settings = Read();
+        return new(settings.IncludeSystem, settings.IncludeHidden);
+    }
+
+    public ThemePreference LoadTheme()
+    {
+        var theme = Read().Theme;
+        return Enum.IsDefined(theme) ? theme : ThemePreference.System;
+    }
+
+    private Preferences Read()
+    {
         try
         {
             return File.Exists(path)
-                ? JsonSerializer.Deserialize<FileVisibilityOptions>(File.ReadAllText(path)) ?? new()
+                ? JsonSerializer.Deserialize<Preferences>(File.ReadAllText(path)) ?? new()
                 : new();
         }
         catch (JsonException)
@@ -28,14 +40,30 @@ public sealed class DisplaySettingsStore(string path)
         }
     }
 
-    public void Save(FileVisibilityOptions options)
+    public void Save(FileVisibilityOptions options) =>
+        Write(
+            Read() with
+            {
+                IncludeSystem = options.IncludeSystem,
+                IncludeHidden = options.IncludeHidden,
+            }
+        );
+
+    public void SaveTheme(ThemePreference theme)
+    {
+        if (!Enum.IsDefined(theme))
+            throw new ArgumentOutOfRangeException(nameof(theme));
+        Write(Read() with { Theme = theme });
+    }
+
+    private void Write(Preferences settings)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
         Directory.CreateDirectory(directory);
         string temporary = Path.Combine(directory, $".settings-{Guid.NewGuid():N}.tmp");
         try
         {
-            File.WriteAllText(temporary, JsonSerializer.Serialize(options));
+            File.WriteAllText(temporary, JsonSerializer.Serialize(settings));
             File.Move(temporary, path, overwrite: true);
         }
         finally
@@ -44,4 +72,10 @@ public sealed class DisplaySettingsStore(string path)
                 File.Delete(temporary);
         }
     }
+
+    private sealed record Preferences(
+        bool IncludeSystem = true,
+        bool IncludeHidden = true,
+        ThemePreference Theme = ThemePreference.System
+    );
 }

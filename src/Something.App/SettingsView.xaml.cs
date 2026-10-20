@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.Storage.Pickers;
+using Something.Application;
 using Something.Statistics;
 using Something.Storage;
 
@@ -23,6 +24,7 @@ public sealed partial class SettingsView : UserControl
     private bool scrollingToSection;
 
     internal event Action? CloseRequested;
+    internal event Action<ThemePreference>? ThemeChanged;
     internal event Action<FileVisibilityOptions>? VisibilityChanged;
     internal event Action<string>? MoveRequested;
     internal event Action? DeleteRequested;
@@ -40,6 +42,7 @@ public sealed partial class SettingsView : UserControl
         sections =
         [
             display,
+            new(AppearanceHeader, display, [ThemeItem]),
             new(FilesHeader, display, [IncludeSystemItem, IncludeHiddenItem]),
             database,
             new(LocationHeader, database, [CurrentDatabaseItem, LocationItem]),
@@ -49,6 +52,19 @@ public sealed partial class SettingsView : UserControl
     }
 
     internal void Configure(WindowId owner) => window = owner;
+
+    internal void SetTheme(ThemePreference theme)
+    {
+        updating = true;
+        ThemeBox.SelectedIndex = (int)theme;
+        updating = false;
+    }
+
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!updating && ThemeBox.SelectedIndex >= 0)
+            ThemeChanged?.Invoke((ThemePreference)ThemeBox.SelectedIndex);
+    }
 
     /// <summary>Shows current preferences and, when given, reloads the database location.</summary>
     internal void Present(

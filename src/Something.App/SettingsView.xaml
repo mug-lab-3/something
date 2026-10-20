@@ -109,6 +109,24 @@
               Style="{StaticResource SubtitleTextBlockStyle}"
             />
             <TextBlock
+              x:Uid="Settings_AppearanceHeader"
+              x:Name="AppearanceHeader"
+              Style="{StaticResource SubsectionHeaderStyle}"
+            />
+            <StackPanel x:Name="ThemeItem" Style="{StaticResource SettingItemStyle}">
+              <TextBlock x:Uid="Settings_ThemeTitle" Style="{StaticResource SettingTitleStyle}" />
+              <ComboBox
+                x:Uid="Settings_ThemeBox"
+                x:Name="ThemeBox"
+                MinWidth="240"
+                SelectionChanged="OnThemeChanged"
+              >
+                <ComboBoxItem x:Uid="Settings_ThemeSystem" />
+                <ComboBoxItem x:Uid="Settings_ThemeDark" />
+                <ComboBoxItem x:Uid="Settings_ThemeLight" />
+              </ComboBox>
+            </StackPanel>
+            <TextBlock
               x:Uid="Settings_FilesHeader"
               x:Name="FilesHeader"
               Style="{StaticResource SubsectionHeaderStyle}"
