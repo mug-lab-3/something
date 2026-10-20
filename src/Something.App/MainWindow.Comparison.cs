@@ -310,9 +310,10 @@ public sealed partial class MainWindow
                 await ShowSessionAsync(displayed);
                 return;
             }
-            if (before.VolumeKey != after.VolumeKey || before.CompletedUtc > after.CompletedUtc)
+            // Any two scans of the drive compare in either order: changes are after minus before.
+            if (before.VolumeKey != after.VolumeKey)
             {
-                ComparisonStatusText.Text = Strings.Get("Comparison_InvalidOrder");
+                ComparisonStatusText.Text = Strings.Get("Comparison_DifferentDrive");
                 await ShowSessionAsync(displayed);
                 return;
             }
@@ -479,6 +480,44 @@ public sealed partial class MainWindow
         return null;
     }
 
+    // Any two scans compare in either order; one scan against itself shows no change values.
+    private async Task VerifyEndpointOrderAsync(HistoryRow[] retained, Guid? restoreBefore)
+    {
+        async Task CompareAsync(HistoryRow after, HistoryRow before)
+        {
+            await ChangeHistoryAsync(after);
+            updatingComparisonChoices = true;
+            ComparisonBeforeBox.SelectedItem = ComparisonBeforeBox.Items.Single(row =>
+                row.Entry.Id == before.Entry.Id
+            );
+            updatingComparisonChoices = false;
+            await TrackComparisonAsync();
+        }
+
+        await CompareAsync(retained[^1], retained[0]);
+        if (
+            comparisonReport is not { Baseline: { } swappedBefore, Latest: { } swappedAfter }
+            || swappedBefore.Id != retained[0].Entry.Id
+            || swappedAfter.Id != retained[^1].Entry.Id
+            || Entries.Items.Count == 0
+            || Entries.Items.Cast<EntryRow>().Any(row => !row.Delta.StartsWith('±'))
+        )
+            throw new InvalidOperationException(
+                "A newer before scan did not compare with an older after scan."
+            );
+        await CompareAsync(retained[^1], retained[^1]);
+        if (
+            comparisonReport is not null
+            || Entries.Items.Cast<EntryRow>().Any(row => row.Delta != "—")
+        )
+            throw new InvalidOperationException(
+                "Rows without a comparison claimed that each item could not be compared."
+            );
+        await CompareAsync(retained[0], retained.Single(row => row.Entry.Id == restoreBefore));
+        if (comparisonReport is null)
+            throw new InvalidOperationException("The original comparison was not restored.");
+    }
+
     private async Task PreviewCustomComparisonAsync()
     {
         updatingComparisonChoices = true;
@@ -561,6 +600,7 @@ public sealed partial class MainWindow
         if (Entries.Items.Cast<EntryRow>().Any(row => !row.Delta.StartsWith('±')))
             throw new InvalidOperationException("Child folder comparison did not load.");
         var retainedCustomBaseline = ComparisonBeforeBox.SelectedItem?.Entry.Id;
+        await VerifyEndpointOrderAsync(retainedChoices, retainedCustomBaseline);
         for (int preset = 0; preset < 8; preset++)
         {
             updatingComparisonChoices = true;

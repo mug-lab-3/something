@@ -112,6 +112,8 @@ public sealed record FolderChangeReport(
 
 public sealed partial class ScanHistoryArchive
 {
+    /// <summary>Compares two scans of one volume in either order: changes are after minus before,
+    /// so choosing an older scan as "after" shows how the newer one differs going back.</summary>
     public FolderChangeReport ReadFolderChanges(
         string volumeKey,
         Guid beforeId,
@@ -139,11 +141,6 @@ public sealed partial class ScanHistoryArchive
                 query.SingleOrDefault(row => row.Id == afterId)
                 ?? throw new InvalidOperationException(
                     "The comparison endpoint is no longer available."
-                );
-            if (before.CompletedUtcTicks > after.CompletedUtcTicks)
-                throw new ArgumentException(
-                    "The baseline must precede the endpoint.",
-                    nameof(beforeId)
                 );
             var changes = CompareFolders(store, beforeId, afterId, token, out var root);
             token.ThrowIfCancellationRequested();

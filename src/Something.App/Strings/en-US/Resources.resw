@@ -179,6 +179,9 @@
   <data name="Comparison_BeforeTip" xml:space="preserve">
     <value>Select the before scan. Its sizes are subtracted from the sizes of the after scan.</value>
   </data>
+  <data name="Comparison_DifferentDrive" xml:space="preserve">
+    <value>Select scans of the same drive for before and after.</value>
+  </data>
   <data name="Comparison_Displayed" xml:space="preserve">
     <value>Scan to show</value>
   </data>
@@ -190,9 +193,6 @@
   </data>
   <data name="Comparison_HistoryRequired" xml:space="preserve">
     <value>Comparing needs scan history.</value>
-  </data>
-  <data name="Comparison_InvalidOrder" xml:space="preserve">
-    <value>Select a before scan of the same drive that is earlier than the after scan.</value>
   </data>
   <data name="Comparison_NotEnoughHistory" xml:space="preserve">
     <value>Not enough scan history. Comparing needs two different scans.</value>

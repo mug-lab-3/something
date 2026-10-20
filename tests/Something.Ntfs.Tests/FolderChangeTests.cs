@@ -388,7 +388,7 @@ public sealed class FolderChangeTests
     }
 
     [Fact]
-    public async Task ExplicitScansCompareSignedSizesAndRejectWrongVolumeOrOrder()
+    public async Task ExplicitScansCompareSignedSizesAndRejectWrongVolumeOrSameScan()
     {
         using var fixture = new Fixture();
         var before = fixture.Save(Now.AddMinutes(-20), [new(20, "folder", 100)]);
@@ -407,13 +407,46 @@ public sealed class FolderChangeTests
         Assert.Equal(before.Id, report.Baseline!.Id);
         Assert.Equal(after.Id, report.Latest!.Id);
         Assert.Throws<ArgumentException>(() =>
-            fixture.Archive.ReadFolderChanges("volume:A", after.Id, before.Id, Token)
-        );
-        Assert.Throws<ArgumentException>(() =>
             fixture.Archive.ReadFolderChanges("volume:A", before.Id, before.Id, Token)
         );
         Assert.Throws<InvalidOperationException>(() =>
             fixture.Archive.ReadFolderChanges("volume:A", before.Id, other.Id, Token)
+        );
+    }
+
+    [Fact]
+    public void ExplicitScansCompareInEitherOrder()
+    {
+        // Arrange
+        using var fixture = new Fixture();
+        var older = fixture.Save(
+            Now.AddMinutes(-20),
+            [new(20, "kept", 100), new(21, "removed", 50)]
+        );
+        var newer = fixture.Save(Now.AddMinutes(-10), [new(20, "kept", 300), new(22, "added", 70)]);
+
+        // Act
+        var forward = fixture.Archive.ReadFolderChanges("volume:A", older.Id, newer.Id, Token);
+        var backward = fixture.Archive.ReadFolderChanges("volume:A", newer.Id, older.Id, Token);
+
+        // Assert
+        Assert.Equal(
+            new BigInteger(200),
+            Assert.Single(forward.Folders, row => row.Reference.RecordIndex == 20).AllocatedDelta
+        );
+        Assert.Equal(-forward.Root!.AllocatedDelta, backward.Root!.AllocatedDelta);
+        Assert.Equal(newer.Id, backward.Baseline!.Id);
+        Assert.Equal(older.Id, backward.Latest!.Id);
+        Assert.False(backward.IsPartial);
+        var kept = Assert.Single(backward.Folders, row => row.Reference.RecordIndex == 20);
+        Assert.Equal(new BigInteger(-200), kept.AllocatedDelta);
+        Assert.Equal(
+            FolderChangeStatus.NotObservedAfter,
+            Assert.Single(backward.Folders, row => row.Reference.RecordIndex == 22).Status
+        );
+        Assert.Equal(
+            FolderChangeStatus.NotObservedBefore,
+            Assert.Single(backward.Folders, row => row.Reference.RecordIndex == 21).Status
         );
     }
 

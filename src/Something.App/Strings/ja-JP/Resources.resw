@@ -179,6 +179,9 @@
   <data name="Comparison_BeforeTip" xml:space="preserve">
     <value>比較元のスキャンを選択します。比較先のサイズから、このスキャンのサイズを差し引きます。</value>
   </data>
+  <data name="Comparison_DifferentDrive" xml:space="preserve">
+    <value>比較元と比較先には、同じドライブのスキャンを選択してください。</value>
+  </data>
   <data name="Comparison_Displayed" xml:space="preserve">
     <value>表示するスキャン</value>
   </data>
@@ -190,9 +193,6 @@
   </data>
   <data name="Comparison_HistoryRequired" xml:space="preserve">
     <value>比較するにはスキャン履歴が必要です。</value>
-  </data>
-  <data name="Comparison_InvalidOrder" xml:space="preserve">
-    <value>同じドライブで、比較先より前のスキャンを比較元に選択してください。</value>
   </data>
   <data name="Comparison_NotEnoughHistory" xml:space="preserve">
     <value>スキャン履歴が足りません。比較元と比較先には、異なる 2 回のスキャンが必要です。</value>

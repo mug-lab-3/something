@@ -169,7 +169,7 @@ internal sealed record FolderNode(
                 : Microsoft.UI.Colors.Gray
         );
     public string ChangeDescription =>
-        !Comparing ? ""
+        !Comparing || Comparison is null ? ""
         : Comparison?.AllocatedDelta is { } delta
             ? delta.Sign switch
             {
@@ -222,6 +222,8 @@ internal static class DisplayText
             ) + Bytes(UInt128.CreateChecked(BigInteger.Abs(value)))
             : status switch
             {
+                // No comparison is established; the status text explains why.
+                null => "—",
                 FolderChangeStatus.NotObservedBefore => Strings.Get("Change_MissingBefore"),
                 FolderChangeStatus.NotObservedAfter => Strings.Get("Change_MissingAfter"),
                 _ => Strings.Get("Change_Uncomparable"),
