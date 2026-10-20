@@ -142,6 +142,9 @@ public sealed partial class MainWindow : Window
             // The checks compare rescans and fixed demo files; the changing demo data does not fit.
             if (!Environment.GetCommandLineArgs().Contains("--demo-static"))
                 throw new InvalidOperationException("Smoke checks require --demo-static.");
+            // The IME (TSF) and other COM-based input only work on an STA UI thread.
+            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+                throw new InvalidOperationException("The UI thread is not STA.");
             if (
                 session is null
                 || Entries.Items.Count != 3

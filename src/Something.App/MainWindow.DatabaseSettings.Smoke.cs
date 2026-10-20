@@ -41,7 +41,14 @@ public sealed partial class MainWindow
             );
         await CaptureStartupFrameAsync(capture + ".database-management");
         SetSettingsOpen(true);
+        // Opening the page puts the cursor in the search box, so typing searches right away.
+        bool searchFocused =
+            Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(RootLayout.XamlRoot)
+                is DependencyObject focused
+            && IsWithin(focused, (DependencyObject)SettingsPage.FindName("SearchBox"));
         await Task.Delay(300, lifetime.Token);
+        if (!searchFocused)
+            throw new InvalidOperationException("Opening settings did not focus the search box.");
         if (
             SettingsPage.DirectoryPath != history.DirectoryPath
             || SettingsPage.VisibilityOptions != visibilityOptions
@@ -219,5 +226,17 @@ public sealed partial class MainWindow
             var peer = new ButtonAutomationPeer(button);
             ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
         }
+    }
+
+    private static bool IsWithin(DependencyObject element, DependencyObject ancestor)
+    {
+        for (
+            DependencyObject? current = element;
+            current is not null;
+            current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current)
+        )
+            if (current == ancestor)
+                return true;
+        return false;
     }
 }

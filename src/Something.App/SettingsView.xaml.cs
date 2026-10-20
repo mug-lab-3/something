@@ -170,7 +170,12 @@ public sealed partial class SettingsView : UserControl
         UpdateMoveButton();
     }
 
-    internal void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
+    internal bool FocusSearch()
+    {
+        // The page has just become visible; a box that is not laid out yet cannot take focus.
+        UpdateLayout();
+        return SearchBox.Focus(FocusState.Programmatic);
+    }
 
     internal void ShowError(Exception error)
     {

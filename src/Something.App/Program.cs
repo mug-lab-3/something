@@ -8,8 +8,10 @@ namespace Something.App;
 
 internal static class Program
 {
+    // Main must stay synchronous: for an async Main the compiler generates the real entry point
+    // without [STAThread], so the UI thread became MTA and the IME (TSF) could not attach.
     [STAThread]
-    private static async Task<int> Main(string[] args)
+    private static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         using var identity = WindowsIdentity.GetCurrent();
@@ -23,15 +25,16 @@ internal static class Program
         var instance = AppInstance.FindOrRegisterForKey(key);
         if (!instance.IsCurrent)
         {
+            var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
             try
             {
-                await instance
-                    .RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs())
-                    .AsTask()
-                    .WaitAsync(TimeSpan.FromSeconds(10));
-                return 0;
+                // The redirect runs on the thread pool; the STA thread only waits for it.
+                return Task.Run(() => instance.RedirectActivationToAsync(activation).AsTask())
+                    .Wait(TimeSpan.FromSeconds(10))
+                    ? 0
+                    : 1;
             }
-            catch (Exception error) when (error is COMException or TimeoutException)
+            catch (AggregateException error) when (error.InnerException is COMException)
             {
                 // Do not open a second database if the existing instance is closing or unresponsive.
                 return 1;
@@ -45,7 +48,6 @@ internal static class Program
         instance.Activated += Activate;
         try
         {
-            // The primary path has not awaited: WinUI starts on this original STA thread.
             Microsoft.UI.Xaml.Application.Start(_ =>
             {
                 SynchronizationContext.SetSynchronizationContext(
