@@ -23,7 +23,7 @@ public sealed partial class AnimationPreviewWindow
                     1 => [.55, .98, 1.6, 2.45, 2.8, 3.2, 3.7],
                     2 => [.4, 1.5, 2.5, 3.08],
                     3 => [.4, 1.15, 2.5, 2.86, 3.85, 4.8],
-                    4 => [.2, .62, .85, 1.25, 1.3, 1.7, 2.2],
+                    4 => [.2, .7, .95, 1.1, 1.3, 1.8, 2.1, 3.2],
                     _ => [.6],
                 };
                 foreach (double frame in frames)
@@ -101,7 +101,7 @@ public sealed partial class AnimationPreviewWindow
             Animation.Cancel();
             await File.WriteAllTextAsync(
                 path + ".result",
-                "Standalone animation preview passed: all five modes, export sheet delivery into the file, backpack departure and raised-wing farewell, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
+                "Standalone animation preview passed: all five modes, kei truck loading and departure, backpack departure and raised-wing farewell, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
             );
         }
         catch (Exception error)

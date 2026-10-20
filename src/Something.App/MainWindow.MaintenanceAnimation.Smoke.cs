@@ -47,7 +47,7 @@ public sealed partial class MainWindow
                     kind switch
                     {
                         LoadingAnimationKind.DeleteHistory => 1.5,
-                        LoadingAnimationKind.Export => .85,
+                        LoadingAnimationKind.Export => .95,
                         _ => .7,
                     }
                 );
@@ -64,7 +64,7 @@ public sealed partial class MainWindow
                             throw new InvalidOperationException(
                                 "Export did not title its progress with the file name."
                             );
-                        ViewLoadingAnimation.VerifyExportPose(.85);
+                        ViewLoadingAnimation.VerifyExportPose(.95);
                     }
                     await CaptureStartupFrameAsync(
                         capture

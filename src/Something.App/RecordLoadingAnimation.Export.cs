@@ -5,26 +5,55 @@ namespace Something.App;
 
 public sealed partial class RecordLoadingAnimation
 {
-    private const double ExportCycleSeconds = 2.3;
+    private const double ExportCycleSeconds = 3.4;
+    internal const double ExportWidth = 360;
 
-    // Where the chick stops beside the file, and where the sheet drops into it.
-    internal const double ExportChickStop = 100;
-    internal const double ExportSheetDrop = 148;
+    // The chick stops beside the truck bed; the box then rests in the middle of the bed.
+    internal const double ExportChickStop = 96;
+    internal const double ExportBoxOnBedX = 160;
+    internal const double ExportBoxOnBedY = 50;
+
+    // Off-canvas positions where the truck waits before backing in and after driving away.
+    private const double ExportTruckWaiting = 150;
+    private const double ExportTruckGone = 160;
 
     private Storyboard CreateExportCycle()
     {
         var storyboard = new Storyboard();
         storyboard.Completed += OnCycleCompleted;
-        // Peek out of the nest holding a sheet, hop to the file, toss it in and hop back.
+        // The truck backs in, is loaded and pulls away; the chick carries the box on its head.
+        Frames(
+            ExportTruckMotion,
+            "TranslateX",
+            [
+                (0, ExportTruckWaiting),
+                (.15, ExportTruckWaiting),
+                (.7, 0),
+                (1.75, 0),
+                (2.45, ExportTruckGone),
+                (ExportCycleSeconds, ExportTruckGone),
+            ]
+        );
+        // The bed dips under the box's weight.
+        Frames(
+            ExportTruckMotion,
+            "TranslateY",
+            [(0, 0), (1.3, 0), (1.36, 2), (1.5, 0), (ExportCycleSeconds, 0)]
+        );
+        Frames(
+            ExportExhaust,
+            "Opacity",
+            [(0, 0), (1.7, 0), (1.8, .8), (2.1, 0), (ExportCycleSeconds, 0)]
+        );
         Frames(
             ChickMotion,
             "TranslateX",
             [
                 (0, 0),
-                (.45, 0),
-                (.85, ExportChickStop),
-                (1.4, ExportChickStop),
-                (1.95, 0),
+                (.5, 0),
+                (.95, ExportChickStop),
+                (2.4, ExportChickStop),
+                (2.95, 0),
                 (ExportCycleSeconds, 0),
             ]
         );
@@ -34,39 +63,38 @@ public sealed partial class RecordLoadingAnimation
             [
                 (0, 42),
                 (.08, 20),
-                (.4, 20),
-                (.45, 28),
-                (.62, -30),
-                (.85, 22),
-                (1.0, 22),
-                (1.1, 12),
-                (1.2, 22),
-                (1.4, 22),
-                (1.55, 4),
-                (1.7, 22),
-                (1.82, 8),
-                (1.95, 22),
-                (2.1, 42),
+                (.45, 20),
+                (.5, 28),
+                (.7, -30),
+                (.95, 22),
+                (1.1, 14),
+                (1.3, 22),
+                (2.4, 22),
+                (2.55, 4),
+                (2.7, 22),
+                (2.82, 8),
+                (2.95, 22),
+                (3.1, 42),
                 (ExportCycleSeconds, 42),
             ]
         );
         Frames(
             ChickMotion,
             "Rotation",
-            [(0, 0), (.4, 0), (.45, 6), (.55, -6), (.85, 0), (ExportCycleSeconds, 0)]
+            [(0, 0), (.45, 0), (.5, 6), (.6, -6), (.95, 0), (ExportCycleSeconds, 0)]
         );
-        Frames(Chick, "Opacity", [(0, 0), (.04, 1), (2.1, 1), (2.12, 0), (ExportCycleSeconds, 0)]);
-        // Face the file while hopping toward it, and turn to the viewer as it lands.
+        Frames(Chick, "Opacity", [(0, 0), (.04, 1), (3.1, 1), (3.12, 0), (ExportCycleSeconds, 0)]);
+        // Face the truck while hopping toward it, and turn to the viewer as it lands.
         Frames(
             FrontSprite,
             "Opacity",
-            [(0, 1), (.45, 0), (.84, 1), (ExportCycleSeconds, 1)],
+            [(0, 1), (.5, 0), (.94, 1), (ExportCycleSeconds, 1)],
             discrete: true
         );
         Frames(
             SideSprite,
             "Opacity",
-            [(0, 0), (.45, 1), (.84, 0), (ExportCycleSeconds, 0)],
+            [(0, 0), (.5, 1), (.94, 0), (ExportCycleSeconds, 0)],
             discrete: true
         );
         Frames(
@@ -74,12 +102,12 @@ public sealed partial class RecordLoadingAnimation
             "Angle",
             [
                 (0, 0),
-                (.45, -25),
-                (.62, 15),
-                (.85, 0),
-                (1.55, -15),
-                (1.82, 15),
-                (1.95, 0),
+                (.5, -25),
+                (.7, 15),
+                (.95, 0),
+                (2.55, -15),
+                (2.82, 15),
+                (2.95, 0),
                 (ExportCycleSeconds, 0),
             ]
         );
@@ -88,68 +116,54 @@ public sealed partial class RecordLoadingAnimation
             "Angle",
             [
                 (0, 0),
-                (.45, 25),
-                (.62, -15),
-                (.85, 0),
-                (1.55, 15),
-                (1.82, -15),
-                (1.95, 0),
+                (.5, 25),
+                (.7, -15),
+                (.95, 0),
+                (2.55, 15),
+                (2.82, -15),
+                (2.95, 0),
                 (ExportCycleSeconds, 0),
             ]
         );
-        // The sheet rides above the chick's head, then arcs into the file and disappears.
+        // The box rides on the chick's head, is lifted onto the bed, then leaves with the truck.
         Frames(
-            ExportSheetMotion,
+            ExportBoxMotion,
             "TranslateX",
             [
                 (0, 0),
-                (.45, 0),
-                (.85, ExportChickStop),
-                (1.05, ExportSheetDrop),
-                (ExportCycleSeconds, ExportSheetDrop),
+                (.5, 0),
+                (.95, ExportChickStop),
+                (1.1, 128),
+                (1.3, ExportBoxOnBedX),
+                (1.75, ExportBoxOnBedX),
+                (2.45, ExportBoxOnBedX + ExportTruckGone),
+                (ExportCycleSeconds, ExportBoxOnBedX + ExportTruckGone),
             ]
         );
         Frames(
-            ExportSheetMotion,
+            ExportBoxMotion,
             "TranslateY",
             [
                 (0, 22),
                 (.08, 0),
-                (.4, 0),
-                (.45, 8),
-                (.62, -50),
-                (.85, 2),
-                (.95, -30),
-                (1.05, -20),
-                (1.25, 40),
-                (ExportCycleSeconds, 40),
+                (.45, 0),
+                (.5, 8),
+                (.7, -50),
+                (.95, 2),
+                (1.1, -6),
+                (1.3, ExportBoxOnBedY),
+                (1.36, ExportBoxOnBedY + 2),
+                (1.5, ExportBoxOnBedY),
+                (ExportCycleSeconds, ExportBoxOnBedY),
             ]
         );
         Frames(
-            ExportSheetMotion,
-            "Rotation",
-            [(0, 0), (.85, 0), (1.05, 15), (1.25, 0), (ExportCycleSeconds, 0)]
-        );
-        Frames(
-            ExportSheet,
+            ExportBox,
             "Opacity",
-            [(0, 0), (.08, 1), (1.2, 1), (1.3, 0), (ExportCycleSeconds, 0)]
+            [(0, 0), (.08, 1), (2.45, 1), (2.46, 0), (ExportCycleSeconds, 0)]
         );
-        // The file squashes and springs back as the sheet lands inside.
-        Frames(
-            ExportFileMotion,
-            "ScaleY",
-            [(0, 1), (1.22, 1), (1.3, .9), (1.42, 1.04), (1.5, 1), (ExportCycleSeconds, 1)]
-        );
-        Frames(
-            ExportFileMotion,
-            "ScaleX",
-            [(0, 1), (1.22, 1), (1.3, 1.06), (1.42, .98), (1.5, 1), (ExportCycleSeconds, 1)]
-        );
-        // In the nest the chick stays behind the DB front; outside it walks in front of the file.
-        AddDepthFrames(storyboard, Chick, (0, 0), (.45, 2), (1.95, 0));
-        // The sheet goes behind the file front only while it drops in.
-        AddDepthFrames(storyboard, ExportSheet, (0, 3), (1.05, 0));
+        // In the nest the chick stays behind the DB front; outside it stands in front of the truck.
+        AddDepthFrames(storyboard, Chick, (0, 0), (.5, 2), (2.95, 0));
         return storyboard;
 
         void Frames(

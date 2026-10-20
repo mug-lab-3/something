@@ -182,12 +182,11 @@ public sealed partial class RecordLoadingAnimation : UserControl
         }
         if (ActiveKind == LoadingAnimationKind.Export)
         {
-            // Hold the sheet above the head beside the file.
-            ExportSheetMotion.TranslateX = ExportChickStop;
-            ExportSheetMotion.TranslateY = 2;
-            ExportSheet.Opacity = 1;
+            // Stand beside the parked truck with the box still on the head.
+            ExportBoxMotion.TranslateX = ExportChickStop;
+            ExportBoxMotion.TranslateY = 2;
+            ExportBox.Opacity = 1;
             Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(Chick, 2);
-            Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(ExportSheet, 3);
         }
     }
 

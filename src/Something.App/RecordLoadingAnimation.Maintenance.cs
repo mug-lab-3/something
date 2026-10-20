@@ -23,21 +23,26 @@ public sealed partial class RecordLoadingAnimation
         bool scanning = ActiveKind == LoadingAnimationKind.ScanDisk;
         bool optimizing = ActiveKind == LoadingAnimationKind.OptimizeDatabase;
         bool exporting = ActiveKind == LoadingAnimationKind.Export;
-        ExportFile.Visibility = ExportSheet.Visibility = exporting
+        ExportTruck.Visibility = ExportBox.Visibility = exporting
             ? Visibility.Visible
             : Visibility.Collapsed;
         // The static export pose raises the chick; other modes start it inside the nest.
         Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(Chick, 0);
-        Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(ExportSheet, 0);
-        ExportSheet.Opacity = 0;
-        ExportSheetMotion.TranslateX = ExportSheetMotion.TranslateY = 0;
+        // The box is always drawn over the chick and the truck bed.
+        Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(ExportBox, 3);
+        ExportBox.Opacity = ExportExhaust.Opacity = 0;
+        ExportBoxMotion.TranslateX = ExportBoxMotion.TranslateY = 0;
+        ExportTruckMotion.TranslateX = ExportTruckMotion.TranslateY = 0;
         DiskSource.Visibility = DiskFront.Visibility = scanning
             ? Visibility.Visible
             : Visibility.Collapsed;
         ScanCrane.Visibility = scanning ? Visibility.Visible : Visibility.Collapsed;
         Microsoft.UI.Xaml.Controls.Canvas.SetTop(DiskSource, scanning ? 28 : 0);
         Microsoft.UI.Xaml.Controls.Canvas.SetTop(DiskFront, scanning ? 28 : 0);
-        Width = optimizing ? 420 : 300;
+        Width =
+            optimizing ? 420
+            : exporting ? ExportWidth
+            : 300;
         AnimationClip.Rect = new global::Windows.Foundation.Rect(0, 0, Width, Height);
         // Match the DB/nest baseline while leaving room above it for the scan crane.
         SceneOffset.Y = scanning ? 0 : 28;

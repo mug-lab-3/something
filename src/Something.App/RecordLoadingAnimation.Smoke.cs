@@ -260,69 +260,92 @@ public sealed partial class RecordLoadingAnimation
     {
         if (
             ActiveKind != LoadingAnimationKind.Export
-            || ExportFile.Visibility != Microsoft.UI.Xaml.Visibility.Visible
-            || ExportSheet.Visibility != Microsoft.UI.Xaml.Visibility.Visible
-            || Width != 300
+            || ExportTruck.Visibility != Microsoft.UI.Xaml.Visibility.Visible
+            || ExportBox.Visibility != Microsoft.UI.Xaml.Visibility.Visible
+            || Width != ExportWidth
             || ChickMotion.ScaleX != 1
             || ChickMotion.ScaleY != 1
+            || Depth(ExportBox) <= Depth(ExportTruck)
         )
             throw new InvalidOperationException(
-                "Export did not show the shared full-size chick, its sheet and the file."
+                "Export did not show the shared full-size chick, its box and the truck."
             );
-        double SheetLeft() => 77 + ExportSheetMotion.TranslateX;
-        double SheetTop() => 32 + ExportSheetMotion.TranslateY;
+        // Canvas positions of the box and the truck bed (the bed is the truck's first 76 px).
+        double boxLeft = 74 + ExportBoxMotion.TranslateX;
+        double boxBottom = 40 + ExportBoxMotion.TranslateY + 20;
+        double bedLeft = 210 + ExportTruckMotion.TranslateX;
+        double bedTop = 86 + 24 + ExportTruckMotion.TranslateY;
+        static bool Near(double actual, double expected) => Math.Abs(actual - expected) <= .5;
         if (
             seconds is > .19 and < .21
             && (
-                Math.Abs(ChickMotion.TranslateY - 20) > .1
-                || ExportSheet.Opacity < .99
-                || Math.Abs(ExportSheetMotion.TranslateX - ChickMotion.TranslateX) > .1
-                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) != 0
+                !Near(ChickMotion.TranslateY, 20)
+                || ExportBox.Opacity < .99
+                || !Near(ExportBoxMotion.TranslateX, ChickMotion.TranslateX)
+                || !Near(ExportBoxMotion.TranslateY, ChickMotion.TranslateY - 20)
+                || Depth(Chick) != 0
+                || ExportTruckMotion.TranslateX <= 0
             )
         )
             throw new InvalidOperationException(
-                "The chick did not peek out of the nest holding a sheet overhead."
+                "The chick did not peek out of the nest with a box on its head while the truck backed in."
             );
         if (
-            seconds is > .84 and < .86
+            seconds is > .94 and < .96
             && (
-                Math.Abs(ChickMotion.TranslateX - ExportChickStop) > .1
-                || Math.Abs(ChickMotion.TranslateY - 22) > .1
-                || Math.Abs(ExportSheetMotion.TranslateX - ExportChickStop) > .1
+                !Near(ChickMotion.TranslateX, ExportChickStop)
+                || !Near(ChickMotion.TranslateY, 22)
+                || !Near(ExportBoxMotion.TranslateX, ExportChickStop)
                 || SideSprite.Opacity != 0
-                || 61 + ChickMotion.TranslateX + 54 > 206 + 30
-                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) <= 1
-                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
-                    <= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)
+                || !Near(ExportTruckMotion.TranslateX, 0)
+                || Depth(Chick) <= Depth(ExportTruck)
+                || Depth(ExportBox) <= Depth(Chick)
             )
         )
             throw new InvalidOperationException(
-                $"The chick did not stop beside the file with the sheet above it: x={ChickMotion.TranslateX}, y={ChickMotion.TranslateY}, sheet={ExportSheetMotion.TranslateX}, side={SideSprite.Opacity}, chickZ={Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)}, sheetZ={Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)}."
+                $"The chick did not stop beside the parked truck with the box on its head: x={ChickMotion.TranslateX}, y={ChickMotion.TranslateY}, box={ExportBoxMotion.TranslateX}, side={SideSprite.Opacity}, truck={ExportTruckMotion.TranslateX}."
             );
         if (
-            seconds is > 1.24 and < 1.26
+            seconds is > 1.29 and < 1.31
             && (
-                SheetLeft() < 206
-                || SheetLeft() + 22 > 206 + 60
-                || SheetTop() < 70
-                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
-                    >= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportFile)
+                boxLeft < bedLeft
+                || boxLeft + 28 > bedLeft + 76
+                || !Near(boxBottom, bedTop)
+                || !Near(ExportTruckMotion.TranslateX, 0)
             )
         )
-            throw new InvalidOperationException("The sheet did not drop inside the file.");
-        if (seconds is > 1.29 and < 1.31 && ExportFileMotion.ScaleY > .95)
-            throw new InvalidOperationException("The file did not react to the sheet.");
+            throw new InvalidOperationException(
+                $"The box did not land on the truck bed: box=({boxLeft}, {boxBottom}), bed=({bedLeft}, {bedTop})."
+            );
         if (
-            seconds >= 2.15
+            seconds is > 1.79 and < 1.81
+            && (ExportExhaust.Opacity < .5 || ExportTruckMotion.TranslateX <= 0)
+        )
+            throw new InvalidOperationException(
+                "The truck did not puff exhaust as it pulled away."
+            );
+        if (
+            seconds is > 2.09 and < 2.11
+            && (
+                ExportTruckMotion.TranslateX <= 0
+                || !Near(ExportBoxMotion.TranslateX - ExportBoxOnBedX, ExportTruckMotion.TranslateX)
+                || !Near(ChickMotion.TranslateX, ExportChickStop)
+            )
+        )
+            throw new InvalidOperationException(
+                "The box did not leave with the truck while the chick watched."
+            );
+        if (
+            seconds >= 3.2
             && (
                 Chick.Opacity != 0
-                || ExportSheet.Opacity != 0
-                || Math.Abs(ChickMotion.TranslateX) > .1
-                || Math.Abs(ExportFileMotion.ScaleY - 1) > .01
+                || ExportBox.Opacity != 0
+                || !Near(ChickMotion.TranslateX, 0)
+                || bedLeft < Width
             )
         )
             throw new InvalidOperationException(
-                "The chick did not return into the nest before the next sheet."
+                "The chick did not return into the nest after the truck drove off the canvas."
             );
     }
 
@@ -330,16 +353,19 @@ public sealed partial class RecordLoadingAnimation
     {
         if (
             Chick.Opacity != 1
-            || ExportSheet.Opacity != 1
+            || ExportBox.Opacity != 1
+            || ExportTruckMotion.TranslateX != 0
             || Math.Abs(ChickMotion.TranslateX - ExportChickStop) > .1
-            || Math.Abs(ExportSheetMotion.TranslateX - ExportChickStop) > .1
-            || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
-                <= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)
+            || Math.Abs(ExportBoxMotion.TranslateX - ExportChickStop) > .1
+            || Depth(ExportBox) <= Depth(Chick)
         )
             throw new InvalidOperationException(
-                "Reduced-motion export did not show the chick holding a sheet beside the file."
+                "Reduced-motion export did not show the chick holding a box beside the truck."
             );
     }
+
+    private static int Depth(Microsoft.UI.Xaml.UIElement element) =>
+        Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(element);
 
     internal void VerifyDepartureAccessoriesHidden()
     {
@@ -351,8 +377,8 @@ public sealed partial class RecordLoadingAnimation
             || (
                 ActiveKind != LoadingAnimationKind.Export
                 && (
-                    ExportFile.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
-                    || ExportSheet.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+                    ExportTruck.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+                    || ExportBox.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
                     || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) > 1
                 )
             )
