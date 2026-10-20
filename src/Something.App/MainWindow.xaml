@@ -448,6 +448,7 @@
                                   Grid.Column="1"
                                   Text="{x:Bind Name}"
                                   TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                  VerticalAlignment="Center"
                                   TextTrimming="CharacterEllipsis"
                                   ToolTipService.ToolTip="{x:Bind NameDescription}"
                                 />
@@ -457,6 +458,7 @@
                                   HorizontalAlignment="Right"
                                   Text="{x:Bind Size}"
                                   TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                  VerticalAlignment="Center"
                                   ToolTipService.ToolTip="{x:Bind SizeDescription}"
                                 />
                                 <TextBlock
@@ -464,6 +466,7 @@
                                   HorizontalAlignment="Right"
                                   Text="{x:Bind Delta}"
                                   TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                  VerticalAlignment="Center"
                                   ToolTipService.ToolTip="{x:Bind SizeDescription}"
                                 />
                                 <Button
@@ -619,6 +622,7 @@
                                 Grid.Column="1"
                                 Text="{x:Bind Path}"
                                 TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                VerticalAlignment="Center"
                                 TextTrimming="CharacterEllipsis"
                                 ToolTipService.ToolTip="{x:Bind Path}"
                               />
@@ -628,6 +632,7 @@
                                 HorizontalAlignment="Right"
                                 Text="{x:Bind Size}"
                                 TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                VerticalAlignment="Center"
                                 ToolTipService.ToolTip="{x:Bind SizeDescription}"
                               />
                               <TextBlock
@@ -635,6 +640,7 @@
                                 HorizontalAlignment="Right"
                                 Text="{x:Bind Delta}"
                                 TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
+                                VerticalAlignment="Center"
                                 ToolTipService.ToolTip="{x:Bind SizeDescription}"
                               />
                               <Button
