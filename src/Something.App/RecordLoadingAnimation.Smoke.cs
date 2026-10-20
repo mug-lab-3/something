@@ -271,10 +271,10 @@ public sealed partial class RecordLoadingAnimation
                 "Export did not show the shared full-size chick, its box and the truck."
             );
         // Canvas positions of the box and the truck bed (the bed is the truck's first 76 px).
-        double boxLeft = 74 + ExportBoxMotion.TranslateX;
-        double boxBottom = 40 + ExportBoxMotion.TranslateY + 20;
-        double bedLeft = 210 + ExportTruckMotion.TranslateX;
-        double bedTop = 86 + 24 + ExportTruckMotion.TranslateY;
+        double boxLeft = 67 + ExportBoxMotion.TranslateX;
+        double boxBottom = 30 + ExportBoxMotion.TranslateY + 30;
+        double bedLeft = 250 + ExportTruckMotion.TranslateX;
+        double bedTop = 47 + 24 * 1.5 + ExportTruckMotion.TranslateY;
         static bool Near(double actual, double expected) => Math.Abs(actual - expected) <= .5;
         if (
             seconds is > .19 and < .21
@@ -284,11 +284,11 @@ public sealed partial class RecordLoadingAnimation
                 || !Near(ExportBoxMotion.TranslateX, ChickMotion.TranslateX)
                 || !Near(ExportBoxMotion.TranslateY, ChickMotion.TranslateY - 20)
                 || Depth(Chick) != 0
-                || ExportTruckMotion.TranslateX <= 0
+                || !Near(ExportTruckMotion.TranslateX, 0)
             )
         )
             throw new InvalidOperationException(
-                "The chick did not peek out of the nest with a box on its head while the truck backed in."
+                "The chick did not peek out of the nest with a box on its head beside the already parked truck."
             );
         if (
             seconds is > .94 and < .96
@@ -300,6 +300,7 @@ public sealed partial class RecordLoadingAnimation
                 || !Near(ExportTruckMotion.TranslateX, 0)
                 || Depth(Chick) <= Depth(ExportTruck)
                 || Depth(ExportBox) <= Depth(Chick)
+                || 61 + ChickMotion.TranslateX + Chick.Width + 12 > bedLeft - 16 * 1.5
             )
         )
             throw new InvalidOperationException(
@@ -309,7 +310,7 @@ public sealed partial class RecordLoadingAnimation
             seconds is > 1.29 and < 1.31
             && (
                 boxLeft < bedLeft
-                || boxLeft + 28 > bedLeft + 76
+                || boxLeft + 42 > bedLeft + 40 * 1.5 - 8
                 || !Near(boxBottom, bedTop)
                 || !Near(ExportTruckMotion.TranslateX, 0)
             )

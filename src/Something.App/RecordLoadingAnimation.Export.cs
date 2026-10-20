@@ -6,33 +6,25 @@ namespace Something.App;
 public sealed partial class RecordLoadingAnimation
 {
     private const double ExportCycleSeconds = 3.4;
-    internal const double ExportWidth = 360;
+    internal const double ExportWidth = 440;
 
     // The chick stops beside the truck bed; the box then rests in the middle of the bed.
     internal const double ExportChickStop = 96;
-    internal const double ExportBoxOnBedX = 160;
-    internal const double ExportBoxOnBedY = 50;
+    internal const double ExportBoxOnBedX = 187;
+    internal const double ExportBoxOnBedY = 23;
 
-    // Off-canvas positions where the truck waits before backing in and after driving away.
-    private const double ExportTruckWaiting = 150;
-    private const double ExportTruckGone = 160;
+    // Leave enough room for the enlarged truck and its exhaust to exit the canvas.
+    private const double ExportTruckGone = 220;
 
     private Storyboard CreateExportCycle()
     {
         var storyboard = new Storyboard();
         storyboard.Completed += OnCycleCompleted;
-        // The truck backs in, is loaded and pulls away; the chick carries the box on its head.
+        // The loaded truck is already parked; the chick adds one box before it pulls away.
         Frames(
             ExportTruckMotion,
             "TranslateX",
-            [
-                (0, ExportTruckWaiting),
-                (.15, ExportTruckWaiting),
-                (.7, 0),
-                (1.75, 0),
-                (2.45, ExportTruckGone),
-                (ExportCycleSeconds, ExportTruckGone),
-            ]
+            [(0, 0), (1.75, 0), (2.45, ExportTruckGone), (ExportCycleSeconds, ExportTruckGone)]
         );
         // The bed dips under the box's weight.
         Frames(
@@ -65,7 +57,7 @@ public sealed partial class RecordLoadingAnimation
                 (.08, 20),
                 (.45, 20),
                 (.5, 28),
-                (.7, -30),
+                (.7, -8),
                 (.95, 22),
                 (1.1, 14),
                 (1.3, 22),
@@ -133,7 +125,7 @@ public sealed partial class RecordLoadingAnimation
                 (0, 0),
                 (.5, 0),
                 (.95, ExportChickStop),
-                (1.1, 128),
+                (1.1, 142),
                 (1.3, ExportBoxOnBedX),
                 (1.75, ExportBoxOnBedX),
                 (2.45, ExportBoxOnBedX + ExportTruckGone),
@@ -148,7 +140,7 @@ public sealed partial class RecordLoadingAnimation
                 (.08, 0),
                 (.45, 0),
                 (.5, 8),
-                (.7, -50),
+                (.7, -28),
                 (.95, 2),
                 (1.1, -6),
                 (1.3, ExportBoxOnBedY),

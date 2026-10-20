@@ -347,13 +347,13 @@
       <!-- Export: the chick loads a cardboard box onto a kei truck, which then drives away. -->
       <Canvas
         x:Name="ExportTruck"
-        Canvas.Left="210"
-        Canvas.Top="86"
+        Canvas.Left="250"
+        Canvas.Top="47"
         Canvas.ZIndex="1"
         Visibility="Collapsed"
       >
         <Canvas.RenderTransform>
-          <CompositeTransform x:Name="ExportTruckMotion" CenterX="56" CenterY="53" />
+          <CompositeTransform x:Name="ExportTruckMotion" ScaleX="1.5" ScaleY="1.5" />
         </Canvas.RenderTransform>
         <!-- Exhaust behind the bed; it puffs only when the truck pulls away. -->
         <Ellipse
@@ -365,6 +365,43 @@
           Fill="#B9AFC4"
           Opacity="0"
         />
+        <!-- Two boxes are already stacked toward the cab, leaving the rear of the bed free. -->
+        <Canvas Canvas.Left="40" Canvas.Top="-16">
+          <Rectangle
+            Width="28"
+            Height="20"
+            RadiusX="2"
+            RadiusY="2"
+            Fill="#C8925A"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+          />
+          <Rectangle Canvas.Left="11" Width="6" Height="20" Fill="#E2B97F" />
+          <Path
+            Data="M 3,14 H 9"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+            StrokeStartLineCap="Round"
+          />
+        </Canvas>
+        <Canvas Canvas.Left="40" Canvas.Top="4">
+          <Rectangle
+            Width="28"
+            Height="20"
+            RadiusX="2"
+            RadiusY="2"
+            Fill="#C8925A"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+          />
+          <Rectangle Canvas.Left="11" Width="6" Height="20" Fill="#E2B97F" />
+          <Path
+            Data="M 3,14 H 9"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+            StrokeStartLineCap="Round"
+          />
+        </Canvas>
         <!-- Flatbed with a low gate, the cab at the front (right) and the chassis below. -->
         <Rectangle Canvas.Top="36" Width="112" Height="9" RadiusX="2" RadiusY="2" Fill="#6B5A78" />
         <Rectangle
@@ -398,33 +435,38 @@
       </Canvas>
       <Canvas
         x:Name="ExportBox"
-        Canvas.Left="74"
-        Canvas.Top="40"
-        Width="28"
-        Height="20"
+        Canvas.Left="67"
+        Canvas.Top="30"
+        Width="42"
+        Height="30"
         Opacity="0"
         Visibility="Collapsed"
       >
         <Canvas.RenderTransform>
-          <CompositeTransform x:Name="ExportBoxMotion" CenterX="14" CenterY="20" />
+          <CompositeTransform x:Name="ExportBoxMotion" CenterX="21" CenterY="30" />
         </Canvas.RenderTransform>
-        <Rectangle
-          Width="28"
-          Height="20"
-          RadiusX="2"
-          RadiusY="2"
-          Fill="#C8925A"
-          Stroke="#9C6B3E"
-          StrokeThickness="1.5"
-        />
-        <Rectangle Canvas.Left="11" Width="6" Height="20" Fill="#E2B97F" />
-        <Path
-          Data="M 3,14 H 9"
-          Stroke="#9C6B3E"
-          StrokeThickness="1.5"
-          StrokeStartLineCap="Round"
-          StrokeEndLineCap="Round"
-        />
+        <Canvas>
+          <Canvas.RenderTransform>
+            <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
+          </Canvas.RenderTransform>
+          <Rectangle
+            Width="28"
+            Height="20"
+            RadiusX="2"
+            RadiusY="2"
+            Fill="#C8925A"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+          />
+          <Rectangle Canvas.Left="11" Width="6" Height="20" Fill="#E2B97F" />
+          <Path
+            Data="M 3,14 H 9"
+            Stroke="#9C6B3E"
+            StrokeThickness="1.5"
+            StrokeStartLineCap="Round"
+            StrokeEndLineCap="Round"
+          />
+        </Canvas>
       </Canvas>
       <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
         <Canvas.RenderTransform>
