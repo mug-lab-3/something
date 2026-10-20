@@ -344,6 +344,68 @@
         Fill="#8CE4AD"
         Opacity="0"
       />
+      <!-- Export: the chick carries a sheet from the DB and drops it into a file. -->
+      <Canvas
+        x:Name="ExportFile"
+        Canvas.Left="206"
+        Canvas.Top="70"
+        Canvas.ZIndex="1"
+        Visibility="Collapsed"
+      >
+        <Canvas.RenderTransform>
+          <CompositeTransform x:Name="ExportFileMotion" CenterX="30" CenterY="66" />
+        </Canvas.RenderTransform>
+        <Path
+          Data="M 0,6 Q 0,0 6,0 H 40 L 60,20 V 60 Q 60,66 54,66 H 6 Q 0,66 0,60 Z"
+          Fill="#F1E8F6"
+          Stroke="#C9B0E5"
+          StrokeThickness="3"
+          StrokeLineJoin="Round"
+        />
+        <Path
+          Data="M 40,0 V 14 Q 40,20 46,20 H 60"
+          Fill="#D9C6E8"
+          Stroke="#C9B0E5"
+          StrokeThickness="3"
+          StrokeLineJoin="Round"
+        />
+        <Path
+          Data="M 12,32 H 48 M 12,42 H 48 M 12,52 H 36"
+          Stroke="#B49BC9"
+          StrokeThickness="3"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+      </Canvas>
+      <Canvas
+        x:Name="ExportSheet"
+        Canvas.Left="77"
+        Canvas.Top="32"
+        Width="22"
+        Height="28"
+        Opacity="0"
+        Visibility="Collapsed"
+      >
+        <Canvas.RenderTransform>
+          <CompositeTransform x:Name="ExportSheetMotion" CenterX="11" CenterY="14" />
+        </Canvas.RenderTransform>
+        <Rectangle
+          Width="22"
+          Height="28"
+          RadiusX="3"
+          RadiusY="3"
+          Fill="#FFFFFF"
+          Stroke="#C9B0E5"
+          StrokeThickness="2"
+        />
+        <Path
+          Data="M 5,9 H 17 M 5,14 H 17 M 5,19 H 13"
+          Stroke="#B49BC9"
+          StrokeThickness="2"
+          StrokeStartLineCap="Round"
+          StrokeEndLineCap="Round"
+        />
+      </Canvas>
       <Canvas x:Name="Chick" Canvas.Left="61" Canvas.Top="38" Width="54" Height="68" Opacity="0">
         <Canvas.RenderTransform>
           <CompositeTransform x:Name="ChickMotion" CenterX="27" CenterY="55" TranslateY="35" />

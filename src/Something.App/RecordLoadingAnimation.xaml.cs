@@ -156,6 +156,7 @@ public sealed partial class RecordLoadingAnimation : UserControl
             LoadingAnimationKind.Inspect => 136,
             LoadingAnimationKind.ScanDisk => 132,
             LoadingAnimationKind.DeleteHistory => 96,
+            LoadingAnimationKind.Export => ExportChickStop,
             _ => 94,
         };
         ChickMotion.TranslateY = ActiveKind switch
@@ -178,6 +179,15 @@ public sealed partial class RecordLoadingAnimation : UserControl
         {
             DefaultChick.SetFarewellPose(true);
             Farewell.Opacity = 1;
+        }
+        if (ActiveKind == LoadingAnimationKind.Export)
+        {
+            // Hold the sheet above the head beside the file.
+            ExportSheetMotion.TranslateX = ExportChickStop;
+            ExportSheetMotion.TranslateY = 2;
+            ExportSheet.Opacity = 1;
+            Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(Chick, 2);
+            Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(ExportSheet, 3);
         }
     }
 

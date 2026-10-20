@@ -1,0 +1,83 @@
+<ContentDialog
+  x:Uid="ExportDialog"
+  x:Class="Something.App.ExportDialog"
+  Style="{StaticResource DefaultContentDialogStyle}"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  DefaultButton="Primary"
+  PrimaryButtonStyle="{StaticResource ConfirmationDialogButtonStyle}"
+  CloseButtonStyle="{StaticResource SecondaryDialogButtonStyle}"
+>
+  <StackPanel Width="460" Spacing="16">
+    <RadioButtons x:Uid="Export_ScopeChoice" x:Name="ScopeChoice" SelectionChanged="OnScopeChanged">
+      <RadioButton x:Uid="Export_DisplayedOption" x:Name="DisplayedOption" />
+      <RadioButton x:Uid="Export_SummaryOption" x:Name="SummaryOption" />
+    </RadioButtons>
+    <TextBlock
+      x:Name="DisplayedDescription"
+      TextWrapping="Wrap"
+      FontSize="12"
+      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+    />
+    <StackPanel x:Name="SummaryOptions" Spacing="12">
+      <TextBlock
+        x:Name="SummaryStartText"
+        TextWrapping="Wrap"
+        FontSize="12"
+        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+      />
+      <Grid ColumnSpacing="12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <NumberBox
+          x:Uid="Export_DepthBox"
+          x:Name="DepthBox"
+          Minimum="0"
+          SmallChange="1"
+          SpinButtonPlacementMode="Compact"
+          ValidationMode="InvalidInputOverwritten"
+        />
+        <NumberBox
+          x:Uid="Export_MinimumSizeBox"
+          x:Name="MinimumSizeBox"
+          Grid.Column="1"
+          Minimum="0"
+          SmallChange="100"
+          SpinButtonPlacementMode="Compact"
+          ValidationMode="InvalidInputOverwritten"
+        />
+        <NumberBox
+          x:Uid="Export_LimitBox"
+          x:Name="LimitBox"
+          Grid.Column="2"
+          Minimum="1"
+          SmallChange="100"
+          SpinButtonPlacementMode="Compact"
+          ValidationMode="InvalidInputOverwritten"
+        />
+      </Grid>
+      <ComboBox x:Uid="Export_SortBox" x:Name="SortBox" HorizontalAlignment="Stretch">
+        <ComboBoxItem x:Uid="Export_SortBySize" />
+        <ComboBoxItem x:Uid="Export_SortByChange" x:Name="SortByChangeItem" />
+      </ComboBox>
+    </StackPanel>
+    <ComboBox x:Uid="Export_FormatBox" x:Name="FormatBox" HorizontalAlignment="Stretch">
+      <ComboBoxItem x:Uid="Export_FormatText" />
+      <ComboBoxItem x:Uid="Export_FormatHtml" />
+      <ComboBoxItem x:Uid="Export_FormatCsv" />
+      <ComboBoxItem x:Uid="Export_FormatTsv" />
+      <ComboBoxItem x:Uid="Export_FormatJson" />
+      <ComboBoxItem x:Uid="Export_FormatParquet" />
+    </ComboBox>
+    <TextBlock
+      x:Uid="Export_ComparisonNote"
+      x:Name="ComparisonNote"
+      TextWrapping="Wrap"
+      FontSize="12"
+      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+    />
+  </StackPanel>
+</ContentDialog>

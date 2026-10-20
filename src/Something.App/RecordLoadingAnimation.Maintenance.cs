@@ -9,6 +9,7 @@ internal enum LoadingAnimationKind
     DeleteHistory,
     OptimizeDatabase,
     ScanDisk,
+    Export,
 }
 
 public sealed partial class RecordLoadingAnimation
@@ -21,6 +22,15 @@ public sealed partial class RecordLoadingAnimation
         bool inspect = ActiveKind == LoadingAnimationKind.Inspect;
         bool scanning = ActiveKind == LoadingAnimationKind.ScanDisk;
         bool optimizing = ActiveKind == LoadingAnimationKind.OptimizeDatabase;
+        bool exporting = ActiveKind == LoadingAnimationKind.Export;
+        ExportFile.Visibility = ExportSheet.Visibility = exporting
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        // The static export pose raises the chick; other modes start it inside the nest.
+        Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(Chick, 0);
+        Microsoft.UI.Xaml.Controls.Canvas.SetZIndex(ExportSheet, 0);
+        ExportSheet.Opacity = 0;
+        ExportSheetMotion.TranslateX = ExportSheetMotion.TranslateY = 0;
         DiskSource.Visibility = DiskFront.Visibility = scanning
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -73,6 +83,7 @@ public sealed partial class RecordLoadingAnimation
                 {
                     LoadingAnimationKind.ScanDisk => CreateScanCycle(),
                     LoadingAnimationKind.OptimizeDatabase => CreateOptimizationCycle(),
+                    LoadingAnimationKind.Export => CreateExportCycle(),
                     _ => CreateDeletionCycle(),
                 };
                 maintenanceCycles.Add(ActiveKind, storyboard);

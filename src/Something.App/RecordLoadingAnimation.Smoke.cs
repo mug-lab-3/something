@@ -256,12 +256,105 @@ public sealed partial class RecordLoadingAnimation
             );
     }
 
+    internal void VerifyExportPose(double seconds)
+    {
+        if (
+            ActiveKind != LoadingAnimationKind.Export
+            || ExportFile.Visibility != Microsoft.UI.Xaml.Visibility.Visible
+            || ExportSheet.Visibility != Microsoft.UI.Xaml.Visibility.Visible
+            || Width != 300
+            || ChickMotion.ScaleX != 1
+            || ChickMotion.ScaleY != 1
+        )
+            throw new InvalidOperationException(
+                "Export did not show the shared full-size chick, its sheet and the file."
+            );
+        double SheetLeft() => 77 + ExportSheetMotion.TranslateX;
+        double SheetTop() => 32 + ExportSheetMotion.TranslateY;
+        if (
+            seconds is > .19 and < .21
+            && (
+                Math.Abs(ChickMotion.TranslateY - 20) > .1
+                || ExportSheet.Opacity < .99
+                || Math.Abs(ExportSheetMotion.TranslateX - ChickMotion.TranslateX) > .1
+                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) != 0
+            )
+        )
+            throw new InvalidOperationException(
+                "The chick did not peek out of the nest holding a sheet overhead."
+            );
+        if (
+            seconds is > .84 and < .86
+            && (
+                Math.Abs(ChickMotion.TranslateX - ExportChickStop) > .1
+                || Math.Abs(ChickMotion.TranslateY - 22) > .1
+                || Math.Abs(ExportSheetMotion.TranslateX - ExportChickStop) > .1
+                || SideSprite.Opacity != 0
+                || 61 + ChickMotion.TranslateX + 54 > 206 + 30
+                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) <= 1
+                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
+                    <= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)
+            )
+        )
+            throw new InvalidOperationException(
+                $"The chick did not stop beside the file with the sheet above it: x={ChickMotion.TranslateX}, y={ChickMotion.TranslateY}, sheet={ExportSheetMotion.TranslateX}, side={SideSprite.Opacity}, chickZ={Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)}, sheetZ={Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)}."
+            );
+        if (
+            seconds is > 1.24 and < 1.26
+            && (
+                SheetLeft() < 206
+                || SheetLeft() + 22 > 206 + 60
+                || SheetTop() < 70
+                || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
+                    >= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportFile)
+            )
+        )
+            throw new InvalidOperationException("The sheet did not drop inside the file.");
+        if (seconds is > 1.29 and < 1.31 && ExportFileMotion.ScaleY > .95)
+            throw new InvalidOperationException("The file did not react to the sheet.");
+        if (
+            seconds >= 2.15
+            && (
+                Chick.Opacity != 0
+                || ExportSheet.Opacity != 0
+                || Math.Abs(ChickMotion.TranslateX) > .1
+                || Math.Abs(ExportFileMotion.ScaleY - 1) > .01
+            )
+        )
+            throw new InvalidOperationException(
+                "The chick did not return into the nest before the next sheet."
+            );
+    }
+
+    internal void VerifyStaticExportPose()
+    {
+        if (
+            Chick.Opacity != 1
+            || ExportSheet.Opacity != 1
+            || Math.Abs(ChickMotion.TranslateX - ExportChickStop) > .1
+            || Math.Abs(ExportSheetMotion.TranslateX - ExportChickStop) > .1
+            || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(ExportSheet)
+                <= Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick)
+        )
+            throw new InvalidOperationException(
+                "Reduced-motion export did not show the chick holding a sheet beside the file."
+            );
+    }
+
     internal void VerifyDepartureAccessoriesHidden()
     {
         if (
             (
                 ActiveKind != LoadingAnimationKind.ScanDisk
                 && ScanCrane.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+            )
+            || (
+                ActiveKind != LoadingAnimationKind.Export
+                && (
+                    ExportFile.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+                    || ExportSheet.Visibility != Microsoft.UI.Xaml.Visibility.Collapsed
+                    || Microsoft.UI.Xaml.Controls.Canvas.GetZIndex(Chick) > 1
+                )
             )
             || DefaultChick.HasBackpack
             || DefaultChick.RaisedWing.Opacity != 0

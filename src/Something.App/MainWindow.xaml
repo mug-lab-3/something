@@ -111,17 +111,31 @@
               </TabViewItem.Header>
             </TabViewItem>
           </TabView>
-          <Button
-            x:Uid="Main_SettingsButton"
-            x:Name="SettingsButton"
-            Click="OnOpenSettings"
+          <StackPanel
             Grid.Column="1"
-            Background="Transparent"
-            BorderThickness="0"
+            Orientation="Horizontal"
+            Spacing="4"
             VerticalAlignment="Center"
           >
-            <FontIcon Glyph="&#xE713;" FontSize="20" />
-          </Button>
+            <Button
+              x:Uid="Main_ExportButton"
+              x:Name="ExportButton"
+              Click="OnExport"
+              Background="Transparent"
+              BorderThickness="0"
+            >
+              <FontIcon Glyph="&#xEDE1;" FontSize="20" />
+            </Button>
+            <Button
+              x:Uid="Main_SettingsButton"
+              x:Name="SettingsButton"
+              Click="OnOpenSettings"
+              Background="Transparent"
+              BorderThickness="0"
+            >
+              <FontIcon Glyph="&#xE713;" FontSize="20" />
+            </Button>
+          </StackPanel>
         </Grid>
         <local:HistoryManagementView
           x:Name="HistoryManagement"

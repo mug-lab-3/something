@@ -89,6 +89,7 @@ public sealed partial class MainWindow
                         "HistoryManagement_Organizing"
                     ),
                     LoadingAnimationKind.OptimizeDatabase => Strings.Get("Database_Optimizing"),
+                    LoadingAnimationKind.Export => Strings.Get("Export_Writing"),
                     _ => Strings.Get("View_Preparing"),
                 };
             if (presentation is not null)

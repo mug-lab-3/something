@@ -48,6 +48,29 @@ public sealed partial class FolderEntryCollection
             ? Strings.Format("Count_ItemsLoaded", totalCount, Count)
             : Strings.Format("Count_Items", totalCount);
 
+    /// <summary>All rows of the folder for export, reading unloaded pages without showing them.</summary>
+    internal async Task<IReadOnlyList<EntryRow>> ReadAllAsync(CancellationToken token)
+    {
+        await gate.WaitAsync(token);
+        try
+        {
+            var rows = new List<EntryRow>(this);
+            bool more = hasMore;
+            for (int page = nextPage; more; page = checked(page + 1))
+            {
+                var result = await readPage(page, token);
+                token.ThrowIfCancellationRequested();
+                rows.AddRange(result.Entries.Select(createRow));
+                more = result.HasMore;
+            }
+            return rows;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     public IAsyncOperation<LoadMoreItemsResult> LoadMoreItemsAsync(uint count) =>
         AsyncInfo.Run(async requestToken =>
         {

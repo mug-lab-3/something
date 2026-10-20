@@ -17,6 +17,8 @@ public sealed partial class EntryRow(
 )
 {
     public FolderEntry Entry { get; } = entry;
+    internal EntryChange? Change => change;
+    internal bool Comparing => comparing;
     public FileRemovalState Removal { get; internal set; } = new();
     public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
     public string Name => DisplayText.Escape(Entry.Name);
@@ -65,6 +67,8 @@ public sealed partial class RankingRow
         (StandardFileAttributes.GetValueOrDefault() & (uint)FileAttributes.System) != 0;
     public bool AttributesKnown => StandardFileAttributes is not null;
     public Visibility RecycleVisibility { get; internal set; } = Visibility.Collapsed;
+
+    internal CapacityAnalysisItem Item => item;
 
     public RankingRow(CapacityAnalysisItem item, string drive)
     {

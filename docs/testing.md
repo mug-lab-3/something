@@ -61,7 +61,7 @@ Start-Process $exe -Wait -ArgumentList '--demo','--demo-static','--demo-history'
 Get-Content artifacts\smoke\run.result
 ```
 
-`--smoke-comparison` は比較と読み込み表示の時間の規則を、`--smoke-history-management` は履歴削除・最適化のアニメーションを、`--smoke-scan-animation` はスキャンのアニメーションを追加で確認します。比較の確認には `--demo-history` が必要です。
+`--smoke-comparison` は比較と読み込み表示の時間の規則を、`--smoke-history-management` は履歴削除・最適化のアニメーションを、`--smoke-scan-animation` はスキャンのアニメーションを、`--smoke-export` はエクスポート（表示中の一覧とフォルダーの集計、6 つの形式すべての書き出し、ダイアログ）を追加で確認します。履歴削除・最適化の確認には、エクスポートのアニメーションも含まれます。比較の確認には `--demo-history` が必要です。
 
 > [!WARNING]
 > 管理者権限を求めない検証用のマニフェストで別の出力先にビルドする場合は、配布用のマニフェストを上書きしないでください。

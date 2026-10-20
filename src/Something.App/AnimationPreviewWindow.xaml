@@ -24,6 +24,7 @@
           <ComboBoxItem x:Uid="AnimationPreview_ModeScan" />
           <ComboBoxItem x:Uid="AnimationPreview_ModeDeleteHistory" />
           <ComboBoxItem x:Uid="AnimationPreview_ModeOptimize" />
+          <ComboBoxItem x:Uid="AnimationPreview_ModeExport" />
         </ComboBox>
         <ComboBox x:Name="ThemeBox" Width="120" SelectedIndex="0" SelectionChanged="OnThemeChanged">
           <ComboBoxItem x:Uid="AnimationPreview_ThemeDark" />

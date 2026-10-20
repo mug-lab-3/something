@@ -25,6 +25,9 @@
   <data name="AnimationPreview_ModeLoading.Content" xml:space="preserve">
     <value>読み込み</value>
   </data>
+  <data name="AnimationPreview_ModeExport.Content" xml:space="preserve">
+    <value>エクスポート</value>
+  </data>
   <data name="AnimationPreview_ModeOptimize.Content" xml:space="preserve">
     <value>DB最適化</value>
   </data>
@@ -359,6 +362,207 @@
   </data>
   <data name="Error_Title" xml:space="preserve">
     <value>処理を完了できませんでした</value>
+  </data>
+  <data name="Export_ColumnBefore" xml:space="preserve">
+    <value>比較元のサイズ</value>
+  </data>
+  <data name="Export_ColumnDelta" xml:space="preserve">
+    <value>増減</value>
+  </data>
+  <data name="Export_ColumnDepth" xml:space="preserve">
+    <value>深さ</value>
+  </data>
+  <data name="Export_ColumnFileCount" xml:space="preserve">
+    <value>ファイル数</value>
+  </data>
+  <data name="Export_ColumnHidden" xml:space="preserve">
+    <value>隠し</value>
+  </data>
+  <data name="Export_ColumnIncomplete" xml:space="preserve">
+    <value>一部不明</value>
+  </data>
+  <data name="Export_ColumnKind" xml:space="preserve">
+    <value>種類</value>
+  </data>
+  <data name="Export_ColumnPath" xml:space="preserve">
+    <value>パス</value>
+  </data>
+  <data name="Export_ColumnSize" xml:space="preserve">
+    <value>サイズ</value>
+  </data>
+  <data name="Export_ColumnStatus" xml:space="preserve">
+    <value>比較の状態</value>
+  </data>
+  <data name="Export_ColumnSystem" xml:space="preserve">
+    <value>システム</value>
+  </data>
+  <data name="Export_ComparisonNote.Text" xml:space="preserve">
+    <value>比較中のため、比較元のサイズと増減も出力します。</value>
+  </data>
+  <data name="Export_Completed" xml:space="preserve">
+    <value>エクスポートしました</value>
+  </data>
+  <data name="Export_DepthBox.Header" xml:space="preserve">
+    <value>深さの上限</value>
+  </data>
+  <data name="Export_DepthBox.PlaceholderText" xml:space="preserve">
+    <value>制限なし</value>
+  </data>
+  <data name="Export_DisplayedAnalysis" xml:space="preserve">
+    <value>容量分析タブの一覧（{0:N0} 件）を、表示中の並び順で出力します。</value>
+    <comment>{0} = row count</comment>
+  </data>
+  <data name="Export_DisplayedFiles" xml:space="preserve">
+    <value>ファイル タブの「{0}」の中身を、表示中の並び順ですべて出力します。</value>
+    <comment>{0} = folder path</comment>
+  </data>
+  <data name="Export_DisplayedOption.Content" xml:space="preserve">
+    <value>表示中の一覧</value>
+  </data>
+  <data name="Export_DisplayedUnavailable" xml:space="preserve">
+    <value>このタブには出力できる一覧がありません。</value>
+  </data>
+  <data name="Export_FailedTitle" xml:space="preserve">
+    <value>エクスポートできませんでした</value>
+  </data>
+  <data name="Export_FileTypeCsv" xml:space="preserve">
+    <value>CSV ファイル</value>
+  </data>
+  <data name="Export_FileTypeHtml" xml:space="preserve">
+    <value>HTML ファイル</value>
+  </data>
+  <data name="Export_FileTypeJson" xml:space="preserve">
+    <value>JSON ファイル</value>
+  </data>
+  <data name="Export_FileTypeParquet" xml:space="preserve">
+    <value>Parquet ファイル</value>
+  </data>
+  <data name="Export_FileTypeText" xml:space="preserve">
+    <value>テキスト ファイル</value>
+  </data>
+  <data name="Export_FileTypeTsv" xml:space="preserve">
+    <value>TSV ファイル</value>
+  </data>
+  <data name="Export_FormatBox.Header" xml:space="preserve">
+    <value>形式</value>
+  </data>
+  <data name="Export_FormatCsv.Content" xml:space="preserve">
+    <value>CSV（.csv）</value>
+  </data>
+  <data name="Export_FormatHtml.Content" xml:space="preserve">
+    <value>HTML（.html）</value>
+  </data>
+  <data name="Export_FormatJson.Content" xml:space="preserve">
+    <value>JSON（.json）</value>
+  </data>
+  <data name="Export_FormatParquet.Content" xml:space="preserve">
+    <value>Parquet（.parquet）</value>
+  </data>
+  <data name="Export_FormatText.Content" xml:space="preserve">
+    <value>プレーンテキスト（.txt）</value>
+  </data>
+  <data name="Export_FormatTsv.Content" xml:space="preserve">
+    <value>TSV（.tsv）</value>
+  </data>
+  <data name="Export_LimitBox.Header" xml:space="preserve">
+    <value>件数の上限</value>
+  </data>
+  <data name="Export_LimitBox.PlaceholderText" xml:space="preserve">
+    <value>すべて</value>
+  </data>
+  <data name="Export_MinimumSizeBox.Header" xml:space="preserve">
+    <value>最小サイズ（MiB）</value>
+  </data>
+  <data name="Export_MinimumSizeBox.PlaceholderText" xml:space="preserve">
+    <value>0</value>
+  </data>
+  <data name="Export_No" xml:space="preserve">
+    <value>いいえ</value>
+  </data>
+  <data name="Export_NoLimit" xml:space="preserve">
+    <value>制限なし</value>
+  </data>
+  <data name="Export_NoScan" xml:space="preserve">
+    <value>エクスポートできるスキャン結果がありません。</value>
+  </data>
+  <data name="Export_PropertyComparisonBase" xml:space="preserve">
+    <value>比較元のスキャン日時</value>
+  </data>
+  <data name="Export_PropertyDrive" xml:space="preserve">
+    <value>ドライブ</value>
+  </data>
+  <data name="Export_PropertyExportedAt" xml:space="preserve">
+    <value>エクスポート日時</value>
+  </data>
+  <data name="Export_PropertyGenerator" xml:space="preserve">
+    <value>作成</value>
+  </data>
+  <data name="Export_PropertyIncludeHidden" xml:space="preserve">
+    <value>隠しファイルを含める</value>
+  </data>
+  <data name="Export_PropertyIncludeSystem" xml:space="preserve">
+    <value>システムファイルを含める</value>
+  </data>
+  <data name="Export_PropertyLimit" xml:space="preserve">
+    <value>件数の上限</value>
+  </data>
+  <data name="Export_PropertyMaximumDepth" xml:space="preserve">
+    <value>深さの上限</value>
+  </data>
+  <data name="Export_PropertyMinimumSize" xml:space="preserve">
+    <value>最小サイズ（バイト）</value>
+  </data>
+  <data name="Export_PropertyScanCompleted" xml:space="preserve">
+    <value>スキャン日時</value>
+  </data>
+  <data name="Export_PropertyScope" xml:space="preserve">
+    <value>起点フォルダー</value>
+  </data>
+  <data name="Export_ScopeChoice.Header" xml:space="preserve">
+    <value>出力する内容</value>
+  </data>
+  <data name="Export_SortBox.Header" xml:space="preserve">
+    <value>並び順</value>
+  </data>
+  <data name="Export_SortByChange.Content" xml:space="preserve">
+    <value>増減の大きい順</value>
+  </data>
+  <data name="Export_SortBySize.Content" xml:space="preserve">
+    <value>サイズの大きい順</value>
+  </data>
+  <data name="Export_StatusComparable" xml:space="preserve">
+    <value>比較可能</value>
+  </data>
+  <data name="Export_SummaryOption.Content" xml:space="preserve">
+    <value>フォルダーの集計</value>
+  </data>
+  <data name="Export_SummaryStart" xml:space="preserve">
+    <value>起点フォルダー：{0}</value>
+    <comment>{0} = folder path</comment>
+  </data>
+  <data name="Export_TitleAnalysis" xml:space="preserve">
+    <value>容量分析</value>
+  </data>
+  <data name="Export_TitleFiles" xml:space="preserve">
+    <value>フォルダーの中身</value>
+  </data>
+  <data name="Export_TitleSummary" xml:space="preserve">
+    <value>フォルダーの集計</value>
+  </data>
+  <data name="Export_Writing" xml:space="preserve">
+    <value>エクスポートしています…</value>
+  </data>
+  <data name="Export_Yes" xml:space="preserve">
+    <value>はい</value>
+  </data>
+  <data name="ExportDialog.CloseButtonText" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="ExportDialog.PrimaryButtonText" xml:space="preserve">
+    <value>エクスポート</value>
+  </data>
+  <data name="ExportDialog.Title" xml:space="preserve">
+    <value>エクスポート</value>
   </data>
   <data name="FolderTip_Comparison" xml:space="preserve">
     <value>
@@ -744,6 +948,12 @@
   </data>
   <data name="Main_EntryNameHeader.Content" xml:space="preserve">
     <value>名前</value>
+  </data>
+  <data name="Main_ExportButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>エクスポート</value>
+  </data>
+  <data name="Main_ExportButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>エクスポート</value>
   </data>
   <data name="Main_FilesTab.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>ファイル</value>

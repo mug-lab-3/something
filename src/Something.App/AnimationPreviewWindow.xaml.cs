@@ -37,6 +37,7 @@ public sealed partial class AnimationPreviewWindow : Window
                 1 => LoadingAnimationKind.ScanDisk,
                 2 => LoadingAnimationKind.DeleteHistory,
                 3 => LoadingAnimationKind.OptimizeDatabase,
+                4 => LoadingAnimationKind.Export,
                 _ => LoadingAnimationKind.Inspect,
             }
         );

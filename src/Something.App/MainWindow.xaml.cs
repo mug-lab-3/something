@@ -327,6 +327,8 @@ public sealed partial class MainWindow : Window
             await VerifyNotificationsAsync();
             if (Environment.GetCommandLineArgs().Contains("--smoke-database-settings"))
                 await VerifyDatabaseSettingsAsync(path);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-export"))
+                await VerifyExportAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
             {
                 WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
@@ -1922,6 +1924,7 @@ public sealed partial class MainWindow : Window
         lifetime.Cancel();
         recycleDialog?.Hide();
         databaseDeleteDialog?.Hide();
+        exportDialog?.Hide();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());

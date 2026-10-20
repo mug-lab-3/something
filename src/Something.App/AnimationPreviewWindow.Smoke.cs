@@ -11,7 +11,7 @@ public sealed partial class AnimationPreviewWindow
     {
         try
         {
-            for (int index = 0; index < 4; index++)
+            for (int index = 0; index < 5; index++)
             {
                 KindBox.SelectedIndex = index;
                 Restart();
@@ -23,13 +23,16 @@ public sealed partial class AnimationPreviewWindow
                     1 => [.55, .98, 1.6, 2.45, 2.8, 3.2, 3.7],
                     2 => [.4, 1.5, 2.5, 3.08],
                     3 => [.4, 1.15, 2.5, 2.86, 3.85, 4.8],
+                    4 => [.2, .62, .85, 1.25, 1.3, 1.7, 2.2],
                     _ => [.6],
                 };
                 foreach (double frame in frames)
                 {
                     Animation.PauseForPreview(frame);
                     await Task.Delay(80);
-                    if (index == 3)
+                    if (index == 4)
+                        Animation.VerifyExportPose(frame);
+                    else if (index == 3)
                         Animation.VerifyOptimizationPose(frame);
                     else if (index == 2)
                         Animation.VerifyDeletionPose(frame);
@@ -55,6 +58,8 @@ public sealed partial class AnimationPreviewWindow
                     throw new InvalidOperationException("Static preview started an animation.");
                 if (index == 2)
                     Animation.VerifyDeletionPose(1.5);
+                if (index == 4)
+                    Animation.VerifyStaticExportPose();
                 StaticBox.IsChecked = false;
             }
             KindBox.SelectedIndex = 3;
@@ -96,7 +101,7 @@ public sealed partial class AnimationPreviewWindow
             Animation.Cancel();
             await File.WriteAllTextAsync(
                 path + ".result",
-                "Standalone animation preview passed: all four modes, backpack departure and raised-wing farewell, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
+                "Standalone animation preview passed: all five modes, export sheet delivery into the file, backpack departure and raised-wing farewell, identical full-size chicks, conversation, visual whistle cue, queue alignment, sequential entry, light/dark, static mode, settling and cancellation. No MainWindow, history DB or live volume was opened."
             );
         }
         catch (Exception error)

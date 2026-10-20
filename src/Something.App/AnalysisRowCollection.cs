@@ -31,6 +31,9 @@ public sealed partial class AnalysisRowCollection
         AppendBatch();
     }
 
+    /// <summary>Every analysis row in display order, including rows not loaded into the view.</summary>
+    internal IEnumerable<RankingRow> AllRows() => Enumerable.Range(0, TotalCount).Select(createRow);
+
     public bool HasMoreItems => Count < TotalCount && !token.IsCancellationRequested && isCurrent();
 
     public IAsyncOperation<LoadMoreItemsResult> LoadMoreItemsAsync(uint count) =>

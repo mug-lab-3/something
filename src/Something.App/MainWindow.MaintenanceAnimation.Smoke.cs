@@ -12,15 +12,21 @@ public sealed partial class MainWindow
             {
                 LoadingAnimationKind.DeleteHistory,
                 LoadingAnimationKind.OptimizeDatabase,
+                LoadingAnimationKind.Export,
             }
         )
         {
             bool animated;
             await using (
                 BeginViewUpdate(
-                    kind == LoadingAnimationKind.DeleteHistory
-                        ? Strings.Get("HistoryManagement_Deleting")
-                        : Strings.Get("Database_Optimizing"),
+                    kind switch
+                    {
+                        LoadingAnimationKind.DeleteHistory => Strings.Get(
+                            "HistoryManagement_Deleting"
+                        ),
+                        LoadingAnimationKind.Export => "Something-Demo.csv",
+                        _ => Strings.Get("Database_Optimizing"),
+                    },
                     kind
                 )
             )
@@ -38,19 +44,36 @@ public sealed partial class MainWindow
                     lifetime.Token
                 );
                 ViewLoadingAnimation.PauseForPreview(
-                    kind == LoadingAnimationKind.DeleteHistory ? 1.5 : .7
+                    kind switch
+                    {
+                        LoadingAnimationKind.DeleteHistory => 1.5,
+                        LoadingAnimationKind.Export => .85,
+                        _ => .7,
+                    }
                 );
                 try
                 {
                     await Task.Delay(80, lifetime.Token);
                     RootLayout.UpdateLayout();
+                    if (kind == LoadingAnimationKind.Export)
+                    {
+                        if (
+                            ViewLoadingTitle.Text != Strings.Get("Export_Writing")
+                            || ViewLoadingText.Text != "Something-Demo.csv"
+                        )
+                            throw new InvalidOperationException(
+                                "Export did not title its progress with the file name."
+                            );
+                        ViewLoadingAnimation.VerifyExportPose(.85);
+                    }
                     await CaptureStartupFrameAsync(
                         capture
-                            + (
-                                kind == LoadingAnimationKind.DeleteHistory
-                                    ? ".history-delete"
-                                    : ".history-optimize"
-                            )
+                            + kind switch
+                            {
+                                LoadingAnimationKind.DeleteHistory => ".history-delete",
+                                LoadingAnimationKind.Export => ".export-animation",
+                                _ => ".history-optimize",
+                            }
                     );
                 }
                 finally
