@@ -39,6 +39,9 @@ public sealed partial class MainWindow
             accelerator.Invoked += OnNavigationAcceleratorInvoked;
             WindowLayout.KeyboardAccelerators.Add(accelerator);
         }
+        // These shortcuts belong to the whole window. Without this, WinUI shows the first key
+        // name ("GoBack") as a tooltip wherever the pointer rests on an area without its own tooltip.
+        WindowLayout.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
     }
 
     private async void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs args)

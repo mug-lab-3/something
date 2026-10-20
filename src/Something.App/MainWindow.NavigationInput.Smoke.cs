@@ -8,6 +8,13 @@ public sealed partial class MainWindow
     {
         if (!demo || session is not { } current)
             throw new InvalidOperationException("Navigation input smoke needs a synthetic scan.");
+        // Window-wide shortcuts must not show their key names as a tooltip over empty areas.
+        if (
+            WindowLayout.KeyboardAccelerators.Count == 0
+            || WindowLayout.KeyboardAcceleratorPlacementMode
+                != Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden
+        )
+            throw new InvalidOperationException("Navigation shortcuts showed a key-name tooltip.");
         WorkspaceTabs.SelectedIndex = 0;
         await LoadFolderAsync(new(current.Root, current.Drive + "\\"), NavigationAction.None);
         var root = location!;
