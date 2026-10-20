@@ -50,7 +50,7 @@
         >
           <StackPanel x:Name="DriveCards" Margin="0,0,0,16" Orientation="Horizontal" Spacing="12" />
         </ScrollViewer>
-        <Grid Grid.Row="1" ColumnSpacing="16">
+        <Grid x:Name="WorkspaceHeader" Grid.Row="1" ColumnSpacing="16">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -699,6 +699,13 @@
             />
           </StackPanel>
         </Border>
+        <!-- Covers the tabs, content and loading overlay; drive cards and toasts stay visible. -->
+        <local:SettingsView
+          x:Name="SettingsPage"
+          Grid.Row="1"
+          Grid.RowSpan="3"
+          Visibility="Collapsed"
+        />
         <InfoBar
           x:Name="MessageBar"
           Style="{StaticResource ToastStyle}"

@@ -108,6 +108,7 @@ public sealed partial class MainWindow
         ViewHost.IsEnabled = !covered;
         SettingsButton.IsEnabled = !covered && !historyMaintenance && !changingVisibility;
         ViewControls.Opacity = ResultsContent.Opacity = EmptyScanText.Opacity = covered ? 0 : 1;
+        UpdateSettingsAvailability();
     }
 
     private async Task PreviewLoadingAnimationAsync()

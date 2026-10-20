@@ -232,11 +232,23 @@
   <data name="Database_Deleting" xml:space="preserve">
     <value>履歴データベースを削除しています…</value>
   </data>
+  <data name="Database_MoveAction" xml:space="preserve">
+    <value>移動</value>
+  </data>
   <data name="Database_Moved" xml:space="preserve">
     <value>履歴データベースを新しい保存先に移動しました。</value>
   </data>
   <data name="Database_MovedOriginalKept" xml:space="preserve">
     <value>データベースを新しい保存先に切り替えました。元のデータベースは削除できなかったため、以前のフォルダーに残っています。</value>
+  </data>
+  <data name="Database_MoveMessage" xml:space="preserve">
+    <value>全ドライブのスキャン履歴を次のフォルダーに移動します。移動先にあるデータベースは上書きしません。
+
+{0}</value>
+    <comment>{0} = destination folder</comment>
+  </data>
+  <data name="Database_MoveTitle" xml:space="preserve">
+    <value>履歴データベースを移動しますか？</value>
   </data>
   <data name="Database_Moving" xml:space="preserve">
     <value>履歴データベースを移動しています…</value>
@@ -1091,11 +1103,20 @@
   <data name="Settings_Applying" xml:space="preserve">
     <value>表示するファイルと容量を集計しています…</value>
   </data>
+  <data name="Settings_BackButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>戻る</value>
+  </data>
+  <data name="Settings_BackButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>戻る</value>
+  </data>
   <data name="Settings_BrowseButton.Content" xml:space="preserve">
     <value>参照…</value>
   </data>
   <data name="Settings_BusyHint.Text" xml:space="preserve">
     <value>スキャンなどの処理中は、保存先の変更と削除はできません。</value>
+  </data>
+  <data name="Settings_CurrentTitle.Text" xml:space="preserve">
+    <value>現在のデータベース</value>
   </data>
   <data name="Settings_DatabaseHeader.Text" xml:space="preserve">
     <value>履歴データベース</value>
@@ -1103,7 +1124,13 @@
   <data name="Settings_DeleteDatabaseText.Text" xml:space="preserve">
     <value>データベースを削除</value>
   </data>
-  <data name="Settings_DirectoryBox.Header" xml:space="preserve">
+  <data name="Settings_DeleteDescription.Text" xml:space="preserve">
+    <value>全ドライブのスキャン履歴を削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。</value>
+  </data>
+  <data name="Settings_DeleteTitle.Text" xml:space="preserve">
+    <value>データベースの削除</value>
+  </data>
+  <data name="Settings_DirectoryBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>保存先フォルダー</value>
   </data>
   <data name="Settings_DirectoryBox.PlaceholderText" xml:space="preserve">
@@ -1112,28 +1139,59 @@
   <data name="Settings_DisplayHeader.Text" xml:space="preserve">
     <value>表示</value>
   </data>
+  <data name="Settings_FilesHeader.Text" xml:space="preserve">
+    <value>ファイルとフォルダー</value>
+  </data>
   <data name="Settings_IncludeHidden.Content" xml:space="preserve">
-    <value>隠しファイルとフォルダーを含める</value>
+    <value>隠し属性のファイルとフォルダーを一覧と集計に含める</value>
+  </data>
+  <data name="Settings_IncludeHiddenTitle.Text" xml:space="preserve">
+    <value>隠しファイルとフォルダー</value>
   </data>
   <data name="Settings_IncludeSystem.Content" xml:space="preserve">
-    <value>システムファイルとフォルダーを含める</value>
+    <value>システム属性のファイルとフォルダーを一覧と集計に含める</value>
+  </data>
+  <data name="Settings_IncludeSystemTitle.Text" xml:space="preserve">
+    <value>システムファイルとフォルダー</value>
+  </data>
+  <data name="Settings_LocationHeader.Text" xml:space="preserve">
+    <value>保存先</value>
+  </data>
+  <data name="Settings_LocationTitle.Text" xml:space="preserve">
+    <value>保存先フォルダー</value>
+  </data>
+  <data name="Settings_ManagementHeader.Text" xml:space="preserve">
+    <value>管理</value>
+  </data>
+  <data name="Settings_MoveButton.Content" xml:space="preserve">
+    <value>移動</value>
   </data>
   <data name="Settings_MoveHint.Text" xml:space="preserve">
     <value>保存先を変更すると、データベースを新しいフォルダーに移動します。移動先にあるデータベースは上書きしません。</value>
   </data>
+  <data name="Settings_NoResults" xml:space="preserve">
+    <value>「{0}」に一致する設定はありません。</value>
+    <comment>{0} = search text</comment>
+  </data>
+  <data name="Settings_OpenFolderDescription.Text" xml:space="preserve">
+    <value>保存先フォルダーをエクスプローラーで開きます。</value>
+  </data>
   <data name="Settings_OpenFolderText.Text" xml:space="preserve">
     <value>フォルダーを開く</value>
   </data>
-  <data name="Settings_SizeLabel.Text" xml:space="preserve">
-    <value>サイズ</value>
+  <data name="Settings_OpenFolderTitle.Text" xml:space="preserve">
+    <value>データベースのフォルダー</value>
   </data>
-  <data name="SettingsDialog.CloseButtonText" xml:space="preserve">
-    <value>キャンセル</value>
+  <data name="Settings_SearchBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>設定を検索</value>
   </data>
-  <data name="SettingsDialog.PrimaryButtonText" xml:space="preserve">
-    <value>保存</value>
+  <data name="Settings_SearchBox.PlaceholderText" xml:space="preserve">
+    <value>設定を検索</value>
   </data>
-  <data name="SettingsDialog.Title" xml:space="preserve">
+  <data name="Settings_SectionTree.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>設定のカテゴリ</value>
+  </data>
+  <data name="Settings_Title.Text" xml:space="preserve">
     <value>設定</value>
   </data>
   <data name="Size_AllocatedDescription" xml:space="preserve">

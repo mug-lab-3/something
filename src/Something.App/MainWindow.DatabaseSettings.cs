@@ -8,9 +8,7 @@ namespace Something.App;
 public sealed partial class MainWindow
 {
     private DatabaseSettingsStore? databaseSettings;
-    private SettingsDialog? settingsDialog;
     private ContentDialog? databaseDeleteDialog;
-    private Task? settingsWork;
 
     private ScanHistoryArchive CreateConfiguredHistory()
     {
@@ -26,12 +24,66 @@ public sealed partial class MainWindow
             : ScanHistoryArchive.CreateDefault();
     }
 
-    private async void OnOpenSettings(object sender, RoutedEventArgs args)
+    private void InitializeSettingsPage()
     {
-        if (settingsDialog is not null || closed)
+        SettingsPage.Configure(AppWindow.Id);
+        SettingsPage.CloseRequested += () => SetSettingsOpen(false);
+        SettingsPage.VisibilityChanged += options =>
+            RunSettingsAction(() => ChangeVisibilityAsync(options));
+        SettingsPage.MoveRequested += directory =>
+            RunSettingsAction(async () =>
+            {
+                if (await ConfirmMoveDatabaseAsync(directory))
+                {
+                    SetSettingsOpen(false);
+                    await ManageDatabaseAsync(directory);
+                }
+            });
+        SettingsPage.DeleteRequested += () =>
+            RunSettingsAction(async () =>
+            {
+                if (await ConfirmDeleteDatabaseAsync())
+                {
+                    SetSettingsOpen(false);
+                    await ManageDatabaseAsync(null);
+                }
+            });
+    }
+
+    private bool SettingsOpen => SettingsPage.Visibility == Visibility.Visible;
+
+    private void OnOpenSettings(object sender, RoutedEventArgs args) => SetSettingsOpen(true);
+
+    private void SetSettingsOpen(bool open)
+    {
+        if (closed || open == SettingsOpen)
             return;
-        var task = ShowSettingsAsync();
-        settingsWork = task;
+        SettingsPage.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        WorkspaceHeader.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
+        ApplyWorkspaceVisibility();
+        if (open)
+        {
+            SettingsPage.Present(visibilityOptions, history, CanManageDatabase, changingVisibility);
+            SettingsPage.FocusSearch();
+        }
+        else
+            SettingsButton.Focus(FocusState.Programmatic);
+    }
+
+    // Background scans and other work can start while the page is open.
+    private void UpdateSettingsAvailability()
+    {
+        if (!closed && SettingsOpen)
+            SettingsPage.UpdateAvailability(
+                visibilityOptions,
+                CanManageDatabase,
+                changingVisibility
+            );
+    }
+
+    private async void RunSettingsAction(Func<Task> action)
+    {
+        var task = action();
         historyTasks.Add(task);
         try
         {
@@ -40,13 +92,21 @@ public sealed partial class MainWindow
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
         {
-            if (!closed)
+            if (!closed && SettingsOpen)
+                SettingsPage.ShowError(error);
+            else if (!closed)
                 ShowError(error);
         }
         finally
         {
             historyTasks.Remove(task);
-            settingsWork = null;
+            if (SettingsOpen)
+                SettingsPage.Present(
+                    visibilityOptions,
+                    history,
+                    CanManageDatabase,
+                    changingVisibility
+                );
         }
     }
 
@@ -55,72 +115,43 @@ public sealed partial class MainWindow
         && startupTask.IsCompleted
         && !historyMaintenance
         && !changingVisibility
-        && historyTasks.All(task => task == settingsWork || task.IsCompleted)
+        && historyTasks.All(task => task.IsCompleted)
         && viewUpdates.Count == 0;
 
-    private async Task ShowSettingsAsync()
+    private async Task<bool> ConfirmMoveDatabaseAsync(string directory)
     {
-        while (!closed)
-        {
-            var dialog = new SettingsDialog(
-                visibilityOptions,
-                history,
-                CanManageDatabase,
-                AppWindow.Id
-            )
-            {
-                XamlRoot = RootLayout.XamlRoot,
-                RequestedTheme = RootLayout.ActualTheme,
-            };
-            settingsDialog = dialog;
-            ContentDialogResult result;
-            try
-            {
-                result = await dialog.ShowAsync();
-            }
-            finally
-            {
-                settingsDialog = null;
-            }
-            if (closed)
-                return;
-            if (dialog.DeleteRequested)
-            {
-                if (await ConfirmDeleteDatabaseAsync())
-                    await ManageDatabaseAsync(null);
-                continue;
-            }
-            if (result != ContentDialogResult.Primary)
-                return;
-            if (
-                history is not null
-                && dialog.DirectoryPath is { } directory
-                && !string.Equals(
-                    Path.TrimEndingDirectorySeparator(directory),
-                    Path.TrimEndingDirectorySeparator(history.DirectoryPath),
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-                await ManageDatabaseAsync(directory);
-            await ChangeVisibilityAsync(dialog.VisibilityOptions);
-            return;
-        }
+        if (history is null || !CanManageDatabase)
+            throw new InvalidOperationException(Strings.Get("Database_OperationBusy"));
+        return await ConfirmAsync(
+            Strings.Get("Database_MoveTitle"),
+            Strings.Format("Database_MoveMessage", directory),
+            Strings.Get("Database_MoveAction")
+        );
     }
 
     private async Task<bool> ConfirmDeleteDatabaseAsync()
     {
         if (history is null || !CanManageDatabase)
             throw new InvalidOperationException(Strings.Get("Database_DeleteBusy"));
+        return await ConfirmAsync(
+            Strings.Get("Database_DeleteTitle"),
+            Strings.Format("Database_DeleteMessage", history.DatabasePath),
+            Strings.Get("Common_Delete")
+        );
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message, string action)
+    {
         databaseDeleteDialog = new()
         {
-            Title = Strings.Get("Database_DeleteTitle"),
+            Title = title,
             Content = new TextBlock
             {
-                Text = Strings.Format("Database_DeleteMessage", history.DatabasePath),
+                Text = message,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 520,
             },
-            PrimaryButtonText = Strings.Get("Common_Delete"),
+            PrimaryButtonText = action,
             CloseButtonText = Strings.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.None,
             PrimaryButtonStyle = (Style)

@@ -91,6 +91,7 @@ public sealed partial class MainWindow : Window
             );
         InitializeComparisonControls();
         InitializeHistoryManagement();
+        InitializeSettingsPage();
         if (demo && history is null)
             HistoryBox.Visibility = Visibility.Collapsed;
         Title = AppVersion.WindowTitle;
@@ -1920,7 +1921,6 @@ public sealed partial class MainWindow : Window
             indicator.Dispose();
         lifetime.Cancel();
         recycleDialog?.Hide();
-        settingsDialog?.Hide();
         databaseDeleteDialog?.Hide();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();

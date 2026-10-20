@@ -84,6 +84,7 @@ public sealed partial class MainWindow
             if (!closed)
             {
                 SettingsButton.IsEnabled = !historyMaintenance && viewUpdates.Count == 0;
+                UpdateSettingsAvailability();
                 WorkspaceTabs.IsEnabled = !historyMaintenance;
                 foreach (var card in cards)
                     card.IsEnabled = !historyMaintenance;

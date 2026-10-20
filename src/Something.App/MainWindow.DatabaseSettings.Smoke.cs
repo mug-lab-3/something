@@ -38,29 +38,66 @@ public sealed partial class MainWindow
                 "DB management did not show its physical database size."
             );
         await CaptureStartupFrameAsync(capture + ".database-management");
-        var dialog = new SettingsDialog(visibilityOptions, history, true, AppWindow.Id)
-        {
-            XamlRoot = RootLayout.XamlRoot,
-            RequestedTheme = RootLayout.ActualTheme,
-        };
-        var showing = dialog.ShowAsync();
-        try
-        {
-            await Task.Delay(300, lifetime.Token);
-            if (
-                dialog.DirectoryPath != history.DirectoryPath
-                || dialog.VisibilityOptions != visibilityOptions
-            )
-                throw new InvalidOperationException(
-                    "Settings dialog did not show current preferences and location."
-                );
-            await CaptureStartupFrameAsync(capture + ".settings");
-        }
-        finally
-        {
-            dialog.Hide();
-            await showing;
-        }
+        SetSettingsOpen(true);
+        await Task.Delay(300, lifetime.Token);
+        if (
+            SettingsPage.DirectoryPath != history.DirectoryPath
+            || SettingsPage.VisibilityOptions != visibilityOptions
+            || WorkspaceHeader.Visibility != Visibility.Collapsed
+            || ViewHost.Visibility != Visibility.Collapsed
+        )
+            throw new InvalidOperationException(
+                "Settings page did not replace the workspace with current preferences."
+            );
+        await CaptureStartupFrameAsync(capture + ".settings");
+        SettingsPage.Search("隠し");
+        await Task.Delay(200, lifetime.Token);
+        string[] visibleItems =
+        [
+            .. new[]
+            {
+                "IncludeSystemItem",
+                "IncludeHiddenItem",
+                "CurrentDatabaseItem",
+                "LocationItem",
+                "OpenFolderItem",
+                "DeleteDatabaseItem",
+            }.Where(name =>
+                ((FrameworkElement)SettingsPage.FindName(name)).Visibility == Visibility.Visible
+            ),
+        ];
+        if (visibleItems is not ["IncludeHiddenItem"])
+            throw new InvalidOperationException(
+                "Settings search did not narrow the items to the matching one: "
+                    + string.Join(", ", visibleItems)
+            );
+        await CaptureStartupFrameAsync(capture + ".settings-search");
+        SettingsPage.Search("");
+        var hidden = (CheckBox)SettingsPage.FindName("IncludeHidden");
+        hidden.IsChecked = false;
+        for (
+            int wait = 0;
+            wait < 50 && (changingVisibility || visibilityOptions.IncludeHidden);
+            wait++
+        )
+            await Task.Delay(100, lifetime.Token);
+        if (visibilityOptions.IncludeHidden || hidden.IsChecked != false)
+            throw new InvalidOperationException("Settings page did not apply its change at once.");
+        hidden.IsChecked = true;
+        for (
+            int wait = 0;
+            wait < 50 && (changingVisibility || !visibilityOptions.IncludeHidden);
+            wait++
+        )
+            await Task.Delay(100, lifetime.Token);
+        if (!visibilityOptions.IncludeHidden)
+            throw new InvalidOperationException("Settings page did not restore its change.");
+        SetSettingsOpen(false);
+        if (
+            WorkspaceHeader.Visibility != Visibility.Visible
+            || HistoryManagement.Visibility != Visibility.Visible
+        )
+            throw new InvalidOperationException("Closing settings did not restore the workspace.");
         var confirmation = ConfirmDeleteDatabaseAsync();
         await Task.Delay(300, lifetime.Token);
         if (databaseDeleteDialog is null)
@@ -102,16 +139,21 @@ public sealed partial class MainWindow
             throw new InvalidOperationException(
                 "A scan after DB deletion did not create usable history."
             );
-        var blocked = new SettingsDialog(visibilityOptions, history, false, AppWindow.Id);
+        SetSettingsOpen(true);
+        SettingsPage.UpdateAvailability(visibilityOptions, maintainable: false, applying: false);
         if (
-            ((Button)blocked.FindName("DeleteDatabaseButton")).IsEnabled
-            || !((TextBox)blocked.FindName("DirectoryBox")).IsReadOnly
-            || ((Button)blocked.FindName("BrowseButton")).IsEnabled
+            ((Button)SettingsPage.FindName("DeleteDatabaseButton")).IsEnabled
+            || ((Button)SettingsPage.FindName("MoveButton")).IsEnabled
+            || !((TextBox)SettingsPage.FindName("DirectoryBox")).IsReadOnly
+            || ((Button)SettingsPage.FindName("BrowseButton")).IsEnabled
+            || ((FrameworkElement)SettingsPage.FindName("BusyHint")).Visibility
+                != Visibility.Visible
         )
             throw new InvalidOperationException("Busy settings allowed database mutation.");
+        SetSettingsOpen(false);
         await File.WriteAllTextAsync(
             capture + ".database-settings.result",
-            "Database size, settings modal, cancelled delete confirmation, all-volume relocation, settings persistence, full deletion, empty views, rescan and busy controls passed. Synthetic history only.",
+            "Database size, settings page, search, immediate display settings, cancelled delete confirmation, all-volume relocation, settings persistence, full deletion, empty views, rescan and busy controls passed. Synthetic history only.",
             lifetime.Token
         );
     }

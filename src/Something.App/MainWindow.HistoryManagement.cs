@@ -28,6 +28,7 @@ public sealed partial class MainWindow
                 card.IsEnabled = !deleting && !changingVisibility;
             WorkspaceTabs.IsEnabled = !deleting && !changingVisibility;
             SettingsButton.IsEnabled = !deleting && !changingVisibility && viewUpdates.Count == 0;
+            UpdateSettingsAvailability();
         };
     }
 
@@ -155,14 +156,24 @@ public sealed partial class MainWindow
             return;
         bool managing = ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab);
         bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
-        ViewHost.Visibility = managing ? Visibility.Collapsed : Visibility.Visible;
-        HistoryManagement.Visibility = managing ? Visibility.Visible : Visibility.Collapsed;
-        FileListPanel.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
-        RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
+        ApplyWorkspaceVisibility();
         if (managing)
             await RefreshManagementIfVisibleAsync();
         else if (analyzing)
             await LoadRankingAsync();
+    }
+
+    // The settings page replaces the selected workspace without changing the selected tab.
+    private void ApplyWorkspaceVisibility()
+    {
+        bool managing = ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab);
+        bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
+        bool settings = SettingsOpen;
+        ViewHost.Visibility = settings || managing ? Visibility.Collapsed : Visibility.Visible;
+        HistoryManagement.Visibility =
+            !settings && managing ? Visibility.Visible : Visibility.Collapsed;
+        FileListPanel.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
+        RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task RefreshManagementIfVisibleAsync()
