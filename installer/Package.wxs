@@ -21,6 +21,7 @@
     <!-- Prerelease builds share the numeric MSI version of their release, so allow same-version upgrades. -->
     <MajorUpgrade
       AllowSameVersionUpgrades="yes"
+      Schedule="afterInstallInitialize"
       DowngradeErrorMessage="A newer version of Something is already installed."
     />
     <MediaTemplate EmbedCab="yes" />
