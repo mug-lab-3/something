@@ -37,7 +37,7 @@ internal readonly record struct SearchIdentityRow(
     ulong? LastSize,
     ulong? MinimumSize,
     ulong? MaximumSize,
-    SearchTrendEvidence? Trend
+    SizeTrendEvidence? Trend
 );
 
 /// <summary>Either an aggregated identity or one version row of an identity whose name changed
@@ -45,15 +45,6 @@ internal readonly record struct SearchIdentityRow(
 internal readonly record struct SearchRangeRow(
     SearchIdentityRow? Identity,
     SearchSegmentRow? Segment
-);
-
-/// <summary>Steps between consecutive known sizes in scan order. Present only when the versions
-/// are consecutive and do not interleave.</summary>
-internal readonly record struct SearchTrendEvidence(
-    bool Increased,
-    bool Decreased,
-    bool Unknown,
-    bool UnknownAtEdge
 );
 
 /// <summary>Subtree sizes of one folder identity over the scans that have its sample.</summary>

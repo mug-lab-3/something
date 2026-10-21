@@ -1,7 +1,5 @@
 using System.Collections.Immutable;
-using System.IO.Enumeration;
 using System.Numerics;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Something.Application.History;
 using Something.Application.Search;
@@ -221,16 +219,7 @@ internal sealed class HistorySearchEngine(
 
     private readonly record struct FolderInfo(bool Valid, int Depth, string? Path, bool Excluded);
 
-    private readonly Regex? regex =
-        criteria.NameMode == NameMatchMode.RegularExpression
-        && !string.IsNullOrEmpty(criteria.NamePattern)
-            ? HistorySearchCriteria.CreateRegex(criteria.NamePattern)
-            : null;
-    private readonly string? baseFolder = string.IsNullOrEmpty(criteria.BaseFolder?.Trim('\\'))
-        ? null
-        : criteria.BaseFolder.Trim('\\') + '\\';
-    private readonly bool applyVisibility =
-        !criteria.Attributes.IsSpecified && !criteria.Visibility.IncludesAll;
+    private readonly SearchConditions conditions = new(criteria, generations.Count);
     private readonly Dictionary<FileReference, SearchItem> folderSummaries = [];
     private readonly Dictionary<FileReference, SearchFolderLink> placement = [];
     private FileReference? root;
@@ -284,17 +273,19 @@ internal sealed class HistorySearchEngine(
             token.ThrowIfCancellationRequested();
             var links = store.ReadSearchFolderLinks(generations[byScan.Key], token);
             // One scan at a time: a stream set of every scan could hold every file many times.
-            var namedStreams =
-                criteria.Attributes.NamedStreams == AttributeRequirement.Any
-                    ? null
-                    : store.ReadSearchNamedStreams(generations[byScan.Key], token);
+            var namedStreams = conditions.NeedsNamedStreams
+                ? store.ReadSearchNamedStreams(generations[byScan.Key], token)
+                : null;
             var memo = new Dictionary<FileReference, FolderInfo>();
             foreach (var candidate in byScan)
             {
                 token.ThrowIfCancellationRequested();
                 var item = candidate.Item;
                 var parent = Resolve(item.Parent, links, memo);
-                if (!parent.Valid || !PathMatches(item, parent))
+                if (
+                    !parent.Valid
+                    || !conditions.PathMatches(parent.Depth + 1, parent.Path, item.Name)
+                )
                     continue;
                 if (namedStreams is not null)
                 {
@@ -302,20 +293,13 @@ internal sealed class HistorySearchEngine(
                     if (!item.IsDirectory && item.Size is null)
                         candidate.UnknownAttributes = true;
                     else if (
-                        !Requirement(
-                            criteria.Attributes.NamedStreams,
+                        !conditions.NamedStreamsMatch(
                             namedStreams.Contains(item.Reference.RecordIndex)
                         )
                     )
                         continue;
                 }
-                if (
-                    applyVisibility
-                    && (
-                        parent.Excluded
-                        || !criteria.Visibility.Includes(item.StandardFileAttributes)
-                    )
-                )
+                if (parent.Excluded || !conditions.IsVisible(item.StandardFileAttributes))
                     continue;
                 if (candidate.UnknownAttributes)
                 {
@@ -385,7 +369,7 @@ internal sealed class HistorySearchEngine(
             group.Clear();
         }
 
-        void Add(SearchItem item, bool merged, SearchTrendEvidence? trend)
+        void Add(SearchItem item, bool merged, SizeTrendEvidence? trend)
         {
             if (
                 item.IsDirectory
@@ -395,8 +379,18 @@ internal sealed class HistorySearchEngine(
                 )
             )
                 folderSummaries[item.Reference] = item;
-            if (Evaluate(item, merged, trend) is { } candidate)
-                candidates.Add(candidate);
+            // Paths and named streams need the folders of the item's last scan and are decided
+            // above; trends without evidence are read per scan in ApplyExactTrends.
+            var verdict = conditions.Evaluate(item, trend);
+            if (verdict.Matches)
+                candidates.Add(
+                    new(item, merged)
+                    {
+                        Uncertain = verdict.Uncertain,
+                        NeedsTrend = verdict.NeedsTrend,
+                        UnknownAttributes = verdict.UnknownAttributes,
+                    }
+                );
         }
     }
 
@@ -575,7 +569,7 @@ internal sealed class HistorySearchEngine(
     // Folds version rows of one item, oldest first. File sizes come from the rows; folder sizes
     // from the folder samples of the identity. A trend is decided here when the rows' scans are
     // consecutive and do not interleave; otherwise it is read per scan later.
-    private (SearchItem Item, SearchTrendEvidence? Trend) Fold(List<SearchSegmentRow> rows)
+    private (SearchItem Item, SizeTrendEvidence? Trend) Fold(List<SearchSegmentRow> rows)
     {
         var sorted = rows.Count == 1 ? rows : [.. rows.OrderBy(row => row.FirstScan)];
         var first = sorted[0];
@@ -644,27 +638,6 @@ internal sealed class HistorySearchEngine(
         );
     }
 
-    private enum TrendOutcome
-    {
-        Fail,
-        Pass,
-        Uncertain,
-    }
-
-    // Known sizes in the wrong direction rule a trend out. Without a known step in the wanted
-    // direction, an unknown size can only supply one before or after all known sizes; between
-    // equal known sizes it would also need a step back.
-    private TrendOutcome Decide(SearchTrendEvidence evidence)
-    {
-        bool wanted = criteria.Trend == SizeTrend.Increasing;
-        bool contrary = wanted ? evidence.Decreased : evidence.Increased;
-        bool confirmed = wanted ? evidence.Increased : evidence.Decreased;
-        return contrary || !confirmed && !evidence.UnknownAtEdge ? TrendOutcome.Fail
-            : evidence.Unknown ? TrendOutcome.Uncertain
-            : TrendOutcome.Pass;
-    }
-
-    // An item that follows its identity includes every name it had; a hard link name continues
     // only with the same parent and name.
     internal static bool SameItem(SearchItem item, SearchSeriesRow row) =>
         row.Reference == item.Reference
@@ -673,154 +646,6 @@ internal sealed class HistorySearchEngine(
             || item.FollowsIdentity
             || row.Parent == item.Parent && row.Name == item.Name
         );
-
-    // Conditions decided by the folded rows. Paths and named streams need the folders of the
-    // item's last scan and are decided in Run; trends without evidence are read per scan later.
-    private Candidate? Evaluate(SearchItem item, bool merged, SearchTrendEvidence? trend)
-    {
-        if (
-            criteria.Target == SearchTarget.Folders && !item.IsDirectory
-            || criteria.Target == SearchTarget.Files && item.IsDirectory
-            || !NameMatches(item.Name)
-            || !criteria.Extensions.IsEmpty && (item.IsDirectory || !HasExtension(item.Name))
-            || !PresenceMatches(item)
-        )
-            return null;
-        var candidate = new Candidate(item, merged);
-        if (criteria.Trend != SizeTrend.Any)
-        {
-            if (trend is not { } evidence)
-                candidate.NeedsTrend = true;
-            else if (Decide(evidence) is var outcome && outcome == TrendOutcome.Fail)
-                return null;
-            else
-                candidate.Uncertain |= outcome == TrendOutcome.Uncertain;
-        }
-        var attributes = criteria.Attributes;
-        if (attributes.UsesStandardAttributes)
-        {
-            if (item.StandardFileAttributes is not { } value)
-                candidate.UnknownAttributes = true;
-            else if (
-                !Requirement(
-                    attributes.Hidden,
-                    ((FileAttributes)value).HasFlag(FileAttributes.Hidden)
-                )
-                || !Requirement(
-                    attributes.System,
-                    ((FileAttributes)value).HasFlag(FileAttributes.System)
-                )
-                || !Requirement(
-                    attributes.Compressed,
-                    ((FileAttributes)value).HasFlag(FileAttributes.Compressed)
-                )
-                || !Requirement(
-                    attributes.Sparse,
-                    ((FileAttributes)value).HasFlag(FileAttributes.SparseFile)
-                )
-            )
-                return null;
-        }
-        if (criteria.MinimumSize is not null || criteria.MaximumSize is not null)
-        {
-            if (item.Size is not { } size)
-                candidate.Uncertain = true;
-            else if (size < criteria.MinimumSize || size > criteria.MaximumSize)
-                return null;
-        }
-        if (criteria.MinimumDelta is not null || criteria.MaximumDelta is not null)
-        {
-            if (!item.InFirstScan)
-                return null;
-            if (item.Delta is not { } delta)
-                candidate.Uncertain = true;
-            else if (delta < criteria.MinimumDelta || delta > criteria.MaximumDelta)
-                return null;
-        }
-        if (criteria.MinimumDeltaPercent is not null || criteria.MaximumDeltaPercent is not null)
-        {
-            // A rate needs a known, nonzero size in the first scan of the range.
-            if (!item.InFirstScan || item.FirstSize is not { } first || first == 0)
-                return null;
-            if (item.Size is not { } last)
-                candidate.Uncertain = true;
-            else
-            {
-                double percent =
-                    (double)((BigInteger)last - (BigInteger)first) / (double)first * 100;
-                if (
-                    percent < criteria.MinimumDeltaPercent
-                    || percent > criteria.MaximumDeltaPercent
-                )
-                    return null;
-            }
-        }
-        if (criteria.MinimumSwing is { } swing)
-        {
-            // Known sizes give a lower bound of the swing; unresolved sizes could only widen it.
-            bool reached =
-                item.MaximumKnownSize is { } high
-                && item.MinimumKnownSize is { } low
-                && high - low >= swing;
-            if (!reached)
-            {
-                if (!item.HasUnresolvedSize)
-                    return null;
-                candidate.Uncertain = true;
-            }
-        }
-        return candidate;
-    }
-
-    private bool PresenceMatches(SearchItem item) =>
-        criteria.Presence switch
-        {
-            SearchPresence.InAllScans => item.ObservedCount == generations.Count,
-            SearchPresence.Appeared => !item.InFirstScan && item.LastObserved == Last,
-            SearchPresence.Disappeared => item.InFirstScan && item.LastObserved < Last,
-            _ => true,
-        };
-
-    private static bool Requirement(AttributeRequirement requirement, bool value) =>
-        requirement switch
-        {
-            AttributeRequirement.Set => value,
-            AttributeRequirement.Clear => !value,
-            _ => true,
-        };
-
-    private bool NameMatches(string name) =>
-        string.IsNullOrEmpty(criteria.NamePattern)
-        || criteria.NameMode switch
-        {
-            NameMatchMode.Wildcard => FileSystemName.MatchesSimpleExpression(
-                criteria.NamePattern,
-                name,
-                ignoreCase: true
-            ),
-            NameMatchMode.RegularExpression => regex!.IsMatch(name),
-            _ => name.Contains(criteria.NamePattern, StringComparison.OrdinalIgnoreCase),
-        };
-
-    private bool HasExtension(string name) =>
-        criteria.Extensions.Any(extension =>
-        {
-            string suffix = "." + extension.TrimStart('.');
-            return name.Length > suffix.Length
-                && name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
-        });
-
-    private bool PathMatches(SearchItem item, FolderInfo parent)
-    {
-        int depth = parent.Depth + 1;
-        if (depth < criteria.MinimumDepth || depth > criteria.MaximumDepth)
-            return false;
-        if (baseFolder is null)
-            return true;
-        string path = parent.Path!.Length == 0 ? item.Name : parent.Path + '\\' + item.Name;
-        return path.Length > baseFolder.Length
-            && path.StartsWith(baseFolder, StringComparison.OrdinalIgnoreCase);
-    }
 
     // Depth, display path and visibility of a folder in one scan. A folder whose parents do not
     // reach the root in that scan is invalid; its items are not placed anywhere.
@@ -838,7 +663,7 @@ internal sealed class HistorySearchEngine(
             if (current.RecordIndex == 5)
             {
                 root ??= current;
-                known = new(true, 0, baseFolder is null ? null : "", false);
+                known = new(true, 0, conditions.NeedsPaths ? "" : null, false);
                 break;
             }
             if (memo.TryGetValue(current, out known))
@@ -858,9 +683,8 @@ internal sealed class HistorySearchEngine(
                 var link = links[child];
                 bool excluded =
                     known.Excluded
-                    || applyVisibility
-                        && folderSummaries.TryGetValue(child, out var summary)
-                        && !criteria.Visibility.Includes(summary.StandardFileAttributes);
+                    || folderSummaries.TryGetValue(child, out var summary)
+                        && !conditions.IsVisible(summary.StandardFileAttributes);
                 known = new(
                     true,
                     known.Depth + 1,
@@ -990,34 +814,11 @@ internal sealed class HistorySearchEngine(
         void Judge(Candidate candidate, List<UInt128?> series)
         {
             token.ThrowIfCancellationRequested();
-            bool increased = false,
-                decreased = false;
-            UInt128? previous = null;
-            foreach (var size in series)
-                if (size is { } known)
-                {
-                    if (previous is { } before)
-                    {
-                        increased |= known > before;
-                        decreased |= known < before;
-                    }
-                    previous = known;
-                }
-            var outcome =
-                series.Count == 0
-                    ? TrendOutcome.Fail
-                    : Decide(
-                        new(
-                            increased,
-                            decreased,
-                            series.Any(size => size is null),
-                            series[0] is null || series[^1] is null
-                        )
-                    );
-            if (outcome == TrendOutcome.Fail)
+            var outcome = conditions.DecideTrend(series);
+            if (outcome == ConditionOutcome.Fail)
                 rejected.Add(candidate);
             else
-                candidate.Uncertain |= outcome == TrendOutcome.Uncertain;
+                candidate.Uncertain |= outcome == ConditionOutcome.Uncertain;
             series.Clear();
         }
     }

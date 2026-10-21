@@ -64,7 +64,7 @@ public sealed record SearchAttributes(
         || NamedStreams != AttributeRequirement.Any;
 
     /// <summary>Conditions on standard attribute bits; named streams are observed separately.</summary>
-    public bool UsesStandardAttributes =>
+    internal bool UsesStandardAttributes =>
         Hidden != AttributeRequirement.Any
         || System != AttributeRequirement.Any
         || Compressed != AttributeRequirement.Any
@@ -175,7 +175,7 @@ public sealed record HistorySearchCriteria(DateTimeOffset StartUtc, DateTimeOffs
         }
     }
 
-    public static Regex CreateRegex(string pattern) =>
+    internal static Regex CreateRegex(string pattern) =>
         new(
             pattern,
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking
