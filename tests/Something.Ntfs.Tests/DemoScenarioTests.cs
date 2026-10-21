@@ -17,7 +17,10 @@ public sealed class DemoScenarioTests
         try
         {
             var archive = new ScanHistoryArchive(root);
-            var scanner = new DriveScanner(StorageRepositories.TemporaryScans);
+            var scanner = new DriveScanner(
+                StorageRepositories.TemporaryScans,
+                TestHistory.For(archive)
+            );
             await using var first = await scanner.CreateDemoAsync(null, token);
             await using var second = await scanner.CreateDemoAsync(
                 null,
@@ -55,9 +58,9 @@ public sealed class DemoScenarioTests
             Assert.Equal(@"Projects\Archive\source.zip", oldZip.RelativePath);
             Assert.Equal(@"Media\source.zip", newZip.RelativePath);
 
-            var before = await first.SaveHistoryAsync(TestHistory.For(archive), token);
-            var after = await second.SaveHistoryAsync(TestHistory.For(archive), token);
-            var reorganized = await third.SaveHistoryAsync(TestHistory.For(archive), token);
+            var before = first.History!;
+            var after = second.History!;
+            var reorganized = third.History!;
             var growth = archive.ReadFolderChanges(first.VolumeKey, before.Id, after.Id, token);
             var removal = archive.ReadFolderChanges(
                 first.VolumeKey,

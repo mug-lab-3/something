@@ -7,24 +7,26 @@ using Something.Application.Search;
 
 namespace Something.Storage;
 
-/// <summary>The repositories over one <see cref="ScanHistoryArchive"/>, which serializes its own
-/// database operations.</summary>
-internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
-    : IScanHistoryRepository,
-        IFolderChangeRepository,
-        IHistorySearchRepository,
-        IHistoryDatabase
+/// <summary>Builds the repositories over one <see cref="ScanHistoryArchive"/>, which serializes
+/// its own database operations.</summary>
+internal static class ArchiveRepositories
 {
     /// <summary>The history in <paramref name="directory"/>, or in the default location.</summary>
     public static HistoryRepositories Open(string? directory) =>
         For(directory is null ? ScanHistoryArchive.CreateDefault() : new(directory));
 
-    public static HistoryRepositories For(ScanHistoryArchive archive)
-    {
-        var repositories = new ArchiveRepositories(archive);
-        return new(repositories, repositories, repositories, repositories);
-    }
+    public static HistoryRepositories For(ScanHistoryArchive archive) =>
+        new(
+            new ArchiveScanHistory(archive),
+            new ArchiveScanPublisher(archive),
+            new ArchiveFolderChanges(archive),
+            new ArchiveHistorySearches(archive),
+            new ArchiveDatabase(archive)
+        );
+}
 
+internal sealed class ArchiveScanHistory(ScanHistoryArchive archive) : IScanHistoryRepository
+{
     public ScanHistoryEntry[] List(string volumeKey, CancellationToken token) =>
         archive.List(volumeKey, token);
 
@@ -36,7 +38,18 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         CancellationToken token
     ) => archive.ReadRecordCounts(scanIds, token);
 
-    public ScanHistoryEntry Publish(
+    public IHistorySnapshot Open(Guid id, CancellationToken token) =>
+        new ArchiveScanSnapshot(archive, archive.Open(id, token));
+
+    public Guid[] Delete(IReadOnlyCollection<Guid> ids, CancellationToken token) =>
+        archive.Delete(ids, token);
+
+    public int CollectRetired(CancellationToken token) => archive.CollectRetired(token);
+}
+
+internal sealed class ArchiveScanPublisher(ScanHistoryArchive archive) : IScanPublisher
+{
+    public IHistorySnapshot Publish(
         CompletedScan scan,
         DateTimeOffset endedUtc,
         string drive,
@@ -47,43 +60,25 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
     )
     {
         var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
-        return archive.Publish(
-            scan,
-            endedUtc,
-            drive,
-            elapsed,
-            limit,
-            token,
-            progress,
-            grow,
-            account
+        return new ArchiveScanSnapshot(
+            archive,
+            archive.PublishAndOpen(
+                scan,
+                endedUtc,
+                drive,
+                elapsed,
+                limit,
+                token,
+                progress,
+                grow,
+                account
+            )
         );
     }
+}
 
-    public ScanHistoryEntry Save(
-        IScanSnapshot source,
-        string drive,
-        TimeSpan elapsed,
-        CancellationToken token
-    ) =>
-        source is StoreScanSnapshot stored
-            ? archive.Save(stored.Store, stored.ScanId, drive, elapsed, token)
-            : throw new ArgumentException(
-                "The scan belongs to another storage implementation.",
-                nameof(source)
-            );
-
-    public void SaveTimings(Guid scanId, ScanTimingSnapshot timing, CancellationToken token) =>
-        archive.SaveTimings(scanId, timing, token);
-
-    public IHistorySnapshot Open(Guid id, CancellationToken token) =>
-        new ArchiveScanSnapshot(archive.Open(id, token));
-
-    public Guid[] Delete(IReadOnlyCollection<Guid> ids, CancellationToken token) =>
-        archive.Delete(ids, token);
-
-    public int CollectRetired(CancellationToken token) => archive.CollectRetired(token);
-
+internal sealed class ArchiveFolderChanges(ScanHistoryArchive archive) : IFolderChangeRepository
+{
     public FolderChangeReport ReadFolderChanges(
         string volumeKey,
         Guid beforeId,
@@ -97,7 +92,10 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         DateTimeOffset? asOfUtc,
         CancellationToken token
     ) => archive.ReadFolderChanges(volumeKey, period, asOfUtc, token);
+}
 
+internal sealed class ArchiveHistorySearches(ScanHistoryArchive archive) : IHistorySearchRepository
+{
     public IHistorySearchSession Search(
         string volumeKey,
         HistorySearchCriteria criteria,
@@ -108,7 +106,10 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
         return archive.Search(volumeKey, criteria, token, limit, grow, account);
     }
+}
 
+internal sealed class ArchiveDatabase(ScanHistoryArchive archive) : IHistoryDatabase
+{
     public string DatabasePath => archive.DatabasePath;
     public string DirectoryPath => archive.DirectoryPath;
     public string? MaintenanceError => archive.MaintenanceError;
@@ -149,7 +150,7 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         string directory,
         Action<string> saveLocation,
         CancellationToken token
-    ) => For(archive.Relocate(directory, saveLocation, token));
+    ) => ArchiveRepositories.For(archive.Relocate(directory, saveLocation, token));
 
     public void DeleteDatabase(CancellationToken token) => archive.DeleteDatabase(token);
 }

@@ -18,6 +18,10 @@ public interface IScanSnapshot : IDisposable
 
     ScanTimingSnapshot? ReadTimings(CancellationToken token);
 
+    /// <summary>Records how long each step of the scan took. Written after publication, so the
+    /// final write of these diagnostics is never part of what they measure.</summary>
+    void SaveTimings(ScanTimingSnapshot timing, CancellationToken token);
+
     FileReference? ReadParentFolder(
         FileReference folder,
         string visibleName,

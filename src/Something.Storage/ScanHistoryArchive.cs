@@ -90,6 +90,37 @@ public sealed partial class ScanHistoryArchive
     private ScanStore NewHistoryStore(ulong? cacheBytes, CancellationToken token) =>
         ScanStore.OpenSharedHistoryWriter(DatabasePath, cacheBytes, token);
 
+    /// <summary>Publishes and opens the new generation without releasing the archive lock, so no
+    /// pruning can retire it before the caller holds its lease.</summary>
+    internal HistorySnapshot PublishAndOpen(
+        CompletedScan completedScan,
+        DateTimeOffset endedUtc,
+        string drive,
+        TimeSpan elapsed,
+        ulong cacheBytes,
+        CancellationToken token = default,
+        Action<ScanWorkProgress>? progress = null,
+        Func<ulong, ulong?>? reserveMemoryGrowth = null,
+        Action<ulong>? accountMemoryLimit = null
+    )
+    {
+        lock (sync)
+        {
+            var entry = Publish(
+                completedScan,
+                endedUtc,
+                drive,
+                elapsed,
+                cacheBytes,
+                token,
+                progress,
+                reserveMemoryGrowth,
+                accountMemoryLimit
+            );
+            return Open(entry.Id, token);
+        }
+    }
+
     public ScanHistoryEntry Publish(
         CompletedScan completedScan,
         DateTimeOffset endedUtc,
@@ -125,7 +156,7 @@ public sealed partial class ScanHistoryArchive
         }
     }
 
-    public ScanHistoryEntry Save(
+    internal ScanHistoryEntry Save(
         ScanStore source,
         Guid scanId,
         string drive,

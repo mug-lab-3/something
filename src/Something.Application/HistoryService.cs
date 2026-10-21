@@ -39,7 +39,10 @@ public sealed class HistoryService(HistoryRepositories repositories)
 
     /// <summary>Opens one retained scan for browsing; it stays protected until disposed.</summary>
     public Task<ScanSession> OpenAsync(Guid id, string drive, CancellationToken token) =>
-        Run(history => ScanSession.FromHistory(history.Scans.Open(id, token), drive, token), token);
+        Run(
+            history => ScanSession.FromHistory(history.Scans.Open(id, token), drive, false, token),
+            token
+        );
 
     /// <summary>Retires the confirmed scans and returns those removed. Scans still open are
     /// collected later; see <see cref="CollectRetiredAsync"/>.</summary>

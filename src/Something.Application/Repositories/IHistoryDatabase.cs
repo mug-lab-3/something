@@ -41,6 +41,7 @@ public interface IHistoryDatabase
 /// <summary>The repositories of one history location; replaced as a whole when it moves.</summary>
 public sealed record HistoryRepositories(
     IScanHistoryRepository Scans,
+    IScanPublisher Publisher,
     IFolderChangeRepository Changes,
     IHistorySearchRepository Searches,
     IHistoryDatabase Database

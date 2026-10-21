@@ -106,7 +106,7 @@ DI コンテナーは導入せず、起動時に手で組み立てます。
 - [x] E4. 検索結果を不変のデータにし、リース・世代番号・時系列の読み取りを検索セッションへ移す（結果は組み立て時に木の形を検証する。画面には `HistorySearch` が結果・時系列・解放を提供する。テストは `HistorySearchResultTests`）
 - [x] E5. `Complete` が `CompletedScan` を返し、公開はそれだけを受け取る（集計結果・診断・帰属の診断・DB サイズの見積もりは `CompletedScan` だけが持つ。見積もりは E6 で保存層へ移す。テストは `CompletedScanTests`）
 - [x] E6. メモリの調停を `IMemoryAllowance` にし、DuckDB 固有の規則・DB の選択・サイズの見積もりを保存層へ移す（アプリは常にファイル DB を使うため、メモリ DB とファイル DB の選択はアプリ層から外した。選択とサイズの見積もりは、診断ツールと旧 SQLite の比較のために保存層に残す。最適化は他と競合しないため `UnsharedMemoryAllowance` を使う。使われていなかった `ScanSession.Selection` は削除。テストは `ScanMemoryBudgetTests`（調停）と `DuckMemoryPolicyTests`（DuckDB の規則））
-- [ ] E7. 公開の形を整える（`Save` の削除、公開が開いたスナップショットを返す、一時 DB の所有の受け渡しをなくす、インターフェースと実装の分割）
+- [x] E7. 公開の形を整える。(1) `Save`（スナップショットの型変換に頼る）と `ScanSession.SaveHistoryAsync` を、デモを通常のスキャンと同じく履歴へ直接公開することでなくす。(2) 履歴への公開と一時 DB への公開は、開いたスナップショットを返す（履歴では公開と同じロックの中でリースを取る）。時間の記録は `IScanSnapshot.SaveTimings` にする。(3) `IScanPublisher` を `IScanHistoryRepository` から分け、実装も役割ごとのクラスにする。(4) 保存層の `Save`・`CopyHistoryGeneration` は、旧 SQLite との比較のテストだけが使うため `internal` にする。デモが履歴へ公開されるようになったので、デモのスキャンでも進捗の段階は通常のスキャンと同じになる。テストは `DriveScannerTests`（履歴・一時 DB の選択、時間の記録、失敗時の解放、キャンセル。DB なし）
 - [ ] E8. 保存層の公開範囲を `StorageRepositories` だけにする
 - [ ] E9. [アーキテクチャ](../architecture.md)・[履歴ストレージ](../storage.md)・この計画の規約を更新する
 

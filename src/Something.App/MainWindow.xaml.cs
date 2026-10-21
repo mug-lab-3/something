@@ -908,18 +908,6 @@ public sealed partial class MainWindow : Window
                     stage
                 )
                 : await scanner.ScanAsync(drive, progress, operation.Cancellation.Token);
-            if (demo && history is not null)
-            {
-                try
-                {
-                    await next.SaveHistoryAsync(history, operation.Cancellation.Token);
-                }
-                catch
-                {
-                    await next.DisposeAsync();
-                    throw;
-                }
-            }
             operation.Finished = true;
             if (demo)
                 demoStages[drive] = DemoScanScenario.Next(stage);

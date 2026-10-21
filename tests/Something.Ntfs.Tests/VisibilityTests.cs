@@ -322,9 +322,31 @@ public sealed class VisibilityTests
         try
         {
             var archive = new ScanHistoryArchive(directory);
-            await using var source = await CreateSession(Facts(), token);
-            await source.SetVisibilityAsync(new(false, false), token);
-            var entry = await source.SaveHistoryAsync(TestHistory.For(archive), token);
+            var buffer = new BufferedScan(
+                new("synthetic-visibility", Guid.NewGuid(), 1, new(0, 2000), Started)
+            );
+            foreach (var fact in Facts())
+                buffer.Add(
+                    new StagedObservation(
+                        fact.Reference.RecordIndex,
+                        fact.Resolution == CapacityResolution.Resolved
+                            ? MftScanEntryKind.ResolvedFile
+                            : MftScanEntryKind.Unresolved,
+                        fact.Resolution == CapacityResolution.Resolved
+                            ? LiveFileReadStatus.ObservedUnchanged
+                            : LiveFileReadStatus.Unsupported,
+                        fact
+                    ),
+                    token
+                );
+            var entry = archive.Publish(
+                buffer.Complete(token),
+                Started.AddSeconds(1),
+                "Z:",
+                TimeSpan.FromSeconds(1),
+                64UL << 20,
+                token
+            );
             await using var restored = await TestHistory
                 .For(archive)
                 .OpenAsync(entry.Id, "Z:", token);

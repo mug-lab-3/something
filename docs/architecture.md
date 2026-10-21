@@ -26,12 +26,13 @@ flowchart LR
 
 | インターフェース | 責務 |
 | --- | --- |
-| `IScanHistoryRepository` | 履歴の一覧・件数、保存（公開）、時間の記録、閲覧で開く、削除と保持の整理 |
-| `IScanSnapshot`・`IHistorySnapshot` | 開いた 1 世代の一覧・親・容量分析・属性・ファイル・概要 |
+| `IScanHistoryRepository` | 履歴の一覧・件数、閲覧で開く、削除と保持の整理 |
+| `IScanPublisher` | 完了したスキャンを最新の世代として公開し、開いたスナップショットを返す（公開と同じロックの中でリースを取る） |
+| `IScanSnapshot`・`IHistorySnapshot` | 開いた 1 世代の一覧・親・容量分析・属性・ファイル・概要。公開の後に行う時間の記録も受け持つ |
 | `IFolderChangeRepository` | 2 つの世代の差、期間での比較 |
 | `IHistorySearchRepository` | 条件での検索、1 項目の時系列 |
 | `IHistoryDatabase` | DB ファイルのサイズ、最適化、保存先の移動、全体の削除 |
-| `ITemporaryScanRepository` | 履歴に残さないスキャン（デモ・診断）用の一時的な DB |
+| `ITemporaryScanRepository` | 履歴に残さないスキャン（診断・履歴のないデモ）を一時ファイルの DB へ公開し、開いたスナップショットを返す。スナップショットを閉じるとファイルが消える |
 | `IParquetTableWriter` | Parquet 形式でのエクスポート |
 
 リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作します。ワーカーへの受け渡しと、同じ閲覧の直列化はサービスが行います。1 つの保存先のリポジトリは `HistoryRepositories` にまとめ、保存先を移すと `HistoryService` が丸ごと差し替えます。DB の作業メモリは、サービスが `ScanMemoryBudget` から予約して `IMemoryAllowance` としてリポジトリに渡します。アプリ層は機械の空きの調停だけを行い、リポジトリは空きを見て自分のエンジンに必要な量を決め（初期の上限と、途中で増やすときの量）、その量を許可枠に計上します。DuckDB の上限の刻み・下限・増やし方・倍の計上は、保存層の `DuckMemoryPolicy` が持ちます。
@@ -47,7 +48,7 @@ flowchart LR
 | `Something.Application.Search` | `HistorySearchCriteria`・`HistorySearchResult`・`SearchItem` |
 | `Something.Application.Memory` | `AvailableMemory`・`MemoryHeadroom`・`IMemoryAllowance` |
 
-アプリ層のテストは、インターフェースの偽の実装でサービスを試せます。保存層のテストは、実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
+アプリ層のテストは、インターフェースの偽の実装でサービス（`DriveScanner`・`HistoryService`・`HistorySearch` など）を DB なしで試せます。保存層のテストは、実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
 
 ## スキャンの流れ
 

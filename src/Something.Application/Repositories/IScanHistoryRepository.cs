@@ -17,27 +17,6 @@ public interface IScanHistoryRepository
         CancellationToken token
     );
 
-    /// <summary>Stores a completed scan as the newest generation and prunes the history.</summary>
-    ScanHistoryEntry Publish(
-        CompletedScan scan,
-        DateTimeOffset endedUtc,
-        string drive,
-        TimeSpan elapsed,
-        IMemoryAllowance allowance,
-        Action<ScanWorkProgress>? progress,
-        CancellationToken token
-    );
-
-    /// <summary>Copies a completed scan from a temporary database into the history.</summary>
-    ScanHistoryEntry Save(
-        IScanSnapshot source,
-        string drive,
-        TimeSpan elapsed,
-        CancellationToken token
-    );
-
-    void SaveTimings(Guid scanId, ScanTimingSnapshot timing, CancellationToken token);
-
     /// <summary>Opens one retained scan for browsing.</summary>
     IHistorySnapshot Open(Guid id, CancellationToken token);
 
@@ -47,4 +26,20 @@ public interface IScanHistoryRepository
 
     /// <summary>Collects retired scans that are no longer open; returns how many remain open.</summary>
     int CollectRetired(CancellationToken token);
+}
+
+/// <summary>Stores completed scans as the newest generation of the history.</summary>
+public interface IScanPublisher
+{
+    /// <summary>Publishes the scan, prunes the history and opens the new generation. Nothing else
+    /// can retire the generation between publication and opening. The caller disposes the snapshot.</summary>
+    IHistorySnapshot Publish(
+        CompletedScan scan,
+        DateTimeOffset endedUtc,
+        string drive,
+        TimeSpan elapsed,
+        IMemoryAllowance allowance,
+        Action<ScanWorkProgress>? progress,
+        CancellationToken token
+    );
 }

@@ -130,7 +130,7 @@ public sealed class DriveScanner(
             {
                 _ = DemoScanScenario.Next(stage); // Reject invalid stages before creating a generation.
                 var watch = Stopwatch.StartNew();
-                var reports = new ScanTimingCollector(false) { Target = progress };
+                var reports = new ScanTimingCollector(history is not null) { Target = progress };
                 reports.Report(new(ScanPhase.WaitingForMemory, 0, null, watch.Elapsed));
                 using var reservation = await memoryBudget.ReserveAsync(64UL << 20, token);
                 reports.Report(new(ScanPhase.Reading, 0, 0, watch.Elapsed));
@@ -225,10 +225,10 @@ public sealed class DriveScanner(
     {
         progress.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var completed = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
-        if (history?.Repositories.Scans is { } scans && !demo)
+        if (history?.Repositories.Publisher is { } publisher)
         {
             progress.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
-            var entry = scans.Publish(
+            var snapshot = publisher.Publish(
                 completed,
                 DateTimeOffset.UtcNow,
                 drive,
@@ -237,11 +237,12 @@ public sealed class DriveScanner(
                 value => ReportWork(ScanPhase.SavingHistory, value),
                 token
             );
-            var session = ScanSession.FromHistory(scans.Open(entry.Id, token), drive, token);
+            var entry = snapshot.Entry;
+            var session = ScanSession.FromHistory(snapshot, drive, demo, token);
             try
             {
                 var timing = progress.Complete(watch.Elapsed);
-                scans.SaveTimings(entry.Id, timing, token);
+                snapshot.SaveTimings(timing, token);
                 session.SetTimings(timing, entry with { Elapsed = timing.TotalElapsed });
             }
             catch
@@ -253,21 +254,20 @@ public sealed class DriveScanner(
             return session;
         }
         progress.Report(new(ScanPhase.Saving, candidates, null, watch.Elapsed));
-        var database = temporaryScans.Create(reservation, token);
-
+        var temporary = temporaryScans.Publish(
+            completed,
+            DateTimeOffset.UtcNow,
+            reservation,
+            value => ReportWork(ScanPhase.Saving, value),
+            token
+        );
         try
         {
-            var id = database.Publish(
-                completed,
-                DateTimeOffset.UtcNow,
-                value => ReportWork(ScanPhase.Saving, value),
-                token
-            );
             var timing = progress.Complete(watch.Elapsed);
-            database.SaveTimings(id, timing, token);
+            temporary.SaveTimings(timing, token);
             progress.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
             var session = new ScanSession(
-                database.Open(id),
+                temporary,
                 drive,
                 completed.RootReference,
                 completed.Root,
@@ -280,10 +280,9 @@ public sealed class DriveScanner(
         }
         catch
         {
-            database.Dispose();
+            temporary.Dispose();
             throw;
         }
-
         void ReportWork(ScanPhase phase, ScanWorkProgress value) =>
             progress.Report(new(phase, candidates, value.Fraction, watch.Elapsed) { Work = value });
     }

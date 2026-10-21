@@ -1,4 +1,3 @@
-using Something.Application.History;
 using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Application.Scanning;
@@ -9,35 +8,37 @@ internal sealed class TemporaryScanRepository : ITemporaryScanRepository
 {
     public static TemporaryScanRepository Instance { get; } = new();
 
-    public ITemporaryScanDatabase Create(IMemoryAllowance allowance, CancellationToken token)
+    public IScanSnapshot Publish(
+        CompletedScan scan,
+        DateTimeOffset endedUtc,
+        IMemoryAllowance allowance,
+        Action<ScanWorkProgress>? progress,
+        CancellationToken token
+    )
     {
         var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
-        return new Database(
-            TemporaryScanDatabase.Create(token, inMemory: false, boundedMemory: true, limit),
-            grow,
-            account
+        var database = TemporaryScanDatabase.Create(
+            token,
+            inMemory: false,
+            boundedMemory: true,
+            limit
         );
-    }
-
-    private sealed class Database(
-        TemporaryScanDatabase database,
-        Func<ulong, ulong?> grow,
-        Action<ulong> account
-    ) : ITemporaryScanDatabase
-    {
-        public Guid Publish(
-            CompletedScan scan,
-            DateTimeOffset endedUtc,
-            Action<ScanWorkProgress>? progress,
-            CancellationToken token
-        ) => database.Store.PublishBufferedScan(scan, endedUtc, token, progress, grow, account);
-
-        public void SaveTimings(Guid scanId, ScanTimingSnapshot timing, CancellationToken token) =>
-            database.Store.SaveTimings(scanId, timing, token);
-
-        public IScanSnapshot Open(Guid scanId) =>
-            new StoreScanSnapshot(database, database.Store, scanId);
-
-        public void Dispose() => database.Dispose();
+        try
+        {
+            var id = database.Store.PublishBufferedScan(
+                scan,
+                endedUtc,
+                token,
+                progress,
+                grow,
+                account
+            );
+            return new StoreScanSnapshot(database, database.Store, id);
+        }
+        catch
+        {
+            database.Dispose();
+            throw;
+        }
     }
 }

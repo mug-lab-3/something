@@ -35,26 +35,6 @@ public sealed partial class ScanSession : IAsyncDisposable
             History = history;
     }
 
-    public async Task<ScanHistoryEntry> SaveHistoryAsync(
-        HistoryService history,
-        CancellationToken token
-    )
-    {
-        await gate.WaitAsync(token);
-        try
-        {
-            ObjectDisposedException.ThrowIf(disposed, this);
-            var scans = history.Repositories.Scans;
-            var entry = await Task.Run(() => scans.Save(snapshot, Drive, Elapsed, token), token);
-            History = entry;
-            return entry;
-        }
-        finally
-        {
-            gate.Release();
-        }
-    }
-
     /// <summary>Takes over <paramref name="snapshot"/>; it is released when the session is disposed.</summary>
     internal ScanSession(
         IScanSnapshot snapshot,
@@ -85,6 +65,7 @@ public sealed partial class ScanSession : IAsyncDisposable
     internal static ScanSession FromHistory(
         IHistorySnapshot snapshot,
         string drive,
+        bool demo,
         CancellationToken token
     )
     {
@@ -97,7 +78,7 @@ public sealed partial class ScanSession : IAsyncDisposable
                 summary.Root.Reference,
                 summary.Root,
                 summary.MetadataUnresolved,
-                false,
+                demo,
                 snapshot.Entry.Elapsed,
                 snapshot.Entry
             );

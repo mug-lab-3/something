@@ -26,6 +26,9 @@ internal class StoreScanSnapshot(IDisposable owner, ScanStore store, Guid scanId
     public ScanTimingSnapshot? ReadTimings(CancellationToken token) =>
         Store.ReadTimings(ScanId, token);
 
+    public virtual void SaveTimings(ScanTimingSnapshot timing, CancellationToken token) =>
+        Store.SaveTimings(ScanId, timing, token);
+
     public FileReference? ReadParentFolder(
         FileReference folder,
         string visibleName,
@@ -76,9 +79,13 @@ internal class StoreScanSnapshot(IDisposable owner, ScanStore store, Guid scanId
     public void Dispose() => owner.Dispose();
 }
 
-internal sealed class ArchiveScanSnapshot(HistorySnapshot snapshot)
+internal sealed class ArchiveScanSnapshot(ScanHistoryArchive archive, HistorySnapshot snapshot)
     : StoreScanSnapshot(snapshot, snapshot.Store, snapshot.Entry.Id),
         IHistorySnapshot
 {
     public ScanHistoryEntry Entry => snapshot.Entry;
+
+    // The opened store only reads; timings are written through the archive's writer.
+    public override void SaveTimings(ScanTimingSnapshot timing, CancellationToken token) =>
+        archive.SaveTimings(snapshot.Entry.Id, timing, token);
 }

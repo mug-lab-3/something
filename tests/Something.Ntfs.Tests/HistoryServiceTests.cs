@@ -2,7 +2,6 @@ using Something.Application;
 using Something.Application.History;
 using Something.Application.Memory;
 using Something.Application.Repositories;
-using Something.Application.Scanning;
 
 namespace Something.Ntfs.Tests;
 
@@ -54,7 +53,7 @@ public sealed class HistoryServiceTests
     {
         public ScanHistoryEntry[] Entries => entries;
         public FakeHistory? Target { get; init; }
-        public HistoryRepositories Repositories => new(this, null!, null!, this);
+        public HistoryRepositories Repositories => new(this, null!, null!, null!, this);
 
         public ScanHistoryEntry[] List(string volumeKey, CancellationToken token) =>
             [.. entries.OrderByDescending(entry => entry.CompletedUtc)];
@@ -80,26 +79,6 @@ public sealed class HistoryServiceTests
             IReadOnlyCollection<Guid> scanIds,
             CancellationToken token
         ) => throw new NotSupportedException();
-
-        public ScanHistoryEntry Publish(
-            CompletedScan scan,
-            DateTimeOffset endedUtc,
-            string drive,
-            TimeSpan elapsed,
-            IMemoryAllowance allowance,
-            Action<ScanWorkProgress>? progress,
-            CancellationToken token
-        ) => throw new NotSupportedException();
-
-        public ScanHistoryEntry Save(
-            IScanSnapshot source,
-            string drive,
-            TimeSpan elapsed,
-            CancellationToken token
-        ) => throw new NotSupportedException();
-
-        public void SaveTimings(Guid scanId, ScanTimingSnapshot timing, CancellationToken token) =>
-            throw new NotSupportedException();
 
         public IHistorySnapshot Open(Guid id, CancellationToken token) =>
             throw new NotSupportedException();
