@@ -30,7 +30,7 @@ flowchart LR
 | `IScanPublisher` | 完了したスキャンを最新の世代として公開し、開いたスナップショットを返す（公開と同じロックの中でリースを取る） |
 | `IScanSnapshot`・`IHistorySnapshot` | 開いた 1 世代の一覧・親・容量分析・属性・ファイル・概要。公開の後に行う時間の記録も受け持つ |
 | `IFolderChangeRepository` | 2 つの世代の差、期間での比較 |
-| `IHistorySearchRepository` | 条件での検索、1 項目の時系列 |
+| `IHistorySearchRepository`・`IHistorySearchSession` | 条件での検索。セッションが検索した世代を保ち、1 項目の時系列を読む |
 | `IHistoryDatabase` | DB ファイルのサイズ、最適化、保存先の移動、全体の削除 |
 | `ITemporaryScanRepository` | 履歴に残さないスキャン（診断・履歴のないデモ）を一時ファイルの DB へ公開し、開いたスナップショットを返す。スナップショットを閉じるとファイルが消える |
 | `IParquetTableWriter` | Parquet 形式でのエクスポート |
