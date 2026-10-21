@@ -151,20 +151,32 @@ public sealed record HistorySearchCriteria(DateTimeOffset StartUtc, DateTimeOffs
             throw new ArgumentException("The depth range is invalid.");
         if (Extensions.Any(e => string.IsNullOrWhiteSpace(e) || e.Contains('\\')))
             throw new ArgumentException("An extension is empty or contains a separator.");
-        if (NameMode == NameMatchMode.RegularExpression && !string.IsNullOrEmpty(NamePattern))
-            try
-            {
-                _ = CreateRegex(NamePattern);
-            }
-            catch (ArgumentException error)
-            {
-                // NonBacktracking also rejects constructs it cannot run, such as backreferences.
-                throw new ArgumentException(
-                    "The regular expression is invalid.",
-                    nameof(NamePattern),
-                    error
-                );
-            }
+        if (
+            NameMode == NameMatchMode.RegularExpression
+            && !string.IsNullOrEmpty(NamePattern)
+            && !IsValidRegularExpression(NamePattern)
+        )
+            throw new ArgumentException("The regular expression is invalid.", nameof(NamePattern));
+    }
+
+    /// <summary>Whether the name pattern can run. Backreferences and lookarounds are rejected,
+    /// since matching never backtracks.</summary>
+    public static bool IsValidRegularExpression(string pattern)
+    {
+        try
+        {
+            _ = CreateRegex(pattern);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            // NonBacktracking reports constructs it cannot run this way.
+            return false;
+        }
     }
 
     internal static Regex CreateRegex(string pattern) =>

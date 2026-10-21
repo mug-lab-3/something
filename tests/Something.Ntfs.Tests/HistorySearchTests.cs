@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Numerics;
+using Something.Application;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -518,6 +519,102 @@ public sealed class HistorySearchTests
         Assert.All(series, o => Assert.Equal(CapacityObservationState.Known, o.State));
         using var after = Search(fixture, Everything);
         Assert.Single(after.Scans);
+    }
+
+    [Fact]
+    public void CriteriaCheckReportsEveryIssueForTheScreen()
+    {
+        // Arrange
+        var broken = new HistorySearchCriteria(Now, Now.AddDays(-1))
+        {
+            NamePattern = @"(a)\1",
+            NameMode = NameMatchMode.RegularExpression,
+            Extensions = ["", "a\\b"],
+            MinimumDepth = 3,
+            MaximumDepth = 2,
+            MinimumSize = 2,
+            MaximumSize = 1,
+            MinimumDelta = 5,
+            MaximumDelta = -5,
+            MinimumDeltaPercent = double.NaN,
+        };
+        var changes = Everything with { Trend = SizeTrend.Increasing };
+
+        // Act
+        var all = HistorySearchCriteriaCheck.Check(broken, null);
+        var empty = HistorySearchCriteriaCheck.Check(Everything, new(0, null, null));
+        var single = HistorySearchCriteriaCheck.Check(changes, new(1, null, null));
+        var fine = HistorySearchCriteriaCheck.Check(changes, new(2, null, null));
+
+        // Assert
+        Assert.Equal(
+            [
+                SearchCriteriaIssue.RangeReversed,
+                SearchCriteriaIssue.InvalidRegularExpression,
+                SearchCriteriaIssue.InvalidExtension,
+                SearchCriteriaIssue.DepthRangeInvalid,
+                SearchCriteriaIssue.SizeRangeReversed,
+                SearchCriteriaIssue.DeltaRangeReversed,
+                SearchCriteriaIssue.RateRangeInvalid,
+            ],
+            all
+        );
+        Assert.Equal([SearchCriteriaIssue.NoScansInRange], empty);
+        Assert.Equal([SearchCriteriaIssue.ChangesNeedTwoScans], single);
+        Assert.Empty(fine);
+        Assert.Throws<ArgumentException>(() =>
+            (broken with { StartUtc = Now.AddDays(-2) }).Validate()
+        );
+    }
+
+    [Fact]
+    public async Task ServicePreviewsTheRangeAndSummarizesOnlySpecifiedConditions()
+    {
+        // Arrange
+        using var fixture = new Fixture();
+        var first = fixture.Save(Now.AddDays(-2), [new(30, "a.log", 5, 1)]);
+        var last = fixture.Save(Now.AddDays(-1), [new(30, "a.log", 5, 3)]);
+        var budget = new ScanMemoryBudget(() => new(16UL << 30, 8UL << 30, 8UL << 30, 8UL << 30));
+        var service = new HistorySearchService(fixture.Archive, budget);
+        var criteria = Everything with
+        {
+            Extensions = ["log"],
+            Attributes = new(Hidden: AttributeRequirement.Clear),
+            MinimumDelta = 1,
+            SizeKind = SearchSizeKind.Logical,
+            MinimumSize = 1,
+        };
+
+        // Act
+        var preview = await service.PreviewAsync("volume:A", Now.AddDays(-30), Now, Token);
+        using var result = await service.SearchAsync("volume:A", criteria, Token);
+        var series = await service.ReadSeriesAsync(
+            result,
+            Assert.Single(result.Entries(result.Root)),
+            Token
+        );
+        var parts = HistorySearchSummary.Describe(result);
+
+        // Assert
+        Assert.Equal(
+            (2, first.Id, last.Id),
+            (preview.ScanCount, preview.First!.Id, preview.Last!.Id)
+        );
+        Assert.Equal(2, series.Length);
+        Assert.Equal(
+            [
+                new SearchRangePart(first.CompletedUtc, last.CompletedUtc, 2),
+                new SearchExtensionsPart(["log"]),
+                new SearchAttributePart(SearchAttributeKind.Hidden, AttributeRequirement.Clear),
+                new SearchSizePart(SearchSizeKind.Logical, 1, null),
+                new SearchDeltaPart(1, null),
+            ],
+            parts,
+            (left, right) =>
+                left is SearchExtensionsPart a && right is SearchExtensionsPart b
+                    ? a.Extensions.SequenceEqual(b.Extensions)
+                    : Equals(left, right)
+        );
     }
 
     private static HistorySearchResult Search(Fixture fixture, HistorySearchCriteria criteria) =>

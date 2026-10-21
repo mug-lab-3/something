@@ -18,11 +18,15 @@ public sealed partial class ScanStore
         internal DbDataReader Reader { get; }
         internal bool HasRow { get; private set; }
 
-        internal NativeRows(ScanDbContext context, string sql)
+        // Streaming keeps a large result out of the engine's memory; the connection then runs
+        // no other command until the reader is disposed.
+        internal NativeRows(ScanDbContext context, string sql, bool streaming = false)
         {
             command = context.Database.GetDbConnection().CreateCommand();
             command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
             command.CommandText = sql;
+            if (streaming)
+                ((DuckDB.NET.Data.DuckDBCommand)command).UseStreamingMode = true;
             Reader = command.ExecuteReader();
             HasRow = Reader.Read();
         }

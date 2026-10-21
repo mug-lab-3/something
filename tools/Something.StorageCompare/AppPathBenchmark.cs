@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Something.Application;
 using Something.Statistics;
 using Something.Storage;
 
@@ -48,6 +49,7 @@ internal static class AppPathBenchmark
         string? database = null;
         bool profile = false;
         bool managedMemory = false;
+        int? searchBudgetMiB = null;
         for (int i = 0; i < args.Length; i += 2)
         {
             if (i + 1 == args.Length)
@@ -84,6 +86,9 @@ internal static class AppPathBenchmark
                 case "--memory-report":
                     memoryReport = bool.Parse(args[i + 1]);
                     break;
+                case "--search-budget-mib":
+                    searchBudgetMiB = int.Parse(args[i + 1]);
+                    break;
                 default:
                     throw new ArgumentException($"Unknown option {args[i]}");
             }
@@ -92,6 +97,7 @@ internal static class AppPathBenchmark
             count is < 100 or > 10_000_000
             || generations is < 2 or > 365
             || budgetMiB is < 1024 or > 65536
+            || searchBudgetMiB is < 1024 or > 65536
             || repeats is < 1 or > 50
             || shape is not ("mixed" or "wide" or "deep")
         )
@@ -303,7 +309,7 @@ internal static class AppPathBenchmark
                         )
                     )
             );
-            MeasureSearches(archive, volume, budgetMiB, Time<string>, token);
+            MeasureSearches(archive, volume, searchBudgetMiB, Time<string>, token);
 
             string json = JsonSerializer.Serialize(
                 new
@@ -313,6 +319,7 @@ internal static class AppPathBenchmark
                     Shape = shape,
                     Generations = generations,
                     BudgetMiB = budgetMiB,
+                    SearchBudgetMiB = searchBudgetMiB,
                     Repeats = repeats,
                     Publishes = publishes,
                     Queries = timings,
@@ -343,14 +350,32 @@ internal static class AppPathBenchmark
 
     // Searches every generation. Each criterion stresses one stage: an unfiltered result holds
     // every item, names are matched in .NET, changes and trends read the whole range.
+    // By default searches run like the application: the engine starts with the memory available
+    // now and grows through the budget. A fixed budget checks success on a low-memory machine;
+    // it is not a limit of the application.
     private static void MeasureSearches(
         ScanHistoryArchive archive,
         string volume,
-        int budgetMiB,
+        int? fixedBudgetMiB,
         Timed<string> time,
         CancellationToken token
     )
     {
+        var service = new HistorySearchService(archive, new(ScanMemoryBudget.ReadSystem));
+        if (fixedBudgetMiB is null)
+        {
+            var budget = new ScanMemoryBudget(ScanMemoryBudget.ReadSystem);
+            using var reservation = budget.ReserveAsync(1, token).GetAwaiter().GetResult();
+            Console.WriteLine(
+                $"  search budget from available memory: {reservation.SizeDuckDatabase() / 1048576.0:F0}MiB"
+            );
+        }
+        else
+            Console.WriteLine($"  search budget fixed: {fixedBudgetMiB}MiB (low-memory check)");
+        HistorySearchResult Search(HistorySearchCriteria criteria) =>
+            fixedBudgetMiB is { } mib
+                ? archive.Search(volume, criteria, token, (ulong)mib << 20)
+                : service.SearchAsync(volume, criteria, token).GetAwaiter().GetResult();
         var range = new HistorySearchCriteria(DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
         (string Name, HistorySearchCriteria Criteria)[] searches =
         [
@@ -382,14 +407,13 @@ internal static class AppPathBenchmark
                 }
             ),
         ];
-        ulong memory = (ulong)budgetMiB << 20;
         foreach (var (name, criteria) in searches)
             time(
                 name,
                 () =>
                 {
                     long heap = GC.GetTotalMemory(true);
-                    using var result = archive.Search(volume, criteria, token, memory);
+                    using var result = Search(criteria);
                     long retained = GC.GetTotalMemory(true) - heap;
                     Console.WriteLine(
                         $"    {name}: scans={result.Scans.Length}; folders={result.MatchedFolders}; files={result.MatchedFiles}; uncertain={result.UncertainCount}; unknown-attributes={result.UnknownAttributeCount}; retained={retained / 1048576.0:F0}MiB"
@@ -398,16 +422,7 @@ internal static class AppPathBenchmark
                 },
                 checksum => checksum
             );
-        using var sample = archive.Search(
-            volume,
-            range with
-            {
-                Target = SearchTarget.Files,
-                MinimumDelta = 1,
-            },
-            token,
-            memory
-        );
+        using var sample = Search(range with { Target = SearchTarget.Files, MinimumDelta = 1 });
         if (FirstFile(sample) is { } item)
             time(
                 "search-series",
