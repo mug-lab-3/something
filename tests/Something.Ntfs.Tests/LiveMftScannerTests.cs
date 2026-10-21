@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Something.Ntfs;
 
 namespace Something.Ntfs.Tests;
 

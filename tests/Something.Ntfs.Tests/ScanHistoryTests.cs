@@ -1,9 +1,6 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Something.Application;
 using Something.Application.History;
 using Something.Application.Scanning;
-using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
 using Something.Windows;

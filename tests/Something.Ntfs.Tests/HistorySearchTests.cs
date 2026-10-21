@@ -4,7 +4,6 @@ using Something.Application;
 using Something.Application.History;
 using Something.Application.Scanning;
 using Something.Application.Search;
-using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
 

@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore;
 using Something.Application.History;
 using Something.Application.Scanning;

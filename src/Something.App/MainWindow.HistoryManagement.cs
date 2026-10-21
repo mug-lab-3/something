@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
 using Something.Application.History;
-using Something.Windows;
 
 namespace Something.App;
 

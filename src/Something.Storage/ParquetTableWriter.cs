@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using DuckDB.NET.Data;
 using Something.Application.Export;
 

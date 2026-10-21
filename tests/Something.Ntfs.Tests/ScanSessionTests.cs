@@ -1,5 +1,4 @@
 using Something.Application;
-using Something.Application.Scanning;
 using Something.Storage;
 
 namespace Something.Ntfs.Tests;

@@ -11,7 +11,6 @@ using Something.Application;
 using Something.Application.Browsing;
 using Something.Application.Comparison;
 using Something.Application.Scanning;
-using Something.Ntfs;
 using Something.Windows;
 using Windows.Graphics.Imaging;
 

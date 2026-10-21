@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Globalization;
 using System.Numerics;
 using DuckDB.NET.Data;

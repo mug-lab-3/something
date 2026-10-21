@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace Something.Storage;
 
 /// <summary>A disposable database for one diagnostic volume scan; never opens or replaces saved history.</summary>

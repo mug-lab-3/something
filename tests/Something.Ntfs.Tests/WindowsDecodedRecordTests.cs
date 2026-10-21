@@ -1,5 +1,3 @@
-using Something.Ntfs;
-
 namespace Something.Ntfs.Tests;
 
 public sealed class WindowsDecodedRecordTests

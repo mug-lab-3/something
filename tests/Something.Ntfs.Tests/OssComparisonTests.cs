@@ -1,5 +1,3 @@
-using Something.Ntfs;
-
 namespace Something.Ntfs.Tests;
 
 // MFT is a test-only oracle. Agreement is supporting evidence, never a correctness proof.

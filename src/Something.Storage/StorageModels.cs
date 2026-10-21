@@ -1,7 +1,5 @@
 using System.Buffers.Binary;
 using Something.Application.Scanning;
-using Something.Ntfs;
-using Something.Statistics;
 
 namespace Something.Storage;
 

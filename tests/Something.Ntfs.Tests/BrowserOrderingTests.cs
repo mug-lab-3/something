@@ -2,9 +2,7 @@ using System.Numerics;
 using Something.Application;
 using Something.Application.Browsing;
 using Something.Application.Comparison;
-using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 

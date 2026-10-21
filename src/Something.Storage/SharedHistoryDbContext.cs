@@ -2,7 +2,6 @@ using DuckDB.EFCoreProvider.Extensions;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Something.Storage;
 

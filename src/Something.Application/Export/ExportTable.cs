@@ -25,6 +25,7 @@ public enum ExportValueKind
 
 /// <param name="Key">Stable field name for CSV, TSV, JSON and Parquet.</param>
 /// <param name="Title">Localized heading for plain text and HTML.</param>
+/// <param name="Kind">How values are written and compared.</param>
 public sealed record ExportColumn(string Key, string Title, ExportValueKind Kind);
 
 /// <param name="Key">Stable metadata name for JSON and Parquet.</param>

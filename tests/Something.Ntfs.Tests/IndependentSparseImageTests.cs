@@ -1,6 +1,5 @@
 using DiscUtils;
 using DiscUtils.Ntfs;
-using Something.Ntfs;
 
 namespace Something.Ntfs.Tests;
 
