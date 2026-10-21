@@ -50,6 +50,7 @@ internal static class AppPathBenchmark
         bool profile = false;
         bool managedMemory = false;
         int? searchBudgetMiB = null;
+        bool searchesOnly = false;
         for (int i = 0; i < args.Length; i += 2)
         {
             if (i + 1 == args.Length)
@@ -88,6 +89,9 @@ internal static class AppPathBenchmark
                     break;
                 case "--search-budget-mib":
                     searchBudgetMiB = int.Parse(args[i + 1]);
+                    break;
+                case "--searches-only":
+                    searchesOnly = bool.Parse(args[i + 1]);
                     break;
                 default:
                     throw new ArgumentException($"Unknown option {args[i]}");
@@ -224,6 +228,11 @@ internal static class AppPathBenchmark
                 return result;
             }
 
+            if (searchesOnly)
+            {
+                MeasureSearches(archive, volume, searchBudgetMiB, Time<string>, token);
+                return 0;
+            }
             if (profile)
                 QueryProfile.Run(archive.DatabasePath, ids[^1], token);
             Time("history-list", () => archive.List(volume, token), rows => rows.Length.ToString());

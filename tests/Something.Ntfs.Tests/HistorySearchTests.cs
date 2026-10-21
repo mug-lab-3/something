@@ -246,6 +246,24 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void HardLinksInOneFolderStaySeparateNames()
+    {
+        // Arrange: both names share the record, its observation state and the parent.
+        using var fixture = new Fixture();
+        fixture.Save(Now.AddDays(-2), [new(30, "first", 5, 4, Link: (5, "second"))]);
+        fixture.Save(Now.AddDays(-1), [new(30, "first", 5, 6, Link: (5, "second"))]);
+
+        // Act
+        using var result = Search(fixture, Everything with { MinimumDelta = 2 });
+
+        // Assert
+        var names = result.Entries(result.Root);
+        Assert.Equal(["first", "second"], names.Select(e => e.Name));
+        Assert.All(names, e => Assert.Equal(new BigInteger(2), e.Delta));
+        Assert.All(names, e => Assert.Equal(2, e.ObservedCount));
+    }
+
+    [Fact]
     public void AttributeConditionsExcludeUnknownAttributesAndOverrideVisibility()
     {
         // Arrange

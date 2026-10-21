@@ -268,6 +268,30 @@ internal static class DuckDatabaseBootstrap
         catch (UnauthorizedAccessException) { }
     }
 
+    /// <summary>Read-only work that aggregates a whole range (history search) scales to about
+    /// eight threads (measured 1.89 s with 4, 1.37 s with 8 and 1.41 s with 16 for 2 million files
+    /// in 30 scans). The engine is shared, so the caller restores the normal count afterwards.</summary>
+    internal static IDisposable UseAggregationThreads(DuckScanDbContext context)
+    {
+        int threads = Math.Clamp(Environment.ProcessorCount, NormalThreads, 8);
+        SetThreads(context, threads);
+        return new Restore(() => SetThreads(context, NormalThreads));
+    }
+
+    private const int NormalThreads = 4;
+
+    private static void SetThreads(DuckScanDbContext context, int threads)
+    {
+        using var settings = context.Database.GetDbConnection().CreateCommand();
+        settings.CommandText = $"SET threads={threads};";
+        settings.ExecuteNonQuery();
+    }
+
+    private sealed class Restore(Action restore) : IDisposable
+    {
+        public void Dispose() => restore();
+    }
+
     private static void SetMemoryLimit(DuckScanDbContext context, ulong bytes, bool spilling)
     {
         // Shared history keeps insertion order: only then does DuckDB write completed row groups
@@ -276,7 +300,7 @@ internal static class DuckDatabaseBootstrap
         bool shared = context is SharedHistoryDbContext;
         using var settings = context.Database.GetDbConnection().CreateCommand();
         settings.CommandText =
-            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads=4; SET preserve_insertion_order={(shared ? "true" : "false")};"
+            $"SET memory_limit='{bytes / 16384 * 16}KiB'; SET threads={NormalThreads}; SET preserve_insertion_order={(shared ? "true" : "false")};"
             + (shared && !spilling ? " SET temp_directory='';" : "");
         settings.ExecuteNonQuery();
     }

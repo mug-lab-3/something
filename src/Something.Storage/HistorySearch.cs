@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.IO.Enumeration;
 using System.Numerics;
 using System.Text.RegularExpressions;
@@ -54,20 +54,13 @@ public sealed partial class ScanHistoryArchive
             {
                 int[] generations = store.ReadGenerationNumbers([.. scans.Select(s => s.Id)]);
                 var context = (DuckScanDbContext)store.HistoryContext;
+                using var threads = DuckDatabaseBootstrap.UseAggregationThreads(context);
+                // No transaction: building the TEMP tables inside one made the aggregation 2.6
+                // times slower (0.38 s to 1.0 s). The archive lock already orders publication and
+                // pruning in this process, and the leases keep every scan of the range.
                 var tree = DuckMemoryRecovery.Run(
                     context,
-                    _ =>
-                    {
-                        using var transaction = context.Database.BeginTransaction();
-                        var result = new HistorySearchEngine(
-                            store,
-                            criteria,
-                            generations,
-                            token
-                        ).Run();
-                        transaction.Commit();
-                        return result;
-                    },
+                    _ => new HistorySearchEngine(store, criteria, generations, token).Run(),
                     reserveMemoryGrowth,
                     null,
                     token,
@@ -240,24 +233,38 @@ internal sealed class HistorySearchEngine(
         folderSizes = store.ReadSearchFolderSizes(generations, criteria.SizeKind, token);
         var candidates = new List<Candidate>();
         var group = new List<SearchSegmentRow>();
+        string keep = Prefilter();
         foreach (var (first, last) in Partitions())
         {
+            // Version rows of identities with several names arrive unordered; few identities
+            // have them, so they are gathered here and folded per identity afterwards.
+            var multiple = new Dictionary<FileReference, List<SearchSegmentRow>>();
             foreach (
-                var row in store.ReadSearchSegments(
+                var row in store.ReadSearchIdentities(
                     generations,
                     criteria.SizeKind,
                     first,
                     last,
+                    keep,
+                    criteria.Trend != SizeTrend.Any,
                     token
                 )
             )
             {
-                if (group.Count != 0 && group[0].Reference != row.Reference)
-                    Consume();
-                group.Add(row);
+                if (row.Identity is { } identity)
+                    Add(FromIdentity(identity), true, identity.Trend);
+                else if (row.Segment is { } segment)
+                {
+                    if (!multiple.TryGetValue(segment.Reference, out var rows))
+                        multiple.Add(segment.Reference, rows = []);
+                    rows.Add(segment);
+                }
             }
-            if (group.Count != 0)
+            foreach (var rows in multiple.Values)
+            {
+                group.AddRange(rows.OrderBy(row => row.FirstScan));
                 Consume();
+            }
         }
 
         var passed = new List<Candidate>();
@@ -366,20 +373,172 @@ internal sealed class HistorySearchEngine(
                 ? [(Fold(group), true)]
                 : names.Select(rows => (Fold(rows), false)).ToArray();
             foreach (var ((item, trend), merged) in items)
-            {
-                if (
-                    item.IsDirectory
-                    && (
-                        !folderSummaries.TryGetValue(item.Reference, out var known)
-                        || known.LastObserved < item.LastObserved
-                    )
-                )
-                    folderSummaries[item.Reference] = item;
-                if (Evaluate(item, merged, trend) is { } candidate)
-                    candidates.Add(candidate);
-            }
+                Add(item, merged, trend);
             group.Clear();
         }
+
+        void Add(SearchItem item, bool merged, SearchTrendEvidence? trend)
+        {
+            if (
+                item.IsDirectory
+                && (
+                    !folderSummaries.TryGetValue(item.Reference, out var known)
+                    || known.LastObserved < item.LastObserved
+                )
+            )
+                folderSummaries[item.Reference] = item;
+            if (Evaluate(item, merged, trend) is { } candidate)
+                candidates.Add(candidate);
+        }
+    }
+
+    // A conservative SQL condition over the identity columns of ReadSearchIdentities. It only
+    // drops rows that certainly fail; every kept row is still evaluated in full here, so unknown
+    // values always pass and bounds that SQL cannot represent are left out.
+    private string Prefilter()
+    {
+        var parts = new List<string>();
+        int last = Last;
+        parts.Add(
+            criteria.Target switch
+            {
+                SearchTarget.Folders => "D",
+                SearchTarget.Files => "NOT D",
+                _ => "TRUE",
+            }
+        );
+        parts.Add(
+            criteria.Presence switch
+            {
+                SearchPresence.InAllScans => $"N={generations.Count}",
+                SearchPresence.Appeared => $"F>0 AND L={last}",
+                SearchPresence.Disappeared => $"F=0 AND L<{last}",
+                _ => "TRUE",
+            }
+        );
+        var attributes = criteria.Attributes;
+        foreach (
+            var (requirement, bit) in new[]
+            {
+                (attributes.Hidden, SearchAttributes.HiddenBit),
+                (attributes.System, SearchAttributes.SystemBit),
+                (attributes.Compressed, SearchAttributes.CompressedBit),
+                (attributes.Sparse, SearchAttributes.SparseBit),
+            }
+        )
+            if (requirement != AttributeRequirement.Any)
+                parts.Add(
+                    $"(A IS NULL OR (A&{bit}){(requirement == AttributeRequirement.Set ? "<>" : "=")}0)"
+                );
+        // File sizes are 64-bit signed in storage; folders are decided from their samples.
+        if (criteria.MinimumSize is not null || criteria.MaximumSize is not null)
+            parts.Add(
+                $"(D OR SzL IS NULL OR ({Lower("SzL", criteria.MinimumSize)} AND {Upper("SzL", criteria.MaximumSize)}))"
+            );
+        if (criteria.MinimumDelta is not null || criteria.MaximumDelta is not null)
+            parts.Add(
+                $"(D OR (F=0 AND (F0 IS NULL OR SzL IS NULL OR ({Lower("SzL-F0", criteria.MinimumDelta)} AND {Upper("SzL-F0", criteria.MaximumDelta)}))))"
+            );
+        if (criteria.MinimumDeltaPercent is not null || criteria.MaximumDeltaPercent is not null)
+        {
+            // Widened slightly, so SQL rounding never drops a row that .NET would keep.
+            string rate = "(SzL-F0)*100.0/F0";
+            string low = criteria.MinimumDeltaPercent is { } minimum
+                ? $"{rate}>={Widen(minimum, -1)}"
+                : "TRUE";
+            string high = criteria.MaximumDeltaPercent is { } maximum
+                ? $"{rate}<={Widen(maximum, 1)}"
+                : "TRUE";
+            parts.Add($"(D OR (F=0 AND F0>0 AND (SzL IS NULL OR ({low} AND {high}))))");
+        }
+        if (criteria.MinimumSwing is { } swing)
+            parts.Add($"(D OR U OR {Lower("Mx-Mn", (UInt128?)swing)})");
+        if (criteria.Trend != SizeTrend.Any)
+        {
+            bool increasing = criteria.Trend == SizeTrend.Increasing;
+            string contrary = increasing ? "Dec" : "Inc",
+                confirmed = increasing ? "Inc" : "Dec";
+            parts.Add($"(D OR NOT Cons OR (NOT {contrary} AND ({confirmed} OR Edge)))");
+        }
+        return string.Join(" AND ", parts);
+
+        // Compared as BigInteger: truncating long.MinValue into an unsigned type would wrap.
+        static string Lower<T>(string column, T? bound)
+            where T : struct, INumber<T> =>
+            bound is not { } value ? "TRUE"
+            : BigInteger.CreateChecked(value) > long.MaxValue ? "FALSE"
+            : BigInteger.CreateChecked(value) < long.MinValue ? "TRUE"
+            : $"{column}>={long.CreateChecked(value)}";
+
+        static string Upper<T>(string column, T? bound)
+            where T : struct, INumber<T> =>
+            bound is not { } value ? "TRUE"
+            : BigInteger.CreateChecked(value) > long.MaxValue ? "TRUE"
+            : BigInteger.CreateChecked(value) < long.MinValue ? "FALSE"
+            : $"{column}<={long.CreateChecked(value)}";
+
+        static string Widen(double value, int direction) =>
+            (value + direction * (Math.Abs(value) * 1e-9 + 1e-9)).ToString(
+                "R",
+                System.Globalization.CultureInfo.InvariantCulture
+            );
+    }
+
+    // The single visible name of an identity, aggregated in SQL.
+    private SearchItem FromIdentity(SearchIdentityRow row) =>
+        row.IsDirectory
+            ? Folder(
+                row.Reference,
+                row.Parent,
+                row.Name!,
+                row.Attributes,
+                row.FirstScan,
+                row.LastScan,
+                row.ScanCount
+            )
+            : new(
+                row.Reference,
+                row.Parent,
+                row.Name!,
+                false,
+                row.Attributes,
+                row.FirstScan,
+                row.LastScan,
+                row.ScanCount,
+                row.FirstScan == 0 ? row.FirstSize : null,
+                row.LastSize,
+                row.MinimumSize,
+                row.MaximumSize,
+                row.HasUnresolvedSize
+            );
+
+    // Folder sizes come from the folder samples of the identity, not from its listing rows.
+    private SearchItem Folder(
+        FileReference reference,
+        FileReference parent,
+        string name,
+        uint? attributes,
+        int firstScan,
+        int lastScan,
+        int observed
+    )
+    {
+        bool found = folderSizes.TryGetValue(reference, out var sizes);
+        return new(
+            reference,
+            parent,
+            name,
+            true,
+            attributes,
+            firstScan,
+            lastScan,
+            observed,
+            found && sizes.FirstScan == 0 && firstScan == 0 ? sizes.FirstSize : null,
+            found && sizes.LastScan == lastScan ? sizes.LastSize : null,
+            found ? sizes.MinimumSize : null,
+            found ? sizes.MaximumSize : null,
+            !found || sizes.HasUnresolvedSize || sizes.ScanCount < observed
+        );
     }
 
     private Dictionary<FileReference, SearchFolderSizes> folderSizes = [];
@@ -388,50 +547,45 @@ internal sealed class HistorySearchEngine(
     // spans two ranges, so its names are always folded together.
     private IEnumerable<(long First, long Last)> Partitions()
     {
-        var (rows, maximum) = store.ReadSearchSegmentBounds(generations);
         ulong limit = DuckDatabaseBootstrap.ReadMemoryLimit(
             (DuckScanDbContext)store.HistoryContext
         );
         // About 128 bytes per sorted row, with half of the limit left to the engine.
         long perPartition = (long)Math.Max(1UL << 16, limit / 2 / 128);
+        if (store.ReadSearchEntryCount() <= perPartition)
+        {
+            yield return (0, long.MaxValue);
+            yield break;
+        }
+        var (rows, maximum) = store.ReadSearchSegmentBounds(generations);
         long count = Math.Max(1, (rows + perPartition - 1) / perPartition);
         long width = maximum / count + 1;
         for (long first = 0; first <= maximum; first += width)
             yield return (first, Math.Min(maximum, first + width - 1));
     }
 
-    // Folds listing rows of one item, oldest first. File sizes come from the rows; folder sizes
+    // Folds version rows of one item, oldest first. File sizes come from the rows; folder sizes
     // from the folder samples of the identity. A trend is decided here when the rows' scans are
     // consecutive and do not interleave; otherwise it is read per scan later.
-    private (SearchItem Item, TrendEvidence? Trend) Fold(List<SearchSegmentRow> rows)
+    private (SearchItem Item, SearchTrendEvidence? Trend) Fold(List<SearchSegmentRow> rows)
     {
         var sorted = rows.Count == 1 ? rows : [.. rows.OrderBy(row => row.FirstScan)];
         var first = sorted[0];
         var last = sorted.MaxBy(row => row.LastScan);
         int observed = sorted.Sum(row => row.ScanCount);
         if (first.IsDirectory)
-        {
-            var sizes = folderSizes.GetValueOrDefault(first.Reference);
-            bool found = folderSizes.ContainsKey(first.Reference);
             return (
-                new(
+                Folder(
                     first.Reference,
                     last.Parent,
                     last.Name,
-                    true,
                     last.Attributes,
                     first.FirstScan,
                     last.LastScan,
-                    observed,
-                    found && sizes.FirstScan == 0 && first.FirstScan == 0 ? sizes.FirstSize : null,
-                    found && sizes.LastScan == last.LastScan ? sizes.LastSize : null,
-                    found ? sizes.MinimumSize : null,
-                    found ? sizes.MaximumSize : null,
-                    !found || sizes.HasUnresolvedSize || sizes.ScanCount < observed
+                    observed
                 ),
                 null
             );
-        }
         UInt128? minimum = null,
             maximum = null;
         bool unknown = false,
@@ -482,13 +636,6 @@ internal sealed class HistorySearchEngine(
         );
     }
 
-    private readonly record struct TrendEvidence(
-        bool Increased,
-        bool Decreased,
-        bool Unknown,
-        bool UnknownAtEdge
-    );
-
     private enum TrendOutcome
     {
         Fail,
@@ -499,7 +646,7 @@ internal sealed class HistorySearchEngine(
     // Known sizes in the wrong direction rule a trend out. Without a known step in the wanted
     // direction, an unknown size can only supply one before or after all known sizes; between
     // equal known sizes it would also need a step back.
-    private TrendOutcome Decide(TrendEvidence evidence)
+    private TrendOutcome Decide(SearchTrendEvidence evidence)
     {
         bool wanted = criteria.Trend == SizeTrend.Increasing;
         bool contrary = wanted ? evidence.Decreased : evidence.Increased;
@@ -521,7 +668,7 @@ internal sealed class HistorySearchEngine(
 
     // Conditions decided by the folded rows. Paths and named streams need the folders of the
     // item's last scan and are decided in Run; trends without evidence are read per scan later.
-    private Candidate? Evaluate(SearchItem item, bool merged, TrendEvidence? trend)
+    private Candidate? Evaluate(SearchItem item, bool merged, SearchTrendEvidence? trend)
     {
         if (
             criteria.Target == SearchTarget.Folders && !item.IsDirectory
