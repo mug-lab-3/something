@@ -303,6 +303,7 @@ internal static class AppPathBenchmark
                         )
                     )
             );
+            MeasureSearches(archive, volume, budgetMiB, Time<string>, token);
 
             string json = JsonSerializer.Serialize(
                 new
@@ -335,6 +336,101 @@ internal static class AppPathBenchmark
         {
             if (database is null && Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private delegate T Timed<T>(string name, Func<T> action, Func<T, string> checksum);
+
+    // Searches every generation. Each criterion stresses one stage: an unfiltered result holds
+    // every item, names are matched in .NET, changes and trends read the whole range.
+    private static void MeasureSearches(
+        ScanHistoryArchive archive,
+        string volume,
+        int budgetMiB,
+        Timed<string> time,
+        CancellationToken token
+    )
+    {
+        var range = new HistorySearchCriteria(DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
+        (string Name, HistorySearchCriteria Criteria)[] searches =
+        [
+            ("search-all", range),
+            (
+                "search-files-size",
+                range with
+                {
+                    Target = SearchTarget.Files,
+                    MinimumSize = 300 << 10,
+                }
+            ),
+            (
+                "search-name-regex",
+                range with
+                {
+                    NamePattern = @"^synthetic-\d*77$",
+                    NameMode = NameMatchMode.RegularExpression,
+                }
+            ),
+            ("search-delta", range with { MinimumDelta = 1 }),
+            ("search-trend", range with { Trend = SizeTrend.Increasing }),
+            (
+                "search-streams-size",
+                range with
+                {
+                    Attributes = new(NamedStreams: AttributeRequirement.Set),
+                    MinimumSize = 300 << 10,
+                }
+            ),
+        ];
+        ulong memory = (ulong)budgetMiB << 20;
+        foreach (var (name, criteria) in searches)
+            time(
+                name,
+                () =>
+                {
+                    long heap = GC.GetTotalMemory(true);
+                    using var result = archive.Search(volume, criteria, token, memory);
+                    long retained = GC.GetTotalMemory(true) - heap;
+                    Console.WriteLine(
+                        $"    {name}: scans={result.Scans.Length}; folders={result.MatchedFolders}; files={result.MatchedFiles}; uncertain={result.UncertainCount}; unknown-attributes={result.UnknownAttributeCount}; retained={retained / 1048576.0:F0}MiB"
+                    );
+                    return $"{result.MatchedFolders}|{result.MatchedFiles}|{result.UncertainCount}|{result.UnknownAttributeCount}";
+                },
+                checksum => checksum
+            );
+        using var sample = archive.Search(
+            volume,
+            range with
+            {
+                Target = SearchTarget.Files,
+                MinimumDelta = 1,
+            },
+            token,
+            memory
+        );
+        if (FirstFile(sample) is { } item)
+            time(
+                "search-series",
+                () =>
+                    Hash(
+                        archive
+                            .ReadSearchSeries(sample, item, token)
+                            .Select(o => $"{o.ScanIndex}|{o.State}|{o.AllocatedBytes}")
+                    ),
+                checksum => checksum
+            );
+
+        static SearchItem? FirstFile(HistorySearchResult result)
+        {
+            var pending = new Stack<Something.Ntfs.FileReference>([result.Root]);
+            while (pending.TryPop(out var folder))
+                foreach (var entry in result.Entries(folder))
+                {
+                    if (!entry.IsDirectory)
+                        return entry;
+                    pending.Push(entry.Reference);
+                }
+            return null;
         }
     }
 
