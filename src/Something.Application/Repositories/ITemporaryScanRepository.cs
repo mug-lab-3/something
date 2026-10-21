@@ -16,7 +16,7 @@ public interface ITemporaryScanRepository
 public interface ITemporaryScanDatabase : IDisposable
 {
     Guid Publish(
-        BufferedScan buffer,
+        CompletedScan scan,
         DateTimeOffset endedUtc,
         DatabaseMemoryGrowth? growth,
         Action<ScanWorkProgress>? progress,

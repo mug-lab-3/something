@@ -1,11 +1,11 @@
-using System.Collections.Immutable;
 using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Application.Scanning;
 
 /// <summary>Owned compact observations. Keeps all persisted facts, but no raw records or DATA runs.
-/// Complete only after successful enumeration. Cancellation before publication never writes a generation.</summary>
+/// Complete only after successful enumeration; only a <see cref="CompletedScan"/> can be published, so
+/// cancellation before completion never writes a generation.</summary>
 public sealed class BufferedScan
 {
     // Ranges up to this many records track identities in a bitmap (8 MiB at most) instead of a
@@ -16,29 +16,7 @@ public sealed class BufferedScan
     private readonly List<StagedObservation> observations;
     private ulong[]? seen;
     private HashSet<ulong>? indices;
-    private FolderAggregationResult? aggregation;
-    private ImmutableArray<UnattributedSummary> diagnostics;
-    private FolderGraph? completedGraph;
-
-    public FolderAccountingSummary ReadAccountingDiagnostics(
-        FileReference scope,
-        IReadOnlyDictionary<FileReference, FileStorageTraits>? traits = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (aggregation is null || completedGraph is not { } graph)
-            throw new InvalidOperationException("Buffered enumeration has not completed.");
-        var resolver = new ScanDomainResolver(graph);
-        return FolderAccountingDiagnostics.Analyze(
-            graph,
-            scope,
-            observations
-                .Where(o => o.File is not null)
-                .Select(o => resolver.Resolve(o.File!, cancellationToken)),
-            traits,
-            cancellationToken
-        );
-    }
+    private CompletedScan? completedScan;
 
     public BufferedScan(ScanDescriptor descriptor)
     {
@@ -62,53 +40,13 @@ public sealed class BufferedScan
     public ScanDescriptor Descriptor { get; }
     public int Count => observations.Count;
 
-    /// <summary>Conservative heuristic for SQLite rows, names, streams, indexes and page slack.
-    /// Uses metadata lengths, never file content sizes. Not an exact serialized size or RAM limit.</summary>
-    public ulong EstimateDatabaseBytes(CancellationToken token = default)
-    {
-        if (aggregation is null)
-            throw new InvalidOperationException("Estimate after completing buffered aggregation.");
-        ulong bytes = 64 * 1024;
-        checked
-        {
-            foreach (var item in observations)
-            {
-                token.ThrowIfCancellationRequested();
-                bytes += 256;
-                if (item.File is not { } file)
-                    continue;
-                foreach (var name in file.Names)
-                {
-                    bytes += 384 + (ulong)name.Name.Length * 2;
-                    if (file.IsDirectory)
-                        bytes += 256 + (ulong)name.Name.Length * 2;
-                }
-                foreach (var stream in file.Streams)
-                    bytes += 320 + (ulong)stream.Name.Length * 2;
-                if (file.IsDirectory)
-                    bytes += 512;
-            }
-            return (bytes + bytes / 2 + 16383) / 16384 * 16384;
-        }
-    }
-
-    /// <summary>Observations in the order they were added; read by the repository that stores them.</summary>
-    public IReadOnlyList<StagedObservation> Observations => observations;
-    public FolderAggregationResult Aggregation =>
-        aggregation
-        ?? throw new InvalidOperationException("Buffered enumeration has not completed.");
-    public ImmutableArray<UnattributedSummary> Diagnostics =>
-        aggregation is not null
-            ? diagnostics
-            : throw new InvalidOperationException("Buffered enumeration has not completed.");
-
     public void Add(MftScanEntry entry, CancellationToken cancellationToken = default) =>
         Add(StagedObservation.FromEntry(entry, cancellationToken), cancellationToken);
 
     public void Add(StagedObservation observation, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (aggregation is not null)
+        if (completedScan is not null)
             throw new InvalidOperationException("Completed observations are immutable.");
         StagedObservation.Validate(observation, Descriptor.Range);
         if (!MarkSeen(observation.RecordIndex))
@@ -130,14 +68,16 @@ public sealed class BufferedScan
         return true;
     }
 
-    public FolderAggregationResult Complete(
+    /// <summary>Aggregates the observations once; later calls return the same result. No observation
+    /// can be added afterwards.</summary>
+    public CompletedScan Complete(
         CancellationToken cancellationToken = default,
         Action<ScanWorkProgress>? progress = null
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (aggregation is not null)
-            return aggregation;
+        if (completedScan is not null)
+            return completedScan;
         var reporter = new ScanWorkReporter(progress);
         reporter.Start(ScanWorkStage.CollectingFolders, observations.Count);
         var folders = new List<FolderObservation>();
@@ -189,7 +129,7 @@ public sealed class BufferedScan
         )
             throw new InvalidDataException("Buffered aggregation did not conserve observed DATA.");
         cancellationToken.ThrowIfCancellationRequested();
-        diagnostics = collector.Snapshot();
+        var diagnostics = collector.Snapshot();
         CapacityAmount diagnosticCapacity = default;
         ulong diagnosticResolved = 0,
             diagnosticUnresolved = 0;
@@ -207,16 +147,15 @@ public sealed class BufferedScan
             throw new InvalidDataException(
                 "Unattributed diagnostics do not match the capacity bucket."
             );
-        aggregation = result with
+        var aggregation = result with
         {
             HasUnknownAttribution =
                 result.HasUnknownAttribution
                 || observations.Any(o => o.Kind == MftScanEntryKind.Unresolved && o.File is null),
         };
-        completedGraph = graph;
         seen = null;
         indices = null;
-        return aggregation;
+        return completedScan = new(Descriptor, observations, aggregation, diagnostics, graph);
 
         IEnumerable<FileCapacityObservation> ResolvedFiles()
         {

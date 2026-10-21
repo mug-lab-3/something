@@ -10,7 +10,7 @@ internal static class SyntheticData
     internal static readonly FileReference Root = FileReference.Create(5, 1);
     internal const string Volume = "synthetic-storage-comparison";
 
-    internal static BufferedScan Create(int count, int generation, CancellationToken token)
+    internal static CompletedScan Create(int count, int generation, CancellationToken token)
     {
         var ended = End.AddDays(generation == 0 ? -7 : 0);
         var buffer = new BufferedScan(
@@ -68,8 +68,7 @@ internal static class SyntheticData
                 }
             );
         }
-        buffer.Complete(token);
-        return buffer;
+        return buffer.Complete(token);
 
         void Add(FileCapacityObservation file) =>
             buffer.Add(

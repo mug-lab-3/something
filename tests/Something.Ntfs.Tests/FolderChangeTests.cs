@@ -319,7 +319,7 @@ public sealed class FolderChangeTests
             buffer.Complete(Token);
             Assert.Throws<DbUpdateException>(() =>
                 writer.PublishHistoryBuffer(
-                    buffer,
+                    buffer.Complete(TestContext.Current.CancellationToken),
                     Now,
                     new()
                     {
@@ -510,7 +510,7 @@ public sealed class FolderChangeTests
             }
             buffer.Complete(Token);
             return Archive.Publish(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 ended,
                 "Demo",
                 TimeSpan.FromSeconds(1),

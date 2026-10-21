@@ -374,7 +374,11 @@ public sealed partial class ScanHistoryTests
                     token
                 );
             buffer.Complete(token);
-            var id = source.PublishBufferedScan(buffer, ended, token);
+            var id = source.PublishBufferedScan(
+                buffer.Complete(TestContext.Current.CancellationToken),
+                ended,
+                token
+            );
             beforeSave?.Invoke(id);
             return Archive.Save(source, id, "Demo", TimeSpan.FromSeconds(1), token);
         }

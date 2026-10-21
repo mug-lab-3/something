@@ -224,13 +224,13 @@ public sealed class DriveScanner(
     )
     {
         progress.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
-        var aggregation = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
-        var selection = reservation.SelectDuckDatabase(buffer.EstimateDatabaseBytes(token));
+        var completed = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
+        var selection = reservation.SelectDuckDatabase(completed.EstimateDatabaseBytes(token));
         if (history?.Repositories.Scans is { } scans && !demo)
         {
             progress.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
             var entry = scans.Publish(
-                buffer,
+                completed,
                 DateTimeOffset.UtcNow,
                 drive,
                 watch.Elapsed,
@@ -263,7 +263,7 @@ public sealed class DriveScanner(
         try
         {
             var id = database.Publish(
-                buffer,
+                completed,
                 DateTimeOffset.UtcNow,
                 reservation.DuckDatabaseGrowth,
                 value => ReportWork(ScanPhase.Saving, value),
@@ -274,16 +274,15 @@ public sealed class DriveScanner(
                 progress.Report(new(ScanPhase.WritingSnapshot, candidates, null, watch.Elapsed));
                 database.ExportSnapshot(token);
             }
-            var root = aggregation.Folders.Keys.Single(r => r.RecordIndex == 5);
             var timing = progress.Complete(watch.Elapsed);
             database.SaveTimings(id, timing, token);
             progress.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
             var session = new ScanSession(
                 database.Open(id),
                 drive,
-                root,
-                aggregation.Folders[root],
-                aggregation.Metadata.UnresolvedCount,
+                completed.RootReference,
+                completed.Root,
+                completed.Aggregation.Metadata.UnresolvedCount,
                 selection,
                 demo,
                 timing.TotalElapsed

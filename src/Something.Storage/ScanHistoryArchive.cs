@@ -91,7 +91,7 @@ public sealed partial class ScanHistoryArchive
         ScanStore.OpenSharedHistoryWriter(DatabasePath, cacheBytes, token);
 
     public ScanHistoryEntry Publish(
-        BufferedScan buffer,
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,
@@ -102,16 +102,16 @@ public sealed partial class ScanHistoryArchive
         Action<ulong>? accountMemoryLimit = null
     )
     {
-        ValidateArguments(buffer.Descriptor.VolumeKey, drive, elapsed);
+        ValidateArguments(completedScan.Descriptor.VolumeKey, drive, elapsed);
         progress?.Invoke(new(ScanWorkStage.WritingFiles, 0, null));
         lock (sync)
         {
             using var target = OpenDatabase(token, cacheBytes);
             var metadata = ToEntity(
-                NewEntry(Guid.Empty, buffer.Descriptor.VolumeKey, drive, endedUtc, elapsed)
+                NewEntry(Guid.Empty, completedScan.Descriptor.VolumeKey, drive, endedUtc, elapsed)
             );
             target.PublishHistoryBuffer(
-                buffer,
+                completedScan,
                 endedUtc,
                 metadata,
                 token,

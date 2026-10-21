@@ -721,7 +721,14 @@ public sealed class HistorySearchTests
                 );
             }
             buffer.Complete(Token);
-            return Archive.Publish(buffer, ended, "C:", TimeSpan.FromSeconds(1), 64UL << 20, Token);
+            return Archive.Publish(
+                buffer.Complete(TestContext.Current.CancellationToken),
+                ended,
+                "C:",
+                TimeSpan.FromSeconds(1),
+                64UL << 20,
+                Token
+            );
 
             void Add(FileCapacityObservation file) =>
                 buffer.Add(

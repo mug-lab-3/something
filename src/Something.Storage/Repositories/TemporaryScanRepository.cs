@@ -25,14 +25,14 @@ internal sealed class TemporaryScanRepository : ITemporaryScanRepository
     private sealed class Database(TemporaryScanDatabase database) : ITemporaryScanDatabase
     {
         public Guid Publish(
-            BufferedScan buffer,
+            CompletedScan scan,
             DateTimeOffset endedUtc,
             DatabaseMemoryGrowth? growth,
             Action<ScanWorkProgress>? progress,
             CancellationToken token
         ) =>
             database.Store.PublishBufferedScan(
-                buffer,
+                scan,
                 endedUtc,
                 token,
                 progress,

@@ -81,7 +81,7 @@ public sealed class HistoryServiceTests
         ) => throw new NotSupportedException();
 
         public ScanHistoryEntry Publish(
-            BufferedScan buffer,
+            CompletedScan scan,
             DateTimeOffset endedUtc,
             string drive,
             TimeSpan elapsed,

@@ -36,7 +36,7 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
     ) => archive.ReadRecordCounts(scanIds, token);
 
     public ScanHistoryEntry Publish(
-        BufferedScan buffer,
+        CompletedScan scan,
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,
@@ -46,7 +46,7 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         CancellationToken token
     ) =>
         archive.Publish(
-            buffer,
+            scan,
             endedUtc,
             drive,
             elapsed,

@@ -139,7 +139,7 @@ internal static class AppPathBenchmark
                 ids.AddRange(archive.List(volume, token).Reverse().Select(entry => entry.Id));
             // Declared outside the loop and cleared first, so the previous generation's buffer is
             // unreachable before the next managed-memory baseline is taken.
-            BufferedScan? buffer = null;
+            CompletedScan? buffer = null;
             for (int generation = 0; !reuse && generation < generations; generation++)
             {
                 buffer = null;
@@ -188,7 +188,7 @@ internal static class AppPathBenchmark
                 long publishPeak = publishing?.Stop() ?? 0;
                 if (managedMemory)
                     Console.WriteLine(
-                        $"  managed: generation={generation}; build-peak={(buildPeak - heapBefore) / 1048576.0:F0}MiB; retained={retained / 1048576.0:F0}MiB ({(double)retained / buffer.Count:F0} B/observation); publish-peak={(publishPeak - heapBefore) / 1048576.0:F0}MiB"
+                        $"  managed: generation={generation}; build-peak={(buildPeak - heapBefore) / 1048576.0:F0}MiB; retained={retained / 1048576.0:F0}MiB ({(double)retained / buffer.Observations.Count:F0} B/observation); publish-peak={(publishPeak - heapBefore) / 1048576.0:F0}MiB"
                     );
                 long written = ProcessIo.WrittenBytes(self) - writtenBefore;
                 ids.Add(entry.Id);

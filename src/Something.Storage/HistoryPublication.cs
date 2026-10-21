@@ -64,8 +64,7 @@ public sealed partial class ScanStore
                     token
                 );
             }
-            buffer.Complete(token);
-            PublishHistoryBuffer(buffer, scan.Ended!.Value, metadata, token);
+            PublishHistoryBuffer(buffer.Complete(token), scan.Ended!.Value, metadata, token);
             if (
                 source.context is DuckScanDbContext
                 && source.ReadTimings(scan.Id, token) is { } timing

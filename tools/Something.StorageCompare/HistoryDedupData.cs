@@ -10,7 +10,7 @@ internal static class HistoryDedupData
     internal static readonly DateTimeOffset End = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
 
     // 1 is identical; 2 changes about 1%, 3 about 10%, 4 returns to the original, 5 changes one file.
-    internal static BufferedScan Create(
+    internal static CompletedScan Create(
         int count,
         int generation,
         string shape,
@@ -108,8 +108,7 @@ internal static class HistoryDedupData
                 }
             );
         }
-        buffer.Complete(token);
-        return buffer;
+        return buffer.Complete(token);
 
         // "deep" nests directories eight per parent, so paths have realistic depth.
         static FileReference Directory(int i) =>

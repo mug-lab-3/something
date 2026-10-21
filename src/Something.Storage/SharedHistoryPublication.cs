@@ -8,7 +8,7 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
-// Publication compares the in-memory buffer with the previous generation while streaming its
+// Publication compares the completed in-memory scan with the previous generation while streaming its
 // rows once. Working memory is a few arrays per observation; nothing copies the generation into
 // TEMP tables. Comparisons are exact over every stored column, including UTF-16 name units,
 // aliases, streams and uncertainty. Only changed states and new listings are written.
@@ -24,20 +24,20 @@ internal static class SharedHistoryPublication
     internal static void Publish(
         SharedHistoryDbContext context,
         ScanEntity scan,
-        BufferedScan buffer,
+        CompletedScan completedScan,
         CancellationToken token,
         ScanWorkReporter reporter
     )
     {
         int generation = NumberOf(context, scan);
         int previous = PreviousGeneration(context, scan);
-        var members = new Members(buffer.Observations, generation, token);
+        var members = new Members(completedScan.Observations, generation, token);
         reporter.Start(ScanWorkStage.WritingFiles, members.Count);
         if (previous != 0)
             CompareStates(context, previous, members, token);
         WriteStates(context, scan.Id, members, token, reporter);
-        var samples = buffer.Aggregation.Folders.Values;
-        reporter.Start(ScanWorkStage.WritingFolders, buffer.Aggregation.Folders.Count);
+        var samples = completedScan.Aggregation.Folders.Values;
+        reporter.Start(ScanWorkStage.WritingFolders, completedScan.Aggregation.Folders.Count);
         WriteFolders(context, scan.Id, previous, members, samples, token, reporter);
         reporter.Start(ScanWorkStage.WritingFolderNames);
         reporter.Start(ScanWorkStage.FlushingRows);

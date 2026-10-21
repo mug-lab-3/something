@@ -159,7 +159,11 @@ public sealed class ScanTimingTests
             Token
         );
         buffer.Complete(Token);
-        var id = database.Store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, Token);
+        var id = database.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            DateTimeOffset.UtcNow,
+            Token
+        );
         database.Store.SaveTimings(id, original, Token);
         Assert.Throws<ArgumentException>(() =>
             database.Store.SaveTimings(

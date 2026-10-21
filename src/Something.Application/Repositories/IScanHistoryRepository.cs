@@ -18,7 +18,7 @@ public interface IScanHistoryRepository
 
     /// <summary>Stores a completed scan as the newest generation and prunes the history.</summary>
     ScanHistoryEntry Publish(
-        BufferedScan buffer,
+        CompletedScan scan,
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,

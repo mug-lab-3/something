@@ -104,7 +104,7 @@ DI コンテナーは導入せず、起動時に手で組み立てます。
 - [x] E2. 属性ビットの数値を `System.IO.FileAttributes` に置き換える
 - [x] E3. 検索の条件判定を `SearchConditions` としてアプリ層へ移し、DB なしのテストを加える（`SearchConditionsTests`。正規表現の生成と標準属性の有無の判定は `internal` に戻した）
 - [x] E4. 検索結果を不変のデータにし、リース・世代番号・時系列の読み取りを検索セッションへ移す（結果は組み立て時に木の形を検証する。画面には `HistorySearch` が結果・時系列・解放を提供する。テストは `HistorySearchResultTests`）
-- [ ] E5. `Complete` が `CompletedScan` を返し、公開はそれだけを受け取る
+- [x] E5. `Complete` が `CompletedScan` を返し、公開はそれだけを受け取る（集計結果・診断・帰属の診断・DB サイズの見積もりは `CompletedScan` だけが持つ。見積もりは E6 で保存層へ移す。テストは `CompletedScanTests`）
 - [ ] E6. メモリの調停を `IMemoryAllowance` にし、DuckDB 固有の規則・DB の選択・サイズの見積もりを保存層へ移す
 - [ ] E7. 公開の形を整える（`Save` の削除、公開が開いたスナップショットを返す、一時 DB の所有の受け渡しをなくす、インターフェースと実装の分割）
 - [ ] E8. 保存層の公開範囲を `StorageRepositories` だけにする

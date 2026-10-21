@@ -105,9 +105,10 @@ internal static class TopFolders
                     long bufferedManagedBytes = GC.GetTotalMemory(forceFullCollection: false);
                     Volatile.Write(ref phase, "aggregate-buffer");
                     long completionStarted = Stopwatch.GetTimestamp();
-                    var result = buffer.Complete(token);
+                    var completed = buffer.Complete(token);
+                    var result = completed.Aggregation;
                     var completionTime = Stopwatch.GetElapsedTime(completionStarted);
-                    ulong estimate = buffer.EstimateDatabaseBytes(token);
+                    ulong estimate = completed.EstimateDatabaseBytes(token);
                     var memory = OperatingSystem.IsWindows()
                         ? WindowsMemoryAvailability.TryRead()
                         : null;
@@ -136,7 +137,7 @@ internal static class TopFolders
                         fileCacheBytes: memoryDatabase ? null : selection.FileCacheBytes
                     );
                     var store = temporary.Store;
-                    var id = store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, token);
+                    var id = store.PublishBufferedScan(completed, DateTimeOffset.UtcNow, token);
                     var persistenceTime = Stopwatch.GetElapsedTime(persistenceStarted);
                     var exportTime = TimeSpan.Zero;
                     long snapshotBytes = 0;
@@ -160,7 +161,7 @@ internal static class TopFolders
                     var accounting = top.ToDictionary(
                         item => item.Sample.Reference,
                         item =>
-                            buffer.ReadAccountingDiagnostics(
+                            completed.ReadAccountingDiagnostics(
                                 item.Sample.Reference,
                                 storageTraits,
                                 token
@@ -248,7 +249,7 @@ internal static class TopFolders
                     Console.WriteLine(
                         $"Name-count-diagnostics: header-mismatches={headerNameMismatches}; complete-name-sets={completeMismatchedNameSets}; policy=EnumeratedFileNames; disk-repairs=False"
                     );
-                    foreach (var group in buffer.Diagnostics)
+                    foreach (var group in completed.Diagnostics)
                     {
                         Console.WriteLine(
                             $"Unattributed: reason={group.Reason}; resolved={group.ResolvedCount}; unresolved={group.UnresolvedCount}; logical-bytes={group.KnownData.LogicalBytes}; allocated-bytes={group.KnownData.AllocatedBytes}"
