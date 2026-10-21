@@ -1,5 +1,6 @@
 using Something.Application;
 using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Application.Scanning;
 
@@ -85,8 +86,7 @@ public sealed class HistoryServiceTests
             DateTimeOffset endedUtc,
             string drive,
             TimeSpan elapsed,
-            ulong memoryLimitBytes,
-            DatabaseMemoryGrowth? growth,
+            IMemoryAllowance allowance,
             Action<ScanWorkProgress>? progress,
             CancellationToken token
         ) => throw new NotSupportedException();
@@ -114,7 +114,7 @@ public sealed class HistoryServiceTests
         public void Checkpoint(CancellationToken token) => throw new NotSupportedException();
 
         public HistoryCompactionResult Compact(
-            ulong memoryLimitBytes,
+            IMemoryAllowance allowance,
             Action<HistoryCompactionStage>? progress,
             CancellationToken token
         ) => throw new NotSupportedException();

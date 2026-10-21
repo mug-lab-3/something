@@ -25,7 +25,7 @@ flowchart LR
 | 同期・非同期 | リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作する。DB ドライバーが同期のため、ワーカーへの受け渡しと、同じ閲覧の直列化はサービス（`HistoryService`・`ScanSession` など）が行う。画面に公開するサービスのメソッドは `Task` を返す |
 | キャンセル | すべてのメソッドが `CancellationToken` を最後の引数で受け取る |
 | 寿命 | 閲覧のスナップショットと検索の結果は、閉じるまで世代のリースを持つ。DB ファイルの操作（最適化・移動・全体の削除）は、開いているものを閉じてから行う |
-| メモリ | DB の作業メモリの初期の上限は、アプリ層の `ScanMemoryBudget` から予約した値で渡し、途中で増やす方法は `DatabaseMemoryGrowth` で渡す。規則は [`MemoryHeadroom`](../../src/Something.Application/Memory/MemoryHeadroom.cs) |
+| メモリ | DB の作業メモリは、アプリ層の `ScanMemoryBudget` から予約し、`IMemoryAllowance` として渡す。リポジトリが空きを見て量を決めて計上する。機械の空きの規則は [`MemoryHeadroom`](../../src/Something.Application/Memory/MemoryHeadroom.cs)、DuckDB の規則は保存層の `DuckMemoryPolicy` |
 | 実装の公開範囲 | 保存層の実装クラスは `internal`。起動時の組み立て用に、インターフェースを返す入口だけを `public` にする |
 | テスト | 保存層のテストは、これまでどおり実装を直接使う。アプリ層のテストは、インターフェースの偽の実装を使えるようにする |
 
@@ -105,7 +105,7 @@ DI コンテナーは導入せず、起動時に手で組み立てます。
 - [x] E3. 検索の条件判定を `SearchConditions` としてアプリ層へ移し、DB なしのテストを加える（`SearchConditionsTests`。正規表現の生成と標準属性の有無の判定は `internal` に戻した）
 - [x] E4. 検索結果を不変のデータにし、リース・世代番号・時系列の読み取りを検索セッションへ移す（結果は組み立て時に木の形を検証する。画面には `HistorySearch` が結果・時系列・解放を提供する。テストは `HistorySearchResultTests`）
 - [x] E5. `Complete` が `CompletedScan` を返し、公開はそれだけを受け取る（集計結果・診断・帰属の診断・DB サイズの見積もりは `CompletedScan` だけが持つ。見積もりは E6 で保存層へ移す。テストは `CompletedScanTests`）
-- [ ] E6. メモリの調停を `IMemoryAllowance` にし、DuckDB 固有の規則・DB の選択・サイズの見積もりを保存層へ移す
+- [x] E6. メモリの調停を `IMemoryAllowance` にし、DuckDB 固有の規則・DB の選択・サイズの見積もりを保存層へ移す（アプリは常にファイル DB を使うため、メモリ DB とファイル DB の選択はアプリ層から外した。選択とサイズの見積もりは、診断ツールと旧 SQLite の比較のために保存層に残す。最適化は他と競合しないため `UnsharedMemoryAllowance` を使う。使われていなかった `ScanSession.Selection` は削除。テストは `ScanMemoryBudgetTests`（調停）と `DuckMemoryPolicyTests`（DuckDB の規則））
 - [ ] E7. 公開の形を整える（`Save` の削除、公開が開いたスナップショットを返す、一時 DB の所有の受け渡しをなくす、インターフェースと実装の分割）
 - [ ] E8. 保存層の公開範囲を `StorageRepositories` だけにする
 - [ ] E9. [アーキテクチャ](../architecture.md)・[履歴ストレージ](../storage.md)・この計画の規約を更新する

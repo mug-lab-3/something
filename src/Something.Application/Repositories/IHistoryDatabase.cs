@@ -1,4 +1,5 @@
 using Something.Application.History;
+using Something.Application.Memory;
 
 namespace Something.Application.Repositories;
 
@@ -17,8 +18,10 @@ public interface IHistoryDatabase
 
     void Checkpoint(CancellationToken token);
 
+    /// <summary>Rewrites the database compactly. Throws <see cref="InsufficientMemoryException"/> when the
+    /// allowance leaves too little memory to do so.</summary>
     HistoryCompactionResult Compact(
-        ulong memoryLimitBytes,
+        IMemoryAllowance allowance,
         Action<HistoryCompactionStage>? progress,
         CancellationToken token
     );

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Something.Application.Memory;
 using Something.Application.Search;
 
 namespace Something.Application.Repositories;
@@ -10,8 +11,7 @@ public interface IHistorySearchRepository
     IHistorySearchSession Search(
         string volumeKey,
         HistorySearchCriteria criteria,
-        ulong memoryLimitBytes,
-        DatabaseMemoryGrowth? growth,
+        IMemoryAllowance allowance,
         CancellationToken token
     );
 }

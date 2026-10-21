@@ -34,7 +34,7 @@ flowchart LR
 | `ITemporaryScanRepository` | 履歴に残さないスキャン（デモ・診断）用の一時的な DB |
 | `IParquetTableWriter` | Parquet 形式でのエクスポート |
 
-リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作します。ワーカーへの受け渡しと、同じ閲覧の直列化はサービスが行います。1 つの保存先のリポジトリは `HistoryRepositories` にまとめ、保存先を移すと `HistoryService` が丸ごと差し替えます。DB の作業メモリは、サービスが `ScanMemoryBudget` から予約した初期の上限と、途中で増やす方法（`DatabaseMemoryGrowth`）をリポジトリに渡します。
+リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作します。ワーカーへの受け渡しと、同じ閲覧の直列化はサービスが行います。1 つの保存先のリポジトリは `HistoryRepositories` にまとめ、保存先を移すと `HistoryService` が丸ごと差し替えます。DB の作業メモリは、サービスが `ScanMemoryBudget` から予約して `IMemoryAllowance` としてリポジトリに渡します。アプリ層は機械の空きの調停だけを行い、リポジトリは空きを見て自分のエンジンに必要な量を決め（初期の上限と、途中で増やすときの量）、その量を許可枠に計上します。DuckDB の上限の刻み・下限・増やし方・倍の計上は、保存層の `DuckMemoryPolicy` が持ちます。
 
 層をまたぐデータの型は、用途ごとの名前空間に置きます。
 
@@ -45,7 +45,7 @@ flowchart LR
 | `Something.Application.Browsing` | `FolderEntry`・`FolderEntryPage`・`RankedFolder`・`AnalysisFileName` |
 | `Something.Application.Comparison` | `FolderChangeReport`・`ComparisonSelection`・`EntryChanges` |
 | `Something.Application.Search` | `HistorySearchCriteria`・`HistorySearchResult`・`SearchItem` |
-| `Something.Application.Memory` | `MemoryHeadroom`・`DiagnosticDatabaseSelector` |
+| `Something.Application.Memory` | `AvailableMemory`・`MemoryHeadroom`・`IMemoryAllowance` |
 
 アプリ層のテストは、インターフェースの偽の実装でサービスを試せます。保存層のテストは、実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
 

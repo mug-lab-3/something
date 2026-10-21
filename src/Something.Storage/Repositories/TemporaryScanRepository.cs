@@ -1,4 +1,5 @@
 using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Application.Scanning;
 
@@ -8,39 +9,28 @@ internal sealed class TemporaryScanRepository : ITemporaryScanRepository
 {
     public static TemporaryScanRepository Instance { get; } = new();
 
-    public ITemporaryScanDatabase Create(
-        bool inMemory,
-        ulong? fileCacheBytes,
-        CancellationToken token
-    ) =>
-        new Database(
-            TemporaryScanDatabase.Create(
-                token,
-                inMemory,
-                !inMemory,
-                inMemory ? null : fileCacheBytes
-            )
+    public ITemporaryScanDatabase Create(IMemoryAllowance allowance, CancellationToken token)
+    {
+        var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
+        return new Database(
+            TemporaryScanDatabase.Create(token, inMemory: false, boundedMemory: true, limit),
+            grow,
+            account
         );
+    }
 
-    private sealed class Database(TemporaryScanDatabase database) : ITemporaryScanDatabase
+    private sealed class Database(
+        TemporaryScanDatabase database,
+        Func<ulong, ulong?> grow,
+        Action<ulong> account
+    ) : ITemporaryScanDatabase
     {
         public Guid Publish(
             CompletedScan scan,
             DateTimeOffset endedUtc,
-            DatabaseMemoryGrowth? growth,
             Action<ScanWorkProgress>? progress,
             CancellationToken token
-        ) =>
-            database.Store.PublishBufferedScan(
-                scan,
-                endedUtc,
-                token,
-                progress,
-                growth?.TryGrow,
-                growth?.Account
-            );
-
-        public void ExportSnapshot(CancellationToken token) => database.ExportSnapshot(token);
+        ) => database.Store.PublishBufferedScan(scan, endedUtc, token, progress, grow, account);
 
         public void SaveTimings(Guid scanId, ScanTimingSnapshot timing, CancellationToken token) =>
             database.Store.SaveTimings(scanId, timing, token);

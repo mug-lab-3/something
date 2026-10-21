@@ -81,5 +81,4 @@ internal sealed class ArchiveScanSnapshot(HistorySnapshot snapshot)
         IHistorySnapshot
 {
     public ScanHistoryEntry Entry => snapshot.Entry;
-    public ulong SizeBytes => snapshot.SizeBytes;
 }

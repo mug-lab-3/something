@@ -60,20 +60,9 @@ public sealed class HistoryService(HistoryRepositories repositories)
         CancellationToken token
     )
     {
-        ulong available = ScanMemoryBudget.ReadSystem() is { } memory
-            ? MemoryHeadroom.Headroom(memory)
-            : checked(
-                (ulong)
-                    Math.Max(
-                        0,
-                        GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
-                            - GC.GetGCMemoryInfo().MemoryLoadBytes
-                    )
-            );
-        ulong limit = MemoryHeadroom.Align(available / 4 * 3);
-        if (limit < MemoryHeadroom.Granularity)
-            throw new InsufficientMemoryException();
-        return Run(history => history.Database.Compact(limit, progress, token), token);
+        // Optimization runs alone, so it is not charged to the shared budget.
+        var allowance = new UnsharedMemoryAllowance(ScanMemoryBudget.ReadSystem);
+        return Run(history => history.Database.Compact(allowance, progress, token), token);
     }
 
     /// <summary>Moves every drive's history to <paramref name="directory"/>. Callers close every

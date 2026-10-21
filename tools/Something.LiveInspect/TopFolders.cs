@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using Something.Application.Browsing;
-using Something.Application.Memory;
 using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
@@ -108,7 +107,7 @@ internal static class TopFolders
                     var completed = buffer.Complete(token);
                     var result = completed.Aggregation;
                     var completionTime = Stopwatch.GetElapsedTime(completionStarted);
-                    ulong estimate = completed.EstimateDatabaseBytes(token);
+                    ulong estimate = DatabaseSizeEstimate.For(completed, token);
                     var memory = OperatingSystem.IsWindows()
                         ? WindowsMemoryAvailability.TryRead()
                         : null;

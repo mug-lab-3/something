@@ -225,7 +225,6 @@ public sealed class DriveScanner(
     {
         progress.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var completed = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
-        var selection = reservation.SelectDuckDatabase(completed.EstimateDatabaseBytes(token));
         if (history?.Repositories.Scans is { } scans && !demo)
         {
             progress.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
@@ -234,8 +233,7 @@ public sealed class DriveScanner(
                 DateTimeOffset.UtcNow,
                 drive,
                 watch.Elapsed,
-                selection.FileCacheBytes,
-                reservation.DuckDatabaseGrowth,
+                reservation,
                 value => ReportWork(ScanPhase.SavingHistory, value),
                 token
             );
@@ -255,25 +253,16 @@ public sealed class DriveScanner(
             return session;
         }
         progress.Report(new(ScanPhase.Saving, candidates, null, watch.Elapsed));
-        var database = temporaryScans.Create(
-            selection.UseMemory,
-            selection.UseMemory ? null : selection.FileCacheBytes,
-            token
-        );
+        var database = temporaryScans.Create(reservation, token);
+
         try
         {
             var id = database.Publish(
                 completed,
                 DateTimeOffset.UtcNow,
-                reservation.DuckDatabaseGrowth,
                 value => ReportWork(ScanPhase.Saving, value),
                 token
             );
-            if (selection.UseMemory)
-            {
-                progress.Report(new(ScanPhase.WritingSnapshot, candidates, null, watch.Elapsed));
-                database.ExportSnapshot(token);
-            }
             var timing = progress.Complete(watch.Elapsed);
             database.SaveTimings(id, timing, token);
             progress.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
@@ -283,7 +272,6 @@ public sealed class DriveScanner(
                 completed.RootReference,
                 completed.Root,
                 completed.Aggregation.Metadata.UnresolvedCount,
-                selection,
                 demo,
                 timing.TotalElapsed
             );

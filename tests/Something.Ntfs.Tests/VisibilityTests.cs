@@ -3,7 +3,6 @@ using System.Numerics;
 using Something.Application;
 using Something.Application.Browsing;
 using Something.Application.Comparison;
-using Something.Application.Memory;
 using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
@@ -235,7 +234,6 @@ public sealed class VisibilityTests
                 Root,
                 summary.Root,
                 summary.MetadataUnresolved,
-                DiagnosticDatabaseSelector.Select(1, null),
                 true,
                 TimeSpan.FromSeconds(1)
             );

@@ -1662,15 +1662,15 @@ public sealed class ScanStoreTests
         var largeScan = large.Complete(token);
         var expected = smallScan.Aggregation;
         Assert.Equal(
-            smallScan.EstimateDatabaseBytes(token),
-            largeScan.EstimateDatabaseBytes(token)
+            DatabaseSizeEstimate.For(smallScan, token),
+            DatabaseSizeEstimate.For(largeScan, token)
         );
-        Assert.True(smallScan.EstimateDatabaseBytes(token) >= 64 * 1024);
-        Assert.Equal(0UL, smallScan.EstimateDatabaseBytes(token) % 16384);
+        Assert.True(DatabaseSizeEstimate.For(smallScan, token) >= 64 * 1024);
+        Assert.Equal(0UL, DatabaseSizeEstimate.For(smallScan, token) % 16384);
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
         cancelled.Cancel();
         Assert.Throws<OperationCanceledException>(() =>
-            smallScan.EstimateDatabaseBytes(cancelled.Token)
+            DatabaseSizeEstimate.For(smallScan, cancelled.Token)
         );
         using var temporary = TemporaryScanDatabase.CreateSqlite(token, boundedMemory: true);
         var id = temporary.Store.PublishBufferedScan(smallScan, Started.AddSeconds(1), token);

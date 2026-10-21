@@ -1,13 +1,15 @@
-namespace Something.Application.Memory;
+using Something.Application.Memory;
 
-public enum DiagnosticDatabasePreference
+namespace Something.Storage;
+
+internal enum DiagnosticDatabasePreference
 {
     Automatic,
     Memory,
     File,
 }
 
-public enum DatabaseSelectionReason
+internal enum DatabaseSelectionReason
 {
     SufficientHeadroom,
     InsufficientHeadroom,
@@ -16,14 +18,7 @@ public enum DatabaseSelectionReason
     ForcedFile,
 }
 
-public sealed record AvailableMemory(
-    ulong TotalPhysicalBytes,
-    ulong PhysicalBytes,
-    ulong CommitBytes,
-    ulong VirtualBytes
-);
-
-public sealed record DiagnosticDatabaseSelection(
+internal sealed record DiagnosticDatabaseSelection(
     bool UseMemory,
     DatabaseSelectionReason Reason,
     ulong EstimatedDatabaseBytes,
@@ -33,9 +28,10 @@ public sealed record DiagnosticDatabaseSelection(
     ulong FileCacheBytes
 );
 
-/// <summary>Pure, conservative selection policy. Available values must be sampled after buffering
+/// <summary>Chooses between a memory database and a bounded file database for the diagnostic tools and
+/// legacy SQLite comparison. The application always uses a file database. Pure, conservative selection policy. Available values must be sampled after buffering
 /// and aggregation, so the existing C# buffer is already charged to the machine.</summary>
-public static class DiagnosticDatabaseSelector
+internal static class DiagnosticDatabaseSelector
 {
     private const ulong GiB = 1024UL * 1024 * 1024;
 
@@ -51,7 +47,10 @@ public static class DiagnosticDatabaseSelector
         if (selection.UseMemory)
             return selection;
         // FileCacheBytes is the legacy transport field; for DuckDB it carries memory_limit.
-        return selection with { FileCacheBytes = MemoryHeadroom.DuckLimit(selection.Available) };
+        return selection with
+        {
+            FileCacheBytes = DuckMemoryPolicy.InitialLimit(selection.Available),
+        };
     }
 
     public static DiagnosticDatabaseSelection Select(
@@ -88,7 +87,7 @@ public static class DiagnosticDatabaseSelector
             // overhead and later ranking/diagnostic allocations. SQLite allocates on demand.
             cacheBytes = available is null
                 ? 64 * MiB
-                : MemoryHeadroom.Align(
+                : DuckMemoryPolicy.Align(
                     Math.Clamp(
                         Math.Min(MemoryHeadroom.Surplus(available) / 4, estimatedDatabaseBytes),
                         64 * MiB,

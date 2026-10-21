@@ -1,4 +1,5 @@
 using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Scanning;
 
 namespace Something.Application.Repositories;
@@ -22,8 +23,7 @@ public interface IScanHistoryRepository
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,
-        ulong memoryLimitBytes,
-        DatabaseMemoryGrowth? growth,
+        IMemoryAllowance allowance,
         Action<ScanWorkProgress>? progress,
         CancellationToken token
     );
@@ -48,8 +48,3 @@ public interface IScanHistoryRepository
     /// <summary>Collects retired scans that are no longer open; returns how many remain open.</summary>
     int CollectRetired(CancellationToken token);
 }
-
-/// <summary>How a database operation may raise its memory limit through the shared budget.</summary>
-/// <param name="TryGrow">Returns a larger limit for the current one, or null when none fits.</param>
-/// <param name="Account">Charges a limit the operation chose itself, such as one after a retry.</param>
-public sealed record DatabaseMemoryGrowth(Func<ulong, ulong?> TryGrow, Action<ulong> Account);

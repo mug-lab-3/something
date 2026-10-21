@@ -1,5 +1,4 @@
 using Something.Application.Memory;
-using Something.Application.Repositories;
 
 namespace Something.Application;
 
@@ -53,30 +52,6 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         }
     }
 
-    private DiagnosticDatabaseSelection Select(
-        Guid id,
-        ulong bufferBytes,
-        ulong estimate,
-        DiagnosticDatabasePreference preference,
-        bool duckDb = false
-    )
-    {
-        lock (sync)
-        {
-            ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            var available = Subtract(readAvailable(), TotalExcept(id));
-            var selection = duckDb
-                ? DiagnosticDatabaseSelector.SelectDuckDb(estimate, available, preference)
-                : DiagnosticDatabaseSelector.Select(estimate, available, preference);
-            ulong databaseBudget = Saturate(
-                (UInt128)(selection.UseMemory ? estimate : selection.FileCacheBytes) * 2
-            );
-            reservations[id] = Saturate((UInt128)bufferBytes + databaseBudget);
-            Signal();
-            return selection;
-        }
-    }
-
     private void Release(Guid id)
     {
         lock (sync)
@@ -86,58 +61,28 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         }
     }
 
-    private ulong? TryGrowDuckDatabase(Guid id, ulong bufferBytes, ulong currentLimit)
+    private T Charge<T>(Guid id, ulong bufferBytes, Func<AvailableMemory?, MemoryChoice<T>> decide)
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            var available = Subtract(readAvailable(), TotalExcept(id));
-            if (available is null)
-                return null;
-            ulong next = MemoryHeadroom.Align(
-                (UInt128)currentLimit + MemoryHeadroom.Surplus(available) / 2
-            );
-            if (next <= currentLimit)
-                return null;
-            // OS availability already charges the live buffer and existing native allocations.
-            // Budget twice the incremental growth for native overhead, not all existing RAM again.
-            ulong additional = Saturate((UInt128)(next - currentLimit) * 2);
-            if (!MemoryHeadroom.Fits(available, additional, MemoryHeadroom.OsReserve(available)))
-                return null;
-            Account(id, bufferBytes, next);
-            return next;
+            var choice = decide(Subtract(readAvailable(), TotalExcept(id)));
+            Hold(id, bufferBytes, choice.Bytes);
+            return choice.Value;
         }
     }
 
-    // The same limit a publication selects, from what remains after other reservations.
-    private ulong SizeDuckDatabase(Guid id, ulong bufferBytes)
+    // The reservation never shrinks: it holds the buffer and the largest charge so far.
+    private void Hold(Guid id, ulong bufferBytes, ulong bytes)
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            ulong limit = MemoryHeadroom.DuckLimit(Subtract(readAvailable(), TotalExcept(id)));
-            Account(id, bufferBytes, limit);
-            return limit;
+            if (bytes == 0)
+                return;
+            reservations[id] = Math.Max(reservations[id], Saturate((UInt128)bufferBytes + bytes));
+            Signal();
         }
-    }
-
-    private void AccountDuckDatabaseLimit(Guid id, ulong bufferBytes, ulong limit)
-    {
-        lock (sync)
-        {
-            ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            Account(id, bufferBytes, limit);
-        }
-    }
-
-    // A DuckDB limit is charged twice: the engine plus native allocations outside its limit.
-    private void Account(Guid id, ulong bufferBytes, ulong limit)
-    {
-        reservations[id] = Math.Max(
-            reservations[id],
-            Saturate((UInt128)bufferBytes + (UInt128)limit * 2)
-        );
-        Signal();
     }
 
     private ulong TotalExcept(Guid id)
@@ -175,7 +120,8 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
     private static ulong Remaining(ulong bytes, ulong reserved) =>
         bytes > reserved ? bytes - reserved : 0;
 
-    public sealed class Reservation : IDisposable
+    /// <summary>The memory one scan or search holds until disposed.</summary>
+    public sealed class Reservation : IMemoryAllowance, IDisposable
     {
         private readonly ScanMemoryBudget owner;
         private readonly Guid id;
@@ -188,33 +134,11 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             this.bufferBytes = bufferBytes;
         }
 
-        public DiagnosticDatabaseSelection SelectDatabase(
-            ulong estimate,
-            DiagnosticDatabasePreference preference = DiagnosticDatabasePreference.Automatic
-        ) => owner.Select(id, bufferBytes, estimate, preference);
+        public T Charge<T>(Func<AvailableMemory?, MemoryChoice<T>> decide) =>
+            owner.Charge(id, bufferBytes, decide);
 
-        public DiagnosticDatabaseSelection SelectDuckDatabase(ulong estimate) =>
-            owner.Select(
-                id,
-                bufferBytes,
-                estimate,
-                DiagnosticDatabasePreference.File,
-                duckDb: true
-            );
+        public void Hold(ulong bytes) => owner.Hold(id, bufferBytes, bytes);
 
         public void Dispose() => owner.Release(id);
-
-        public ulong? TryGrowDuckDatabase(ulong currentLimit) =>
-            owner.TryGrowDuckDatabase(id, bufferBytes, currentLimit);
-
-        /// <summary>An initial DuckDB limit from the memory available now, at least 1 GiB.</summary>
-        public ulong SizeDuckDatabase() => owner.SizeDuckDatabase(id, bufferBytes);
-
-        public void AccountDuckDatabaseLimit(ulong limit) =>
-            owner.AccountDuckDatabaseLimit(id, bufferBytes, limit);
-
-        /// <summary>Lets a database operation grow its limit within this reservation.</summary>
-        public DatabaseMemoryGrowth DuckDatabaseGrowth =>
-            new(TryGrowDuckDatabase, AccountDuckDatabaseLimit);
     }
 }

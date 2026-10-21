@@ -4,37 +4,231 @@ using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 
+/// <summary>How reservations share the machine's memory, independent of any database engine.</summary>
 public sealed class ScanMemoryBudgetTests
 {
     private const ulong GiB = 1UL << 30;
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
+    /// <summary>Holds <paramref name="bytes"/> and reports what was available when deciding.</summary>
+    private static AvailableMemory? Take(IMemoryAllowance allowance, ulong bytes) =>
+        allowance.Charge<AvailableMemory?>(available => new(available, bytes));
+
+    private static AvailableMemory? Peek(IMemoryAllowance allowance) => Take(allowance, 0);
+
     [Fact]
-    public async Task ExistingSharedEngineLimitIsAccountedBeforeAnotherDriveSelectsBudget()
+    public async Task ChargesOfOneReservationAreSubtractedFromTheOthers()
     {
+        // Arrange
         var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
         using var first = await budget.ReserveAsync(GiB, Token);
         using var second = await budget.ReserveAsync(GiB, Token);
-        first.SelectDuckDatabase(1);
 
-        first.AccountDuckDatabaseLimit(8 * GiB);
+        // Act
+        Take(first, 8 * GiB);
 
-        Assert.Equal(3 * GiB, second.SelectDuckDatabase(1).Available!.PhysicalBytes);
+        // Assert: the first holds its 1 GiB buffer plus 8 GiB; the second holds 1 GiB.
+        Assert.Equal(11 * GiB, Peek(second)!.PhysicalBytes);
+        Assert.Equal(19 * GiB, Peek(first)!.PhysicalBytes);
     }
 
     [Fact]
-    public async Task DuckGrowthReservesIncrementAndSubtractsCompetingDriveBudget()
+    public async Task AReservationOnlyGrowsItsHold()
     {
+        // Arrange
         var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
         using var first = await budget.ReserveAsync(GiB, Token);
         using var second = await budget.ReserveAsync(GiB, Token);
-        Assert.Equal(19 * GiB / 2, first.TryGrowDuckDatabase(2 * GiB));
-        var competing = second.SelectDuckDatabase(1);
-        Assert.Equal(0UL, competing.Available!.PhysicalBytes);
+
+        // Act
+        Take(first, 6 * GiB);
+        Take(first, 2 * GiB);
+        first.Hold(GiB);
+        first.Hold(0);
+
+        // Assert
+        Assert.Equal(13 * GiB, Peek(second)!.PhysicalBytes);
+        first.Hold(10 * GiB);
+        Assert.Equal(9 * GiB, Peek(second)!.PhysicalBytes);
     }
 
     [Fact]
-    public void HeadroomPolicyRejectsInconsistentSamplesAndAlignsWithinTheNativeRange()
+    public async Task SimultaneousChargesNeverTakeTheSameHeadroom()
+    {
+        // Arrange: 9 GiB free, 3.2 GiB for the OS, so only one 4 GiB hold fits beside the other buffer.
+        var budget = new ScanMemoryBudget(() => new(16 * GiB, 9 * GiB, 9 * GiB, 9 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        using var second = await budget.ReserveAsync(GiB, Token);
+        bool Claim(IMemoryAllowance allowance) =>
+            allowance.Charge<bool>(available =>
+                MemoryHeadroom.Fits(available, 4 * GiB, MemoryHeadroom.OsReserve(available))
+                    ? new(true, 4 * GiB)
+                    : new(false, 0)
+            );
+
+        // Act
+        bool[] won = await Task.WhenAll(
+            Task.Run(() => Claim(first), Token),
+            Task.Run(() => Claim(second), Token)
+        );
+
+        // Assert
+        Assert.Single(won, claimed => claimed);
+    }
+
+    [Fact]
+    public async Task MissingOrInconsistentInformationReachesTheDecisionAsUnknown()
+    {
+        // Arrange
+        AvailableMemory? memory = null;
+        var budget = new ScanMemoryBudget(() => memory);
+        using var reservation = await budget.ReserveAsync(GiB, Token);
+
+        // Act and assert
+        Assert.Null(Peek(reservation));
+        memory = new(8 * GiB, 9 * GiB, 9 * GiB, 9 * GiB);
+        Assert.Null(Peek(reservation));
+        memory = new(0, 0, 0, 0);
+        Assert.Null(Peek(reservation));
+    }
+
+    [Fact]
+    public async Task ADisposedReservationRefusesCharges()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(8 * GiB, 4 * GiB, 4 * GiB, 4 * GiB));
+        var reservation = await budget.ReserveAsync(GiB, Token);
+        reservation.Dispose();
+
+        // Act and assert
+        Assert.Throws<ObjectDisposedException>(() => Peek(reservation));
+        Assert.Throws<ObjectDisposedException>(() => reservation.Hold(GiB));
+    }
+
+    [Fact]
+    public async Task DisposingAReservationReturnsItsHold()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        var second = await budget.ReserveAsync(GiB, Token);
+        Take(second, 5 * GiB);
+        Assert.Equal(14 * GiB, Peek(first)!.PhysicalBytes);
+
+        // Act
+        second.Dispose();
+
+        // Assert
+        Assert.Equal(20 * GiB, Peek(first)!.PhysicalBytes);
+    }
+
+    [Fact]
+    public async Task CompetingBudgetIsSubtractedFromAllAvailableResources()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 13 * GiB, 14 * GiB));
+        using var first = await budget.ReserveAsync(2 * GiB, Token);
+        using var second = await budget.ReserveAsync(GiB, Token);
+
+        // Act
+        var available = Peek(second);
+
+        // Assert
+        Assert.Equal(new AvailableMemory(16 * GiB, 10 * GiB, 11 * GiB, 12 * GiB), available);
+    }
+
+    [Fact]
+    public async Task WaitingScanStartsAfterBudgetReleased()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(4 * GiB, 3 * GiB, 3 * GiB, 3 * GiB));
+        using var first = await budget.ReserveAsync(2 * GiB, Token);
+        Task<ScanMemoryBudget.Reservation> waiting = budget.ReserveAsync(2 * GiB, Token);
+        Assert.False(waiting.IsCompleted);
+
+        // Act
+        first.Dispose();
+        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+        // Assert
+        Assert.NotNull(second);
+        Assert.Throws<ObjectDisposedException>(() => Peek(first));
+    }
+
+    [Fact]
+    public async Task AChargeLetsAWaitingScanProceedOnlyWhenRoomRemains()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB));
+        using var first = await budget.ReserveAsync(GiB, Token);
+        Take(first, 9 * GiB);
+        Task<ScanMemoryBudget.Reservation> waiting = budget.ReserveAsync(2 * GiB, Token);
+
+        // Act
+        await Task.Delay(50, Token);
+        bool blocked = !waiting.IsCompleted;
+        first.Dispose();
+        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+        // Assert
+        Assert.True(blocked);
+        Assert.NotNull(second);
+    }
+
+    [Fact]
+    public async Task CancellingWaitDoesNotLeakReservationOrCancelOtherScan()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => new(4 * GiB, 3 * GiB, 3 * GiB, 3 * GiB));
+        using var first = await budget.ReserveAsync(2 * GiB, Token);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var waiting = budget.ReserveAsync(GiB, cancellation.Token);
+
+        // Act
+        cancellation.Cancel();
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
+        Assert.Equal(3 * GiB, Peek(first)!.PhysicalBytes);
+    }
+
+    [Fact]
+    public async Task MissingMemoryInformationSerializesScans()
+    {
+        // Arrange
+        var budget = new ScanMemoryBudget(() => null);
+        using var first = await budget.ReserveAsync(ulong.MaxValue, Token);
+        var waiting = budget.ReserveAsync(GiB, Token);
+
+        // Act
+        Assert.False(waiting.IsCompleted);
+        first.Dispose();
+        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token);
+
+        // Assert
+        Assert.NotNull(second);
+    }
+
+    [Fact]
+    public void UnsharedAllowanceReadsAvailabilityAndHoldsNothing()
+    {
+        // Arrange
+        AvailableMemory? memory = new(16 * GiB, 9 * GiB, 9 * GiB, 9 * GiB);
+        var allowance = new UnsharedMemoryAllowance(() => memory);
+
+        // Act
+        var first = Take(allowance, 100 * GiB);
+        allowance.Hold(100 * GiB);
+        var second = Peek(allowance);
+        memory = new(16 * GiB, 20 * GiB, 20 * GiB, 20 * GiB);
+
+        // Assert
+        Assert.Equal(first, second);
+        Assert.Null(Peek(allowance));
+    }
+
+    [Fact]
+    public void HeadroomPolicyRejectsInconsistentSamples()
     {
         // Arrange
         var sample = new AvailableMemory(16 * GiB, 9 * GiB, 7 * GiB, 8 * GiB);
@@ -42,6 +236,8 @@ public sealed class ScanMemoryBudgetTests
         // Act and assert
         Assert.Null(MemoryHeadroom.Validate(sample with { TotalPhysicalBytes = 0 }));
         Assert.Null(MemoryHeadroom.Validate(sample with { PhysicalBytes = 17 * GiB }));
+        Assert.Null(MemoryHeadroom.Validate(null));
+        Assert.Same(sample, MemoryHeadroom.Validate(sample));
         Assert.Equal(7 * GiB, MemoryHeadroom.Headroom(sample));
         Assert.Equal(16 * GiB / 5, MemoryHeadroom.OsReserve(sample));
         Assert.Equal(GiB, MemoryHeadroom.OsReserve(null));
@@ -49,193 +245,12 @@ public sealed class ScanMemoryBudgetTests
             4 * GiB,
             MemoryHeadroom.OsReserve(sample with { TotalPhysicalBytes = 64 * GiB })
         );
+        Assert.Equal(7 * GiB - 16 * GiB / 5, MemoryHeadroom.Surplus(sample));
+        Assert.Equal(0UL, MemoryHeadroom.Surplus(sample with { PhysicalBytes = GiB }));
         Assert.True(MemoryHeadroom.Fits(sample, 6 * GiB, GiB));
         Assert.False(MemoryHeadroom.Fits(sample, 6 * GiB + 1, GiB));
         Assert.False(MemoryHeadroom.Fits(null, 0, 0));
-        Assert.Equal(16384UL, MemoryHeadroom.Align(16384 * 2 - 1));
-        Assert.Equal(MemoryHeadroom.MaximumDuckLimit, MemoryHeadroom.Align(UInt128.MaxValue));
-        Assert.Equal(GiB, MemoryHeadroom.DuckLimit(sample with { PhysicalBytes = GiB }));
-    }
-
-    [Fact]
-    public async Task InitialDuckBudgetIsHalfOfAvailableHeadroomAndNeverBelowTheFloor()
-    {
-        // Arrange
-        AvailableMemory? memory = new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB);
-        var budget = new ScanMemoryBudget(() => memory);
-        using var search = await budget.ReserveAsync(GiB, Token);
-        using var other = await budget.ReserveAsync(GiB, Token);
-
-        // Act: 20 GiB, minus the other 1 GiB and a 4 GiB OS reserve, halved.
-        ulong limit = search.SizeDuckDatabase();
-
-        // Assert
-        Assert.Equal(15 * GiB / 2, limit);
-        Assert.Equal(4 * GiB, other.SelectDuckDatabase(1).Available!.PhysicalBytes);
-        memory = new(8 * GiB, GiB, GiB, GiB);
-        Assert.Equal(GiB, other.SizeDuckDatabase());
-        memory = null;
-        Assert.Equal(GiB, other.SizeDuckDatabase());
-    }
-
-    [Fact]
-    public async Task DuckGrowthDoesNotIncreaseBudgetWhenAvailableRamIsInsufficientOrUnknown()
-    {
-        AvailableMemory? memory = new(8 * GiB, GiB, GiB, GiB);
-        var budget = new ScanMemoryBudget(() => memory);
-        using var reservation = await budget.ReserveAsync(GiB, Token);
-
-        Assert.Null(reservation.TryGrowDuckDatabase(GiB));
-        memory = null;
-        Assert.Null(reservation.TryGrowDuckDatabase(GiB));
-        reservation.Dispose();
-        Assert.Throws<ObjectDisposedException>(() => reservation.TryGrowDuckDatabase(GiB));
-    }
-
-    [Fact]
-    public async Task SmallDuckScanReservesEngineWorkspaceInsteadOfSmallSqliteCache()
-    {
-        var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB));
-        using var first = await budget.ReserveAsync(GiB, Token);
-        using var second = await budget.ReserveAsync(GiB, Token);
-
-        var selection = first.SelectDuckDatabase(1024);
-        var competing = second.SelectDuckDatabase(1024);
-
-        Assert.False(selection.UseMemory);
-        Assert.True(selection.FileCacheBytes > 2 * GiB);
-        Assert.Equal(
-            12 * GiB - GiB - 2 * selection.FileCacheBytes,
-            competing.Available!.PhysicalBytes
-        );
-        Assert.Equal(GiB, competing.FileCacheBytes);
-    }
-
-    [Fact]
-    public void DuckEngineBudgetDoesNotDependOnNewDriveDatabaseEstimate()
-    {
-        var available = new AvailableMemory(16 * GiB, 12 * GiB, 12 * GiB, 12 * GiB);
-
-        var small = DiagnosticDatabaseSelector.SelectDuckDb(1, available);
-        var large = DiagnosticDatabaseSelector.SelectDuckDb(8 * GiB, available);
-
-        Assert.True(small.FileCacheBytes > 2 * GiB);
-        Assert.Equal(small.FileCacheBytes, large.FileCacheBytes);
-    }
-
-    [Fact]
-    public void DuckEngineBudgetHasBoundedFallbackForUnknownOrLowHeadroom()
-    {
-        Assert.Equal(GiB, DiagnosticDatabaseSelector.SelectDuckDb(1, null).FileCacheBytes);
-        Assert.Equal(
-            GiB,
-            DiagnosticDatabaseSelector.SelectDuckDb(1, new(4 * GiB, 1, 1, 1)).FileCacheBytes
-        );
-    }
-
-    [Fact]
-    public async Task DuckGrowthCanUseAvailableMemoryBeyondEightGiB()
-    {
-        AvailableMemory? memory = new(64 * GiB, 40 * GiB, 40 * GiB, 40 * GiB);
-        var budget = new ScanMemoryBudget(() => memory);
-        using var reservation = await budget.ReserveAsync(GiB, Token);
-        Assert.Equal(18 * GiB, reservation.SelectDuckDatabase(1).FileCacheBytes);
-        Assert.Equal(26 * GiB, reservation.TryGrowDuckDatabase(8 * GiB));
-        memory = new(64 * GiB, 4 * GiB, 4 * GiB, 4 * GiB);
-        Assert.Null(reservation.TryGrowDuckDatabase(26 * GiB));
-    }
-
-    [Fact]
-    public async Task CompetingScanBudgetIsSubtractedFromAllAvailableResources()
-    {
-        var budget = new ScanMemoryBudget(() => new(16 * GiB, 12 * GiB, 13 * GiB, 14 * GiB));
-        using var first = await budget.ReserveAsync(2 * GiB, Token);
-        using var second = await budget.ReserveAsync(GiB, Token);
-
-        var selection = second.SelectDatabase(GiB);
-
-        Assert.Equal(
-            new AvailableMemory(16 * GiB, 10 * GiB, 11 * GiB, 12 * GiB),
-            selection.Available
-        );
-        Assert.True(selection.UseMemory);
-    }
-
-    [Fact]
-    public async Task DatabaseReservationPreventsOtherScanFromReusingSameHeadroom()
-    {
-        var budget = new ScanMemoryBudget(() => new(16 * GiB, 9 * GiB, 9 * GiB, 9 * GiB));
-        using var first = await budget.ReserveAsync(GiB, Token);
-        using var second = await budget.ReserveAsync(GiB, Token);
-
-        var firstSelection = first.SelectDatabase(2 * GiB);
-        var secondSelection = second.SelectDatabase(2 * GiB);
-
-        Assert.True(firstSelection.UseMemory);
-        Assert.False(secondSelection.UseMemory);
-        Assert.Equal(4 * GiB, secondSelection.Available!.PhysicalBytes);
-        Assert.InRange(secondSelection.FileCacheBytes, 64UL << 20, 2 * GiB);
-    }
-
-    [Fact]
-    public async Task SimultaneousDatabaseSelectionsReserveHeadroomAtomically()
-    {
-        var budget = new ScanMemoryBudget(() => new(16 * GiB, 9 * GiB, 9 * GiB, 9 * GiB));
-        using var first = await budget.ReserveAsync(GiB, Token);
-        using var second = await budget.ReserveAsync(GiB, Token);
-
-        var selections = await Task.WhenAll(
-            Task.Run(() => first.SelectDatabase(2 * GiB), Token),
-            Task.Run(() => second.SelectDatabase(2 * GiB), Token)
-        );
-
-        Assert.Single(selections, selection => selection.UseMemory);
-        Assert.Single(selections, selection => !selection.UseMemory);
-    }
-
-    [Fact]
-    public async Task WaitingScanStartsAfterBudgetReleased()
-    {
-        var budget = new ScanMemoryBudget(() => new(4 * GiB, 3 * GiB, 3 * GiB, 3 * GiB));
-        using var first = await budget.ReserveAsync(2 * GiB, Token);
-        Task<ScanMemoryBudget.Reservation> waiting = budget.ReserveAsync(2 * GiB, Token);
-        Assert.False(waiting.IsCompleted);
-
-        first.Dispose();
-        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token);
-
-        Assert.NotNull(second);
-        Assert.Throws<ObjectDisposedException>(() => first.SelectDatabase(GiB));
-    }
-
-    [Fact]
-    public async Task CancellingWaitDoesNotLeakReservationOrCancelOtherScan()
-    {
-        var budget = new ScanMemoryBudget(() => new(4 * GiB, 3 * GiB, 3 * GiB, 3 * GiB));
-        using var first = await budget.ReserveAsync(2 * GiB, Token);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
-        var waiting = budget.ReserveAsync(GiB, cancellation.Token);
-
-        cancellation.Cancel();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
-        Assert.Equal(3 * GiB, first.SelectDatabase(1).Available!.PhysicalBytes);
-    }
-
-    [Fact]
-    public async Task MissingMemoryInformationSerializesScansAndUsesMinimumFileCache()
-    {
-        var budget = new ScanMemoryBudget(() => null);
-        using var first = await budget.ReserveAsync(ulong.MaxValue, Token);
-        var waiting = budget.ReserveAsync(GiB, Token);
-        var selection = first.SelectDatabase(ulong.MaxValue);
-        Assert.False(waiting.IsCompleted);
-        Assert.False(selection.UseMemory);
-        Assert.Equal(64UL << 20, selection.FileCacheBytes);
-
-        first.Dispose();
-        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(5), Token);
-        Assert.NotNull(second);
+        Assert.False(MemoryHeadroom.Fits(sample, ulong.MaxValue, 1));
     }
 
     [Fact]

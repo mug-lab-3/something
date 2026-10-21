@@ -51,14 +51,7 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
         using var reservation = await budget.ReserveAsync(ResultReservation, token);
         var searches = history.Repositories.Searches;
         var session = await Task.Run(
-            () =>
-                searches.Search(
-                    volumeKey,
-                    criteria,
-                    reservation.SizeDuckDatabase(),
-                    reservation.DuckDatabaseGrowth,
-                    token
-                ),
+            () => searches.Search(volumeKey, criteria, reservation, token),
             token
         );
         return new HistorySearch(session);

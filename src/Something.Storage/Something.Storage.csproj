@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="DuckDB.EFCoreProvider" Version="1.27.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
@@ -11,5 +11,6 @@
     <PackageReference Include="SQLitePCLRaw.core" Version="2.1.12" />
     <InternalsVisibleTo Include="Something.Ntfs.Tests" />
     <InternalsVisibleTo Include="Something.StorageCompare" />
+    <InternalsVisibleTo Include="Something.LiveInspect" />
   </ItemGroup>
 </Project>

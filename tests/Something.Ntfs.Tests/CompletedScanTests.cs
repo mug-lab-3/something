@@ -1,5 +1,6 @@
 using Something.Application.Scanning;
 using Something.Statistics;
+using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 
@@ -103,8 +104,8 @@ public sealed class CompletedScanTests
             .Complete(Token);
 
         // Act
-        ulong smaller = small.EstimateDatabaseBytes(Token);
-        ulong larger = many.EstimateDatabaseBytes(Token);
+        ulong smaller = DatabaseSizeEstimate.For(small, Token);
+        ulong larger = DatabaseSizeEstimate.For(many, Token);
 
         // Assert
         Assert.True(smaller >= 64 * 1024);

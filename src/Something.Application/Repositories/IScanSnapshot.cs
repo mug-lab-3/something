@@ -53,9 +53,6 @@ public interface IScanSnapshot : IDisposable
 public interface IHistorySnapshot : IScanSnapshot
 {
     ScanHistoryEntry Entry { get; }
-
-    /// <summary>The size of the database file that holds the scan.</summary>
-    ulong SizeBytes { get; }
 }
 
 /// <summary>The volume a stored scan came from and when it ended, if it completed.</summary>

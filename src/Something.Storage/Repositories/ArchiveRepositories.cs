@@ -1,5 +1,6 @@
 using Something.Application.Comparison;
 using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Application.Scanning;
 using Something.Application.Search;
@@ -40,22 +41,24 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,
-        ulong memoryLimitBytes,
-        DatabaseMemoryGrowth? growth,
+        IMemoryAllowance allowance,
         Action<ScanWorkProgress>? progress,
         CancellationToken token
-    ) =>
-        archive.Publish(
+    )
+    {
+        var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
+        return archive.Publish(
             scan,
             endedUtc,
             drive,
             elapsed,
-            memoryLimitBytes,
+            limit,
             token,
             progress,
-            growth?.TryGrow,
-            growth?.Account
+            grow,
+            account
         );
+    }
 
     public ScanHistoryEntry Save(
         IScanSnapshot source,
@@ -98,18 +101,13 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
     public IHistorySearchSession Search(
         string volumeKey,
         HistorySearchCriteria criteria,
-        ulong memoryLimitBytes,
-        DatabaseMemoryGrowth? growth,
+        IMemoryAllowance allowance,
         CancellationToken token
-    ) =>
-        archive.Search(
-            volumeKey,
-            criteria,
-            token,
-            memoryLimitBytes,
-            growth?.TryGrow,
-            growth?.Account
-        );
+    )
+    {
+        var (limit, grow, account) = DuckMemoryPolicy.Acquire(allowance);
+        return archive.Search(volumeKey, criteria, token, limit, grow, account);
+    }
 
     public string DatabasePath => archive.DatabasePath;
     public string DirectoryPath => archive.DirectoryPath;
@@ -120,10 +118,32 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
     public void Checkpoint(CancellationToken token) => archive.Checkpoint(token);
 
     public HistoryCompactionResult Compact(
-        ulong memoryLimitBytes,
+        IMemoryAllowance allowance,
         Action<HistoryCompactionStage>? progress,
         CancellationToken token
-    ) => archive.Compact(memoryLimitBytes, token, progress);
+    )
+    {
+        // Compaction runs alone, so it may use three quarters of the headroom.
+        ulong limit = allowance.Charge<ulong>(available =>
+            new(
+                DuckMemoryPolicy.Align(
+                    (available is null ? FreeManagedMemory() : MemoryHeadroom.Headroom(available))
+                        / 4
+                        * 3
+                ),
+                0
+            )
+        );
+        if (limit < DuckMemoryPolicy.Granularity)
+            throw new InsufficientMemoryException();
+        return archive.Compact(limit, token, progress);
+    }
+
+    private static ulong FreeManagedMemory()
+    {
+        var info = GC.GetGCMemoryInfo();
+        return (ulong)Math.Max(0, info.TotalAvailableMemoryBytes - info.MemoryLoadBytes);
+    }
 
     public HistoryRepositories Relocate(
         string directory,

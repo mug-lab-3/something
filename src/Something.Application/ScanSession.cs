@@ -1,6 +1,5 @@
 using Something.Application.Browsing;
 using Something.Application.History;
-using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Ntfs;
 using Something.Statistics;
@@ -22,7 +21,6 @@ public sealed partial class ScanSession : IAsyncDisposable
     public ulong VolumeSerial { get; }
     public FolderCapacitySample RootSample { get; private set; }
     public ulong MetadataUnresolved { get; }
-    public DiagnosticDatabaseSelection Selection { get; }
     public bool IsDemo { get; }
     public TimeSpan Elapsed { get; private set; }
     public DateTimeOffset? CompletedLocal => History?.CompletedLocal ?? completedLocal;
@@ -64,7 +62,6 @@ public sealed partial class ScanSession : IAsyncDisposable
         FileReference root,
         FolderCapacitySample rootSample,
         ulong metadataUnresolved,
-        DiagnosticDatabaseSelection selection,
         bool demo,
         TimeSpan elapsed,
         ScanHistoryEntry? history = null
@@ -81,7 +78,6 @@ public sealed partial class ScanSession : IAsyncDisposable
         VolumeSerial = description.VolumeSerial;
         RootSample = unfilteredRootSample = rootSample;
         MetadataUnresolved = metadataUnresolved;
-        Selection = selection;
         IsDemo = demo;
         Elapsed = elapsed;
     }
@@ -101,11 +97,6 @@ public sealed partial class ScanSession : IAsyncDisposable
                 summary.Root.Reference,
                 summary.Root,
                 summary.MetadataUnresolved,
-                DiagnosticDatabaseSelector.Select(
-                    snapshot.SizeBytes,
-                    null,
-                    DiagnosticDatabasePreference.File
-                ),
                 false,
                 snapshot.Entry.Elapsed,
                 snapshot.Entry

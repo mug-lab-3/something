@@ -2,13 +2,12 @@ using System.Collections.Concurrent;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
 using Something.Application.History;
-using Something.Application.Memory;
 
 namespace Something.Storage;
 
 internal static class DuckDatabaseBootstrap
 {
-    internal const ulong MaximumMemoryLimit = MemoryHeadroom.MaximumDuckLimit;
+    internal const ulong MaximumMemoryLimit = DuckMemoryPolicy.MaximumLimit;
 
     private sealed class EngineMemory(ulong limit)
     {
@@ -167,10 +166,7 @@ internal static class DuckDatabaseBootstrap
                 if (!known)
                     DeleteSpill(key); // Left by an earlier process that ended abnormally.
                 state ??= new(
-                    Math.Max(
-                        budget ?? MemoryHeadroom.MinimumDuckLimit,
-                        MemoryHeadroom.MinimumDuckLimit
-                    )
+                    Math.Max(budget ?? DuckMemoryPolicy.MinimumLimit, DuckMemoryPolicy.MinimumLimit)
                 );
                 ulong desired = Math.Max(state.Limit, budget ?? state.Limit);
                 if (!known || desired > state.Limit)

@@ -382,7 +382,7 @@ internal static class AppPathBenchmark
             var budget = new ScanMemoryBudget(ScanMemoryBudget.ReadSystem);
             using var reservation = budget.ReserveAsync(1, token).GetAwaiter().GetResult();
             Console.WriteLine(
-                $"  search budget from available memory: {reservation.SizeDuckDatabase() / 1048576.0:F0}MiB"
+                $"  search budget from available memory: {DuckMemoryPolicy.Acquire(reservation).Limit / 1048576.0:F0}MiB"
             );
         }
         else
