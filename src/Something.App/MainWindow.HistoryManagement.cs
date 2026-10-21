@@ -64,12 +64,10 @@ public sealed partial class MainWindow
                     .Distinct()
                     .Select(current => current.DisposeAsync().AsTask())
             );
-            var memory = WindowsMemoryAvailability.TryRead();
-            ulong available = memory is not null
-                ? Math.Min(
-                    memory.AvailablePhysicalBytes,
-                    Math.Min(memory.AvailableCommitBytes, memory.AvailableVirtualBytes)
-                )
+            // Optimization runs alone with every session released, so it may use three quarters
+            // of the headroom instead of a shared budget.
+            ulong available = ScanMemoryBudget.ReadSystem() is { } memory
+                ? MemoryHeadroom.Headroom(memory)
                 : checked(
                     (ulong)
                         Math.Max(
@@ -78,8 +76,8 @@ public sealed partial class MainWindow
                                 - GC.GetGCMemoryInfo().MemoryLoadBytes
                         )
                 );
-            ulong limit = Math.Min(MaximumNativeMemoryLimit, available / 4 * 3) / 16384 * 16384;
-            if (limit < 16384)
+            ulong limit = MemoryHeadroom.Align(available / 4 * 3);
+            if (limit < MemoryHeadroom.Granularity)
                 throw new InvalidOperationException(Strings.Get("Database_OptimizeMemory"));
             return await Task.Run(
                 () =>
@@ -128,8 +126,6 @@ public sealed partial class MainWindow
             }
         }
     }
-
-    private const ulong MaximumNativeMemoryLimit = (ulong)long.MaxValue / 16384 * 16384;
 
     private async void TrackHistoryManagementWork(Task task)
     {

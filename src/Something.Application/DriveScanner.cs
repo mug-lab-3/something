@@ -32,20 +32,10 @@ public sealed record ScanProgress(
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
 public sealed class DriveScanner(ScanHistoryArchive? history = null)
 {
-    private readonly ScanMemoryBudget memoryBudget = new(ReadAvailable);
+    private readonly ScanMemoryBudget memoryBudget = new(ScanMemoryBudget.ReadSystem);
 
-    private static AvailableMemory? ReadAvailable()
-    {
-        var memory = OperatingSystem.IsWindows() ? WindowsMemoryAvailability.TryRead() : null;
-        return memory is null
-            ? null
-            : new(
-                memory.TotalPhysicalBytes,
-                memory.AvailablePhysicalBytes,
-                memory.AvailableCommitBytes,
-                memory.AvailableVirtualBytes
-            );
-    }
+    /// <summary>Shared with other database work, such as history searches.</summary>
+    public ScanMemoryBudget MemoryBudget => memoryBudget;
 
     public Task<ScanSession> ScanAsync(
         string drive,

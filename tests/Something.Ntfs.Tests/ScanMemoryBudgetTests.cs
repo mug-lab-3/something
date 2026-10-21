@@ -33,6 +33,51 @@ public sealed class ScanMemoryBudgetTests
     }
 
     [Fact]
+    public void HeadroomPolicyRejectsInconsistentSamplesAndAlignsWithinTheNativeRange()
+    {
+        // Arrange
+        var sample = new AvailableMemory(16 * GiB, 9 * GiB, 7 * GiB, 8 * GiB);
+
+        // Act and assert
+        Assert.Null(MemoryHeadroom.Validate(sample with { TotalPhysicalBytes = 0 }));
+        Assert.Null(MemoryHeadroom.Validate(sample with { PhysicalBytes = 17 * GiB }));
+        Assert.Equal(7 * GiB, MemoryHeadroom.Headroom(sample));
+        Assert.Equal(16 * GiB / 5, MemoryHeadroom.OsReserve(sample));
+        Assert.Equal(GiB, MemoryHeadroom.OsReserve(null));
+        Assert.Equal(
+            4 * GiB,
+            MemoryHeadroom.OsReserve(sample with { TotalPhysicalBytes = 64 * GiB })
+        );
+        Assert.True(MemoryHeadroom.Fits(sample, 6 * GiB, GiB));
+        Assert.False(MemoryHeadroom.Fits(sample, 6 * GiB + 1, GiB));
+        Assert.False(MemoryHeadroom.Fits(null, 0, 0));
+        Assert.Equal(16384UL, MemoryHeadroom.Align(16384 * 2 - 1));
+        Assert.Equal(MemoryHeadroom.MaximumDuckLimit, MemoryHeadroom.Align(UInt128.MaxValue));
+        Assert.Equal(GiB, MemoryHeadroom.DuckLimit(sample with { PhysicalBytes = GiB }));
+    }
+
+    [Fact]
+    public async Task InitialDuckBudgetIsHalfOfAvailableHeadroomAndNeverBelowTheFloor()
+    {
+        // Arrange
+        AvailableMemory? memory = new(32 * GiB, 20 * GiB, 20 * GiB, 20 * GiB);
+        var budget = new ScanMemoryBudget(() => memory);
+        using var search = await budget.ReserveAsync(GiB, Token);
+        using var other = await budget.ReserveAsync(GiB, Token);
+
+        // Act: 20 GiB, minus the other 1 GiB and a 4 GiB OS reserve, halved.
+        ulong limit = search.SizeDuckDatabase();
+
+        // Assert
+        Assert.Equal(15 * GiB / 2, limit);
+        Assert.Equal(4 * GiB, other.SelectDuckDatabase(1).Available!.PhysicalBytes);
+        memory = new(8 * GiB, GiB, GiB, GiB);
+        Assert.Equal(GiB, other.SizeDuckDatabase());
+        memory = null;
+        Assert.Equal(GiB, other.SizeDuckDatabase());
+    }
+
+    [Fact]
     public async Task DuckGrowthDoesNotIncreaseBudgetWhenAvailableRamIsInsufficientOrUnknown()
     {
         AvailableMemory? memory = new(8 * GiB, GiB, GiB, GiB);

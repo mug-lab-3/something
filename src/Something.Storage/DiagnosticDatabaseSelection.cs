@@ -50,22 +50,8 @@ public static class DiagnosticDatabaseSelector
         var selection = Select(estimatedDatabaseBytes, available, preference);
         if (selection.UseMemory)
             return selection;
-        ulong limit = GiB;
-        if (selection.Available is { } memory)
-        {
-            ulong headroom = Math.Min(
-                memory.PhysicalBytes,
-                Math.Min(memory.CommitBytes, memory.VirtualBytes)
-            );
-            ulong surplus =
-                headroom > selection.ReserveBytes ? headroom - selection.ReserveBytes : 0;
-            // Reserve matching headroom for native allocations outside memory_limit.
-            // No fixed GiB ceiling: larger PCs can use their available workspace.
-            limit = Math.Clamp(surplus / 2, GiB, DuckDatabaseBootstrap.MaximumMemoryLimit);
-            limit = limit / 16384 * 16384;
-        }
         // FileCacheBytes is the legacy transport field; for DuckDB it carries memory_limit.
-        return selection with { FileCacheBytes = limit };
+        return selection with { FileCacheBytes = MemoryHeadroom.DuckLimit(selection.Available) };
     }
 
     public static DiagnosticDatabaseSelection Select(
@@ -78,22 +64,11 @@ public static class DiagnosticDatabaseSelector
             throw new ArgumentOutOfRangeException(nameof(preference));
         if (estimatedDatabaseBytes == 0)
             throw new ArgumentOutOfRangeException(nameof(estimatedDatabaseBytes));
-        if (
-            available is { TotalPhysicalBytes: 0 }
-            || available is not null && available.PhysicalBytes > available.TotalPhysicalBytes
-        )
-            available = null;
-        ulong reserve = available is null
-            ? GiB
-            : Math.Clamp(available.TotalPhysicalBytes / 5, GiB, 4 * GiB);
+        available = MemoryHeadroom.Validate(available);
+        ulong reserve = MemoryHeadroom.OsReserve(available);
         // Database pages plus native overhead, future ranking allocations and OS headroom.
         UInt128 required = (UInt128)estimatedDatabaseBytes * 2 + reserve;
-        bool fits =
-            required <= ulong.MaxValue
-            && available is not null
-            && required <= available.PhysicalBytes
-            && required <= available.CommitBytes
-            && required <= available.VirtualBytes;
+        bool fits = available is not null && required <= MemoryHeadroom.Headroom(available);
         var reason = preference switch
         {
             DiagnosticDatabasePreference.Memory => DatabaseSelectionReason.ForcedMemory,
@@ -109,24 +84,17 @@ public static class DiagnosticDatabaseSelector
         if (!useMemory)
         {
             const ulong MiB = 1024 * 1024;
-            if (available is null)
-                cacheBytes = 64 * MiB;
-            else
-            {
-                ulong headroom = Math.Min(
-                    available.PhysicalBytes,
-                    Math.Min(available.CommitBytes, available.VirtualBytes)
+            // At most a quarter of post-reserve headroom: leave space for native cache
+            // overhead and later ranking/diagnostic allocations. SQLite allocates on demand.
+            cacheBytes = available is null
+                ? 64 * MiB
+                : MemoryHeadroom.Align(
+                    Math.Clamp(
+                        Math.Min(MemoryHeadroom.Surplus(available) / 4, estimatedDatabaseBytes),
+                        64 * MiB,
+                        2 * GiB
+                    )
                 );
-                ulong surplus = headroom > reserve ? headroom - reserve : 0;
-                // At most a quarter of post-reserve headroom: leave space for native cache
-                // overhead and later ranking/diagnostic allocations. SQLite allocates on demand.
-                cacheBytes = Math.Clamp(
-                    Math.Min(surplus / 4, estimatedDatabaseBytes),
-                    64 * MiB,
-                    2 * GiB
-                );
-                cacheBytes = cacheBytes / 16384 * 16384;
-            }
         }
         return new(
             useMemory,

@@ -6,9 +6,7 @@ namespace Something.Storage;
 
 internal static class DuckDatabaseBootstrap
 {
-    // Native memory limits are signed byte counts. This is a representation bound,
-    // not an application RAM budget; budgets come from current OS availability.
-    internal const ulong MaximumMemoryLimit = (ulong)long.MaxValue / 16384 * 16384;
+    internal const ulong MaximumMemoryLimit = MemoryHeadroom.MaximumDuckLimit;
 
     private sealed class EngineMemory(ulong limit)
     {
@@ -166,7 +164,12 @@ internal static class DuckDatabaseBootstrap
                 bool known = Engines.TryGetValue(key, out var state);
                 if (!known)
                     DeleteSpill(key); // Left by an earlier process that ended abnormally.
-                state ??= new(Math.Max(budget ?? 1UL << 30, 1UL << 30));
+                state ??= new(
+                    Math.Max(
+                        budget ?? MemoryHeadroom.MinimumDuckLimit,
+                        MemoryHeadroom.MinimumDuckLimit
+                    )
+                );
                 ulong desired = Math.Max(state.Limit, budget ?? state.Limit);
                 if (!known || desired > state.Limit)
                     SetMemoryLimit(context, desired, state.Spilling);
