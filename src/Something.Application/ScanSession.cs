@@ -1,7 +1,9 @@
+using Something.Application.Browsing;
+using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Repositories;
 using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.Application;
 

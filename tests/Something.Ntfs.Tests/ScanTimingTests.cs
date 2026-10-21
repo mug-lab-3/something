@@ -1,4 +1,6 @@
 using Something.Application;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Storage;
 
 namespace Something.Ntfs.Tests;
@@ -70,14 +72,14 @@ public sealed class ScanTimingTests
         try
         {
             var archive = new ScanHistoryArchive(directory);
-            await using var session = await new DriveScanner().CreateDemoAsync(null, Token);
+            await using var session = await new DriveScanner(
+                StorageRepositories.TemporaryScans
+            ).CreateDemoAsync(null, Token);
             var original = Assert.IsType<ScanTimingSnapshot>(session.Timings);
-            var entry = await session.SaveHistoryAsync(HistoryService.ForArchive(archive), Token);
+            var entry = await session.SaveHistoryAsync(TestHistory.For(archive), Token);
 
             await using (
-                var restored = await HistoryService
-                    .ForArchive(archive)
-                    .OpenAsync(entry.Id, "Demo", Token)
+                var restored = await TestHistory.For(archive).OpenAsync(entry.Id, "Demo", Token)
             )
             {
                 Assert.Equal(original.TotalElapsed, restored.Elapsed);
@@ -129,7 +131,9 @@ public sealed class ScanTimingTests
     [Fact]
     public async Task InvalidOrCancelledTimingUpdatePreservesPreviousDiagnostics()
     {
-        await using var session = await new DriveScanner().CreateDemoAsync(null, Token);
+        await using var session = await new DriveScanner(
+            StorageRepositories.TemporaryScans
+        ).CreateDemoAsync(null, Token);
         var original = Assert.IsType<ScanTimingSnapshot>(session.Timings);
         // The demo's owned store is exercised through a history writer, so use a dedicated file store.
         using var database = TemporaryScanDatabase.Create(Token);

@@ -1,3 +1,4 @@
+using Something.Application.History;
 using Something.Storage;
 
 namespace Something.Ntfs.Tests;

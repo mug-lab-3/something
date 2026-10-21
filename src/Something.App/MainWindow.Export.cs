@@ -4,8 +4,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.Storage.Pickers;
 using Something.Application;
+using Something.Application.Comparison;
 using Something.Application.Export;
-using Something.Storage;
 
 namespace Something.App;
 
@@ -124,7 +124,14 @@ public sealed partial class MainWindow
             options.Scope == ExportScope.Displayed
                 ? await DisplayedTableAsync(current)
                 : await FolderSummaryTableAsync(current, options);
-        await TableExporter.WriteAsync(path, options.Format, table, ExportDisplay, lifetime.Token);
+        await TableExporter.WriteAsync(
+            path,
+            options.Format,
+            table,
+            ExportDisplay,
+            lifetime.Token,
+            Composition.Parquet
+        );
     }
 
     private async Task<ExportTable> DisplayedTableAsync(ScanSession current)

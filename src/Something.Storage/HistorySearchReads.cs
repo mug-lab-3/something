@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Something.Application.Search;
 using Something.Ntfs;
 using Something.Statistics;
 

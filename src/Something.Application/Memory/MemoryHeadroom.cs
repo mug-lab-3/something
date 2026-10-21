@@ -1,4 +1,4 @@
-namespace Something.Storage;
+namespace Something.Application.Memory;
 
 /// <summary>The one memory policy for database work: what may be used now, what stays for the OS,
 /// and how a DuckDB limit is derived. Budgets follow the machine's availability; the floor exists

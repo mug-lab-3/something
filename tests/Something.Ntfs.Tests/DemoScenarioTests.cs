@@ -17,7 +17,7 @@ public sealed class DemoScenarioTests
         try
         {
             var archive = new ScanHistoryArchive(root);
-            var scanner = new DriveScanner();
+            var scanner = new DriveScanner(StorageRepositories.TemporaryScans);
             await using var first = await scanner.CreateDemoAsync(null, token);
             await using var second = await scanner.CreateDemoAsync(
                 null,
@@ -55,12 +55,9 @@ public sealed class DemoScenarioTests
             Assert.Equal(@"Projects\Archive\source.zip", oldZip.RelativePath);
             Assert.Equal(@"Media\source.zip", newZip.RelativePath);
 
-            var before = await first.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
-            var after = await second.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
-            var reorganized = await third.SaveHistoryAsync(
-                HistoryService.ForArchive(archive),
-                token
-            );
+            var before = await first.SaveHistoryAsync(TestHistory.For(archive), token);
+            var after = await second.SaveHistoryAsync(TestHistory.For(archive), token);
+            var reorganized = await third.SaveHistoryAsync(TestHistory.For(archive), token);
             var growth = archive.ReadFolderChanges(first.VolumeKey, before.Id, after.Id, token);
             var removal = archive.ReadFolderChanges(
                 first.VolumeKey,
@@ -72,8 +69,8 @@ public sealed class DemoScenarioTests
             Assert.Contains(growth.ChangedFolders, row => row.AllocatedDelta > 0);
             Assert.Contains(growth.ChangedFolders, row => row.AllocatedDelta < 0);
             Assert.Equal(new BigInteger(-12_582_912), removal.Root!.AllocatedDelta);
-            await using var restored = await HistoryService
-                .ForArchive(archive)
+            await using var restored = await TestHistory
+                .For(archive)
                 .OpenAsync(reorganized.Id, "Demo", token);
             var restoredFiles = await restored.ReadFileAnalysisAsync(token);
             Assert.Contains(restoredFiles, f => f.RelativePath == @"Media\source.zip");
@@ -90,7 +87,7 @@ public sealed class DemoScenarioTests
     public async Task ExplicitStagesRemainReproducibleAndOtherDrivesStayIndependent()
     {
         var token = TestContext.Current.CancellationToken;
-        var scanner = new DriveScanner();
+        var scanner = new DriveScanner(StorageRepositories.TemporaryScans);
         await using var changed = await scanner.CreateDemoAsync(
             null,
             token,

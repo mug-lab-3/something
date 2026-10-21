@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.Storage.Pickers;
 using Something.Application;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.App;
 

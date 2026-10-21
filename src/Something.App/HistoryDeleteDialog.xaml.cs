@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Something.Storage;
+using Something.Application.History;
 
 namespace Something.App;
 

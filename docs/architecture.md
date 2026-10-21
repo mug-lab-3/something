@@ -7,11 +7,47 @@
 | `Something.Ntfs` | バイト列の解析、属性とデータランの解読、レコード結合、取得インターフェースと再検証 |
 | `Something.Windows` | ボリュームと Windows API への読み取り専用アクセス、ファイル識別、Shell 操作 |
 | `Something.Statistics` | 階層検証、容量帰属、フォルダー集計、表示対象の判定 |
-| `Something.Storage` | DuckDB の保存・照会、共有状態、履歴公開、保持整理、DB ファイル管理 |
-| `Something.Application` | スキャンの調停、メモリ予約、閲覧セッション、設定、ファイル操作ワークフロー |
+| `Something.Application` | スキャンの調停、メモリ予約、閲覧セッション、設定、ファイル操作ワークフロー。リポジトリのインターフェースと、層をまたぐデータの型 |
+| `Something.Storage` | アプリ層のリポジトリの実装。DuckDB の保存・照会、共有状態、履歴公開、保持整理、DB ファイル管理 |
 | `Something.App` | WinUI 3 の画面、入力、状態遷移、通知、アニメーション |
 
 純粋な NTFS 解析は、Windows API にも UI にも依存しません。統計の方針はパーサーに持たせず、保存エンジン固有の処理は保存層に閉じ込めます。
+
+## リポジトリ
+
+```mermaid
+flowchart LR
+    App[Something.App 画面] --> Application[Something.Application サービス・リポジトリのインターフェース・データの型]
+    Storage[Something.Storage DuckDB / EF Core の実装] --> Application
+    App -. 起動時の組み立てだけ .-> Storage
+```
+
+アプリ層は、必要な DB 操作をリポジトリのインターフェース（`Something.Application.Repositories`）として定義し、保存層がそれを実装します。アプリ層は保存層を参照しません。画面はアプリ層のサービス（`HistoryService`・`DriveScanner`・`ScanSession`・`FolderHistoryService`・`HistorySearchService`）だけを使い、保存層の実装を選ぶのは [`Composition`](../src/Something.App/Composition.cs) だけです。
+
+| インターフェース | 責務 |
+| --- | --- |
+| `IScanHistoryRepository` | 履歴の一覧・件数、保存（公開）、時間の記録、閲覧で開く、削除と保持の整理 |
+| `IScanSnapshot`・`IHistorySnapshot` | 開いた 1 世代の一覧・親・容量分析・属性・ファイル・概要 |
+| `IFolderChangeRepository` | 2 つの世代の差、期間での比較 |
+| `IHistorySearchRepository` | 条件での検索、1 項目の時系列 |
+| `IHistoryDatabase` | DB ファイルのサイズ、最適化、保存先の移動、全体の削除 |
+| `ITemporaryScanRepository` | 履歴に残さないスキャン（デモ・診断）用の一時的な DB |
+| `IParquetTableWriter` | Parquet 形式でのエクスポート |
+
+リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作します。ワーカーへの受け渡しと、同じ閲覧の直列化はサービスが行います。1 つの保存先のリポジトリは `HistoryRepositories` にまとめ、保存先を移すと `HistoryService` が丸ごと差し替えます。DB の作業メモリは、サービスが `ScanMemoryBudget` から予約した初期の上限と、途中で増やす方法（`DatabaseMemoryGrowth`）をリポジトリに渡します。
+
+層をまたぐデータの型は、用途ごとの名前空間に置きます。
+
+| 名前空間 | 主な型 |
+| --- | --- |
+| `Something.Application.Scanning` | `BufferedScan`・`ScanDescriptor`・`StagedObservation`・`ScanWorkProgress` |
+| `Something.Application.History` | `ScanHistoryEntry`・`ScanHistorySummary`・`HistoryRetention`・`HistoryDeletion`・`ScanTimingSnapshot`・`HistoryFailure` |
+| `Something.Application.Browsing` | `FolderEntry`・`FolderEntryPage`・`RankedFolder`・`AnalysisFileName` |
+| `Something.Application.Comparison` | `FolderChangeReport`・`ComparisonSelection`・`EntryChanges` |
+| `Something.Application.Search` | `HistorySearchCriteria`・`HistorySearchResult`・`SearchItem` |
+| `Something.Application.Memory` | `MemoryHeadroom`・`DiagnosticDatabaseSelector` |
+
+アプリ層のテストは、インターフェースの偽の実装でサービスを試せます。保存層のテストは、実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
 
 ## スキャンの流れ
 

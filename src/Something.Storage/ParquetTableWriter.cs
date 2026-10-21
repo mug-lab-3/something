@@ -1,28 +1,20 @@
 using System.Globalization;
 using System.Text;
 using DuckDB.NET.Data;
+using Something.Application.Export;
 
 namespace Something.Storage;
 
-public enum ParquetColumnType
-{
-    Text,
-
-    /// <summary>Signed 64-bit integer; Parquet has no 128-bit integer type.</summary>
-    Integer,
-    Boolean,
-}
-
-public sealed record ParquetColumn(string Name, ParquetColumnType Type);
-
 /// <summary>Writes rows to a ZSTD-compressed Parquet file through an in-memory DuckDB.</summary>
-public static class ParquetTableWriter
+internal sealed class ParquetTableWriter : IParquetTableWriter
 {
+    public static ParquetTableWriter Instance { get; } = new();
+
     // The table is small and temporary; it never touches the history database or spills to disk.
     private const string Settings =
         "SET memory_limit='512MB'; SET threads=2; SET temp_directory=''; SET preserve_insertion_order=true;";
 
-    public static void Write(
+    public void Write(
         string path,
         IReadOnlyList<ParquetColumn> columns,
         IEnumerable<object?[]> rows,

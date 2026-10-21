@@ -5,6 +5,7 @@ using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Something.Application.Scanning;
 using Something.Storage;
 
 namespace Something.StorageCompare;

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Scanning;
 using Something.Ntfs;
 
 namespace Something.Storage;

@@ -1,6 +1,6 @@
+using Something.Application.History;
+using Something.Application.Memory;
 using Something.Application.Repositories;
-using Something.Application.StorageAdapters;
-using Something.Storage;
 
 namespace Something.Application;
 
@@ -10,14 +10,6 @@ namespace Something.Application;
 public sealed class HistoryService(HistoryRepositories repositories)
 {
     private HistoryRepositories repositories = repositories;
-
-    /// <summary>The history in <paramref name="directory"/>, or in the default location.</summary>
-    public static HistoryService Open(string? directory = null) =>
-        new(ArchiveRepositories.Open(directory));
-
-    /// <summary>For tests and tools that build their archive with a fixed clock or time zone.</summary>
-    internal static HistoryService ForArchive(ScanHistoryArchive archive) =>
-        new(ArchiveRepositories.For(archive));
 
     /// <summary>The repositories current at the time of the call; callers never keep them.</summary>
     internal HistoryRepositories Repositories => repositories;

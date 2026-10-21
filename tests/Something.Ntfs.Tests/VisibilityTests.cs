@@ -1,7 +1,10 @@
 using System.Collections.Immutable;
 using System.Numerics;
 using Something.Application;
-using Something.Application.StorageAdapters;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
+using Something.Application.Memory;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -324,9 +327,9 @@ public sealed class VisibilityTests
             var archive = new ScanHistoryArchive(directory);
             await using var source = await CreateSession(Facts(), token);
             await source.SetVisibilityAsync(new(false, false), token);
-            var entry = await source.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
-            await using var restored = await HistoryService
-                .ForArchive(archive)
+            var entry = await source.SaveHistoryAsync(TestHistory.For(archive), token);
+            await using var restored = await TestHistory
+                .For(archive)
                 .OpenAsync(entry.Id, "Z:", token);
             Assert.Equal(9, (await restored.ReadFileAnalysisAsync(token)).Length);
             await restored.SetVisibilityAsync(new(false, false), token);

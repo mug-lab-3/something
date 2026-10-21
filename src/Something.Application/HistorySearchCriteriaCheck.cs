@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Numerics;
-using Something.Storage;
+using Something.Application.Search;
 
 namespace Something.Application;
 

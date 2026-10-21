@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using Something.Statistics;
 
-namespace Something.Storage;
+namespace Something.Application.Search;
 
 public enum SearchTarget
 {
@@ -56,7 +56,7 @@ public sealed record SearchAttributes(
     AttributeRequirement NamedStreams = AttributeRequirement.Any
 )
 {
-    internal const uint HiddenBit = 0x2,
+    public const uint HiddenBit = 0x2,
         SystemBit = 0x4,
         SparseBit = 0x200,
         CompressedBit = 0x800;
@@ -68,7 +68,8 @@ public sealed record SearchAttributes(
         || Sparse != AttributeRequirement.Any
         || NamedStreams != AttributeRequirement.Any;
 
-    internal bool UsesStandardAttributes =>
+    /// <summary>Conditions on standard attribute bits; named streams are observed separately.</summary>
+    public bool UsesStandardAttributes =>
         Hidden != AttributeRequirement.Any
         || System != AttributeRequirement.Any
         || Compressed != AttributeRequirement.Any
@@ -179,7 +180,7 @@ public sealed record HistorySearchCriteria(DateTimeOffset StartUtc, DateTimeOffs
         }
     }
 
-    internal static Regex CreateRegex(string pattern) =>
+    public static Regex CreateRegex(string pattern) =>
         new(
             pattern,
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking

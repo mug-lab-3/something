@@ -1,4 +1,4 @@
-namespace Something.Storage;
+namespace Something.Application.Memory;
 
 public enum DiagnosticDatabasePreference
 {

@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.History;
+using Something.Application.Memory;
 
 namespace Something.Storage;
 

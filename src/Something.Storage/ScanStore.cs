@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 
@@ -91,24 +92,9 @@ public sealed partial class ScanStore : IDisposable
             )
         );
 
-    internal static void ValidateDescriptor(ScanDescriptor descriptor)
-    {
-        ArgumentNullException.ThrowIfNull(descriptor);
-        if (
-            string.IsNullOrWhiteSpace(descriptor.VolumeKey)
-            || descriptor.Epoch == Guid.Empty
-            || descriptor.Range.RecordCount == 0
-            || descriptor.StartedUtc.Offset != TimeSpan.Zero
-        )
-            throw new ArgumentException(
-                "Scan requires a volume identity, epoch, nonempty range and UTC start.",
-                nameof(descriptor)
-            );
-    }
-
     internal static ScanEntity CreateScanEntity(ScanDescriptor descriptor)
     {
-        ValidateDescriptor(descriptor);
+        ScanDescriptor.Validate(descriptor);
         return new ScanEntity
         {
             Id = Guid.NewGuid(),
@@ -223,7 +209,7 @@ public sealed partial class ScanStore : IDisposable
                 foreach (var item in observations)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    ValidateObservation(item, scan);
+                    StagedObservation.Validate(item, scan.Descriptor.Range);
                     if (!indices.Add(item.RecordIndex))
                         throw new InvalidDataException(
                             "Batch contains a duplicate record identity."
@@ -238,68 +224,6 @@ public sealed partial class ScanStore : IDisposable
             },
             cancellationToken
         );
-    }
-
-    internal static void ValidateObservation(StagedObservation item, StoredScan scan)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        if (
-            item.RecordIndex < scan.Descriptor.Range.StartIndex
-            || item.RecordIndex >= scan.Descriptor.Range.EndExclusive
-            || !Enum.IsDefined(item.Kind)
-            || !Enum.IsDefined(item.Status)
-        )
-            throw new ArgumentException(
-                "Observation lies outside the scan or has an invalid state.",
-                nameof(item)
-            );
-        var file = item.File;
-        if (file is null)
-        {
-            if (
-                item.Kind == MftScanEntryKind.ResolvedFile
-                || (
-                    item.Kind == MftScanEntryKind.Unresolved
-                    && item.Status == LiveFileReadStatus.ObservedUnchanged
-                )
-                || (
-                    item.Kind == MftScanEntryKind.ExtensionRecord
-                    && item.Status != LiveFileReadStatus.ObservedUnchanged
-                )
-            )
-                throw new InvalidDataException("Staged kind and acquisition state disagree.");
-            return;
-        }
-        if (
-            file.Reference.RecordIndex != item.RecordIndex
-            || !Enum.IsDefined(file.Domain)
-            || !Enum.IsDefined(file.Resolution)
-            || file.Names.IsDefault
-            || file.Streams.IsDefault
-        )
-            throw new InvalidDataException("Invalid staged file observation.");
-        if (
-            item.Kind == MftScanEntryKind.ExtensionRecord
-            || (
-                item.Kind == MftScanEntryKind.ResolvedFile
-                && (
-                    item.Status != LiveFileReadStatus.ObservedUnchanged
-                    || file.Resolution != CapacityResolution.Resolved
-                )
-            )
-            || (
-                item.Kind == MftScanEntryKind.Unresolved
-                && (
-                    item.Status == LiveFileReadStatus.ObservedUnchanged
-                    || file.Resolution != CapacityResolution.Unresolved
-                )
-            )
-            || (file.Resolution == CapacityResolution.Unresolved && !file.Streams.IsEmpty)
-        )
-            throw new InvalidDataException("Staged kind, state and capacity disagree.");
-        foreach (var name in file.Names)
-            if (name is null || string.IsNullOrEmpty(name.Name) || !Enum.IsDefined(name.Namespace))
-                throw new InvalidDataException("Invalid staged name.");
     }
 
     internal static ObservationEntity ToEntity(Guid scanId, StagedObservation item)

@@ -223,6 +223,13 @@
           "SQLitePCLRaw.core": "2.1.12"
         }
       },
+      "something.application": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Statistics": "[1.0.0, )",
+          "Something.Windows": "[1.0.0, )"
+        }
+      },
       "something.ntfs": {
         "type": "Project"
       },
@@ -239,7 +246,7 @@
           "Microsoft.Data.Sqlite": "[10.0.12, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.12, )",
           "SQLitePCLRaw.core": "[2.1.12, )",
-          "Something.Statistics": "[1.0.0, )"
+          "Something.Application": "[1.0.0, )"
         }
       },
       "something.windows": {

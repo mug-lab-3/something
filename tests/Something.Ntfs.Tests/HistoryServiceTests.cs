@@ -1,5 +1,7 @@
 using Something.Application;
+using Something.Application.History;
 using Something.Application.Repositories;
+using Something.Application.Scanning;
 using Something.Storage;
 
 namespace Something.Ntfs.Tests;

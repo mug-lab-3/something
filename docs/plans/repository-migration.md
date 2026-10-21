@@ -25,7 +25,7 @@ flowchart LR
 | 同期・非同期 | リポジトリのメソッドは同期で、呼び出し元のスレッドで DB を操作する。DB ドライバーが同期のため、ワーカーへの受け渡しと、同じ閲覧の直列化はサービス（`HistoryService`・`ScanSession` など）が行う。画面に公開するサービスのメソッドは `Task` を返す |
 | キャンセル | すべてのメソッドが `CancellationToken` を最後の引数で受け取る |
 | 寿命 | 閲覧のスナップショットと検索の結果は、閉じるまで世代のリースを持つ。DB ファイルの操作（最適化・移動・全体の削除）は、開いているものを閉じてから行う |
-| メモリ | DB の作業メモリの初期の上限は、アプリ層の `ScanMemoryBudget` から予約した値で渡し、途中で増やす方法は `DatabaseMemoryGrowth` で渡す。規則は [`MemoryHeadroom`](../../src/Something.Storage/MemoryHeadroom.cs) |
+| メモリ | DB の作業メモリの初期の上限は、アプリ層の `ScanMemoryBudget` から予約した値で渡し、途中で増やす方法は `DatabaseMemoryGrowth` で渡す。規則は [`MemoryHeadroom`](../../src/Something.Application/Memory/MemoryHeadroom.cs) |
 | 実装の公開範囲 | 保存層の実装クラスは `internal`。起動時の組み立て用に、インターフェースを返す入口だけを `public` にする |
 | テスト | 保存層のテストは、これまでどおり実装を直接使う。アプリ層のテストは、インターフェースの偽の実装を使えるようにする |
 
@@ -71,12 +71,12 @@ DI コンテナーは導入せず、起動時に手で組み立てます。
 
 ### C. 参照の向きを逆にする
 
-- [ ] 層をまたぐデータの型（`ScanHistoryEntry`、`FolderEntry`、`FolderChangeReport`、検索の条件・結果、`BufferedScan` など）をアプリ層へ移す
-- [ ] B の実装を保存層へ移し、`internal` にする
-- [ ] プロジェクトの参照を「保存層 → アプリ層」に切り替え、アプリ層から保存層への参照を外す
-- [ ] 画面は起動時の組み立てだけで保存層を参照する
-- [ ] ツール（`tools/`）とテストの参照を合わせる
-- [ ] [アーキテクチャ](../architecture.md)の文書を更新する
+- [x] 層をまたぐデータの型（`ScanHistoryEntry`、`FolderEntry`、`FolderChangeReport`、検索の条件・結果、`BufferedScan` など）をアプリ層へ移す。名前空間は `Scanning`・`History`・`Browsing`・`Comparison`・`Search`・`Memory`。観測の検証は `ScanDescriptor.Validate`・`StagedObservation.Validate` にし、保存層からも呼ぶ。検索結果の世代番号は保存層の派生クラス（`StoredSearchResult`）に閉じる
+- [x] B の実装を保存層へ移し、`internal` にする（`src/Something.Storage/Repositories/`）。起動時の組み立て用の入口は `StorageRepositories` だけを `public` にする。DuckDB を直接使っていた Parquet の書き出しも `IParquetTableWriter` の実装にする
+- [x] プロジェクトの参照を「保存層 → アプリ層」に切り替え、アプリ層から保存層への参照を外す
+- [x] 画面は起動時の組み立て（[`Composition`](../../src/Something.App/Composition.cs)）だけで保存層を参照する
+- [x] ツール（`tools/`）とテストの参照を合わせる（テストは `TestHistory.For` で保存層の実装からサービスを作る）
+- [x] [アーキテクチャ](../architecture.md)の文書を更新する
 
 ### D. 検索の高速化（移行後）
 

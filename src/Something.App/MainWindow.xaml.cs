@@ -8,8 +8,10 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Something.Application;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
+using Something.Application.Scanning;
 using Something.Ntfs;
-using Something.Storage;
 using Something.Windows;
 using Windows.Graphics.Imaging;
 
@@ -78,10 +80,10 @@ public sealed partial class MainWindow : Window
         int demoHistory = Array.IndexOf(arguments, "--demo-history");
         history = demo
             ? demoHistory >= 0 && demoHistory + 1 < arguments.Length
-                ? HistoryService.Open(arguments[demoHistory + 1])
+                ? Composition.OpenHistory(arguments[demoHistory + 1])
                 : null
             : CreateConfiguredHistory();
-        scanner = new(history);
+        scanner = Composition.CreateScanner(history);
         HistoryBox.LoadCounts = ComparisonBeforeBox.LoadCounts = ids =>
             history?.ReadRecordCountsAsync(ids, lifetime.Token)
             ?? Task.FromResult<IReadOnlyDictionary<Guid, long>>(new Dictionary<Guid, long>());

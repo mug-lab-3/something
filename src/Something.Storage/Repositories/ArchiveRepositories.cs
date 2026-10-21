@@ -1,8 +1,11 @@
 using System.Collections.Immutable;
+using Something.Application.Comparison;
+using Something.Application.History;
 using Something.Application.Repositories;
-using Something.Storage;
+using Something.Application.Scanning;
+using Something.Application.Search;
 
-namespace Something.Application.StorageAdapters;
+namespace Something.Storage;
 
 /// <summary>The repositories over one <see cref="ScanHistoryArchive"/>, which serializes its own
 /// database operations.</summary>

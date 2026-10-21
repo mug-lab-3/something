@@ -1,6 +1,8 @@
 using DuckDB.NET.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.History;
+using Something.Application.Scanning;
 
 namespace Something.Storage;
 

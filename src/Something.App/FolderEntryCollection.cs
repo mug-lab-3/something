@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml.Data;
-using Something.Storage;
+using Something.Application.Browsing;
 using Windows.Foundation;
 
 namespace Something.App;

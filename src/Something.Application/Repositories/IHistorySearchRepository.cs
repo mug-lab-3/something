@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Something.Storage;
+using Something.Application.Search;
 
 namespace Something.Application.Repositories;
 

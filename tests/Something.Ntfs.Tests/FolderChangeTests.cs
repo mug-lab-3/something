@@ -1,6 +1,9 @@
 using System.Numerics;
 using Microsoft.EntityFrameworkCore;
 using Something.Application;
+using Something.Application.Comparison;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -42,7 +45,7 @@ public sealed class FolderChangeTests
         fixture.Save(Now.AddMinutes(1), [new(20, "future", 9999)]);
 
         var report = await new FolderHistoryService(
-            HistoryService.ForArchive(fixture.Archive)
+            TestHistory.For(fixture.Archive)
         ).ReadChangesAsync("volume:A", period, Token, Now);
 
         Assert.Equal(FolderComparisonAvailability.Available, report.Availability);
@@ -393,7 +396,7 @@ public sealed class FolderChangeTests
         var other = fixture.Save(Now.AddMinutes(-5), [new(20, "folder", 999)], "volume:B");
 
         var report = await new FolderHistoryService(
-            HistoryService.ForArchive(fixture.Archive)
+            TestHistory.For(fixture.Archive)
         ).ReadChangesAsync("volume:A", before.Id, after.Id, Token);
 
         Assert.Equal(new BigInteger(200), Assert.Single(report.ChangedFolders).AllocatedDelta);

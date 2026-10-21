@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <InternalsVisibleTo Include="Something.Ntfs.Tests" />
-    <InternalsVisibleTo Include="Something.StorageCompare" />
     <ProjectReference Include="../Something.Windows/Something.Windows.csproj" />
-    <ProjectReference Include="../Something.Storage/Something.Storage.csproj" />
+    <ProjectReference Include="../Something.Statistics/Something.Statistics.csproj" />
   </ItemGroup>
 </Project>

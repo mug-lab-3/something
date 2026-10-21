@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
-using Something.Storage;
 
 namespace Something.App;
 
@@ -23,7 +22,7 @@ public sealed partial class MainWindow
                 "database-settings.json"
             )
         );
-        return HistoryService.Open(databaseSettings.LoadDirectory());
+        return Composition.OpenHistory(databaseSettings.LoadDirectory());
     }
 
     private void InitializeSettingsPage()

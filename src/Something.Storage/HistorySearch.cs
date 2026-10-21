@@ -1,8 +1,10 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.IO.Enumeration;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.History;
+using Something.Application.Search;
 using Something.Ntfs;
 
 namespace Something.Storage;
@@ -66,7 +68,7 @@ public sealed partial class ScanHistoryArchive
                     token,
                     accountMemoryLimit
                 );
-                return new(
+                return new StoredSearchResult(
                     volumeKey,
                     criteria,
                     HistorySearchStatus.Completed,
@@ -86,7 +88,7 @@ public sealed partial class ScanHistoryArchive
         HistorySearchResult Unsearched(
             HistorySearchStatus status,
             ImmutableArray<ScanHistoryEntry> scans
-        ) => new(volumeKey, criteria, status, scans, [], new(), () => { });
+        ) => new StoredSearchResult(volumeKey, criteria, status, scans, [], new(), () => { });
     }
 
     /// <summary>Sizes of one search item in every scan of its search, oldest first.
@@ -106,7 +108,13 @@ public sealed partial class ScanHistoryArchive
             token.ThrowIfCancellationRequested();
             using var store = OpenDatabase(token);
             using var transaction = store.HistoryContext.Database.BeginTransaction();
-            var generations = result.Generations;
+            var generations = (
+                result as StoredSearchResult
+                ?? throw new ArgumentException(
+                    "The search belongs to another storage implementation.",
+                    nameof(result)
+                )
+            ).Generations;
             var observations = new SearchSizeObservation?[generations.Length];
             var allocated = Rows(SearchSizeKind.Allocated);
             var logical = Rows(SearchSizeKind.Logical);
@@ -1004,4 +1012,18 @@ internal sealed class HistorySearchEngine(
             series.Clear();
         }
     }
+}
+
+/// <summary>A search result with the generation numbers of its scans, for reading series later.</summary>
+internal sealed class StoredSearchResult(
+    string volumeKey,
+    HistorySearchCriteria criteria,
+    HistorySearchStatus status,
+    ImmutableArray<ScanHistoryEntry> scans,
+    ImmutableArray<int> generations,
+    SearchTree tree,
+    Action release
+) : HistorySearchResult(volumeKey, criteria, status, scans, tree, release)
+{
+    public ImmutableArray<int> Generations { get; } = generations;
 }

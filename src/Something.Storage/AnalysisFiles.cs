@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Browsing;
 using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Storage;
-
-public sealed record AnalysisFileName(FileReference Parent, FolderEntry Entry);
 
 public sealed partial class ScanStore
 {

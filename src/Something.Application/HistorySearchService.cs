@@ -1,5 +1,6 @@
-﻿using System.Collections.Immutable;
-using Something.Storage;
+using System.Collections.Immutable;
+using Something.Application.History;
+using Something.Application.Search;
 
 namespace Something.Application;
 

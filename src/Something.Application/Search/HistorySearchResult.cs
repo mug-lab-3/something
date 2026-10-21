@@ -1,8 +1,9 @@
 using System.Collections.Immutable;
 using System.Numerics;
+using Something.Application.History;
 using Something.Ntfs;
 
-namespace Something.Storage;
+namespace Something.Application.Search;
 
 public enum HistorySearchStatus
 {
@@ -37,7 +38,7 @@ public sealed record SearchItem(
 
     /// <summary>True when the item is the only visible name of its identity, so it follows
     /// renames and moves; false for a hard link name, which continues only in place.</summary>
-    internal bool FollowsIdentity { get; init; }
+    public bool FollowsIdentity { get; init; }
 
     public bool InFirstScan => FirstObserved == 0;
 
@@ -65,8 +66,9 @@ public enum CapacityObservationState
     NotObserved,
 }
 
-/// <summary>Owns leases on every scan of the range until disposed.</summary>
-public sealed class HistorySearchResult : IDisposable
+/// <summary>Owns leases on every scan of the range until disposed. A repository derives its own
+/// result to keep what it needs for later reads of the same search.</summary>
+public class HistorySearchResult : IDisposable
 {
     private readonly Dictionary<FileReference, SearchItem> folders;
     private readonly Dictionary<FileReference, List<FileReference>> childFolders;
@@ -74,12 +76,11 @@ public sealed class HistorySearchResult : IDisposable
     private readonly Action release;
     private bool disposed;
 
-    internal HistorySearchResult(
+    protected HistorySearchResult(
         string volumeKey,
         HistorySearchCriteria criteria,
         HistorySearchStatus status,
         ImmutableArray<ScanHistoryEntry> scans,
-        ImmutableArray<int> generations,
         SearchTree tree,
         Action release
     )
@@ -88,7 +89,6 @@ public sealed class HistorySearchResult : IDisposable
         Criteria = criteria;
         Status = status;
         Scans = scans;
-        Generations = generations;
         Root = tree.Root;
         folders = tree.Folders;
         childFolders = tree.ChildFolders;
@@ -106,7 +106,6 @@ public sealed class HistorySearchResult : IDisposable
 
     /// <summary>Retained scans of the range, oldest first. The first is F and the last is L.</summary>
     public ImmutableArray<ScanHistoryEntry> Scans { get; }
-    internal ImmutableArray<int> Generations { get; }
 
     /// <summary>The volume root as observed in the last scan; it is never an item itself.</summary>
     public FileReference Root { get; }
@@ -166,14 +165,15 @@ public sealed class HistorySearchResult : IDisposable
     }
 }
 
-internal sealed class SearchTree
+/// <summary>The placed folders and files of a search, filled by the repository that runs it.</summary>
+public sealed class SearchTree
 {
-    internal FileReference Root { get; set; }
-    internal Dictionary<FileReference, SearchItem> Folders { get; } = [];
-    internal Dictionary<FileReference, List<FileReference>> ChildFolders { get; } = [];
-    internal Dictionary<FileReference, List<SearchItem>> Files { get; } = [];
-    internal long MatchedFolders { get; set; }
-    internal long MatchedFiles { get; set; }
-    internal long UncertainCount { get; set; }
-    internal long UnknownAttributeCount { get; set; }
+    public FileReference Root { get; set; }
+    public Dictionary<FileReference, SearchItem> Folders { get; } = [];
+    public Dictionary<FileReference, List<FileReference>> ChildFolders { get; } = [];
+    public Dictionary<FileReference, List<SearchItem>> Files { get; } = [];
+    public long MatchedFolders { get; set; }
+    public long MatchedFiles { get; set; }
+    public long UncertainCount { get; set; }
+    public long UnknownAttributeCount { get; set; }
 }

@@ -1,10 +1,11 @@
 using System.Collections.Immutable;
+using Something.Application.Browsing;
+using Something.Application.History;
 using Something.Application.Repositories;
 using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 
-namespace Something.Application.StorageAdapters;
+namespace Something.Storage;
 
 /// <summary>One scan in a <see cref="ScanStore"/>; disposing releases <paramref name="owner"/>.</summary>
 internal class StoreScanSnapshot(IDisposable owner, ScanStore store, Guid scanId) : IScanSnapshot

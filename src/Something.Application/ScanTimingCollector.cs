@@ -1,4 +1,5 @@
-using Something.Storage;
+using Something.Application.History;
+using Something.Application.Scanning;
 
 namespace Something.Application;
 

@@ -1,4 +1,4 @@
-namespace Something.Storage;
+namespace Something.Application.History;
 
 public sealed record ScanHistoryEntry(
     Guid Id,
@@ -33,16 +33,4 @@ public static class HistoryRetention
             );
         return keep;
     }
-}
-
-internal sealed class HistorySnapshotEntity
-{
-    public Guid Id { get; set; }
-    public string VolumeKey { get; set; } = "";
-    public string Drive { get; set; } = "";
-    public long CompletedUtcTicks { get; set; }
-    public int LocalDay { get; set; }
-    public int UtcOffsetMinutes { get; set; }
-    public long ElapsedTicks { get; set; }
-    public bool Retired { get; set; }
 }

@@ -1,9 +1,8 @@
 using System.Diagnostics;
 using Something.Application.Repositories;
-using Something.Application.StorageAdapters;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 using Something.Windows;
 
 namespace Something.Application;
@@ -32,14 +31,14 @@ public sealed record ScanProgress(
 }
 
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
+/// <remarks>Scans of a drive go to <paramref name="history"/> when given; demos and scans without
+/// a history go to <paramref name="temporaryScans"/>.</remarks>
 public sealed class DriveScanner(
-    HistoryService? history = null,
-    ITemporaryScanRepository? temporaryScans = null
+    ITemporaryScanRepository temporaryScans,
+    HistoryService? history = null
 )
 {
     private readonly ScanMemoryBudget memoryBudget = new(ScanMemoryBudget.ReadSystem);
-    private readonly ITemporaryScanRepository temporaryScans =
-        temporaryScans ?? TemporaryScanRepository.Instance;
 
     /// <summary>Shared with other database work, such as history searches.</summary>
     public ScanMemoryBudget MemoryBudget => memoryBudget;

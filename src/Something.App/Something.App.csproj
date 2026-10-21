@@ -40,6 +40,8 @@
     <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="1.8.25122902" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.5" />
     <ProjectReference Include="../Something.Application/Something.Application.csproj" />
+    <!-- Only the startup composition picks the storage implementation. -->
+    <ProjectReference Include="../Something.Storage/Something.Storage.csproj" />
   </ItemGroup>
   <!-- LiveCharts2 depends on the Windows App SDK metapackage. Unpinned, NuGet picks an older
        monolithic version whose WinUI conflicts with the split packages above, so pin the

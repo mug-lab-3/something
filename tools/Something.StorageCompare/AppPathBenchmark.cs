@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Something.Application;
+using Something.Application.Scanning;
+using Something.Application.Search;
 using Something.Statistics;
 using Something.Storage;
 
@@ -371,7 +373,7 @@ internal static class AppPathBenchmark
     )
     {
         var service = new HistorySearchService(
-            HistoryService.ForArchive(archive),
+            new HistoryService(StorageRepositories.ForArchive(archive)),
             new(ScanMemoryBudget.ReadSystem)
         );
         if (fixedBudgetMiB is null)

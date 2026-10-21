@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 

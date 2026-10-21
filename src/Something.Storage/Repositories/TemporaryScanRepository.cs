@@ -1,7 +1,8 @@
+using Something.Application.History;
 using Something.Application.Repositories;
-using Something.Storage;
+using Something.Application.Scanning;
 
-namespace Something.Application.StorageAdapters;
+namespace Something.Storage;
 
 internal sealed class TemporaryScanRepository : ITemporaryScanRepository
 {

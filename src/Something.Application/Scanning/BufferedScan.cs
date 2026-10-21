@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Something.Ntfs;
 using Something.Statistics;
 
-namespace Something.Storage;
+namespace Something.Application.Scanning;
 
 /// <summary>Owned compact observations. Keeps all persisted facts, but no raw records or DATA runs.
 /// Complete only after successful enumeration. Cancellation before publication never writes a generation.</summary>
@@ -16,7 +16,6 @@ public sealed class BufferedScan
     private readonly List<StagedObservation> observations;
     private ulong[]? seen;
     private HashSet<ulong>? indices;
-    private readonly StoredScan validation;
     private FolderAggregationResult? aggregation;
     private ImmutableArray<UnattributedSummary> diagnostics;
     private FolderGraph? completedGraph;
@@ -43,9 +42,8 @@ public sealed class BufferedScan
 
     public BufferedScan(ScanDescriptor descriptor)
     {
-        ScanStore.ValidateDescriptor(descriptor);
+        ScanDescriptor.Validate(descriptor);
         Descriptor = descriptor;
-        validation = new(Guid.Empty, descriptor, StoredScanState.Running, null);
         ulong records = descriptor.Range.RecordCount;
         if (records <= BitmapRecordLimit)
         {
@@ -94,7 +92,8 @@ public sealed class BufferedScan
         }
     }
 
-    internal IReadOnlyList<StagedObservation> Observations => observations;
+    /// <summary>Observations in the order they were added; read by the repository that stores them.</summary>
+    public IReadOnlyList<StagedObservation> Observations => observations;
     public FolderAggregationResult Aggregation =>
         aggregation
         ?? throw new InvalidOperationException("Buffered enumeration has not completed.");
@@ -111,7 +110,7 @@ public sealed class BufferedScan
         cancellationToken.ThrowIfCancellationRequested();
         if (aggregation is not null)
             throw new InvalidOperationException("Completed observations are immutable.");
-        ScanStore.ValidateObservation(observation, validation);
+        StagedObservation.Validate(observation, Descriptor.Range);
         if (!MarkSeen(observation.RecordIndex))
             throw new InvalidDataException("Duplicate buffered record identity.");
         observations.Add(observation);

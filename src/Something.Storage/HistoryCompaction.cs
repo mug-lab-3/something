@@ -1,13 +1,9 @@
 using System.Data.Common;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.History;
 
 namespace Something.Storage;
-
-public sealed record HistoryCompactionResult(long BeforeBytes, long AfterBytes, bool Replaced)
-{
-    public long ReclaimedBytes => Math.Max(0, BeforeBytes - AfterBytes);
-}
 
 public sealed partial class ScanHistoryArchive
 {

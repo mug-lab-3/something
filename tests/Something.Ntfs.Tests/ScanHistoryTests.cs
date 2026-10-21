@@ -1,6 +1,8 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Something.Application;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -105,8 +107,8 @@ public sealed partial class ScanHistoryTests
         var saved = fixture.Save(Now.AddMinutes(-1), Token);
         var reopened = new ScanHistoryArchive(fixture.Root, fixture.Clock, TimeZoneInfo.Utc);
         Assert.Equal(saved, Assert.Single(reopened.List("volume:A", Token)));
-        await using var session = await HistoryService
-            .ForArchive(reopened)
+        await using var session = await TestHistory
+            .For(reopened)
             .OpenAsync(saved.Id, "Demo", Token);
         var root = FileReference.Create(5, 1);
 

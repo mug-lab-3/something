@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
+using Something.Application.Browsing;
+using Something.Application.History;
 using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.Application.Repositories;
 

@@ -1,4 +1,6 @@
 using Something.Application;
+using Something.Application.Scanning;
+using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 
@@ -10,16 +12,17 @@ public sealed class ScanSessionTests
         var token = TestContext.Current.CancellationToken;
         var updates = new List<ScanProgress>();
 
-        await using var session = await new DriveScanner().CreateDemoAsync(
-            new SynchronousProgress(updates.Add),
-            token
-        );
+        await using var session = await new DriveScanner(
+            StorageRepositories.TemporaryScans
+        ).CreateDemoAsync(new SynchronousProgress(updates.Add), token);
 
         Assert.Contains(updates, p => p.Phase == ScanPhase.Aggregating && p.Fraction is > 0);
         Assert.Contains(updates, p => p.Phase == ScanPhase.Saving && p.Fraction is > 0);
         Assert.Contains(
             updates,
-            p => p.Work?.Stage == Something.Storage.ScanWorkStage.Committing && p.Fraction is null
+            p =>
+                p.Work?.Stage == Something.Application.Scanning.ScanWorkStage.Committing
+                && p.Fraction is null
         );
         Assert.Equal(ScanPhase.Completed, updates[^1].Phase);
         Assert.Equal(1, updates[^1].Fraction);
@@ -40,21 +43,21 @@ public sealed class ScanSessionTests
         var collection = new ScanProgress(ScanPhase.Aggregating, 100, 0.5, TimeSpan.Zero)
         {
             SavesHistory = true,
-            Work = new(Something.Storage.ScanWorkStage.CollectingFolders, 50, 100),
+            Work = new(Something.Application.Scanning.ScanWorkStage.CollectingFolders, 50, 100),
         };
         var writing = collection with
         {
             Phase = ScanPhase.SavingHistory,
-            Work = new(Something.Storage.ScanWorkStage.WritingFolders, 50, 100),
+            Work = new(Something.Application.Scanning.ScanWorkStage.WritingFolders, 50, 100),
         };
         var native = writing with
         {
             Fraction = null,
-            Work = new(Something.Storage.ScanWorkStage.BuildingFolderList, 0, null),
+            Work = new(Something.Application.Scanning.ScanWorkStage.BuildingFolderList, 0, null),
         };
         var retention = native with
         {
-            Work = new(Something.Storage.ScanWorkStage.MaintainingHistory, 0, null),
+            Work = new(Something.Application.Scanning.ScanWorkStage.MaintainingHistory, 0, null),
         };
 
         Assert.Equal(new ScanStep(2, 14), collection.Step);
@@ -81,7 +84,9 @@ public sealed class ScanSessionTests
     {
         var token = TestContext.Current.CancellationToken;
         var beforeScan = DateTimeOffset.UtcNow;
-        await using var session = await new DriveScanner().CreateDemoAsync(null, token);
+        await using var session = await new DriveScanner(
+            StorageRepositories.TemporaryScans
+        ).CreateDemoAsync(null, token);
 
         var queries = await Task.WhenAll(
             Enumerable
@@ -124,7 +129,10 @@ public sealed class ScanSessionTests
         );
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            new DriveScanner().CreateDemoAsync(null, cancellation.Token)
+            new DriveScanner(StorageRepositories.TemporaryScans).CreateDemoAsync(
+                null,
+                cancellation.Token
+            )
         );
     }
 }

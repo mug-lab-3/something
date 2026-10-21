@@ -1,4 +1,5 @@
 using Something.Application;
+using Something.Application.Memory;
 using Something.Storage;
 
 namespace Something.Ntfs.Tests;
@@ -240,7 +241,7 @@ public sealed class ScanMemoryBudgetTests
     [Fact]
     public async Task ConcurrentDemoScansPublishIndependentBrowsableDatabases()
     {
-        var scanner = new DriveScanner();
+        var scanner = new DriveScanner(StorageRepositories.TemporaryScans);
         var firstTask = scanner.CreateDemoAsync(null, Token, "DemoA");
         var secondTask = scanner.CreateDemoAsync(null, Token, "DemoB");
         await Task.WhenAll(firstTask, secondTask);
