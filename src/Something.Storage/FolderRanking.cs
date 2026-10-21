@@ -6,7 +6,7 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>All matching ordinary folders, ordered by capacity; no top-N truncation.</summary>
     public ImmutableArray<RankedFolder> ReadFolderAnalysis(

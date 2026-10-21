@@ -3,7 +3,7 @@ using Something.Application.Scanning;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Publishes completed in-memory facts and their verified aggregation in one transaction.
     /// No observation staging, readback or intermediate commits. Previous publication survives any failure.</summary>

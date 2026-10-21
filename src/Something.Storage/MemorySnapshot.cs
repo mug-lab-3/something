@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Exports only to a new owned file, never to an existing history database.
     /// BackupDatabase is synchronous; cancellation is checked before and after the copy.</summary>

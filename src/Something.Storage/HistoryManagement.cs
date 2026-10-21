@@ -3,7 +3,7 @@ using Something.Application.History;
 
 namespace Something.Storage;
 
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     /// <summary>Read counts only for the requested published scans, for a day in the history picker.</summary>
     public IReadOnlyDictionary<Guid, long> ReadRecordCounts(

@@ -8,7 +8,7 @@ using Something.Ntfs;
 
 namespace Something.Storage;
 
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     /// <summary>Searches the retained scans of one volume completed within the range. The session
     /// leases every scan of the range until it is disposed. Memory grows only through

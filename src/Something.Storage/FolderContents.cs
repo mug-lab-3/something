@@ -6,7 +6,7 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Returns the unique observed parent for this visible folder name.
     /// Validates both sequence identities; ambiguous or missing parents remain unavailable.</summary>

@@ -5,7 +5,7 @@ using Something.Application.History;
 
 namespace Something.Storage;
 
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     private string CompactionBackup => DatabasePath + ".compaction-backup";
 

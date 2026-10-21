@@ -48,7 +48,7 @@ flowchart LR
 | `Something.Application.Search` | `HistorySearchCriteria`・`HistorySearchResult`・`SearchItem` |
 | `Something.Application.Memory` | `AvailableMemory`・`MemoryHeadroom`・`IMemoryAllowance` |
 
-アプリ層のテストは、インターフェースの偽の実装でサービス（`DriveScanner`・`HistoryService`・`HistorySearch` など）を DB なしで試せます。保存層のテストは、実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
+保存層の公開は `StorageRepositories` だけです（EF Core が生成するマイグレーションを除く）。アプリ層が保存層や DuckDB・EF Core・SQLite を参照しないことは、`ArchitectureTests` が確かめます。アプリ層のテストは、インターフェースの偽の実装でサービス（`DriveScanner`・`HistoryService`・`HistorySearch` など）を DB なしで試せます。保存層のテストは、`InternalsVisibleTo` で実装（`ScanHistoryArchive`・`ScanStore`）を直接使います。
 
 ## スキャンの流れ
 

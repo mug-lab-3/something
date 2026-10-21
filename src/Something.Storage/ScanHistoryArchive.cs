@@ -7,7 +7,7 @@ using Something.Application.Scanning;
 namespace Something.Storage;
 
 /// <summary>All volumes and generations share one DuckDB file. Typed generation imports and retention are atomic.</summary>
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     private readonly string root;
     private readonly object sync;
@@ -395,7 +395,7 @@ public sealed partial class ScanHistoryArchive
         );
 }
 
-public sealed class HistorySnapshot(
+internal sealed class HistorySnapshot(
     ScanStore store,
     ScanHistoryEntry entry,
     ulong sizeBytes,

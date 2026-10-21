@@ -22,7 +22,7 @@ internal sealed class ScanStepTimingEntity
     public long ElapsedTicks { get; set; }
 }
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     public void SaveTimings(
         Guid scanId,

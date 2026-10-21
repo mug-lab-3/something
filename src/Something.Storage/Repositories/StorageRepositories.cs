@@ -12,7 +12,7 @@ public static class StorageRepositories
         ArchiveRepositories.Open(directory);
 
     /// <summary>For tests and tools that build their archive with a fixed clock or time zone.</summary>
-    public static HistoryRepositories ForArchive(ScanHistoryArchive archive) =>
+    internal static HistoryRepositories ForArchive(ScanHistoryArchive archive) =>
         ArchiveRepositories.For(archive);
 
     public static ITemporaryScanRepository TemporaryScans => TemporaryScanRepository.Instance;

@@ -10,7 +10,7 @@ namespace Something.Storage;
 // DuckDB whole-generation reads. EF materialization took about half of a two-million-file read
 // (3.1 s total, 1.5 s in the engine), so these read typed columns directly from ordered streams.
 // Values are validated exactly as the entity path validates them; SQLite keeps the EF queries.
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     private sealed class NativeRows : IDisposable
     {

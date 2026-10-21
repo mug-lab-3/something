@@ -3,7 +3,7 @@ using Something.Application.Scanning;
 
 namespace Something.Storage;
 
-public enum StoredScanState
+internal enum StoredScanState
 {
     Running,
     Completed,
@@ -12,7 +12,7 @@ public enum StoredScanState
     Interrupted,
 }
 
-public sealed record StoredScan(
+internal sealed record StoredScan(
     Guid Id,
     ScanDescriptor Descriptor,
     StoredScanState State,

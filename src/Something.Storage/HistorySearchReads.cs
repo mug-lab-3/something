@@ -77,7 +77,7 @@ internal readonly record struct SearchSeriesRow(
 // DuckDB with the name in the key exceeded a 1 GiB limit and spilled; DuckDB now only sorts and
 // the managed engine folds each identity as the stream passes. Results stream instead of
 // materializing, so the engine's memory holds the sort, not the whole answer.
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     private const string LowMask = "18446744073709551615::UHUGEINT";
 

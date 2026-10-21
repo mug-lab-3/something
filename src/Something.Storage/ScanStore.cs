@@ -7,7 +7,7 @@ using Something.Statistics;
 namespace Something.Storage;
 
 /// <summary>Single-owner storage. Call off the UI thread; inspected paths never select the database.</summary>
-public sealed partial class ScanStore : IDisposable
+internal sealed partial class ScanStore : IDisposable
 {
     public const int MaximumBatchSize = 1000;
     private readonly ScanDbContext context;

@@ -5,7 +5,7 @@ using Something.Statistics;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Stream ordinary file names in one query; each hard-link name remains a row.</summary>
     public IEnumerable<AnalysisFileName> ReadAnalysisFiles(

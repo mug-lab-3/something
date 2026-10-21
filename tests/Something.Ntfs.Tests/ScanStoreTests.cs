@@ -208,11 +208,12 @@ public sealed class ScanStoreTests
     }
 
     [Theory]
-    [InlineData(StoredScanState.Cancelled)]
-    [InlineData(StoredScanState.Failed)]
-    [InlineData(StoredScanState.Interrupted)]
-    public void StoppedOrFailedNewGeneration_PreservesPreviousPublishedResult(StoredScanState state)
+    [InlineData(nameof(StoredScanState.Cancelled))]
+    [InlineData(nameof(StoredScanState.Failed))]
+    [InlineData(nameof(StoredScanState.Interrupted))]
+    public void StoppedOrFailedNewGeneration_PreservesPreviousPublishedResult(string stateName)
     {
+        var state = Enum.Parse<StoredScanState>(stateName);
         using var fixture = new DatabaseFixture();
         var descriptor = Descriptor();
         var first = fixture.Store.BeginScan(descriptor, TestContext.Current.CancellationToken);

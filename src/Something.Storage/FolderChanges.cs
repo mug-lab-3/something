@@ -6,7 +6,7 @@ using Something.Ntfs;
 
 namespace Something.Storage;
 
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     /// <summary>Compares two scans of one volume in either order: changes are after minus before,
     /// so choosing an older scan as "after" shows how the newer one differs going back.</summary>
