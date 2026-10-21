@@ -56,11 +56,6 @@ public sealed record SearchAttributes(
     AttributeRequirement NamedStreams = AttributeRequirement.Any
 )
 {
-    public const uint HiddenBit = 0x2,
-        SystemBit = 0x4,
-        SparseBit = 0x200,
-        CompressedBit = 0x800;
-
     public bool IsSpecified =>
         Hidden != AttributeRequirement.Any
         || System != AttributeRequirement.Any

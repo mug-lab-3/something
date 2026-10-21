@@ -166,7 +166,12 @@ public sealed class WindowsRecycleBackend : IFileRecycleBackend
                     var handle = WindowsFileMetadata.OpenForRecycle(target.Drive, path, share: 3);
                     handles.Add(handle);
                     var info = handle.Observe(token);
-                    if (!info.IsDirectory || (info.FileAttributes & 0x400) != 0)
+                    if (
+                        !info.IsDirectory
+                        || ((FileAttributes)info.FileAttributes).HasFlag(
+                            FileAttributes.ReparsePoint
+                        )
+                    )
                         throw new IOException(
                             "Paths through links or junctions cannot be recycled."
                         ).WithFailure(RecycleFailure.LinkedPath);

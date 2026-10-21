@@ -428,10 +428,10 @@ internal sealed class HistorySearchEngine(
         foreach (
             var (requirement, bit) in new[]
             {
-                (attributes.Hidden, SearchAttributes.HiddenBit),
-                (attributes.System, SearchAttributes.SystemBit),
-                (attributes.Compressed, SearchAttributes.CompressedBit),
-                (attributes.Sparse, SearchAttributes.SparseBit),
+                (attributes.Hidden, (uint)FileAttributes.Hidden),
+                (attributes.System, (uint)FileAttributes.System),
+                (attributes.Compressed, (uint)FileAttributes.Compressed),
+                (attributes.Sparse, (uint)FileAttributes.SparseFile),
             }
         )
             if (requirement != AttributeRequirement.Any)
@@ -702,13 +702,22 @@ internal sealed class HistorySearchEngine(
             if (item.StandardFileAttributes is not { } value)
                 candidate.UnknownAttributes = true;
             else if (
-                !Requirement(attributes.Hidden, (value & SearchAttributes.HiddenBit) != 0)
-                || !Requirement(attributes.System, (value & SearchAttributes.SystemBit) != 0)
+                !Requirement(
+                    attributes.Hidden,
+                    ((FileAttributes)value).HasFlag(FileAttributes.Hidden)
+                )
+                || !Requirement(
+                    attributes.System,
+                    ((FileAttributes)value).HasFlag(FileAttributes.System)
+                )
                 || !Requirement(
                     attributes.Compressed,
-                    (value & SearchAttributes.CompressedBit) != 0
+                    ((FileAttributes)value).HasFlag(FileAttributes.Compressed)
                 )
-                || !Requirement(attributes.Sparse, (value & SearchAttributes.SparseBit) != 0)
+                || !Requirement(
+                    attributes.Sparse,
+                    ((FileAttributes)value).HasFlag(FileAttributes.SparseFile)
+                )
             )
                 return null;
         }

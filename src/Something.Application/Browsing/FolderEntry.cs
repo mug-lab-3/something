@@ -23,9 +23,13 @@ public sealed record FolderEntry(
 {
     public uint? StandardFileAttributes { get; init; }
     public bool? IsHidden =>
-        StandardFileAttributes is { } attributes ? (attributes & 0x2) != 0 : null;
+        StandardFileAttributes is { } attributes
+            ? ((FileAttributes)attributes).HasFlag(FileAttributes.Hidden)
+            : null;
     public bool? IsSystem =>
-        StandardFileAttributes is { } attributes ? (attributes & 0x4) != 0 : null;
+        StandardFileAttributes is { } attributes
+            ? ((FileAttributes)attributes).HasFlag(FileAttributes.System)
+            : null;
 }
 
 public sealed record FolderEntryPage(
