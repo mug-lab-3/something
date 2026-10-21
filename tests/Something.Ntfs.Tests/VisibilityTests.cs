@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Numerics;
 using Something.Application;
+using Something.Application.StorageAdapters;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -227,8 +228,7 @@ public sealed class VisibilityTests
             database.Store.CompleteScan(id, Started.AddSeconds(1), token);
             var summary = database.Store.ReadSnapshotSummary(id, token);
             return new(
-                database,
-                id,
+                new StoreScanSnapshot(database, database.Store, id),
                 "Z:",
                 Root,
                 summary.Root,

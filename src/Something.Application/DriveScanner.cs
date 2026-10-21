@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Something.Application.Repositories;
+using Something.Application.StorageAdapters;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -30,9 +32,14 @@ public sealed record ScanProgress(
 }
 
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
-public sealed class DriveScanner(HistoryService? history = null)
+public sealed class DriveScanner(
+    HistoryService? history = null,
+    ITemporaryScanRepository? temporaryScans = null
+)
 {
     private readonly ScanMemoryBudget memoryBudget = new(ScanMemoryBudget.ReadSystem);
+    private readonly ITemporaryScanRepository temporaryScans =
+        temporaryScans ?? TemporaryScanRepository.Instance;
 
     /// <summary>Shared with other database work, such as history searches.</summary>
     public ScanMemoryBudget MemoryBudget => memoryBudget;
@@ -220,25 +227,24 @@ public sealed class DriveScanner(HistoryService? history = null)
         progress.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var aggregation = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
         var selection = reservation.SelectDuckDatabase(buffer.EstimateDatabaseBytes(token));
-        if (history?.Archive is { } archive && !demo)
+        if (history?.Repositories.Scans is { } scans && !demo)
         {
             progress.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
-            var entry = archive.Publish(
+            var entry = scans.Publish(
                 buffer,
                 DateTimeOffset.UtcNow,
                 drive,
                 watch.Elapsed,
                 selection.FileCacheBytes,
-                token,
+                reservation.DuckDatabaseGrowth,
                 value => ReportWork(ScanPhase.SavingHistory, value),
-                reservation.TryGrowDuckDatabase,
-                reservation.AccountDuckDatabaseLimit
+                token
             );
-            var session = ScanSession.FromHistory(archive.Open(entry.Id, token), drive, token);
+            var session = ScanSession.FromHistory(scans.Open(entry.Id, token), drive, token);
             try
             {
                 var timing = progress.Complete(watch.Elapsed);
-                archive.SaveTimings(entry.Id, timing, token);
+                scans.SaveTimings(entry.Id, timing, token);
                 session.SetTimings(timing, entry with { Elapsed = timing.TotalElapsed });
             }
             catch
@@ -250,21 +256,19 @@ public sealed class DriveScanner(HistoryService? history = null)
             return session;
         }
         progress.Report(new(ScanPhase.Saving, candidates, null, watch.Elapsed));
-        var database = TemporaryScanDatabase.Create(
-            token,
+        var database = temporaryScans.Create(
             selection.UseMemory,
-            !selection.UseMemory,
-            selection.UseMemory ? null : selection.FileCacheBytes
+            selection.UseMemory ? null : selection.FileCacheBytes,
+            token
         );
         try
         {
-            var id = database.Store.PublishBufferedScan(
+            var id = database.Publish(
                 buffer,
                 DateTimeOffset.UtcNow,
-                token,
+                reservation.DuckDatabaseGrowth,
                 value => ReportWork(ScanPhase.Saving, value),
-                reservation.TryGrowDuckDatabase,
-                reservation.AccountDuckDatabaseLimit
+                token
             );
             if (selection.UseMemory)
             {
@@ -273,11 +277,10 @@ public sealed class DriveScanner(HistoryService? history = null)
             }
             var root = aggregation.Folders.Keys.Single(r => r.RecordIndex == 5);
             var timing = progress.Complete(watch.Elapsed);
-            database.Store.SaveTimings(id, timing, token);
+            database.SaveTimings(id, timing, token);
             progress.Report(new(ScanPhase.Completed, candidates, 1, watch.Elapsed));
             var session = new ScanSession(
-                database,
-                id,
+                database.Open(id),
                 drive,
                 root,
                 aggregation.Folders[root],

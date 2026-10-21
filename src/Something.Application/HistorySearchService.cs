@@ -27,7 +27,7 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
             () =>
             {
                 var scans = history
-                    .Archive.List(volumeKey, token)
+                    .Repositories.Scans.List(volumeKey, token)
                     .Where(scan => scan.CompletedUtc >= startUtc && scan.CompletedUtc <= endUtc)
                     .OrderBy(scan => scan.CompletedUtc)
                     .ThenBy(scan => scan.Id)
@@ -48,16 +48,15 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
     )
     {
         using var reservation = await budget.ReserveAsync(ResultReservation, token);
-        var archive = history.Archive;
+        var searches = history.Repositories.Searches;
         return await Task.Run(
             () =>
-                archive.Search(
+                searches.Search(
                     volumeKey,
                     criteria,
-                    token,
                     reservation.SizeDuckDatabase(),
-                    reservation.TryGrowDuckDatabase,
-                    accountMemoryLimit: reservation.AccountDuckDatabaseLimit
+                    reservation.DuckDatabaseGrowth,
+                    token
                 ),
             token
         );
@@ -69,7 +68,7 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
         CancellationToken token
     )
     {
-        var archive = history.Archive;
-        return Task.Run(() => archive.ReadSearchSeries(result, item, token), token);
+        var searches = history.Repositories.Searches;
+        return Task.Run(() => searches.ReadSeries(result, item, token), token);
     }
 }

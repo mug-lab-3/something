@@ -1,3 +1,4 @@
+using Something.Application.Repositories;
 using Something.Storage;
 
 namespace Something.Application;
@@ -211,5 +212,9 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
 
         public void AccountDuckDatabaseLimit(ulong limit) =>
             owner.AccountDuckDatabaseLimit(id, bufferBytes, limit);
+
+        /// <summary>Lets a database operation grow its limit within this reservation.</summary>
+        public DatabaseMemoryGrowth DuckDatabaseGrowth =>
+            new(TryGrowDuckDatabase, AccountDuckDatabaseLimit);
     }
 }

@@ -2,7 +2,7 @@ using Something.Storage;
 
 namespace Something.Application;
 
-/// <summary>Runs history queries off the UI thread. The archive serializes its database operations.</summary>
+/// <summary>Runs history queries off the UI thread. The repository serializes its database operations.</summary>
 public sealed class FolderHistoryService(HistoryService history)
 {
     public Task<FolderChangeReport> ReadChangesAsync(
@@ -12,9 +12,9 @@ public sealed class FolderHistoryService(HistoryService history)
         CancellationToken token
     )
     {
-        var archive = history.Archive;
+        var changes = history.Repositories.Changes;
         return Task.Run(
-            () => archive.ReadFolderChanges(volumeKey, beforeId, afterId, token),
+            () => changes.ReadFolderChanges(volumeKey, beforeId, afterId, token),
             token
         );
     }
@@ -26,7 +26,7 @@ public sealed class FolderHistoryService(HistoryService history)
         DateTimeOffset? asOfUtc = null
     )
     {
-        var archive = history.Archive;
-        return Task.Run(() => archive.ReadFolderChanges(volumeKey, period, asOfUtc, token), token);
+        var changes = history.Repositories.Changes;
+        return Task.Run(() => changes.ReadFolderChanges(volumeKey, period, asOfUtc, token), token);
     }
 }

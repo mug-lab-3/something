@@ -1,3 +1,4 @@
+using Something.Application.Repositories;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -7,8 +8,8 @@ namespace Something.Application;
 /// <summary>Owns one scan generation and its display projection. Serializes database operations on workers.</summary>
 public sealed partial class ScanSession : IAsyncDisposable
 {
-    private readonly IDisposable database;
-    private readonly ScanStore store;
+    private readonly IScanSnapshot snapshot;
+
     private readonly SemaphoreSlim gate = new(1);
     private bool disposed;
     private readonly DateTimeOffset? completedLocal;
@@ -43,11 +44,8 @@ public sealed partial class ScanSession : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            var archive = history.Archive;
-            var entry = await Task.Run(
-                () => archive.Save(store, ScanId, Drive, Elapsed, token),
-                token
-            );
+            var scans = history.Repositories.Scans;
+            var entry = await Task.Run(() => scans.Save(snapshot, Drive, Elapsed, token), token);
             History = entry;
             return entry;
         }
@@ -57,9 +55,9 @@ public sealed partial class ScanSession : IAsyncDisposable
         }
     }
 
+    /// <summary>Takes over <paramref name="snapshot"/>; it is released when the session is disposed.</summary>
     internal ScanSession(
-        TemporaryScanDatabase database,
-        Guid id,
+        IScanSnapshot snapshot,
         string drive,
         FileReference root,
         FolderCapacitySample rootSample,
@@ -69,45 +67,16 @@ public sealed partial class ScanSession : IAsyncDisposable
         TimeSpan elapsed,
         ScanHistoryEntry? history = null
     )
-        : this(
-            database,
-            database.Store,
-            id,
-            drive,
-            root,
-            rootSample,
-            metadataUnresolved,
-            selection,
-            demo,
-            elapsed,
-            history
-        ) { }
-
-    private ScanSession(
-        IDisposable database,
-        ScanStore store,
-        Guid id,
-        string drive,
-        FileReference root,
-        FolderCapacitySample rootSample,
-        ulong metadataUnresolved,
-        DiagnosticDatabaseSelection selection,
-        bool demo,
-        TimeSpan elapsed,
-        ScanHistoryEntry? history
-    )
     {
-        this.database = database;
-        this.store = store;
+        this.snapshot = snapshot;
         History = history;
-        ScanId = id;
+        ScanId = snapshot.ScanId;
         Drive = drive;
         Root = root;
-        var scan = store.GetScan(id);
-        completedLocal = scan.EndedUtc?.ToLocalTime();
-        var descriptor = scan.Descriptor;
-        VolumeKey = descriptor.VolumeKey;
-        VolumeSerial = descriptor.VolumeSerial;
+        var description = snapshot.Describe();
+        completedLocal = description.EndedUtc?.ToLocalTime();
+        VolumeKey = description.VolumeKey;
+        VolumeSerial = description.VolumeSerial;
         RootSample = unfilteredRootSample = rootSample;
         MetadataUnresolved = metadataUnresolved;
         Selection = selection;
@@ -116,18 +85,16 @@ public sealed partial class ScanSession : IAsyncDisposable
     }
 
     internal static ScanSession FromHistory(
-        HistorySnapshot snapshot,
+        IHistorySnapshot snapshot,
         string drive,
         CancellationToken token
     )
     {
         try
         {
-            var summary = snapshot.Store.ReadSnapshotSummary(snapshot.Entry.Id, token);
+            var summary = snapshot.ReadSummary(token);
             var session = new ScanSession(
                 snapshot,
-                snapshot.Store,
-                snapshot.Entry.Id,
                 drive,
                 summary.Root.Reference,
                 summary.Root,
@@ -141,7 +108,7 @@ public sealed partial class ScanSession : IAsyncDisposable
                 snapshot.Entry.Elapsed,
                 snapshot.Entry
             );
-            if (snapshot.Store.ReadTimings(snapshot.Entry.Id, token) is { } timing)
+            if (snapshot.ReadTimings(token) is { } timing)
                 session.SetTimings(timing);
             return session;
         }
@@ -163,7 +130,7 @@ public sealed partial class ScanSession : IAsyncDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             return await Task.Run(
-                () => store.ReadParentFolder(ScanId, folder, visibleName, token),
+                () => snapshot.ReadParentFolder(folder, visibleName, token),
                 token
             );
         }
@@ -209,15 +176,14 @@ public sealed partial class ScanSession : IAsyncDisposable
                             includeTotalCount,
                             descending
                         )
-                        : store.ReadFolderEntries(
-                            ScanId,
+                        : snapshot.ReadFolderEntries(
                             parent,
                             page,
-                            directoriesOnly: directoriesOnly,
-                            cancellationToken: token,
-                            sort: sort,
-                            includeTotalCount: includeTotalCount,
-                            descending: descending
+                            directoriesOnly,
+                            sort,
+                            includeTotalCount,
+                            descending,
+                            token
                         ),
                 token
             );
@@ -282,7 +248,7 @@ public sealed partial class ScanSession : IAsyncDisposable
                 return;
             disposed = true;
             ClearDisplayCaches();
-            await Task.Run(database.Dispose);
+            await Task.Run(snapshot.Dispose);
         }
         finally
         {
