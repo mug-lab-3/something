@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Something.Application.Comparison;
 using Something.Application.History;
 using Something.Application.Repositories;
@@ -96,7 +95,7 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
         CancellationToken token
     ) => archive.ReadFolderChanges(volumeKey, period, asOfUtc, token);
 
-    public HistorySearchResult Search(
+    public IHistorySearchSession Search(
         string volumeKey,
         HistorySearchCriteria criteria,
         ulong memoryLimitBytes,
@@ -111,12 +110,6 @@ internal sealed class ArchiveRepositories(ScanHistoryArchive archive)
             growth?.TryGrow,
             growth?.Account
         );
-
-    public ImmutableArray<SearchSizeObservation> ReadSeries(
-        HistorySearchResult result,
-        SearchItem item,
-        CancellationToken token
-    ) => archive.ReadSearchSeries(result, item, token);
 
     public string DatabasePath => archive.DatabasePath;
     public string DirectoryPath => archive.DirectoryPath;

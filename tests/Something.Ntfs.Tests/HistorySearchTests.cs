@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Numerics;
 using Something.Application;
 using Something.Application.History;
+using Something.Application.Repositories;
 using Something.Application.Scanning;
 using Something.Application.Search;
 using Something.Statistics;
@@ -56,14 +57,12 @@ public sealed class HistorySearchTests
         );
 
         // Act
-        using var result = fixture.Archive.Search(
-            "volume:A",
+        var result = fixture.Search(
             Everything with
             {
                 Target = SearchTarget.Files,
                 MinimumDelta = 500,
-            },
-            Token
+            }
         );
 
         // Assert
@@ -101,15 +100,13 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), tree);
 
         // Act
-        using var result = fixture.Archive.Search(
-            "volume:A",
+        var result = fixture.Search(
             Everything with
             {
                 Target = SearchTarget.Folders,
                 MinimumSize = 1000,
                 MinimumDepth = 3,
-            },
-            Token
+            }
         );
 
         // Assert
@@ -136,15 +133,9 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), [new(31, "kept", 5, 3), new(32, "new", 5, 4)]);
 
         // Act
-        using var all = Search(fixture, Everything with { Presence = SearchPresence.InAllScans });
-        using var appeared = Search(
-            fixture,
-            Everything with
-            {
-                Presence = SearchPresence.Appeared,
-            }
-        );
-        using var gone = Search(
+        var all = Search(fixture, Everything with { Presence = SearchPresence.InAllScans });
+        var appeared = Search(fixture, Everything with { Presence = SearchPresence.Appeared });
+        var gone = Search(
             fixture,
             Everything with
             {
@@ -186,9 +177,9 @@ public sealed class HistorySearchTests
         );
 
         // Act
-        using var large = Search(fixture, Everything with { MinimumSize = 500 });
-        using var rate = Search(fixture, Everything with { MinimumDeltaPercent = 10 });
-        using var delta = Search(fixture, Everything with { MinimumDelta = 10 });
+        var large = Search(fixture, Everything with { MinimumSize = 500 });
+        var rate = Search(fixture, Everything with { MinimumDeltaPercent = 10 });
+        var delta = Search(fixture, Everything with { MinimumDelta = 10 });
 
         // Assert
         var entries = large.Entries(large.Root).ToDictionary(e => e.Name);
@@ -229,7 +220,7 @@ public sealed class HistorySearchTests
         );
 
         // Act
-        using var result = Search(fixture, Everything with { Target = SearchTarget.Files });
+        var result = Search(fixture, Everything with { Target = SearchTarget.Files });
 
         // Assert
         var moved = Assert.Single(result.Entries(Ref(20)), e => e.Reference == Ref(30));
@@ -256,7 +247,7 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), [new(30, "first", 5, 6, Link: (5, "second"))]);
 
         // Act
-        using var result = Search(fixture, Everything with { MinimumDelta = 2 });
+        var result = Search(fixture, Everything with { MinimumDelta = 2 });
 
         // Assert
         var names = result.Entries(result.Root);
@@ -284,7 +275,7 @@ public sealed class HistorySearchTests
         var hideHidden = new FileVisibilityOptions(IncludeHidden: false);
 
         // Act
-        using var hidden = Search(
+        var hidden = Search(
             fixture,
             Everything with
             {
@@ -292,7 +283,7 @@ public sealed class HistorySearchTests
                 Visibility = hideHidden,
             }
         );
-        using var visible = Search(
+        var visible = Search(
             fixture,
             Everything with
             {
@@ -300,7 +291,7 @@ public sealed class HistorySearchTests
                 Visibility = hideHidden,
             }
         );
-        using var streams = Search(
+        var streams = Search(
             fixture,
             Everything with
             {
@@ -337,14 +328,7 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), nodes);
 
         // Act
-        using var result = Search(
-            fixture,
-            Everything with
-            {
-                NamePattern = pattern,
-                NameMode = mode,
-            }
-        );
+        var result = Search(fixture, Everything with { NamePattern = pattern, NameMode = mode });
 
         // Assert
         Assert.Equal(expected.Order(), result.Entries(result.Root).Select(e => e.Name).Order());
@@ -369,7 +353,7 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), nodes);
 
         // Act
-        using var underWork = Search(
+        var underWork = Search(
             fixture,
             Everything with
             {
@@ -377,7 +361,7 @@ public sealed class HistorySearchTests
                 BaseFolder = "work\\",
             }
         );
-        using var shallow = Search(
+        var shallow = Search(
             fixture,
             Everything with
             {
@@ -420,8 +404,8 @@ public sealed class HistorySearchTests
             );
 
         // Act
-        using var increasing = Search(fixture, Everything with { Trend = SizeTrend.Increasing });
-        using var decreasing = Search(fixture, Everything with { Trend = SizeTrend.Decreasing });
+        var increasing = Search(fixture, Everything with { Trend = SizeTrend.Increasing });
+        var decreasing = Search(fixture, Everything with { Trend = SizeTrend.Decreasing });
 
         // Assert
         var rising = increasing.Entries(increasing.Root).ToDictionary(e => e.Name);
@@ -444,11 +428,11 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-2), [new(31, "other", 5, 1)]);
         fixture.Save(Now.AddDays(-1), [new(30, "first", 5, null)]);
         fixture.Save(Now.AddHours(-1), [new(30, "renamed", 5, 30)]);
-        using var result = Search(fixture, Everything);
-        var item = result.Entries(result.Root).Single(e => e.Reference == Ref(30));
+        var search = fixture.Open(Everything);
+        var item = search.Result.Entries(search.Result.Root).Single(e => e.Reference == Ref(30));
 
         // Act
-        var series = fixture.Archive.ReadSearchSeries(result, item, Token);
+        var series = search.ReadSeries(item, Token);
 
         // Assert
         Assert.Equal(
@@ -474,9 +458,9 @@ public sealed class HistorySearchTests
         fixture.Save(Now.AddDays(-1), [new(30, "only", 5, 1)]);
 
         // Act
-        using var none = Search(fixture, new(Now.AddDays(-30), Now.AddDays(-20)));
-        using var single = Search(fixture, Everything with { MinimumDelta = 1 });
-        using var values = Search(fixture, Everything with { MinimumSize = 1 });
+        var none = Search(fixture, new(Now.AddDays(-30), Now.AddDays(-20)));
+        var single = Search(fixture, Everything with { MinimumDelta = 1 });
+        var values = Search(fixture, Everything with { MinimumSize = 1 });
 
         // Assert
         Assert.Equal(HistorySearchStatus.NoScans, none.Status);
@@ -523,21 +507,21 @@ public sealed class HistorySearchTests
         using var fixture = new Fixture();
         fixture.Save(Now.AddDays(-6).AddHours(-12), [new(30, "file", 5, 1)]);
         fixture.Save(Now.AddDays(-6).AddHours(-11), [new(30, "file", 5, 2)]);
-        var result = Search(fixture, Everything);
-        var item = Assert.Single(result.Entries(result.Root));
+        var search = fixture.Open(Everything);
+        var item = Assert.Single(search.Result.Entries(search.Result.Root));
 
         // Act: two days later the first scan of that day is retired, but still leased.
         fixture.Clock.Now = Now.AddDays(2);
         fixture.Archive.Maintain(Token);
         int listed = fixture.Archive.List("volume:A", Token).Length;
-        var series = fixture.Archive.ReadSearchSeries(result, item, Token);
-        result.Dispose();
+        var series = search.ReadSeries(item, Token);
+        search.Dispose();
         fixture.Archive.Maintain(Token);
 
         // Assert
         Assert.Equal(1, listed);
         Assert.All(series, o => Assert.Equal(CapacityObservationState.Known, o.State));
-        using var after = Search(fixture, Everything);
+        var after = Search(fixture, Everything);
         Assert.Single(after.Scans);
     }
 
@@ -607,9 +591,9 @@ public sealed class HistorySearchTests
 
         // Act
         var preview = await service.PreviewAsync("volume:A", Now.AddDays(-30), Now, Token);
-        using var result = await service.SearchAsync("volume:A", criteria, Token);
-        var series = await service.ReadSeriesAsync(
-            result,
+        await using var search = await service.SearchAsync("volume:A", criteria, Token);
+        var result = search.Result;
+        var series = await search.ReadSeriesAsync(
             Assert.Single(result.Entries(result.Root)),
             Token
         );
@@ -638,7 +622,7 @@ public sealed class HistorySearchTests
     }
 
     private static HistorySearchResult Search(Fixture fixture, HistorySearchCriteria criteria) =>
-        fixture.Archive.Search("volume:A", criteria, Token);
+        fixture.Search(criteria);
 
     private static FileReference Ref(ulong index) => FileReference.Create(index, 1);
 
@@ -659,7 +643,19 @@ public sealed class HistorySearchTests
         public Clock Clock { get; } = new();
         public ScanHistoryArchive Archive { get; }
 
+        private readonly List<IHistorySearchSession> sessions = [];
+
         public Fixture() => Archive = new(Root, Clock, TimeZoneInfo.Utc);
+
+        /// <summary>The result of a search of volume A; the session is released with the fixture.</summary>
+        public HistorySearchResult Search(HistorySearchCriteria criteria) => Open(criteria).Result;
+
+        public IHistorySearchSession Open(HistorySearchCriteria criteria)
+        {
+            var session = Archive.Search("volume:A", criteria, Token);
+            sessions.Add(session);
+            return session;
+        }
 
         public ScanHistoryEntry Save(DateTimeOffset ended, Node[] nodes)
         {
@@ -745,6 +741,8 @@ public sealed class HistorySearchTests
 
         public void Dispose()
         {
+            foreach (var session in sessions)
+                session.Dispose();
             string owned = Path.GetFullPath(Root);
             if (
                 !Path.GetFileName(owned)

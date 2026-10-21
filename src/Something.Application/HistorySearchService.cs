@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Something.Application.History;
 using Something.Application.Search;
 
@@ -42,7 +41,8 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
             token
         );
 
-    public async Task<HistorySearchResult> SearchAsync(
+    /// <summary>Runs a search. The caller disposes the returned search, which keeps its scans.</summary>
+    public async Task<HistorySearch> SearchAsync(
         string volumeKey,
         HistorySearchCriteria criteria,
         CancellationToken token
@@ -50,7 +50,7 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
     {
         using var reservation = await budget.ReserveAsync(ResultReservation, token);
         var searches = history.Repositories.Searches;
-        return await Task.Run(
+        var session = await Task.Run(
             () =>
                 searches.Search(
                     volumeKey,
@@ -61,15 +61,6 @@ public sealed class HistorySearchService(HistoryService history, ScanMemoryBudge
                 ),
             token
         );
-    }
-
-    public Task<ImmutableArray<SearchSizeObservation>> ReadSeriesAsync(
-        HistorySearchResult result,
-        SearchItem item,
-        CancellationToken token
-    )
-    {
-        var searches = history.Repositories.Searches;
-        return Task.Run(() => searches.ReadSeries(result, item, token), token);
+        return new HistorySearch(session);
     }
 }

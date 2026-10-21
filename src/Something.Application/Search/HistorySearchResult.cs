@@ -66,39 +66,83 @@ public enum CapacityObservationState
     NotObserved,
 }
 
-/// <summary>Owns leases on every scan of the range until disposed. A repository derives its own
-/// result to keep what it needs for later reads of the same search.</summary>
-public class HistorySearchResult : IDisposable
+/// <summary>The folders and files a search placed, as a tree below the volume root: matched items
+/// and the folders that lead to them. Immutable; the scans stay open through the search session
+/// that produced it, not through this data.</summary>
+public sealed class HistorySearchResult
 {
-    private readonly Dictionary<FileReference, SearchItem> folders;
-    private readonly Dictionary<FileReference, List<FileReference>> childFolders;
-    private readonly Dictionary<FileReference, List<SearchItem>> files;
-    private readonly Action release;
-    private bool disposed;
+    private readonly Dictionary<FileReference, SearchItem> folders = [];
+    private readonly Dictionary<FileReference, List<SearchItem>> childFolders = [];
+    private readonly Dictionary<FileReference, List<SearchItem>> files = [];
 
-    protected HistorySearchResult(
+    /// <summary>Checks that every folder and file hangs below <paramref name="root"/>: each parent
+    /// is the root or one of <paramref name="folders"/>, folders form no cycle, and no folder
+    /// appears twice.</summary>
+    /// <param name="volumeKey">The volume the scans belong to.</param>
+    /// <param name="criteria">The criteria the search ran with.</param>
+    /// <param name="status">Whether the search ran.</param>
+    /// <param name="scans">Retained scans of the range, oldest first.</param>
+    /// <param name="root">The volume root of the last scan; files and folders hang below it.</param>
+    /// <param name="folders">Matched folders and the unmatched folders that lead to matches.</param>
+    /// <param name="files">Matched files; several names of one hard-linked file may appear.</param>
+    /// <param name="unknownAttributeCount">Items left out only because their attributes were unknown.</param>
+    public HistorySearchResult(
         string volumeKey,
         HistorySearchCriteria criteria,
         HistorySearchStatus status,
         ImmutableArray<ScanHistoryEntry> scans,
-        SearchTree tree,
-        Action release
+        FileReference root,
+        IEnumerable<SearchItem> folders,
+        IEnumerable<SearchItem> files,
+        long unknownAttributeCount
     )
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(volumeKey);
+        ArgumentNullException.ThrowIfNull(criteria);
+        ArgumentOutOfRangeException.ThrowIfNegative(unknownAttributeCount);
+        if (!Enum.IsDefined(status))
+            throw new ArgumentOutOfRangeException(nameof(status));
         VolumeKey = volumeKey;
         Criteria = criteria;
         Status = status;
-        Scans = scans;
-        Root = tree.Root;
-        folders = tree.Folders;
-        childFolders = tree.ChildFolders;
-        files = tree.Files;
-        MatchedFolders = tree.MatchedFolders;
-        MatchedFiles = tree.MatchedFiles;
-        UncertainCount = tree.UncertainCount;
-        UnknownAttributeCount = tree.UnknownAttributeCount;
-        this.release = release;
+        Scans = scans.IsDefault ? [] : scans;
+        Root = root;
+        UnknownAttributeCount = unknownAttributeCount;
+        foreach (var folder in folders)
+        {
+            if (!folder.IsDirectory || folder.Reference == root)
+                throw new ArgumentException("A folder entry is not a folder below the root.");
+            if (!this.folders.TryAdd(folder.Reference, folder))
+                throw new ArgumentException("A folder appears twice.", nameof(folders));
+            if (folder.Matched)
+                MatchedFolders++;
+            if (folder.Matched && folder.Uncertain)
+                UncertainCount++;
+        }
+        foreach (var folder in this.folders.Values)
+            Add(childFolders, folder);
+        foreach (var file in files)
+        {
+            if (file.IsDirectory || !file.Matched)
+                throw new ArgumentException("A file entry is not a matched file.", nameof(files));
+            Add(this.files, file);
+            MatchedFiles++;
+            if (file.Uncertain)
+                UncertainCount++;
+        }
+        ValidateTree();
     }
+
+    /// <summary>A search that did not run, such as one without scans in its range.</summary>
+    public static HistorySearchResult Unsearched(
+        string volumeKey,
+        HistorySearchCriteria criteria,
+        HistorySearchStatus status,
+        ImmutableArray<ScanHistoryEntry> scans
+    ) =>
+        status == HistorySearchStatus.Completed
+            ? throw new ArgumentOutOfRangeException(nameof(status))
+            : new(volumeKey, criteria, status, scans, default, [], [], 0);
 
     public string VolumeKey { get; }
     public HistorySearchCriteria Criteria { get; }
@@ -122,25 +166,11 @@ public class HistorySearchResult : IDisposable
 
     /// <summary>Folders below <paramref name="parent"/> that are matched or contain a match, by name.</summary>
     public ImmutableArray<SearchItem> ChildFolders(FileReference parent) =>
-        [
-            .. childFolders
-                .GetValueOrDefault(parent, [])
-                .Select(reference => folders[reference])
-                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.Name, StringComparer.Ordinal)
-                .ThenBy(item => item.Reference.RecordIndex),
-        ];
+        [.. ByName(childFolders.GetValueOrDefault(parent, []))];
 
     /// <summary>The tree folders and matched files directly below <paramref name="parent"/>.</summary>
     public ImmutableArray<SearchItem> Entries(FileReference parent) =>
-        [
-            .. ChildFolders(parent),
-            .. files
-                .GetValueOrDefault(parent, [])
-                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(item => item.Name, StringComparer.Ordinal)
-                .ThenBy(item => item.Reference.RecordIndex),
-        ];
+        [.. ChildFolders(parent), .. ByName(files.GetValueOrDefault(parent, []))];
 
     /// <summary>Display path relative to the volume root; empty for the root.</summary>
     public string PathOf(FileReference folder)
@@ -156,24 +186,45 @@ public class HistorySearchResult : IDisposable
         return string.Join('\\', names);
     }
 
-    public void Dispose()
-    {
-        if (disposed)
-            return;
-        disposed = true;
-        release();
-    }
-}
+    private static IEnumerable<SearchItem> ByName(IEnumerable<SearchItem> items) =>
+        items
+            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.Name, StringComparer.Ordinal)
+            .ThenBy(item => item.Reference.RecordIndex);
 
-/// <summary>The placed folders and files of a search, filled by the repository that runs it.</summary>
-public sealed class SearchTree
-{
-    public FileReference Root { get; set; }
-    public Dictionary<FileReference, SearchItem> Folders { get; } = [];
-    public Dictionary<FileReference, List<FileReference>> ChildFolders { get; } = [];
-    public Dictionary<FileReference, List<SearchItem>> Files { get; } = [];
-    public long MatchedFolders { get; set; }
-    public long MatchedFiles { get; set; }
-    public long UncertainCount { get; set; }
-    public long UnknownAttributeCount { get; set; }
+    private static void Add(Dictionary<FileReference, List<SearchItem>> groups, SearchItem item)
+    {
+        if (!groups.TryGetValue(item.Parent, out var children))
+            groups.Add(item.Parent, children = []);
+        children.Add(item);
+    }
+
+    // Every parent chain must end at the root without revisiting a folder.
+    private void ValidateTree()
+    {
+        var reaches = new HashSet<FileReference>();
+        var path = new HashSet<FileReference>();
+        foreach (var start in folders.Keys)
+        {
+            path.Clear();
+            for (var current = start; current != Root && !reaches.Contains(current); )
+            {
+                if (!path.Add(current))
+                    throw new ArgumentException("The folders form a cycle.", "folders");
+                current = folders.TryGetValue(current, out var folder)
+                    ? folder.Parent
+                    : throw new ArgumentException(
+                        "A folder's parent is neither the root nor a folder of the result.",
+                        "folders"
+                    );
+            }
+            reaches.UnionWith(path);
+        }
+        foreach (var parent in files.Keys)
+            if (parent != Root && !folders.ContainsKey(parent))
+                throw new ArgumentException(
+                    "A file's parent is neither the root nor a folder of the result.",
+                    "files"
+                );
+    }
 }

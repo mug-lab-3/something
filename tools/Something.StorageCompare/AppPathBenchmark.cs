@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -386,10 +387,25 @@ internal static class AppPathBenchmark
         }
         else
             Console.WriteLine($"  search budget fixed: {fixedBudgetMiB}MiB (low-memory check)");
-        HistorySearchResult Search(HistorySearchCriteria criteria) =>
-            fixedBudgetMiB is { } mib
-                ? archive.Search(volume, criteria, token, (ulong)mib << 20)
-                : service.SearchAsync(volume, criteria, token).GetAwaiter().GetResult();
+        // The fixed budget bypasses the shared budget, so it calls the archive directly.
+        (
+            HistorySearchResult Result,
+            Func<SearchItem, ImmutableArray<SearchSizeObservation>> Series,
+            Action Release
+        ) Search(HistorySearchCriteria criteria)
+        {
+            if (fixedBudgetMiB is { } mib)
+            {
+                var session = archive.Search(volume, criteria, token, (ulong)mib << 20);
+                return (session.Result, item => session.ReadSeries(item, token), session.Dispose);
+            }
+            var search = service.SearchAsync(volume, criteria, token).GetAwaiter().GetResult();
+            return (
+                search.Result,
+                item => search.ReadSeriesAsync(item, token).GetAwaiter().GetResult(),
+                () => search.DisposeAsync().AsTask().GetAwaiter().GetResult()
+            );
+        }
         var range = new HistorySearchCriteria(DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
         (string Name, HistorySearchCriteria Criteria)[] searches =
         [
@@ -427,27 +443,41 @@ internal static class AppPathBenchmark
                 () =>
                 {
                     long heap = GC.GetTotalMemory(true);
-                    using var result = Search(criteria);
-                    long retained = GC.GetTotalMemory(true) - heap;
-                    Console.WriteLine(
-                        $"    {name}: scans={result.Scans.Length}; folders={result.MatchedFolders}; files={result.MatchedFiles}; uncertain={result.UncertainCount}; unknown-attributes={result.UnknownAttributeCount}; retained={retained / 1048576.0:F0}MiB"
-                    );
-                    return $"{result.MatchedFolders}|{result.MatchedFiles}|{result.UncertainCount}|{result.UnknownAttributeCount}";
+                    var (result, _, release) = Search(criteria);
+                    try
+                    {
+                        long retained = GC.GetTotalMemory(true) - heap;
+                        Console.WriteLine(
+                            $"    {name}: scans={result.Scans.Length}; folders={result.MatchedFolders}; files={result.MatchedFiles}; uncertain={result.UncertainCount}; unknown-attributes={result.UnknownAttributeCount}; retained={retained / 1048576.0:F0}MiB"
+                        );
+                        return $"{result.MatchedFolders}|{result.MatchedFiles}|{result.UncertainCount}|{result.UnknownAttributeCount}";
+                    }
+                    finally
+                    {
+                        release();
+                    }
                 },
                 checksum => checksum
             );
-        using var sample = Search(range with { Target = SearchTarget.Files, MinimumDelta = 1 });
-        if (FirstFile(sample) is { } item)
-            time(
-                "search-series",
-                () =>
-                    Hash(
-                        archive
-                            .ReadSearchSeries(sample, item, token)
-                            .Select(o => $"{o.ScanIndex}|{o.State}|{o.AllocatedBytes}")
-                    ),
-                checksum => checksum
-            );
+        var sample = Search(range with { Target = SearchTarget.Files, MinimumDelta = 1 });
+        try
+        {
+            if (FirstFile(sample.Result) is { } item)
+                time(
+                    "search-series",
+                    () =>
+                        Hash(
+                            sample
+                                .Series(item)
+                                .Select(o => $"{o.ScanIndex}|{o.State}|{o.AllocatedBytes}")
+                        ),
+                    checksum => checksum
+                );
+        }
+        finally
+        {
+            sample.Release();
+        }
 
         static SearchItem? FirstFile(HistorySearchResult result)
         {

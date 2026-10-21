@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Numerics;
 using Microsoft.EntityFrameworkCore;
 using Something.Application.History;
+using Something.Application.Repositories;
 using Something.Application.Search;
 using Something.Ntfs;
 
@@ -9,10 +10,10 @@ namespace Something.Storage;
 
 public sealed partial class ScanHistoryArchive
 {
-    /// <summary>Searches the retained scans of one volume completed within the range. The result
+    /// <summary>Searches the retained scans of one volume completed within the range. The session
     /// leases every scan of the range until it is disposed. Memory grows only through
     /// <paramref name="reserveMemoryGrowth"/>; spilling to disk remains the last resort.</summary>
-    public HistorySearchResult Search(
+    public IHistorySearchSession Search(
         string volumeKey,
         HistorySearchCriteria criteria,
         CancellationToken token = default,
@@ -66,15 +67,17 @@ public sealed partial class ScanHistoryArchive
                     token,
                     accountMemoryLimit
                 );
-                return new StoredSearchResult(
+                var result = new HistorySearchResult(
                     volumeKey,
                     criteria,
                     HistorySearchStatus.Completed,
                     scans,
-                    [.. generations],
-                    tree,
-                    release
+                    tree.Root,
+                    tree.Folders.Values,
+                    tree.Files.Values.SelectMany(files => files),
+                    tree.UnknownAttributeCount
                 );
+                return new SearchSession(this, result, [.. generations], release);
             }
             catch
             {
@@ -83,21 +86,27 @@ public sealed partial class ScanHistoryArchive
             }
         }
 
-        HistorySearchResult Unsearched(
+        IHistorySearchSession Unsearched(
             HistorySearchStatus status,
             ImmutableArray<ScanHistoryEntry> scans
-        ) => new StoredSearchResult(volumeKey, criteria, status, scans, [], new(), () => { });
+        ) =>
+            new SearchSession(
+                this,
+                HistorySearchResult.Unsearched(volumeKey, criteria, status, scans),
+                [],
+                () => { }
+            );
     }
 
     /// <summary>Sizes of one search item in every scan of its search, oldest first.
     /// A scan without the item reports NotObserved; it is never a zero size.</summary>
-    public ImmutableArray<SearchSizeObservation> ReadSearchSeries(
+    private ImmutableArray<SearchSizeObservation> ReadSearchSeries(
         HistorySearchResult result,
+        ImmutableArray<int> generations,
         SearchItem item,
-        CancellationToken token = default
+        CancellationToken token
     )
     {
-        ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(item);
         if (result.Status != HistorySearchStatus.Completed)
             throw new InvalidOperationException("The search did not complete.");
@@ -106,13 +115,6 @@ public sealed partial class ScanHistoryArchive
             token.ThrowIfCancellationRequested();
             using var store = OpenDatabase(token);
             using var transaction = store.HistoryContext.Database.BeginTransaction();
-            var generations = (
-                result as StoredSearchResult
-                ?? throw new ArgumentException(
-                    "The search belongs to another storage implementation.",
-                    nameof(result)
-                )
-            ).Generations;
             var observations = new SearchSizeObservation?[generations.Length];
             var allocated = Rows(SearchSizeKind.Allocated);
             var logical = Rows(SearchSizeKind.Logical);
@@ -156,6 +158,37 @@ public sealed partial class ScanHistoryArchive
                         rows.TryAdd(row.ScanIndex, row);
                 return rows;
             }
+        }
+    }
+
+    /// <summary>A completed search with the generation numbers of its scans; releases the leases
+    /// of the scans when disposed.</summary>
+    private sealed class SearchSession(
+        ScanHistoryArchive archive,
+        HistorySearchResult result,
+        ImmutableArray<int> generations,
+        Action release
+    ) : IHistorySearchSession
+    {
+        private bool disposed;
+
+        public HistorySearchResult Result => result;
+
+        public ImmutableArray<SearchSizeObservation> ReadSeries(
+            SearchItem item,
+            CancellationToken token
+        )
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            return archive.ReadSearchSeries(result, generations, item, token);
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+            disposed = true;
+            release();
         }
     }
 
@@ -824,16 +857,15 @@ internal sealed class HistorySearchEngine(
     }
 }
 
-/// <summary>A search result with the generation numbers of its scans, for reading series later.</summary>
-internal sealed class StoredSearchResult(
-    string volumeKey,
-    HistorySearchCriteria criteria,
-    HistorySearchStatus status,
-    ImmutableArray<ScanHistoryEntry> scans,
-    ImmutableArray<int> generations,
-    SearchTree tree,
-    Action release
-) : HistorySearchResult(volumeKey, criteria, status, scans, tree, release)
+/// <summary>The placed folders and files of one search, filled by the engine.</summary>
+internal sealed class SearchTree
 {
-    public ImmutableArray<int> Generations { get; } = generations;
+    internal FileReference Root { get; set; }
+    internal Dictionary<FileReference, SearchItem> Folders { get; } = [];
+    internal Dictionary<FileReference, List<FileReference>> ChildFolders { get; } = [];
+    internal Dictionary<FileReference, List<SearchItem>> Files { get; } = [];
+    internal long MatchedFolders { get; set; }
+    internal long MatchedFiles { get; set; }
+    internal long UncertainCount { get; set; }
+    internal long UnknownAttributeCount { get; set; }
 }
