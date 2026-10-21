@@ -324,13 +324,10 @@ public sealed class VisibilityTests
             var archive = new ScanHistoryArchive(directory);
             await using var source = await CreateSession(Facts(), token);
             await source.SetVisibilityAsync(new(false, false), token);
-            var entry = await source.SaveHistoryAsync(archive, token);
-            await using var restored = await ScanSession.OpenHistoryAsync(
-                archive,
-                entry.Id,
-                "Z:",
-                token
-            );
+            var entry = await source.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
+            await using var restored = await HistoryService
+                .ForArchive(archive)
+                .OpenAsync(entry.Id, "Z:", token);
             Assert.Equal(9, (await restored.ReadFileAnalysisAsync(token)).Length);
             await restored.SetVisibilityAsync(new(false, false), token);
             Assert.Equal(3, (await restored.ReadFileAnalysisAsync(token)).Length);

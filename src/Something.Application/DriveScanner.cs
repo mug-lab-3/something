@@ -30,7 +30,7 @@ public sealed record ScanProgress(
 }
 
 /// <summary>Worker-owned acquisition and storage orchestration. Never runs acquisition on the UI thread.</summary>
-public sealed class DriveScanner(ScanHistoryArchive? history = null)
+public sealed class DriveScanner(HistoryService? history = null)
 {
     private readonly ScanMemoryBudget memoryBudget = new(ScanMemoryBudget.ReadSystem);
 
@@ -220,10 +220,10 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
         progress.Report(new(ScanPhase.Aggregating, candidates, null, watch.Elapsed));
         var aggregation = buffer.Complete(token, value => ReportWork(ScanPhase.Aggregating, value));
         var selection = reservation.SelectDuckDatabase(buffer.EstimateDatabaseBytes(token));
-        if (history is not null && !demo)
+        if (history?.Archive is { } archive && !demo)
         {
             progress.Report(new(ScanPhase.SavingHistory, candidates, null, watch.Elapsed));
-            var entry = history.Publish(
+            var entry = archive.Publish(
                 buffer,
                 DateTimeOffset.UtcNow,
                 drive,
@@ -234,11 +234,11 @@ public sealed class DriveScanner(ScanHistoryArchive? history = null)
                 reservation.TryGrowDuckDatabase,
                 reservation.AccountDuckDatabaseLimit
             );
-            var session = ScanSession.FromHistory(history.Open(entry.Id, token), drive, token);
+            var session = ScanSession.FromHistory(archive.Open(entry.Id, token), drive, token);
             try
             {
                 var timing = progress.Complete(watch.Elapsed);
-                history.SaveTimings(entry.Id, timing, token);
+                archive.SaveTimings(entry.Id, timing, token);
                 session.SetTimings(timing, entry with { Elapsed = timing.TotalElapsed });
             }
             catch

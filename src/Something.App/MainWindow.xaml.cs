@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly CancellationTokenSource lifetime = new();
     private DriveScanner scanner;
-    private ScanHistoryArchive? history;
+    private HistoryService? history;
     private readonly Dictionary<DriveCard, string> volumeKeys = [];
     private ScanSession? historicalSession;
     private int historyVersion;
@@ -78,16 +78,13 @@ public sealed partial class MainWindow : Window
         int demoHistory = Array.IndexOf(arguments, "--demo-history");
         history = demo
             ? demoHistory >= 0 && demoHistory + 1 < arguments.Length
-                ? new ScanHistoryArchive(arguments[demoHistory + 1])
+                ? HistoryService.Open(arguments[demoHistory + 1])
                 : null
             : CreateConfiguredHistory();
         scanner = new(history);
         HistoryBox.LoadCounts = ComparisonBeforeBox.LoadCounts = ids =>
-            Task.Run<IReadOnlyDictionary<Guid, long>>(
-                () =>
-                    history?.ReadRecordCounts(ids, lifetime.Token) ?? new Dictionary<Guid, long>(),
-                lifetime.Token
-            );
+            history?.ReadRecordCountsAsync(ids, lifetime.Token)
+            ?? Task.FromResult<IReadOnlyDictionary<Guid, long>>(new Dictionary<Guid, long>());
         InitializeComparisonControls();
         InitializeHistoryManagement();
         InitializeSettingsPage();
@@ -467,10 +464,7 @@ public sealed partial class MainWindow : Window
         await ChangeHistoryAsync(newRow);
         if (session != latest || historicalSession is not null)
             throw new InvalidOperationException("Latest scan could not be restored from history.");
-        var foreign = await Task.Run(
-            () => history!.List($"demo:{cards[1].Choice.Drive}", lifetime.Token),
-            lifetime.Token
-        );
+        var foreign = await history!.ListAsync($"demo:{cards[1].Choice.Drive}", lifetime.Token);
         await ChangeHistoryAsync(new(foreign[0]));
         if (session != latest)
             throw new InvalidOperationException("History selection crossed volume identities.");
@@ -555,15 +549,14 @@ public sealed partial class MainWindow : Window
                 if (closed)
                     return;
                 volumeKeys[card] = key;
-                var rows = await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token);
+                var rows = await history.ListAsync(key, lifetime.Token);
                 if (
                     rows.Length > 0
                     && !sessions.ContainsKey(card.Choice.Drive)
                     && !scans.ContainsKey(card)
                 )
                 {
-                    var latest = await ScanSession.OpenHistoryAsync(
-                        history,
+                    var latest = await history.OpenAsync(
                         rows[0].Id,
                         card.Choice.Drive,
                         lifetime.Token
@@ -611,7 +604,7 @@ public sealed partial class MainWindow : Window
             if (sessions.GetValueOrDefault(card.Choice.Drive)?.History is { } saved)
                 volumeKeys[card] = saved.VolumeKey;
             var entries = volumeKeys.TryGetValue(card, out var key)
-                ? await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token)
+                ? await history.ListAsync(key, lifetime.Token)
                 : [];
             if (closed || selectedCard != card)
                 return;
@@ -696,8 +689,7 @@ public sealed partial class MainWindow : Window
             var next =
                 latest?.ScanId == row.Entry.Id
                     ? latest
-                    : owned = await ScanSession.OpenHistoryAsync(
-                        history,
+                    : owned = await history.OpenAsync(
                         row.Entry.Id,
                         card.Choice.Drive,
                         lifetime.Token

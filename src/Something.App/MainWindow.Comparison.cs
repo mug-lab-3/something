@@ -331,12 +331,7 @@ public sealed partial class MainWindow
                     RequestedBaselineUtc = range.RequestedBeforeUtc,
                     AsOfUtc = range.RequestedAfterUtc,
                 };
-            owned = await ScanSession.OpenHistoryAsync(
-                history,
-                before.Id,
-                card.Choice.Drive,
-                token
-            );
+            owned = await history.OpenAsync(before.Id, card.Choice.Drive, token);
             report = await ScanSession.ApplyVisibilityToComparisonAsync(
                 report,
                 owned,

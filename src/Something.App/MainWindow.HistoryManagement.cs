@@ -64,35 +64,22 @@ public sealed partial class MainWindow
                     .Distinct()
                     .Select(current => current.DisposeAsync().AsTask())
             );
-            // Optimization runs alone with every session released, so it may use three quarters
-            // of the headroom instead of a shared budget.
-            ulong available = ScanMemoryBudget.ReadSystem() is { } memory
-                ? MemoryHeadroom.Headroom(memory)
-                : checked(
-                    (ulong)
-                        Math.Max(
-                            0,
-                            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
-                                - GC.GetGCMemoryInfo().MemoryLoadBytes
-                        )
+            try
+            {
+                return await history.OptimizeAsync(
+                    stage =>
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            if (!closed)
+                                ViewLoadingText.Text = StatusText.Describe(stage);
+                        }),
+                    lifetime.Token
                 );
-            ulong limit = MemoryHeadroom.Align(available / 4 * 3);
-            if (limit < MemoryHeadroom.Granularity)
+            }
+            catch (InsufficientMemoryException)
+            {
                 throw new InvalidOperationException(Strings.Get("Database_OptimizeMemory"));
-            return await Task.Run(
-                () =>
-                    history.Compact(
-                        limit,
-                        lifetime.Token,
-                        stage =>
-                            DispatcherQueue.TryEnqueue(() =>
-                            {
-                                if (!closed)
-                                    ViewLoadingText.Text = StatusText.Describe(stage);
-                            })
-                    ),
-                lifetime.Token
-            );
+            }
         }
         finally
         {
@@ -101,10 +88,7 @@ public sealed partial class MainWindow
                 await InitializeHistoryAsync();
                 if (selectedCard is { } card && volumeKeys.TryGetValue(card, out var key))
                 {
-                    var entries = await Task.Run(
-                        () => history.List(key, lifetime.Token),
-                        lifetime.Token
-                    );
+                    var entries = await history.ListAsync(key, lifetime.Token);
                     if (
                         selectedScan != session?.ScanId
                         && entries.FirstOrDefault(row => row.Id == selectedScan) is { } saved
@@ -213,7 +197,7 @@ public sealed partial class MainWindow
         if (
             session?.Drive != cards[1].Choice.Drive
             || !HistoryManagement.IsShowingVolume(volumeKeys[cards[1]])
-            || history.List(volumeKeys[cards[1]], lifetime.Token).Length == 0
+            || (await history.ListAsync(volumeKeys[cards[1]], lifetime.Token)).Length == 0
         )
             throw new InvalidOperationException("Drive selection did not preserve other history.");
         await Task.WhenAll(SelectDriveAsync(cards[2]), SelectDriveAsync(cards[1]));
@@ -301,15 +285,10 @@ public sealed partial class MainWindow
                 || !volumeKeys.TryGetValue(card, out var key)
             )
                 continue;
-            var rows = await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token);
+            var rows = await history.ListAsync(key, lifetime.Token);
             if (rows.Length == 0)
                 continue;
-            var next = await ScanSession.OpenHistoryAsync(
-                history,
-                rows[0].Id,
-                drive,
-                lifetime.Token
-            );
+            var next = await history.OpenAsync(rows[0].Id, drive, lifetime.Token);
             if (closed || sessions.ContainsKey(drive) || scans.ContainsKey(card))
                 await next.DisposeAsync();
             else

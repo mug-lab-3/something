@@ -41,12 +41,9 @@ public sealed class FolderChangeTests
         );
         fixture.Save(Now.AddMinutes(1), [new(20, "future", 9999)]);
 
-        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
-            "volume:A",
-            period,
-            Token,
-            Now
-        );
+        var report = await new FolderHistoryService(
+            HistoryService.ForArchive(fixture.Archive)
+        ).ReadChangesAsync("volume:A", period, Token, Now);
 
         Assert.Equal(FolderComparisonAvailability.Available, report.Availability);
         Assert.Equal(Now.AddDays(-days), report.RequestedBaselineUtc);
@@ -395,12 +392,9 @@ public sealed class FolderChangeTests
         var after = fixture.Save(Now.AddMinutes(-10), [new(20, "folder", 300)]);
         var other = fixture.Save(Now.AddMinutes(-5), [new(20, "folder", 999)], "volume:B");
 
-        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
-            "volume:A",
-            before.Id,
-            after.Id,
-            Token
-        );
+        var report = await new FolderHistoryService(
+            HistoryService.ForArchive(fixture.Archive)
+        ).ReadChangesAsync("volume:A", before.Id, after.Id, Token);
 
         Assert.Equal(new BigInteger(200), Assert.Single(report.ChangedFolders).AllocatedDelta);
         Assert.Equal(new BigInteger(200), report.Root!.AllocatedDelta);

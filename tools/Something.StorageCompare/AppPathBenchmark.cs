@@ -370,7 +370,10 @@ internal static class AppPathBenchmark
         CancellationToken token
     )
     {
-        var service = new HistorySearchService(archive, new(ScanMemoryBudget.ReadSystem));
+        var service = new HistorySearchService(
+            HistoryService.ForArchive(archive),
+            new(ScanMemoryBudget.ReadSystem)
+        );
         if (fixedBudgetMiB is null)
         {
             var budget = new ScanMemoryBudget(ScanMemoryBudget.ReadSystem);

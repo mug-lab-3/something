@@ -35,7 +35,7 @@ public sealed partial class ScanSession : IAsyncDisposable
     }
 
     public async Task<ScanHistoryEntry> SaveHistoryAsync(
-        ScanHistoryArchive archive,
+        HistoryService history,
         CancellationToken token
     )
     {
@@ -43,6 +43,7 @@ public sealed partial class ScanSession : IAsyncDisposable
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            var archive = history.Archive;
             var entry = await Task.Run(
                 () => archive.Save(store, ScanId, Drive, Elapsed, token),
                 token
@@ -113,13 +114,6 @@ public sealed partial class ScanSession : IAsyncDisposable
         IsDemo = demo;
         Elapsed = elapsed;
     }
-
-    public static Task<ScanSession> OpenHistoryAsync(
-        ScanHistoryArchive archive,
-        Guid id,
-        string drive,
-        CancellationToken token
-    ) => Task.Run(() => FromHistory(archive.Open(id, token), drive, token), token);
 
     internal static ScanSession FromHistory(
         HistorySnapshot snapshot,

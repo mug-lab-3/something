@@ -55,9 +55,12 @@ public sealed class DemoScenarioTests
             Assert.Equal(@"Projects\Archive\source.zip", oldZip.RelativePath);
             Assert.Equal(@"Media\source.zip", newZip.RelativePath);
 
-            var before = await first.SaveHistoryAsync(archive, token);
-            var after = await second.SaveHistoryAsync(archive, token);
-            var reorganized = await third.SaveHistoryAsync(archive, token);
+            var before = await first.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
+            var after = await second.SaveHistoryAsync(HistoryService.ForArchive(archive), token);
+            var reorganized = await third.SaveHistoryAsync(
+                HistoryService.ForArchive(archive),
+                token
+            );
             var growth = archive.ReadFolderChanges(first.VolumeKey, before.Id, after.Id, token);
             var removal = archive.ReadFolderChanges(
                 first.VolumeKey,
@@ -69,12 +72,9 @@ public sealed class DemoScenarioTests
             Assert.Contains(growth.ChangedFolders, row => row.AllocatedDelta > 0);
             Assert.Contains(growth.ChangedFolders, row => row.AllocatedDelta < 0);
             Assert.Equal(new BigInteger(-12_582_912), removal.Root!.AllocatedDelta);
-            await using var restored = await ScanSession.OpenHistoryAsync(
-                archive,
-                reorganized.Id,
-                "Demo",
-                token
-            );
+            await using var restored = await HistoryService
+                .ForArchive(archive)
+                .OpenAsync(reorganized.Id, "Demo", token);
             var restoredFiles = await restored.ReadFileAnalysisAsync(token);
             Assert.Contains(restoredFiles, f => f.RelativePath == @"Media\source.zip");
             Assert.DoesNotContain(restoredFiles, f => f.Entry.Name == "preview.png");

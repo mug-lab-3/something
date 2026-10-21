@@ -72,10 +72,12 @@ public sealed class ScanTimingTests
             var archive = new ScanHistoryArchive(directory);
             await using var session = await new DriveScanner().CreateDemoAsync(null, Token);
             var original = Assert.IsType<ScanTimingSnapshot>(session.Timings);
-            var entry = await session.SaveHistoryAsync(archive, Token);
+            var entry = await session.SaveHistoryAsync(HistoryService.ForArchive(archive), Token);
 
             await using (
-                var restored = await ScanSession.OpenHistoryAsync(archive, entry.Id, "Demo", Token)
+                var restored = await HistoryService
+                    .ForArchive(archive)
+                    .OpenAsync(entry.Id, "Demo", Token)
             )
             {
                 Assert.Equal(original.TotalElapsed, restored.Elapsed);

@@ -593,7 +593,7 @@ public sealed class HistorySearchTests
         var first = fixture.Save(Now.AddDays(-2), [new(30, "a.log", 5, 1)]);
         var last = fixture.Save(Now.AddDays(-1), [new(30, "a.log", 5, 3)]);
         var budget = new ScanMemoryBudget(() => new(16UL << 30, 8UL << 30, 8UL << 30, 8UL << 30));
-        var service = new HistorySearchService(fixture.Archive, budget);
+        var service = new HistorySearchService(HistoryService.ForArchive(fixture.Archive), budget);
         var criteria = Everything with
         {
             Extensions = ["log"],
