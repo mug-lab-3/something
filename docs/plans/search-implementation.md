@@ -24,11 +24,12 @@
 
 ### 0. LiveCharts2 の導入
 
-- [ ] `Something.App.csproj` に `LiveChartsCore.SkiaSharpView.WinUI` を追加する
-- [ ] 一括パッケージ `Microsoft.WindowsAppSDK` を、WinUI の分割パッケージと同じ版の組を含む版に固定する
-- [ ] AI・ML・Widgets・Runtime のパッケージを `ExcludeAssets="all"` で除外する
-- [ ] ロックファイルと `THIRD-PARTY-NOTICES.md` を更新する
-- [ ] publish の出力を導入前と比べ、増加が約 20 MiB で、onnxruntime・DirectML などが含まれないことを確かめる
+- [x] `Something.App.csproj` に `LiveChartsCore.SkiaSharpView.WinUI` を追加する
+- [x] 一括パッケージ `Microsoft.WindowsAppSDK` を、WinUI の分割パッケージと同じ版の組を含む版に固定する
+- [x] AI・ML・Widgets・Runtime のパッケージ（と ML が依存する `System.Numerics.Tensors`）を `ExcludeAssets="all"` で除外する
+- [x] ロックファイルと `THIRD-PARTY-NOTICES.md` を更新する
+- [x] publish の出力を導入前と比べ、増加が約 20 MiB で、onnxruntime・DirectML などが含まれないことを確かめる
+- [ ] アプリのウィンドウ内での描画を確かめる（段階 4 のグラフのウィンドウで行う）
 
 ### 1. 保存層（`Something.Storage`）
 
@@ -79,4 +80,23 @@
 
 ## 進捗と計測結果
 
-（作業に合わせて追記する）
+### 段階 0（2026-10-21）
+
+`dotnet publish src/Something.App -c Release -p:PublishProfile=Folder` の出力を比較しました。
+
+| | ファイル数 | 合計 |
+| --- | ---: | ---: |
+| 導入前 | 504 | 215.2 MiB |
+| 導入後 | 518 | 235.0 MiB |
+
+増えたのは次の 14 ファイル（19.8 MiB）だけで、既存のファイルの削除やサイズの変化はありません。onnxruntime・DirectML・Widgets などは含まれません。
+
+| ファイル | MiB |
+| --- | ---: |
+| `libSkiaSharp.dll` | 10.91 |
+| `libGLESv2.dll`、`libEGL.dll`（ANGLE） | 5.10 |
+| `libHarfBuzzSharp.dll` | 1.72 |
+| LiveChartsCore 3 つ | 1.33 |
+| SkiaSharp・HarfBuzzSharp の管理 DLL と WinUI 用の部品 | 0.78 |
+
+一括パッケージを固定しない場合は、1.7 の WinUI と 1.8 の分割パッケージが二重に読み込まれ、ビルドが失敗することを試作で確認しています。ソリューションのビルドとテスト（1,100 件中、成功 1,092、スキップ 8）、ロックモードでの復元は成功しました。
