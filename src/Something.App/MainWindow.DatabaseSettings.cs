@@ -254,6 +254,7 @@ public sealed partial class MainWindow
 
     private async Task ReleaseDatabaseViewsAsync()
     {
+        await SearchPanel.ReleaseAsync();
         listingCancellation?.Cancel();
         historyVersion++;
         navigationVersion++;

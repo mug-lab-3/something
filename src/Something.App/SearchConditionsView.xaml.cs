@@ -16,6 +16,7 @@ public sealed partial class SearchConditionsView : UserControl
     private bool loading = true;
     private bool busy;
     private SearchRangePreview? preview;
+    private bool driveAvailable = true;
     private FileVisibilityOptions displaySettings = new();
 
     public SearchConditionsView()
@@ -47,6 +48,9 @@ public sealed partial class SearchConditionsView : UserControl
     /// <summary>The user asked to search with these criteria (the search button or Enter).</summary>
     public event EventHandler<HistorySearchCriteria>? SearchRequested;
 
+    /// <summary>The user chose to see the previous result again.</summary>
+    public event EventHandler? ReturnToResultsRequested;
+
     /// <summary>The range changed; the host answers with <see cref="ShowPreview"/>.</summary>
     public event EventHandler? RangeChanged;
 
@@ -64,12 +68,33 @@ public sealed partial class SearchConditionsView : UserControl
         Revalidate();
     }
 
+    /// <summary>Whether the previous result is still valid and can be shown again.</summary>
+    public bool CanReturnToResults
+    {
+        get => ReturnToResultsButton.Visibility == Visibility.Visible;
+        set => ReturnToResultsButton.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>False when the selected drive has no history to search.</summary>
+    public bool IsDriveAvailable
+    {
+        get => driveAvailable;
+        set
+        {
+            driveAvailable = value;
+            Revalidate();
+        }
+    }
+
     /// <summary>Disables searching, for example while another search runs.</summary>
     public void SetBusy(bool value)
     {
         busy = value;
         Revalidate();
     }
+
+    /// <summary>Whether the scans of the range have been read.</summary>
+    public bool HasPreview => preview is not null;
 
     /// <summary>The current input as criteria, or null when the range is incomplete.</summary>
     public SearchFormResult Current => Form.Build(displaySettings, preview);
@@ -260,6 +285,9 @@ public sealed partial class SearchConditionsView : UserControl
 
     private void OnSearch(object sender, RoutedEventArgs args) => Submit();
 
+    private void OnReturnToResults(object sender, RoutedEventArgs args) =>
+        ReturnToResultsRequested?.Invoke(this, EventArgs.Empty);
+
     private void OnKeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter || !SearchButton.IsEnabled)
@@ -321,7 +349,10 @@ public sealed partial class SearchConditionsView : UserControl
             text.Text = string.Join('\n', reasons);
             text.Visibility = reasons.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         }
-        SearchButton.IsEnabled = !busy && result.CanSearch;
-        StatusText.Text = result.CanSearch ? "" : Strings.Get("Search_CannotSearch");
+        SearchButton.IsEnabled = !busy && driveAvailable && result.CanSearch;
+        StatusText.Text =
+            !driveAvailable ? Strings.Get("Search_NoDriveHistory")
+            : result.CanSearch ? ""
+            : Strings.Get("Search_CannotSearch");
     }
 }

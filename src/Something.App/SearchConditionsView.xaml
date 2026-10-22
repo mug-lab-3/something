@@ -331,17 +331,25 @@
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
       <TextBlock
         x:Name="StatusText"
         VerticalAlignment="Center"
         Style="{StaticResource SearchHintStyle}"
       />
-      <Button x:Uid="Search_ClearButton" x:Name="ClearButton" Grid.Column="1" Click="OnClear" />
+      <Button
+        x:Uid="Search_ReturnToResultsButton"
+        x:Name="ReturnToResultsButton"
+        Grid.Column="1"
+        Click="OnReturnToResults"
+        Visibility="Collapsed"
+      />
+      <Button x:Uid="Search_ClearButton" x:Name="ClearButton" Grid.Column="2" Click="OnClear" />
       <Button
         x:Uid="Search_SearchButton"
         x:Name="SearchButton"
-        Grid.Column="2"
+        Grid.Column="3"
         Style="{StaticResource AccentButtonStyle}"
         Click="OnSearch"
         IsEnabled="False"

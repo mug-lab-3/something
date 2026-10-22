@@ -110,6 +110,19 @@
                 </StackPanel>
               </TabViewItem.Header>
             </TabViewItem>
+            <TabViewItem
+              x:Uid="Main_SearchTab"
+              x:Name="SearchWorkspaceTab"
+              Style="{StaticResource UnderlineTabStyle}"
+              IsClosable="False"
+            >
+              <TabViewItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <FontIcon Glyph="&#xE721;" FontSize="18" />
+                  <TextBlock x:Uid="Main_SearchTabText" />
+                </StackPanel>
+              </TabViewItem.Header>
+            </TabViewItem>
           </TabView>
           <StackPanel
             Grid.Column="1"
@@ -139,6 +152,12 @@
         </Grid>
         <local:HistoryManagementView
           x:Name="HistoryManagement"
+          Grid.Row="2"
+          Grid.RowSpan="2"
+          Visibility="Collapsed"
+        />
+        <local:SearchView
+          x:Name="SearchPanel"
           Grid.Row="2"
           Grid.RowSpan="2"
           Visibility="Collapsed"

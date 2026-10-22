@@ -516,6 +516,7 @@ public sealed partial class MainWindow : Window
                 await ShowSessionAsync(latest);
             }
             await RefreshHistoryChoicesAsync(selected);
+            SyncSearchPanel();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -739,6 +740,7 @@ public sealed partial class MainWindow : Window
             Strings.Format("View_SwitchingDrive", card.Choice.Drive)
         );
         selectedCard = card;
+        SyncSearchPanel();
         UpdateScanActivity();
         await ClearComparisonAsync();
         if (closed || selectedCard != card)
@@ -795,6 +797,7 @@ public sealed partial class MainWindow : Window
         )
             DisplayProgress(card, progress);
         await RefreshHistoryChoicesAsync(card);
+        SyncSearchPanel();
     }
 
     private async Task ShowSessionAsync(ScanSession current)
@@ -1952,6 +1955,7 @@ public sealed partial class MainWindow : Window
         ComparisonBeforeBox.CloseDialog();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
+        await SearchPanel.DisposeAsync();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;
         await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());

@@ -168,6 +168,7 @@ public sealed partial class MainWindow
                 WorkspaceTabs.IsEnabled = !historyMaintenance;
                 foreach (var card in cards)
                     card.IsEnabled = !historyMaintenance;
+                SyncSearchPanel();
             }
         }
     }

@@ -9,9 +9,22 @@ public sealed partial class MainWindow
 {
     private bool historyMaintenance;
 
+    private bool Searching => ReferenceEquals(WorkspaceTabs.SelectedItem, SearchWorkspaceTab);
+
     private void InitializeHistoryManagement()
     {
         DatabaseWorkspaceTab.IsEnabled = history is not null;
+        SearchWorkspaceTab.IsEnabled = history is not null;
+        if (history is not null)
+            SearchPanel.Configure(
+                new HistorySearchService(history, scanner.MemoryBudget),
+                error =>
+                {
+                    if (!closed)
+                        ShowError(error);
+                },
+                lifetime.Token
+            );
         HistoryManagement.Configure(
             history,
             RefreshAfterHistoryDeletionAsync,
@@ -41,6 +54,7 @@ public sealed partial class MainWindow
             Strings.Get("Database_Optimizing"),
             LoadingAnimationKind.OptimizeDatabase
         );
+        await SearchPanel.ReleaseAsync();
         Guid? selectedScan = session?.ScanId;
         var selectedLocation = location;
         int period = ComparisonPeriodBox.SelectedIndex;
@@ -140,6 +154,11 @@ public sealed partial class MainWindow
             await RefreshManagementIfVisibleAsync();
         else if (analyzing)
             await LoadRankingAsync();
+        else if (Searching)
+        {
+            SyncSearchPanel();
+            SearchPanel.Activate();
+        }
     }
 
     // The settings page replaces the selected workspace without changing the selected tab.
@@ -148,12 +167,23 @@ public sealed partial class MainWindow
         bool managing = ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab);
         bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
         bool settings = SettingsOpen;
-        ViewHost.Visibility = settings || managing ? Visibility.Collapsed : Visibility.Visible;
+        bool searching = Searching;
+        ViewHost.Visibility =
+            settings || managing || searching ? Visibility.Collapsed : Visibility.Visible;
         HistoryManagement.Visibility =
             !settings && managing ? Visibility.Visible : Visibility.Collapsed;
+        SearchPanel.Visibility = !settings && searching ? Visibility.Visible : Visibility.Collapsed;
         FileListPanel.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
         RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    // Gives the search tab the drive and display settings it searches with.
+    private void SyncSearchPanel() =>
+        SearchPanel.SetContext(
+            selectedCard is { } card ? volumeKeys.GetValueOrDefault(card) : null,
+            selectedCard?.Choice.Drive ?? "",
+            visibilityOptions
+        );
 
     private async Task RefreshManagementIfVisibleAsync()
     {
