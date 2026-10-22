@@ -493,7 +493,9 @@ internal sealed class HistorySearchEngine(
             parts.Add($"(D OR (F=0 AND F0>0 AND ({end} IS NULL OR ({low} AND {high}))))");
         }
         if (criteria.MinimumSwing is { } swing)
-            parts.Add($"(D OR U OR {Lower("Mx-Mn", (UInt128?)swing)})");
+            parts.Add(
+                $"(D OR U OR {Lower($"(CASE WHEN F>0 OR L<{last} THEN Mx ELSE Mx-Mn END)", (UInt128?)swing)})"
+            );
         if (criteria.Trend != SizeTrend.Any)
         {
             bool increasing = criteria.Trend == SizeTrend.Increasing;

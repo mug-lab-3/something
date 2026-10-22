@@ -343,6 +343,44 @@ public sealed class SearchConditionsTests
         Assert.Equal((matches, uncertain), (verdict.Matches, verdict.Uncertain));
     }
 
+    [Theory]
+    // Present throughout: the sizes it had.
+    [InlineData(false, false, 100, 400, 300, true)]
+    [InlineData(false, false, 100, 400, 301, false)]
+    // Came later, went away, or both: zero counts at the end it was missing from.
+    [InlineData(true, false, 400, 400, 400, true)]
+    [InlineData(true, false, 400, 400, 401, false)]
+    [InlineData(false, true, 250, 250, 250, true)]
+    [InlineData(true, true, 90, 90, 90, true)]
+    public void SwingCountsZeroWhereTheItemWasMissing(
+        bool appeared,
+        bool vanished,
+        int minimum,
+        int maximum,
+        int swing,
+        bool matches
+    )
+    {
+        // Arrange
+        var item = Item(
+            first: appeared ? 1 : 0,
+            last: vanished ? 1 : 2,
+            firstSize: appeared ? null : (ulong)minimum,
+            size: (ulong)maximum,
+            minimum: (ulong)minimum,
+            maximum: (ulong)maximum
+        ) with
+        {
+            VanishedInRange = vanished,
+        };
+
+        // Act
+        var verdict = Evaluate(Everything with { MinimumSwing = (UInt128)swing }, item);
+
+        // Assert
+        Assert.Equal(matches, verdict.Matches);
+    }
+
     [Fact]
     public void AnItemThatWentAwayLosesAllOfItsSizeInTheRate()
     {

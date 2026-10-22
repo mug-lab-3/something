@@ -188,10 +188,8 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
         if (Criteria.MinimumSwing is { } swing)
         {
             // Known sizes give a lower bound of the swing; unresolved sizes could only widen it.
-            bool reached =
-                item.MaximumKnownSize is { } high
-                && item.MinimumKnownSize is { } low
-                && high - low >= swing;
+            // An item that was missing at an end of the range was zero there, as in the change.
+            bool reached = item.Swing >= swing;
             if (!reached)
             {
                 if (!item.HasUnresolvedSize)

@@ -456,6 +456,54 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void SwingCountsZeroAtTheEndWhereAnItemWasMissing()
+    {
+        // Arrange: one file stays, one comes in the last scan, one goes after the first
+        using var fixture = new Fixture();
+        fixture.Save(
+            Now.AddDays(-3),
+            [
+                new(20, "Dir", Directory: true),
+                new(30, "stays.png", 20, 100),
+                new(31, "gone.png", 20, 400),
+            ]
+        );
+        fixture.Save(
+            Now.AddDays(-2),
+            [
+                new(20, "Dir", Directory: true),
+                new(30, "stays.png", 20, 100),
+                new(32, "new.png", 20, 250),
+            ]
+        );
+        fixture.Save(
+            Now.AddDays(-1),
+            [
+                new(20, "Dir", Directory: true),
+                new(30, "stays.png", 20, 100),
+                new(32, "new.png", 20, 250),
+            ]
+        );
+
+        // Act
+        var result = Search(
+            fixture,
+            Everything with
+            {
+                MinimumSwing = 1,
+                Target = SearchTarget.Files,
+            }
+        );
+
+        // Assert: the unchanged file has no swing; the others swung between zero and their size
+        Assert.Equal(["gone.png", "new.png"], result.Entries(Ref(20)).Select(e => e.Name).Order());
+        Assert.Equal(
+            [(UInt128)400, 250],
+            result.Entries(Ref(20)).OrderBy(e => e.Name).Select(e => e.Swing!.Value)
+        );
+    }
+
+    [Fact]
     public void AnItemThatWentAwayIsCountedDownToZeroInFilesAndFolders()
     {
         // Arrange: a folder with two files, one of which is deleted before the last scan

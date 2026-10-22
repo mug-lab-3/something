@@ -49,6 +49,14 @@ public sealed record SearchItem(
     /// end. Set by the search, which knows the scans of the range.</summary>
     public bool VanishedInRange { get; init; }
 
+    /// <summary>The largest size minus the smallest over the range, counting zero for an end of
+    /// the range at which the item was missing. Null when no size is known. Sizes that are
+    /// unresolved could only widen it, so this is a lower bound when <see cref="HasUnresolvedSize"/>.</summary>
+    public UInt128? Swing =>
+        MaximumKnownSize is { } high && MinimumKnownSize is { } low
+            ? high - (AppearedInRange || VanishedInRange ? UInt128.Zero : low)
+            : null;
+
     /// <summary>The size at the end of the range minus the size at its start. A scan lists every
     /// item it could read, so an item missing from the first scan was not there yet and starts at
     /// zero, and an item missing from the last scan is gone and ends at zero. Null when a size
