@@ -54,8 +54,8 @@
 - [x] 検索の実行：`HistorySearchService`（範囲の確認、予算の予約、検索）と `HistorySearch`（結果、時系列の読み取り、解放）。リースと結果の寿命は `HistorySearch` が持つ
 - [x] 条件の入力チェック（`HistorySearchCriteriaCheck`）
 - [x] 条件の要約（`HistorySearchSummary.Describe`。札の文字列は画面で局所化する）
-- [ ] `SearchConditionsForm`：画面の入力（文字列・選択・単位）から `HistorySearchCriteria` を作る。空の入力は「指定なし」、数値の解釈（単位付きのサイズ、増減率）、解釈できない入力の理由、「条件をクリア」（範囲以外を初期値に戻す）、条件が変わったかの判定（前回の結果を残すか破棄するかの判断に使う）
-- [ ] `SearchResultBrowser`：結果の閲覧の状態。現在のフォルダー、戻る・進む・上へ、パス、一覧の並べ替え（名前・サイズ・増減、昇順・降順、フォルダーが先）、ツリーの子の取得
+- [x] `SearchConditionsForm`：画面の入力（文字列・選択・単位）から `HistorySearchCriteria` を作る。空の入力は「指定なし」、数値の解釈（単位付きのサイズ、増減率）、解釈できない入力の理由、「条件をクリア」（範囲以外を初期値に戻す）、条件が変わったかの判定（前回の結果を残すか破棄するかの判断に使う。読み取れない入力は「変わった」とみなす。拡張子は大文字小文字を区別せず集合として比べる。テストは `SearchConditionsFormTests`）
+- [x] `SearchResultBrowser`：結果の閲覧の状態。現在のフォルダー、戻る・進む・上へ、パス、一覧の並べ替え（名前・サイズ・増減、昇順・降順、フォルダーが先）、ツリーの子の取得（テストは `SearchResultBrowserTests`）
 
 ### 3. 画面（`Something.App`）
 
