@@ -225,6 +225,7 @@
                   <TextBlock
                     Grid.Column="1"
                     Text="{x:Bind Name}"
+                    TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                     VerticalAlignment="Center"
                     TextTrimming="CharacterEllipsis"
                     ToolTipService.ToolTip="{x:Bind Path}"
@@ -233,6 +234,7 @@
                     Grid.Column="2"
                     HorizontalAlignment="Right"
                     Text="{x:Bind Size}"
+                    TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                     VerticalAlignment="Center"
                     ToolTipService.ToolTip="{x:Bind SizeDescription}"
                   />
@@ -240,6 +242,7 @@
                     Grid.Column="3"
                     HorizontalAlignment="Right"
                     Text="{x:Bind Delta}"
+                    TextDecorations="{x:Bind local:RowDecoration.FromRemoved(Removal.IsRemoved), Mode=OneWay}"
                     VerticalAlignment="Center"
                     ToolTipService.ToolTip="{x:Bind SizeDescription}"
                   />
@@ -254,6 +257,7 @@
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     Click="OnGraphEntry"
+                    DoubleTapped="OnButtonDoubleTapped"
                   >
                     <FontIcon Glyph="&#xE9D9;" FontSize="16" />
                   </Button>
@@ -270,6 +274,7 @@
                     IsEnabled="{x:Bind Removal.CanRecycle, Mode=OneWay}"
                     Visibility="{x:Bind RecycleVisibility}"
                     Click="OnRecycleEntry"
+                    DoubleTapped="OnButtonDoubleTapped"
                   >
                     <FontIcon Glyph="&#xE74D;" FontSize="16" />
                   </Button>

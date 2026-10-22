@@ -27,7 +27,15 @@ public sealed class SearchRow(SearchItem item, string drive, string parentPath)
         AttributesKnown
         && ((FileAttributes)Item.StandardFileAttributes!).HasFlag(FileAttributes.System);
 
-    /// <summary>The path as last observed, for the tooltip and the file actions.</summary>
+    /// <summary>The path as last observed, with the names as stored, for the file actions.</summary>
+    public string FullPath =>
+        ParentPath.Length == 0 ? $"{drive}\\{Item.Name}" : $"{drive}\\{ParentPath}\\{Item.Name}";
+
+    /// <summary>The folder the item was last seen in, with the names as stored.</summary>
+    public string ParentFolderPath =>
+        ParentPath.Length == 0 ? $"{drive}\\" : $"{drive}\\{ParentPath}";
+
+    /// <summary>The path as last observed, escaped for display in the tooltip.</summary>
     public string Path =>
         ParentPath.Length == 0
             ? $"{drive}\\{DisplayText.Escape(Item.Name)}"

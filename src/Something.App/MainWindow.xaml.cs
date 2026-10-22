@@ -88,6 +88,7 @@ public sealed partial class MainWindow : Window
             ?? Task.FromResult<IReadOnlyDictionary<Guid, long>>(new Dictionary<Guid, long>());
         InitializeComparisonControls();
         InitializeHistoryManagement();
+        InitializeSearchActions();
         InitializeSettingsPage();
         InitializeNavigationInput();
         if (demo && history is null)
@@ -1522,6 +1523,17 @@ public sealed partial class MainWindow : Window
     )
     {
         var menu = new MenuFlyout();
+        AddPathItems(menu, path, directoryPath, isDirectory);
+        if (args.TryGetPosition(target, out var position))
+            menu.ShowAt(target, new FlyoutShowOptions { Position = position });
+        else
+            menu.ShowAt(target);
+        args.Handled = true;
+    }
+
+    // The items every path menu starts with: open, and copy the path (and the folder's, for a file).
+    private void AddPathItems(MenuFlyout menu, string path, string? directoryPath, bool isDirectory)
+    {
         menu.Opened += (_, _) =>
         {
             MenuCursor.RestoreArrow();
@@ -1557,11 +1569,6 @@ public sealed partial class MainWindow : Window
             directoryPath is null ? Strings.Get("Menu_CopyPath") : Strings.Get("Menu_CopyFilePath"),
             path
         );
-        if (args.TryGetPosition(target, out var position))
-            menu.ShowAt(target, new FlyoutShowOptions { Position = position });
-        else
-            menu.ShowAt(target);
-        args.Handled = true;
     }
 
     private static object? FindContextRow(ListView list, DependencyObject? source)

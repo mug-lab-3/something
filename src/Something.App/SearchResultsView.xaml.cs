@@ -60,6 +60,9 @@ public sealed partial class SearchResultsView : UserControl
     /// <summary>A context menu is being opened for a row; the host may add items.</summary>
     public event EventHandler<SearchMenuRequest>? MenuRequested;
 
+    /// <summary>Lets the host give each new row its removal state and recycle button.</summary>
+    public Action<SearchRow>? PrepareRow { get; set; }
+
     public HistorySearchResult? Result => browser?.Result;
     public string Drive => drive;
 
@@ -117,7 +120,13 @@ public sealed partial class SearchResultsView : UserControl
     {
         if (browser?.Result.Folder(folder) is not { } item)
             return null;
-        return new(item, drive, browser.Result.PathOf(item.Parent));
+        return Prepared(new(item, drive, browser.Result.PathOf(item.Parent)));
+    }
+
+    private SearchRow Prepared(SearchRow row)
+    {
+        PrepareRow?.Invoke(row);
+        return row;
     }
 
     private bool Navigate(bool moved)
@@ -328,7 +337,7 @@ public sealed partial class SearchResultsView : UserControl
         var page = browser.Page(nextPage++, out hasMore);
         string parentPath = browser.Result.PathOf(browser.Current);
         foreach (var item in page)
-            rows.Add(new SearchRow(item, drive, parentPath));
+            rows.Add(Prepared(new SearchRow(item, drive, parentPath)));
     }
 
     private void OnContainerContentChanging(
@@ -420,6 +429,10 @@ public sealed partial class SearchResultsView : UserControl
             FileActivated?.Invoke(this, row);
     }
 
+    // A double click on a row button must not also activate the row.
+    private void OnButtonDoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
+        args.Handled = true;
+
     private void OnGraphEntry(object sender, RoutedEventArgs args)
     {
         if (RowOf(sender) is { } row)
@@ -454,10 +467,12 @@ public sealed partial class SearchResultsView : UserControl
     private void Open(SearchRow row, FrameworkElement sender, ContextRequestedEventArgs args)
     {
         var menu = new MenuFlyout();
+        MenuRequested?.Invoke(this, new(row, menu));
+        if (menu.Items.Count != 0)
+            menu.Items.Add(new MenuFlyoutSeparator());
         var graph = new MenuFlyoutItem { Text = Strings.Get("Search_GraphMenuItem") };
         graph.Click += (_, _) => GraphRequested?.Invoke(this, row);
         menu.Items.Add(graph);
-        MenuRequested?.Invoke(this, new(row, menu));
         args.Handled = true;
         if (args.TryGetPosition(sender, out var point))
             menu.ShowAt(sender, point);
