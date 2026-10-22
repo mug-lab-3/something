@@ -282,7 +282,8 @@ internal sealed class HistorySearchEngine(
             )
             {
                 if (row.Identity is { } identity)
-                    Add(FromIdentity(identity), true, identity.Trend);
+                    // A folder's listing entry has no size; its trend comes from its samples.
+                    Add(FromIdentity(identity), true, identity.IsDirectory ? null : identity.Trend);
                 else if (row.Segment is { } segment)
                 {
                     if (!multiple.TryGetValue(segment.Reference, out var rows))

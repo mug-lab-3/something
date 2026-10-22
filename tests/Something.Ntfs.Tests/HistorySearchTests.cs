@@ -420,6 +420,47 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void FolderTrendsFollowTheSubtreeSizesNotTheListings()
+    {
+        // Arrange: a folder's own listing entry has no size, so only its samples can decide.
+        using var fixture = new Fixture();
+        (string Name, long?[] Sizes)[] series =
+        [
+            ("rising", [1, 2, 3]),
+            ("flat", [4, 4, 4]),
+            ("falling", [5, 4, 3]),
+            ("unresolved", [1, null, 2]),
+        ];
+        for (int scan = 0; scan < 3; scan++)
+            fixture.Save(
+                Now.AddDays(scan - 3),
+                [
+                    .. series.SelectMany(
+                        (s, i) =>
+                            new Node[]
+                            {
+                                new((ulong)(20 + i), s.Name, 5, Directory: true),
+                                new((ulong)(40 + i), "content", (ulong)(20 + i), s.Sizes[scan]),
+                            }
+                    ),
+                ]
+            );
+        var folders = Everything with { Target = SearchTarget.Folders };
+
+        // Act
+        var increasing = Search(fixture, folders with { Trend = SizeTrend.Increasing });
+        var decreasing = Search(fixture, folders with { Trend = SizeTrend.Decreasing });
+
+        // Assert
+        var rising = increasing.Entries(increasing.Root).ToDictionary(e => e.Name);
+        Assert.Equal(["rising", "unresolved"], rising.Keys);
+        Assert.False(rising["rising"].Uncertain);
+        Assert.True(rising["unresolved"].Uncertain);
+        // Known sizes of "unresolved" rise, which rules a decrease out.
+        Assert.Equal(["falling"], decreasing.Entries(decreasing.Root).Select(e => e.Name));
+    }
+
+    [Fact]
     public void SeriesReportsEveryScanWithoutInventingZeroSizes()
     {
         // Arrange
