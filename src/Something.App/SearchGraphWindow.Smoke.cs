@@ -24,4 +24,6 @@ public sealed partial class SearchGraphWindow
         SizeKindButtons.SelectedIndex = 1;
         SizeKindButtons.SelectedIndex = 0;
     }
+
+    internal Microsoft.UI.Xaml.FrameworkElement ContentForSmoke => Root;
 }

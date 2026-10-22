@@ -344,7 +344,7 @@ public sealed partial class MainWindow : Window
             if (Environment.GetCommandLineArgs().Contains("--smoke-export"))
                 await VerifyExportAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-search"))
-                await VerifySearchAsync();
+                await VerifySearchAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
             {
                 WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;

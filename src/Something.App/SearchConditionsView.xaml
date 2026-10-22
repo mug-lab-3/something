@@ -10,20 +10,16 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="16" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-      <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
     </Style>
     <Style x:Key="SearchSectionHeaderStyle" TargetType="TextBlock">
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style x:Key="SearchIssueStyle" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Visibility" Value="Collapsed" />
     </Style>
     <Style x:Key="SearchHintStyle" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -49,7 +45,11 @@
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <StackPanel Spacing="16">
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_RangeHeader"
@@ -82,11 +82,23 @@
                   Style="{StaticResource SearchPresetStyle}"
                 />
               </StackPanel>
-              <TextBlock x:Name="RangePreviewText" Style="{StaticResource SearchHintStyle}" />
-              <TextBlock x:Name="RangeIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="RangePreviewText"
+                Style="{StaticResource SearchHintStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+              <TextBlock
+                x:Name="RangeIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
             </StackPanel>
           </Border>
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_TargetHeader"
@@ -100,7 +112,11 @@
               />
             </StackPanel>
           </Border>
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_NameHeader"
@@ -120,13 +136,21 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </Grid>
-              <TextBlock x:Name="NameIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="NameIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
               <TextBox
                 x:Uid="Search_ExtensionsBox"
                 x:Name="ExtensionsBox"
                 TextChanged="OnTextChanged"
               />
-              <TextBlock x:Name="ExtensionsIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="ExtensionsIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
               <TextBox
                 x:Uid="Search_BaseFolderBox"
                 x:Name="BaseFolderBox"
@@ -146,10 +170,18 @@
                   TextChanged="OnTextChanged"
                 />
               </StackPanel>
-              <TextBlock x:Name="DepthIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="DepthIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
             </StackPanel>
           </Border>
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_AttributesHeader"
@@ -202,12 +234,20 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </Grid>
-              <TextBlock x:Uid="Search_AttributesHint" Style="{StaticResource SearchHintStyle}" />
+              <TextBlock
+                x:Uid="Search_AttributesHint"
+                Style="{StaticResource SearchHintStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
             </StackPanel>
           </Border>
         </StackPanel>
         <StackPanel Grid.Column="1" Spacing="16">
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_SizeHeader"
@@ -239,11 +279,23 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </StackPanel>
-              <TextBlock x:Name="SizeIssueText" Style="{StaticResource SearchIssueStyle}" />
-              <TextBlock x:Uid="Search_SizeHint" Style="{StaticResource SearchHintStyle}" />
+              <TextBlock
+                x:Name="SizeIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
+              <TextBlock
+                x:Uid="Search_SizeHint"
+                Style="{StaticResource SearchHintStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
             </StackPanel>
           </Border>
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_ChangeHeader"
@@ -269,7 +321,11 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </StackPanel>
-              <TextBlock x:Name="DeltaIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="DeltaIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <TextBox
                   x:Uid="Search_MinRateBox"
@@ -284,7 +340,11 @@
                   TextChanged="OnTextChanged"
                 />
               </StackPanel>
-              <TextBlock x:Name="RateIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="RateIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <TextBox
                   x:Uid="Search_MinSwingBox"
@@ -299,17 +359,29 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </StackPanel>
-              <TextBlock x:Name="SwingIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock
+                x:Name="SwingIssueText"
+                Style="{StaticResource SearchIssueStyle}"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+              />
               <ComboBox
                 x:Uid="Search_TrendBox"
                 x:Name="TrendBox"
                 MinWidth="200"
                 SelectionChanged="OnChoiceChanged"
               />
-              <TextBlock x:Uid="Search_ChangeHint" Style="{StaticResource SearchHintStyle}" />
+              <TextBlock
+                x:Uid="Search_ChangeHint"
+                Style="{StaticResource SearchHintStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
             </StackPanel>
           </Border>
-          <Border Style="{StaticResource SearchSectionStyle}">
+          <Border
+            Style="{StaticResource SearchSectionStyle}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+          >
             <StackPanel Spacing="12">
               <TextBlock
                 x:Uid="Search_PresenceHeader"
@@ -337,6 +409,7 @@
         x:Name="StatusText"
         VerticalAlignment="Center"
         Style="{StaticResource SearchHintStyle}"
+        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
       />
       <Button
         x:Uid="Search_ReturnToResultsButton"

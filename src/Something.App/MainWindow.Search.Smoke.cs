@@ -8,7 +8,7 @@ public sealed partial class MainWindow
 {
     // Needs --demo-static and --demo-history: the scans of the demo drive hold the same files each
     // time, so the expected results are fixed. Leaves the results screen shown for the capture.
-    private async Task VerifySearchAsync()
+    private async Task VerifySearchAsync(string capture)
     {
         if (!demo || history is null || cards.Length < 2)
             throw new InvalidOperationException("Search smoke needs the demo history.");
@@ -47,6 +47,9 @@ public sealed partial class MainWindow
             || results.Result is not { MatchedFiles: 1, MatchedFolders: 0 }
         )
             throw new InvalidOperationException("The zip search did not show one file.");
+        // The labels are laid out when the screen has a size.
+        RootLayout.UpdateLayout();
+        await Task.Delay(200, lifetime.Token);
         if (results.ChipCount < 2 || results.CountsTextForSmoke.Length == 0)
             throw new InvalidOperationException("The conditions or counts were not summarized.");
         await ExpectRowsAsync(results, ["Projects"]);
@@ -85,10 +88,15 @@ public sealed partial class MainWindow
         if (graphWindows.Count != before + 1)
             throw new InvalidOperationException("The graph window did not open.");
         graphWindows[^1].VerifyForSmoke(results.Result!.Scans.Length);
+        await Task.Delay(1500, lifetime.Token); // The chart draws after its first layout.
+        await RenderPngAsync(graphWindows[^1].ContentForSmoke, capture + ".graph.png");
         graphWindows[^1].Close();
 
         // Back to the conditions: the result stays until a condition changes.
         SearchPanel.ResultsForSmokeBack();
+        RootLayout.UpdateLayout();
+        await Task.Delay(200, lifetime.Token);
+        await RenderPngAsync(WindowLayout, capture + ".conditions.png");
         if (
             !SearchPanel.ConditionsShown
             || !SearchPanel.HasResult

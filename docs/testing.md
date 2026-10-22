@@ -64,6 +64,17 @@ Get-Content artifacts\smoke\run.result
 
 `--smoke-search` は検索タブ（条件画面、ゼロ件・1 件・全件の検索、ツリーと一覧の連動、戻る・進む・上へ、条件を変えたときの結果の破棄、ドライブを切り替えたときの破棄、グラフのウィンドウが 1 スキャンにつき 1 点で開くこと）を、`--smoke-comparison` は比較と読み込み表示の時間の規則を、`--smoke-history-management` は履歴削除・最適化のアニメーションを、`--smoke-scan-animation` はスキャンのアニメーションを、`--smoke-export` はエクスポート（表示中の一覧とフォルダーの集計、6 つの形式すべての書き出し、ダイアログ）を、`--smoke-tree-follow` は一覧とツリーの連動（設定画面での切り替え、2 階層下までの展開と選択、「戻る」への追従、オフのときに展開しないこと）を、`--smoke-update` は更新の確認（合成した応答による新しい版の通知、要求の形式、通知の優先順位、最新・失敗・不正な応答で通知しないこと、設定画面でのオフ）を追加で確認します。更新の確認のスモークテストはネットワークに接続しません。`--smoke-language` は `--language en-US` と組み合わせて使い、英語の文言、設定画面での日本語の選択と再起動の案内を確認したあと、実際に再起動します。再起動したプロセスは日本語の文言と同じ履歴での起動を確認し、`.language.result` を書き出します。最初のプロセスの終了後も、再起動したプロセスの終了と結果ファイルを待ってください。履歴削除・最適化の確認には、エクスポートのアニメーションも含まれます。比較と検索の確認には `--demo-history` が必要です。
 
+UAC の確認なしで自動実行するには、管理者権限を求めない（`asInvoker`）マニフェストを使い、別の出力先にビルドして起動します。配布用の `app.manifest` は変更しません。
+
+```powershell
+$manifest = (Resolve-Path 'artifacts').Path + '\smoke-build.manifest'
+(Get-Content src\Something.App\app.manifest -Raw).Replace('requireAdministrator','asInvoker') | Set-Content $manifest -Encoding utf8
+$out = (New-Item -ItemType Directory -Force 'artifacts\smoke-build\bin').FullName
+dotnet build src\Something.App\Something.App.csproj -c Release "-p:ApplicationManifest=$manifest" "-p:OutDir=$out\"
+```
+
+画面のスモークテストは `--smoke-test <出力先>` の出力先に、画面の画像（`<出力先>`）を書き出します。`--smoke-search` は、条件画面（`.conditions.png`）とグラフのウィンドウ（`.graph.png`）の画像も書き出します。
+
 > [!WARNING]
 > 管理者権限を求めない検証用のマニフェストで別の出力先にビルドする場合は、配布用のマニフェストを上書きしないでください。
 

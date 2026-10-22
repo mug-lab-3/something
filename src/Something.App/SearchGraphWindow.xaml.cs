@@ -71,7 +71,9 @@ public sealed partial class SearchGraphWindow : Window
         var known = points
             .Where(point => point.Bytes is not null)
             .Select(point => point.Bytes!.Value);
-        var scale = SearchSizeSeries.ScaleFor(known.Any() ? known.Max() : UInt128.Zero);
+        // A little room above the largest size, so the line does not sit on the edge.
+        UInt128 largest = known.Any() ? known.Max() : UInt128.Zero;
+        var scale = SearchSizeSeries.ScaleFor(largest + largest / 8);
         string unit = UnitName(scale.Unit);
 
         var values = points
@@ -116,22 +118,23 @@ public sealed partial class SearchGraphWindow : Window
                     },
                 }),
         ];
-        bool shortSpan =
-            points.Length < 2
-            || points[^1].CompletedUtc - points[0].CompletedUtc < TimeSpan.FromDays(2);
-        long step = (shortSpan ? TimeSpan.FromHours(1) : TimeSpan.FromDays(1)).Ticks;
+        // The unit and label of the time axis follow the span the scans cover.
+        var span =
+            points.Length < 2 ? TimeSpan.Zero : points[^1].CompletedUtc - points[0].CompletedUtc;
+        (TimeSpan unitOfTime, string format) = span switch
+        {
+            _ when span < TimeSpan.FromMinutes(3) => (TimeSpan.FromSeconds(1), "HH:mm:ss"),
+            _ when span < TimeSpan.FromHours(3) => (TimeSpan.FromMinutes(1), "HH:mm"),
+            _ when span < TimeSpan.FromDays(2) => (TimeSpan.FromHours(1), "MM/dd HH:mm"),
+            _ => (TimeSpan.FromDays(1), "yyyy/MM/dd"),
+        };
         Chart.XAxes =
         [
             new Axis
             {
-                UnitWidth = step,
-                MinStep = step,
-                Labeler = value =>
-                    SafeTime(value)
-                        .ToString(
-                            shortSpan ? "MM/dd HH:mm" : "yyyy/MM/dd",
-                            CultureInfo.CurrentCulture
-                        ),
+                UnitWidth = unitOfTime.Ticks,
+                MinStep = unitOfTime.Ticks,
+                Labeler = value => SafeTime(value).ToString(format, CultureInfo.CurrentCulture),
                 LabelsPaint = text,
                 SeparatorsPaint = grid,
             },
@@ -142,6 +145,7 @@ public sealed partial class SearchGraphWindow : Window
             {
                 Name = Strings.Format("Graph_SizeAxis", unit),
                 NamePaint = text,
+                NameTextSize = 13,
                 MinLimit = 0,
                 MaxLimit = (double)scale.Top,
                 CustomSeparators = [.. scale.Ticks().Select(tick => (double)tick)],
