@@ -20,6 +20,9 @@ public sealed partial class SearchView : UserControl
     private HistorySearchCriteria? searched;
     private CancellationTokenSource? searching;
     private int previewVersion;
+
+    // The latest read of the scans of the range, so that a check can wait for it.
+    private Task previewLoad = Task.CompletedTask;
     private FileVisibilityOptions displaySettings = new();
 
     public SearchView()
@@ -58,7 +61,7 @@ public sealed partial class SearchView : UserControl
         Conditions.DisplaySettings = settings;
         Conditions.IsDriveAvailable = key is not null;
         if (driveChanged)
-            _ = ResetAsync();
+            previewLoad = ResetAsync();
         else
             DiscardIfStale();
     }
@@ -67,9 +70,15 @@ public sealed partial class SearchView : UserControl
     /// A shown result keeps the range it was searched with.</summary>
     public void Activate()
     {
-        if (current is null && Conditions.RefreshRecentRange())
-            return; // The change of range asks for the preview.
-        if (!Conditions.HasPreview)
+        if (current is not null)
+        {
+            if (!Conditions.HasPreview)
+                _ = LoadPreviewAsync();
+            return;
+        }
+        // Scans may have finished since the preview was read; the old one stays until the new
+        // one arrives. A change of range asks for the preview itself.
+        if (!Conditions.RefreshRecentRange())
             _ = LoadPreviewAsync();
     }
 
@@ -149,7 +158,9 @@ public sealed partial class SearchView : UserControl
         ResultsScreen.Visibility = Visibility.Visible;
     }
 
-    private async Task LoadPreviewAsync()
+    private Task LoadPreviewAsync() => previewLoad = ReadPreviewAsync();
+
+    private async Task ReadPreviewAsync()
     {
         int version = ++previewVersion;
         var form = Conditions.Form;

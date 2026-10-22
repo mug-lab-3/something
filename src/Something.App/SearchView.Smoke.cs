@@ -9,13 +9,27 @@ public sealed partial class SearchView
     internal bool CanReturnToResults => Conditions.CanReturnToResults;
     internal bool ConditionsShown => Conditions.Visibility == Microsoft.UI.Xaml.Visibility.Visible;
 
+    // Waits for the latest read of the range, not just for some preview to be shown: an older
+    // one may describe scans from before.
     internal async Task WaitForPreviewAsync(CancellationToken token)
     {
-        for (int waited = 0; !Conditions.HasPreview; waited += 50)
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        try
         {
-            if (waited > 10_000)
+            for (var load = previewLoad; ; load = previewLoad)
+            {
+                await load.WaitAsync(timeout.Token);
+                if (load != previewLoad)
+                    continue; // A newer read started meanwhile.
+                if (Conditions.HasPreview)
+                    return;
                 throw new InvalidOperationException("The range preview was not shown.");
-            await Task.Delay(50, token);
+            }
+        }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("The range preview was not shown in time.");
         }
     }
 
