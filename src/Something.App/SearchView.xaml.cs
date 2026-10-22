@@ -63,9 +63,12 @@ public sealed partial class SearchView : UserControl
             DiscardIfStale();
     }
 
-    /// <summary>Called when the tab is shown, to make sure the range preview is current.</summary>
+    /// <summary>Called when the tab is shown, to make sure the range and its preview are current.
+    /// A shown result keeps the range it was searched with.</summary>
     public void Activate()
     {
+        if (current is null && Conditions.RefreshRecentRange())
+            return; // The change of range asks for the preview.
         if (!Conditions.HasPreview)
             _ = LoadPreviewAsync();
     }

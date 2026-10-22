@@ -21,6 +21,12 @@ public sealed partial class SearchConditionsView : UserControl
     private bool driveAvailable = true;
     private FileVisibilityOptions displaySettings = new();
 
+    // The range is "the last N days up to now" until its dates are typed, so that it follows the
+    // clock: a scan finished after the screen was made must still be in it.
+    private int? recentDays = DefaultRecentDays;
+
+    private const int DefaultRecentDays = 30;
+
     public SearchConditionsView()
     {
         InitializeComponent();
@@ -28,9 +34,8 @@ public sealed partial class SearchConditionsView : UserControl
         Scroller.AddHandler(KeyDownEvent, new KeyEventHandler(OnKeyDown), true);
         loading = true;
         FillChoices();
-        // The last 30 days, up to the next minute so that a scan finishing now is included.
-        Form.Start = Minute(DateTimeOffset.Now.AddDays(-30));
-        Form.End = Minute(DateTimeOffset.Now).AddMinutes(1);
+        Form.Start = RecentStart(DefaultRecentDays);
+        Form.End = RecentEnd();
         ShowForm();
         loading = false;
         Revalidate();
@@ -102,6 +107,27 @@ public sealed partial class SearchConditionsView : UserControl
 
     /// <summary>The current input as criteria, or null when the range is incomplete.</summary>
     public SearchFormResult Current => Form.Build(displaySettings, preview);
+
+    private static DateTimeOffset RecentStart(int days) =>
+        Minute(DateTimeOffset.Now.AddDays(-days));
+
+    // Up to the next minute, so that a scan finishing now is included.
+    private static DateTimeOffset RecentEnd() => Minute(DateTimeOffset.Now).AddMinutes(1);
+
+    /// <summary>Moves a range of "the last N days" up to the present, as the clock has moved on.
+    /// A range whose dates were typed is left alone. Returns whether the range moved, in which
+    /// case the host is asked for the scans of the new range.</summary>
+    public bool RefreshRecentRange()
+    {
+        if (recentDays is not { } days || Form.End == RecentEnd())
+            return false;
+        loading = true;
+        RangeInput.Start = RecentStart(days);
+        RangeInput.End = RecentEnd();
+        loading = false;
+        RangeEdited();
+        return true;
+    }
 
     private static DateTimeOffset Minute(DateTimeOffset value) =>
         new(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0, value.Offset);
@@ -296,6 +322,12 @@ public sealed partial class SearchConditionsView : UserControl
     {
         if (loading)
             return;
+        recentDays = null;
+        RangeEdited();
+    }
+
+    private void RangeEdited()
+    {
         ReadControls();
         // The earlier scans no longer describe the range.
         ShowPreview(null);
@@ -307,12 +339,13 @@ public sealed partial class SearchConditionsView : UserControl
     {
         if (sender is not Button { Tag: string tag })
             return;
-        int days = int.Parse(tag, System.Globalization.CultureInfo.InvariantCulture);
+        int days = int.Parse(tag, CultureInfo.InvariantCulture);
         loading = true;
-        RangeInput.Start = Minute(DateTimeOffset.Now.AddDays(-days));
-        RangeInput.End = Minute(DateTimeOffset.Now).AddMinutes(1);
+        RangeInput.Start = RecentStart(days);
+        RangeInput.End = RecentEnd();
         loading = false;
-        OnRangeChanged(this, EventArgs.Empty);
+        recentDays = days;
+        RangeEdited();
     }
 
     private void OnClear(object sender, RoutedEventArgs args)
@@ -341,6 +374,7 @@ public sealed partial class SearchConditionsView : UserControl
 
     private void Submit()
     {
+        RefreshRecentRange();
         // Typed text that is not committed yet counts as input.
         foreach (var box in NumberBoxes)
             box.Commit();

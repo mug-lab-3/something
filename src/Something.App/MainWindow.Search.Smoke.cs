@@ -12,6 +12,8 @@ public sealed partial class MainWindow
     {
         if (!demo || history is null || cards.Length < 2)
             throw new InvalidOperationException("Search smoke needs the demo history.");
+        // Earlier checks may leave another drive selected; the expectations are about the first.
+        await SelectDriveAsync(cards[0]);
         // Two scans are enough for conditions about change.
         await StartScanAsync(cards[0]);
         await StartScanAsync(cards[0]);
@@ -27,8 +29,19 @@ public sealed partial class MainWindow
             || !conditions.SearchEnabledForSmoke
             || conditions.RangePreviewForSmoke == "—"
         )
-            throw new InvalidOperationException("The conditions screen was not ready.");
+            throw new InvalidOperationException(
+                $"The conditions screen was not ready (shown {SearchPanel.ConditionsShown}, "
+                    + $"panel {SearchPanel.Visibility}, files view {ViewHost.Visibility}, "
+                    + $"search enabled {conditions.SearchEnabledForSmoke}, "
+                    + $"range {conditions.RangePreviewForSmoke})."
+            );
         conditions.VerifyNumberInputsForSmoke();
+        // A range of "the last days" follows the clock when the tab is shown again.
+        conditions.AgeRangeForSmoke();
+        SearchPanel.Activate();
+        await SearchPanel.WaitForPreviewAsync(lifetime.Token);
+        if (conditions.Form.End <= DateTimeOffset.Now || conditions.RangePreviewForSmoke == "—")
+            throw new InvalidOperationException("The range did not follow the clock.");
 
         // One matching file: zip files, shown with their folders only.
         var form = new SearchConditionsForm

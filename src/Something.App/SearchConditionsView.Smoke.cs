@@ -9,6 +9,16 @@ public sealed partial class SearchConditionsView
     internal string RangePreviewForSmoke => RangePreviewText.Text;
     internal bool SearchEnabledForSmoke => SearchButton.IsEnabled;
 
+    // Makes the range look as if the screen had been made some time ago.
+    internal void AgeRangeForSmoke()
+    {
+        loading = true;
+        RangeInput.Start = RangeInput.Start - TimeSpan.FromMinutes(10);
+        RangeInput.End = RangeInput.End - TimeSpan.FromMinutes(10);
+        loading = false;
+        ReadControls();
+    }
+
     // The size inputs are number boxes like the others in the application: they step by the
     // keyboard and wheel logic of SteppingNumberBox, and what they hold reaches the form.
     internal void VerifyNumberInputsForSmoke()
