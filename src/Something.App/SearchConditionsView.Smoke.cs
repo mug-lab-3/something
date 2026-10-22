@@ -34,6 +34,11 @@ public sealed partial class SearchConditionsView
         )
             throw new InvalidOperationException("A reversed size range was not reported.");
         // Stepping from the empty value starts at zero, and the wheel steps once per notch.
+        // The wheel steps only the box that has the focus; elsewhere it scrolls the page.
+        MaxSizeBox.Focus(FocusState.Programmatic);
+        MinSizeBox.Focus(FocusState.Programmatic);
+        if (MaxSizeBox.HasFocusWithin || !MinSizeBox.HasFocusWithin)
+            throw new InvalidOperationException("The focused number box was not recognized.");
         MaxSizeBox.Value = double.NaN;
         MaxSizeBox.Step(1);
         MaxSizeBox.ApplyWheelDelta(120);
