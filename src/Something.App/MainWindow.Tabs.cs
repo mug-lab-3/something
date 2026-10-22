@@ -15,7 +15,7 @@ public sealed partial class MainWindow
                 RootLayout.RequestedTheme = theme;
                 foreach (var tabs in new[] { WorkspaceTabs })
                 {
-                    foreach (int selected in new[] { 2, 1, 0 })
+                    foreach (int selected in new[] { 3, 2, 1, 0 })
                     {
                         tabs.SelectedIndex = selected;
                         if (tabs == WorkspaceTabs)

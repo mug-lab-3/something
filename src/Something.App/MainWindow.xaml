@@ -98,19 +98,6 @@
               </TabViewItem.Header>
             </TabViewItem>
             <TabViewItem
-              x:Uid="Main_HistoryTab"
-              x:Name="DatabaseWorkspaceTab"
-              Style="{StaticResource UnderlineTabStyle}"
-              IsClosable="False"
-            >
-              <TabViewItem.Header>
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <FontIcon Glyph="&#xE1D3;" FontSize="18" />
-                  <TextBlock x:Uid="Main_HistoryTabText" />
-                </StackPanel>
-              </TabViewItem.Header>
-            </TabViewItem>
-            <TabViewItem
               x:Uid="Main_SearchTab"
               x:Name="SearchWorkspaceTab"
               Style="{StaticResource UnderlineTabStyle}"
@@ -120,6 +107,19 @@
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <FontIcon Glyph="&#xE721;" FontSize="18" />
                   <TextBlock x:Uid="Main_SearchTabText" />
+                </StackPanel>
+              </TabViewItem.Header>
+            </TabViewItem>
+            <TabViewItem
+              x:Uid="Main_HistoryTab"
+              x:Name="DatabaseWorkspaceTab"
+              Style="{StaticResource UnderlineTabStyle}"
+              IsClosable="False"
+            >
+              <TabViewItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <FontIcon Glyph="&#xE1D3;" FontSize="18" />
+                  <TextBlock x:Uid="Main_HistoryTabText" />
                 </StackPanel>
               </TabViewItem.Header>
             </TabViewItem>
