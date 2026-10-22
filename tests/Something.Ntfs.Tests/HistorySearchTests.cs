@@ -418,6 +418,34 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void AnItemThatWentAwayIsCountedDownToZeroInFilesAndFolders()
+    {
+        // Arrange: a folder with two files, one of which is deleted before the last scan
+        using var fixture = new Fixture();
+        fixture.Save(
+            Now.AddDays(-2),
+            [
+                new(20, "Pics", Directory: true),
+                new(30, "keep.png", 20, 100),
+                new(31, "gone.png", 20, 400),
+            ]
+        );
+        fixture.Save(
+            Now.AddDays(-1),
+            [new(20, "Pics", Directory: true), new(30, "keep.png", 20, 100)]
+        );
+
+        // Act: everything that shrank by at least 1 byte
+        var result = Search(fixture, Everything with { MaximumDelta = -1 });
+
+        // Assert: the deleted file lost its whole size, and so did the folder; the kept one did not
+        var gone = result.Entries(Ref(20)).Single();
+        Assert.Equal("gone.png", gone.Name);
+        Assert.Equal(-400, gone.Delta);
+        Assert.Equal(-400, result.Folder(Ref(20))!.Delta);
+    }
+
+    [Fact]
     public void ANameOnThePathSelectsEverythingUnderAMatchingFolder()
     {
         // Arrange

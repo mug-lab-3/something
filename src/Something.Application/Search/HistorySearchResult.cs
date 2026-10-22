@@ -45,15 +45,30 @@ public sealed record SearchItem(
     /// <summary>True when the item was not in the first scan of the range but came later.</summary>
     public bool AppearedInRange => !InFirstScan;
 
-    /// <summary>Size at the last observation minus size at the first scan of the range. An item
-    /// that came later was not in the first scan, which lists every item it could read, so it
-    /// is counted from zero: its change is its whole size. Null when a size needed is unresolved.</summary>
-    public BigInteger? Delta =>
-        Size is not { } last ? null
-        : InFirstScan
-            ? FirstSize is { } first ? (BigInteger)last - (BigInteger)first
-                : null
-        : (BigInteger)last;
+    /// <summary>True when the item was in the range but not in its last scan: it is gone at the
+    /// end. Set by the search, which knows the scans of the range.</summary>
+    public bool VanishedInRange { get; init; }
+
+    /// <summary>The size at the end of the range minus the size at its start. A scan lists every
+    /// item it could read, so an item missing from the first scan was not there yet and starts at
+    /// zero, and an item missing from the last scan is gone and ends at zero. Null when a size
+    /// that is needed is unresolved: a missing item has no size to resolve.</summary>
+    public BigInteger? Delta
+    {
+        get
+        {
+            BigInteger? end =
+                VanishedInRange ? BigInteger.Zero
+                : Size is { } last ? last
+                : null;
+            BigInteger? start = InFirstScan
+                ? FirstSize is { } first
+                    ? first
+                    : null
+                : BigInteger.Zero;
+            return end - start;
+        }
+    }
 }
 
 /// <summary>A size observation of one item in one scan of a search.</summary>

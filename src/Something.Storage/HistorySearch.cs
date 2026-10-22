@@ -405,6 +405,7 @@ internal sealed class HistorySearchEngine(
 
         void Add(SearchItem item, bool merged, SizeTrendEvidence? trend)
         {
+            item = item with { VanishedInRange = item.LastObserved < Last };
             if (
                 item.IsDirectory
                 && (
@@ -471,22 +472,25 @@ internal sealed class HistorySearchEngine(
             parts.Add(
                 $"(D OR SzL IS NULL OR ({Lower("SzL", criteria.MinimumSize)} AND {Upper("SzL", criteria.MaximumSize)}))"
             );
+        // Where an item stands at the start and at the end of the range (see SearchItem.Delta):
+        // an item missing from the first scan starts at zero, one missing from the last ends there.
+        string end = $"(CASE WHEN L<{last} THEN 0 ELSE SzL END)";
+        string start = "(CASE WHEN F=0 THEN F0 ELSE 0 END)";
         if (criteria.MinimumDelta is not null || criteria.MaximumDelta is not null)
             parts.Add(
-                $"(D OR (F=0 AND (F0 IS NULL OR SzL IS NULL OR ({Lower("SzL-F0", criteria.MinimumDelta)} AND {Upper("SzL-F0", criteria.MaximumDelta)})))"
-                    + $" OR (F>0 AND (SzL IS NULL OR ({Lower("SzL", criteria.MinimumDelta)} AND {Upper("SzL", criteria.MaximumDelta)}))))"
+                $"(D OR {end} IS NULL OR {start} IS NULL OR ({Lower($"{end}-{start}", criteria.MinimumDelta)} AND {Upper($"{end}-{start}", criteria.MaximumDelta)}))"
             );
         if (criteria.MinimumDeltaPercent is not null || criteria.MaximumDeltaPercent is not null)
         {
             // Widened slightly, so SQL rounding never drops a row that .NET would keep.
-            string rate = "(SzL-F0)*100.0/F0";
+            string rate = $"({end}-F0)*100.0/F0";
             string low = criteria.MinimumDeltaPercent is { } minimum
                 ? $"{rate}>={Widen(minimum, -1)}"
                 : "TRUE";
             string high = criteria.MaximumDeltaPercent is { } maximum
                 ? $"{rate}<={Widen(maximum, 1)}"
                 : "TRUE";
-            parts.Add($"(D OR (F=0 AND F0>0 AND (SzL IS NULL OR ({low} AND {high}))))");
+            parts.Add($"(D OR (F=0 AND F0>0 AND ({end} IS NULL OR ({low} AND {high}))))");
         }
         if (criteria.MinimumSwing is { } swing)
             parts.Add($"(D OR U OR {Lower("Mx-Mn", (UInt128?)swing)})");

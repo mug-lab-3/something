@@ -296,6 +296,71 @@ public sealed class SearchConditionsTests
         Assert.True(verdict.Matches);
     }
 
+    [Theory]
+    // Gone at the end: the change is minus what it was at the start.
+    [InlineData(0, 100, 100, -100, -100, true, false)]
+    [InlineData(0, 100, 100, -99, null, false, false)]
+    // ...even when its last size was unresolved: it is missing, not unreadable.
+    [InlineData(0, 100, null, -100, -100, true, false)]
+    // Came and went within the range: nothing at either end.
+    [InlineData(1, null, 70, 0, 0, true, false)]
+    [InlineData(1, null, 70, 1, null, false, false)]
+    // ...but unresolved at the start leaves the change open.
+    [InlineData(0, null, 70, 0, null, true, true)]
+    public void DeltaCountsAnItemThatWentAwayDownToZero(
+        int first,
+        int? firstSize,
+        int? size,
+        int? minimum,
+        int? maximum,
+        bool matches,
+        bool uncertain
+    )
+    {
+        // Arrange
+        var criteria = Everything with
+        {
+            MinimumDelta = minimum,
+            MaximumDelta = maximum,
+        };
+        var item = Item(
+            first: first,
+            last: 1,
+            firstSize: firstSize is { } a ? (ulong)a : null,
+            size: size is { } b ? (ulong)b : null,
+            minimum: 0,
+            maximum: 1000,
+            unresolved: size is null || firstSize is null
+        ) with
+        {
+            VanishedInRange = true,
+        };
+
+        // Act
+        var verdict = Evaluate(criteria, item);
+
+        // Assert
+        Assert.Equal((matches, uncertain), (verdict.Matches, verdict.Uncertain));
+    }
+
+    [Fact]
+    public void AnItemThatWentAwayLosesAllOfItsSizeInTheRate()
+    {
+        // Arrange
+        var gone = Item(last: 1, firstSize: 200, size: 200) with
+        {
+            VanishedInRange = true,
+        };
+        var rate = Everything with { MinimumDeltaPercent = -100, MaximumDeltaPercent = -100 };
+
+        // Act
+        var verdict = Evaluate(rate, gone);
+
+        // Assert
+        Assert.Equal(-200, gone.Delta);
+        Assert.True(verdict.Matches);
+    }
+
     [Fact]
     public void AnItemThatCameLaterHasItsWholeSizeAsChangeButNoRate()
     {

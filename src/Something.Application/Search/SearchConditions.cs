@@ -1,5 +1,4 @@
 using System.IO.Enumeration;
-using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace Something.Application.Search;
@@ -174,12 +173,11 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
             // A rate needs a known, nonzero size in the first scan of the range.
             if (!item.InFirstScan || item.FirstSize is not { } first || first == 0)
                 return SearchVerdict.Fail;
-            if (item.Size is not { } last)
+            if (item.Delta is not { } change)
                 uncertain = true;
             else
             {
-                double percent =
-                    (double)((BigInteger)last - (BigInteger)first) / (double)first * 100;
+                double percent = (double)change / (double)first * 100;
                 if (
                     percent < Criteria.MinimumDeltaPercent
                     || percent > Criteria.MaximumDeltaPercent
