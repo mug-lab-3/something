@@ -1,0 +1,176 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using LiveChartsCore.Defaults;
+using LiveChartsCore.Measure;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.SkiaSharpView.Painting.Effects;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using SkiaSharp;
+using Something.Application;
+using Something.Application.Search;
+using Windows.Graphics;
+
+namespace Something.App;
+
+/// <summary>The size of one search item in every scan of the search, over time. A scan in which
+/// the item was not seen, or whose size is unresolved, breaks the line and is marked; it is never
+/// drawn as zero. One window per item.</summary>
+public sealed partial class SearchGraphWindow : Window
+{
+    private readonly HistorySearchResult result;
+    private readonly ImmutableArray<SearchSizeObservation> series;
+    private bool ready;
+
+    public SearchGraphWindow(
+        SearchRow row,
+        HistorySearchResult result,
+        ImmutableArray<SearchSizeObservation> series,
+        ElementTheme theme
+    )
+    {
+        this.result = result;
+        this.series = series;
+        InitializeComponent();
+        Title = Strings.Format("Graph_WindowTitle", row.Name);
+        PathText.Text = row.Path;
+        AppWindow.Resize(new SizeInt32(960, 600));
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
+        Root.RequestedTheme = theme;
+        SizeKindButtons.Items.Add(Strings.Get("Search_SizeAllocated"));
+        SizeKindButtons.Items.Add(Strings.Get("Search_SizeLogical"));
+        SizeKindButtons.SelectedIndex = 0;
+        ready = true;
+        Root.ActualThemeChanged += (_, _) => Draw();
+        Closed += (_, _) =>
+        {
+            ready = false;
+            Chart.Series = [];
+        };
+        Draw();
+    }
+
+    private SearchSizeKind Kind =>
+        SizeKindButtons.SelectedIndex == 1 ? SearchSizeKind.Logical : SearchSizeKind.Allocated;
+
+    private void OnSizeKindChanged(object sender, SelectionChangedEventArgs args) => Draw();
+
+    private void Draw()
+    {
+        if (!ready)
+            return;
+        bool dark = Root.ActualTheme == ElementTheme.Dark;
+        var text = new SolidColorPaint(dark ? new SKColor(235, 235, 235) : new SKColor(30, 30, 30));
+        var grid = new SolidColorPaint(
+            dark ? new SKColor(255, 255, 255, 40) : new SKColor(0, 0, 0, 40),
+            1
+        );
+        var accent = dark ? new SKColor(96, 175, 240) : new SKColor(0, 90, 158);
+        var points = SearchSizeSeries.Build(result, series, Kind);
+        var known = points
+            .Where(point => point.Bytes is not null)
+            .Select(point => point.Bytes!.Value);
+        var scale = SearchSizeSeries.ScaleFor(known.Any() ? known.Max() : UInt128.Zero);
+        string unit = UnitName(scale.Unit);
+
+        var values = points
+            .Select(point => new DateTimePoint(
+                point.CompletedUtc.LocalDateTime,
+                point.Bytes is { } bytes ? (double)bytes : null
+            ))
+            .ToArray();
+        var line = new LineSeries<DateTimePoint>(values)
+        {
+            Name = PathText.Text,
+            LineSmoothness = 0,
+            GeometrySize = 8,
+            EnableNullSplitting = true,
+            Fill = null,
+            Stroke = new SolidColorPaint(accent, 2),
+            GeometryStroke = new SolidColorPaint(accent, 2),
+            GeometryFill = new SolidColorPaint(dark ? new SKColor(32, 32, 32) : SKColors.White),
+            XToolTipLabelFormatter = point =>
+                points[point.Index]
+                    .CompletedUtc.ToLocalTime()
+                    .ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture),
+            YToolTipLabelFormatter = point =>
+                Strings.Format(
+                    "Graph_Tooltip",
+                    DisplayText.Bytes(points[point.Index].Bytes),
+                    DisplayText.Escape(points[point.Index].Path ?? "")
+                ),
+        };
+        Chart.Series = [line];
+        Chart.Sections =
+        [
+            .. points
+                .Where(point => point.Bytes is null)
+                .Select(point => new RectangularSection
+                {
+                    Xi = point.CompletedUtc.LocalDateTime.Ticks,
+                    Xj = point.CompletedUtc.LocalDateTime.Ticks,
+                    Stroke = new SolidColorPaint(accent.WithAlpha(150), 1.5f)
+                    {
+                        PathEffect = new DashEffect([5, 5]),
+                    },
+                }),
+        ];
+        bool shortSpan =
+            points.Length < 2
+            || points[^1].CompletedUtc - points[0].CompletedUtc < TimeSpan.FromDays(2);
+        long step = (shortSpan ? TimeSpan.FromHours(1) : TimeSpan.FromDays(1)).Ticks;
+        Chart.XAxes =
+        [
+            new Axis
+            {
+                UnitWidth = step,
+                MinStep = step,
+                Labeler = value =>
+                    SafeTime(value)
+                        .ToString(
+                            shortSpan ? "MM/dd HH:mm" : "yyyy/MM/dd",
+                            CultureInfo.CurrentCulture
+                        ),
+                LabelsPaint = text,
+                SeparatorsPaint = grid,
+            },
+        ];
+        Chart.YAxes =
+        [
+            new Axis
+            {
+                Name = Strings.Format("Graph_SizeAxis", unit),
+                NamePaint = text,
+                MinLimit = 0,
+                MaxLimit = (double)scale.Top,
+                CustomSeparators = [.. scale.Ticks().Select(tick => (double)tick)],
+                Labeler = value =>
+                    ((double)value / (double)scale.Unit).ToString(
+                        "0.##",
+                        CultureInfo.CurrentCulture
+                    ),
+                LabelsPaint = text,
+                SeparatorsPaint = grid,
+            },
+        ];
+        Chart.LegendPosition = LegendPosition.Hidden;
+    }
+
+    private static DateTime SafeTime(double value) =>
+        value is >= 0 and < 3_155_378_975_999_999_999
+            ? new DateTime((long)value)
+            : DateTime.MinValue;
+
+    private static string UnitName(UInt128 unit)
+    {
+        string[] names = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+        int index = 0;
+        while (unit > 1 && index < names.Length - 1)
+        {
+            unit >>= 10;
+            index++;
+        }
+        return names[index];
+    }
+}

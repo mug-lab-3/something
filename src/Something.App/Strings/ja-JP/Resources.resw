@@ -2037,4 +2037,23 @@
   <data name="Search_CancelButton.Content" xml:space="preserve">
     <value>キャンセル</value>
   </data>
+  <data name="Graph_WindowTitle" xml:space="preserve">
+    <value>{0} のサイズの推移</value>
+    <comment>{0} = name of the item</comment>
+  </data>
+  <data name="Graph_SizeKindButtons.Header" xml:space="preserve">
+    <value>表示するサイズ</value>
+  </data>
+  <data name="Graph_GapNote.Text" xml:space="preserve">
+    <value>破線は、その時点のスキャンで項目が見つからなかった、またはサイズが未解決だったことを示します。線はそこで途切れ、0 バイトとは見なしません。</value>
+  </data>
+  <data name="Graph_Tooltip" xml:space="preserve">
+    <value>{0}
+{1}</value>
+    <comment>{0} = size; {1} = path in that scan</comment>
+  </data>
+  <data name="Graph_SizeAxis" xml:space="preserve">
+    <value>サイズ ({0})</value>
+    <comment>{0} = unit</comment>
+  </data>
 </root>

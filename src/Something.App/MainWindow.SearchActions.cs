@@ -12,6 +12,32 @@ public sealed partial class MainWindow
         results.MenuRequested += OnSearchMenuRequested;
         results.FileActivated += async (_, row) => await OpenPathAsync(row.FullPath, false);
         results.RecycleRequested += async (_, row) => await RecycleSearchRowAsync(row);
+        results.GraphRequested += async (_, row) => await OpenGraphAsync(row);
+    }
+
+    private readonly List<SearchGraphWindow> graphWindows = [];
+
+    // One window per item. The series is read once; the window keeps its own copy of the data, so
+    // it stays open when the result is released or replaced.
+    private async Task OpenGraphAsync(SearchRow row)
+    {
+        if (closed || SearchPanel.Results.Result is not { } result)
+            return;
+        try
+        {
+            var series = await SearchPanel.ReadSeriesAsync(row.Item, lifetime.Token);
+            if (closed)
+                return;
+            var window = new SearchGraphWindow(row, result, series, RootLayout.ActualTheme);
+            graphWindows.Add(window);
+            window.Closed += (_, _) => graphWindows.Remove(window);
+            window.Activate();
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            ShowError(error);
+        }
     }
 
     // Recycling needs the identity of the volume, which the latest scan of the drive carries. A

@@ -79,6 +79,15 @@ public sealed partial class SearchView : UserControl
         ShowConditions();
     }
 
+    /// <summary>The sizes of one item of the shown result in every scan of its search.</summary>
+    public Task<System.Collections.Immutable.ImmutableArray<SearchSizeObservation>> ReadSeriesAsync(
+        SearchItem item,
+        CancellationToken token
+    ) =>
+        (
+            current ?? throw new InvalidOperationException("There is no search result.")
+        ).ReadSeriesAsync(item, token);
+
     public bool GoBack() => ShowsResults && ResultsScreen.GoBack();
 
     public bool GoForward() => ShowsResults && ResultsScreen.GoForward();

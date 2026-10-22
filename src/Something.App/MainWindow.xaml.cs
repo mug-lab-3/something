@@ -1955,6 +1955,8 @@ public sealed partial class MainWindow : Window
         foreach (var indicator in treeLoads.Values)
             indicator.Dispose();
         lifetime.Cancel();
+        foreach (var graph in graphWindows.ToArray())
+            graph.Close();
         recycleDialog?.Hide();
         databaseDeleteDialog?.Hide();
         exportDialog?.Hide();
