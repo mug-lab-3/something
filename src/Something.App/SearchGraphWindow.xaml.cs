@@ -62,7 +62,8 @@ public sealed partial class SearchGraphWindow : Window
             1
         );
         var accent = dark ? new SKColor(96, 175, 240) : new SKColor(0, 90, 158);
-        var points = SearchSizeSeries.Build(result, series, SearchSizeKind.Allocated);
+        var kind = result.Criteria.SizeKind;
+        var points = SearchSizeSeries.Build(result, series, kind);
         var known = points
             .Where(point => point.Bytes is not null)
             .Select(point => point.Bytes!.Value);
@@ -146,7 +147,10 @@ public sealed partial class SearchGraphWindow : Window
         [
             new Axis
             {
-                Name = Strings.Format("Graph_SizeAxis", unit),
+                Name =
+                    kind == SearchSizeKind.Logical
+                        ? Strings.Format("Graph_SizeAxisLogical", unit)
+                        : Strings.Format("Graph_SizeAxis", unit),
                 NamePaint = text,
                 NameTextSize = 13,
                 MinLimit = (double)scale.Bottom,
