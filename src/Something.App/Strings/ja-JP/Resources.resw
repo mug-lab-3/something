@@ -1562,4 +1562,294 @@
     <value>{0} の表示に切り替えています…</value>
     <comment>{0} = card.Choice.Drive</comment>
   </data>
+  <data name="DateRange_StartButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>範囲の開始</value>
+  </data>
+  <data name="DateRange_StartButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>範囲の開始を編集</value>
+  </data>
+  <data name="DateRange_EndButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>範囲の終了</value>
+  </data>
+  <data name="DateRange_EndButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>範囲の終了を編集</value>
+  </data>
+  <data name="DateRange_StartDate.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>開始日</value>
+  </data>
+  <data name="DateRange_StartDate.PlaceholderText" xml:space="preserve">
+    <value>日付を選択</value>
+  </data>
+  <data name="DateRange_StartTime.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>開始時刻</value>
+  </data>
+  <data name="DateRange_EndDate.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>終了日</value>
+  </data>
+  <data name="DateRange_EndDate.PlaceholderText" xml:space="preserve">
+    <value>日付を選択</value>
+  </data>
+  <data name="DateRange_EndTime.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>終了時刻</value>
+  </data>
+  <data name="DateRange_ClearButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>範囲をクリア</value>
+  </data>
+  <data name="DateRange_ClearButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>範囲をクリア</value>
+  </data>
+  <data name="Search_RangeHeader.Text" xml:space="preserve">
+    <value>範囲</value>
+  </data>
+  <data name="Search_Preset7Days.Content" xml:space="preserve">
+    <value>直近 7 日</value>
+  </data>
+  <data name="Search_Preset30Days.Content" xml:space="preserve">
+    <value>直近 30 日</value>
+  </data>
+  <data name="Search_Preset90Days.Content" xml:space="preserve">
+    <value>直近 90 日</value>
+  </data>
+  <data name="Search_Preset1Year.Content" xml:space="preserve">
+    <value>直近 1 年</value>
+  </data>
+  <data name="Search_TargetHeader.Text" xml:space="preserve">
+    <value>対象</value>
+  </data>
+  <data name="Search_TargetBox.Header" xml:space="preserve">
+    <value>検索する対象</value>
+  </data>
+  <data name="Search_NameHeader.Text" xml:space="preserve">
+    <value>名前と場所</value>
+  </data>
+  <data name="Search_NameBox.Header" xml:space="preserve">
+    <value>名前</value>
+  </data>
+  <data name="Search_NameBox.PlaceholderText" xml:space="preserve">
+    <value>含まれる文字、ワイルドカード、または正規表現</value>
+  </data>
+  <data name="Search_NameModeBox.Header" xml:space="preserve">
+    <value>照合の方法</value>
+  </data>
+  <data name="Search_ExtensionsBox.Header" xml:space="preserve">
+    <value>拡張子</value>
+  </data>
+  <data name="Search_ExtensionsBox.PlaceholderText" xml:space="preserve">
+    <value>例: log txt</value>
+  </data>
+  <data name="Search_BaseFolderBox.Header" xml:space="preserve">
+    <value>起点フォルダー</value>
+  </data>
+  <data name="Search_BaseFolderBox.PlaceholderText" xml:space="preserve">
+    <value>ドライブの直下からのパス 例: Users\Docs</value>
+  </data>
+  <data name="Search_MinDepthBox.Header" xml:space="preserve">
+    <value>深さ (最小)</value>
+  </data>
+  <data name="Search_MaxDepthBox.Header" xml:space="preserve">
+    <value>深さ (最大)</value>
+  </data>
+  <data name="Search_AttributesHeader.Text" xml:space="preserve">
+    <value>属性</value>
+  </data>
+  <data name="Search_HiddenBox.Header" xml:space="preserve">
+    <value>隠し</value>
+  </data>
+  <data name="Search_SystemBox.Header" xml:space="preserve">
+    <value>システム</value>
+  </data>
+  <data name="Search_CompressedBox.Header" xml:space="preserve">
+    <value>圧縮</value>
+  </data>
+  <data name="Search_SparseBox.Header" xml:space="preserve">
+    <value>スパース</value>
+  </data>
+  <data name="Search_StreamsBox.Header" xml:space="preserve">
+    <value>名前付きストリーム</value>
+  </data>
+  <data name="Search_AttributesHint.Text" xml:space="preserve">
+    <value>属性が不明な項目は、「あり」「なし」のどちらにも一致しません。件数だけを別に示します。</value>
+  </data>
+  <data name="Search_SizeHeader.Text" xml:space="preserve">
+    <value>サイズ</value>
+  </data>
+  <data name="Search_SizeKindBox.Header" xml:space="preserve">
+    <value>評価するサイズ</value>
+  </data>
+  <data name="Search_MinSizeBox.Header" xml:space="preserve">
+    <value>最小</value>
+  </data>
+  <data name="Search_MaxSizeBox.Header" xml:space="preserve">
+    <value>最大</value>
+  </data>
+  <data name="Search_SizeUnitBox.Header" xml:space="preserve">
+    <value>単位</value>
+  </data>
+  <data name="Search_SizeHint.Text" xml:space="preserve">
+    <value>範囲内で、その項目を最後に観測したスキャンの値で評価します。</value>
+  </data>
+  <data name="Search_ChangeHeader.Text" xml:space="preserve">
+    <value>変動</value>
+  </data>
+  <data name="Search_MinDeltaBox.Header" xml:space="preserve">
+    <value>増減 (最小)</value>
+  </data>
+  <data name="Search_MaxDeltaBox.Header" xml:space="preserve">
+    <value>増減 (最大)</value>
+  </data>
+  <data name="Search_DeltaUnitBox.Header" xml:space="preserve">
+    <value>単位</value>
+  </data>
+  <data name="Search_MinRateBox.Header" xml:space="preserve">
+    <value>増減率 (最小, %)</value>
+  </data>
+  <data name="Search_MaxRateBox.Header" xml:space="preserve">
+    <value>増減率 (最大, %)</value>
+  </data>
+  <data name="Search_MinSwingBox.Header" xml:space="preserve">
+    <value>振れ幅 (最小)</value>
+  </data>
+  <data name="Search_SwingUnitBox.Header" xml:space="preserve">
+    <value>単位</value>
+  </data>
+  <data name="Search_TrendBox.Header" xml:space="preserve">
+    <value>傾向</value>
+  </data>
+  <data name="Search_ChangeHint.Text" xml:space="preserve">
+    <value>増減は、範囲内の最初のスキャンから最後のスキャンへの変化です。振れ幅は、範囲内の最大と最小の差です。変動の条件には、範囲内に 2 つ以上のスキャンが必要です。</value>
+  </data>
+  <data name="Search_PresenceHeader.Text" xml:space="preserve">
+    <value>存在</value>
+  </data>
+  <data name="Search_PresenceBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>存在</value>
+  </data>
+  <data name="Search_ClearButton.Content" xml:space="preserve">
+    <value>条件をクリア</value>
+  </data>
+  <data name="Search_SearchButton.Content" xml:space="preserve">
+    <value>検索</value>
+  </data>
+  <data name="Search_TargetBoth" xml:space="preserve">
+    <value>フォルダーとファイル</value>
+  </data>
+  <data name="Search_TargetFolders" xml:space="preserve">
+    <value>フォルダーのみ</value>
+  </data>
+  <data name="Search_TargetFiles" xml:space="preserve">
+    <value>ファイルのみ</value>
+  </data>
+  <data name="Search_NameContains" xml:space="preserve">
+    <value>含む</value>
+  </data>
+  <data name="Search_NameWildcard" xml:space="preserve">
+    <value>ワイルドカード</value>
+  </data>
+  <data name="Search_NameRegex" xml:space="preserve">
+    <value>正規表現</value>
+  </data>
+  <data name="Search_AttributeAny" xml:space="preserve">
+    <value>指定なし</value>
+  </data>
+  <data name="Search_AttributeSet" xml:space="preserve">
+    <value>あり</value>
+  </data>
+  <data name="Search_AttributeClear" xml:space="preserve">
+    <value>なし</value>
+  </data>
+  <data name="Search_SizeAllocated" xml:space="preserve">
+    <value>割り当てサイズ</value>
+  </data>
+  <data name="Search_SizeLogical" xml:space="preserve">
+    <value>論理サイズ</value>
+  </data>
+  <data name="Search_UnitBytes" xml:space="preserve">
+    <value>B</value>
+  </data>
+  <data name="Search_UnitKiB" xml:space="preserve">
+    <value>KiB</value>
+  </data>
+  <data name="Search_UnitMiB" xml:space="preserve">
+    <value>MiB</value>
+  </data>
+  <data name="Search_UnitGiB" xml:space="preserve">
+    <value>GiB</value>
+  </data>
+  <data name="Search_UnitTiB" xml:space="preserve">
+    <value>TiB</value>
+  </data>
+  <data name="Search_TrendAny" xml:space="preserve">
+    <value>指定なし</value>
+  </data>
+  <data name="Search_TrendIncreasing" xml:space="preserve">
+    <value>単調増加</value>
+  </data>
+  <data name="Search_TrendDecreasing" xml:space="preserve">
+    <value>単調減少</value>
+  </data>
+  <data name="Search_PresenceAny" xml:space="preserve">
+    <value>指定なし</value>
+  </data>
+  <data name="Search_PresenceAll" xml:space="preserve">
+    <value>すべてのスキャンにある</value>
+  </data>
+  <data name="Search_PresenceAppeared" xml:space="preserve">
+    <value>途中から出現</value>
+  </data>
+  <data name="Search_PresenceDisappeared" xml:space="preserve">
+    <value>途中で消失</value>
+  </data>
+  <data name="Search_RangeEmpty" xml:space="preserve">
+    <value>範囲内にスキャンがありません</value>
+  </data>
+  <data name="Search_RangeScans" xml:space="preserve">
+    <value>{0} 件のスキャン ・ 最初 {1} ・ 最後 {2}</value>
+    <comment>{0} = preview.ScanCount; {1} = first scan; {2} = last scan</comment>
+  </data>
+  <data name="Search_RangeScansCount" xml:space="preserve">
+    <value>{0} 件のスキャン</value>
+    <comment>{0} = preview.ScanCount</comment>
+  </data>
+  <data name="Search_CannotSearch" xml:space="preserve">
+    <value>検索できない入力があります。</value>
+  </data>
+  <data name="Search_Issue_RangeMissing" xml:space="preserve">
+    <value>開始と終了の日時を指定してください。</value>
+  </data>
+  <data name="Search_Issue_NotANumber" xml:space="preserve">
+    <value>数値として読み取れません。</value>
+  </data>
+  <data name="Search_Issue_NegativeNotAllowed" xml:space="preserve">
+    <value>0 以上の数値にしてください。</value>
+  </data>
+  <data name="Search_Issue_TooLarge" xml:space="preserve">
+    <value>値が大きすぎます。</value>
+  </data>
+  <data name="Search_Issue_RangeReversed" xml:space="preserve">
+    <value>終了が開始より前になっています。</value>
+  </data>
+  <data name="Search_Issue_NoScansInRange" xml:space="preserve">
+    <value>この範囲にはスキャンがありません。</value>
+  </data>
+  <data name="Search_Issue_ChangesNeedTwoScans" xml:space="preserve">
+    <value>変動の条件には、範囲内に 2 つ以上のスキャンが必要です。</value>
+  </data>
+  <data name="Search_Issue_InvalidRegularExpression" xml:space="preserve">
+    <value>正規表現が正しくありません。後方参照などは使えません。</value>
+  </data>
+  <data name="Search_Issue_InvalidExtension" xml:space="preserve">
+    <value>拡張子が空か、区切り文字を含んでいます。</value>
+  </data>
+  <data name="Search_Issue_DepthRangeInvalid" xml:space="preserve">
+    <value>深さは 1 以上にし、最小が最大を超えないようにしてください。</value>
+  </data>
+  <data name="Search_Issue_SizeRangeReversed" xml:space="preserve">
+    <value>最小が最大を超えています。</value>
+  </data>
+  <data name="Search_Issue_DeltaRangeReversed" xml:space="preserve">
+    <value>最小が最大を超えています。</value>
+  </data>
+  <data name="Search_Issue_RateRangeInvalid" xml:space="preserve">
+    <value>増減率の最小が最大を超えています。</value>
+  </data>
 </root>

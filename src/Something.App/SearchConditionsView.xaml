@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="Something.App.SearchConditionsView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
+>
+  <UserControl.Resources>
+    <Style x:Key="SearchSectionStyle" TargetType="Border">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+    </Style>
+    <Style x:Key="SearchSectionHeaderStyle" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="SearchIssueStyle" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+    <Style x:Key="SearchHintStyle" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style
+      x:Key="SearchPresetStyle"
+      TargetType="Button"
+      BasedOn="{StaticResource DefaultButtonStyle}"
+    >
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+  </UserControl.Resources>
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" KeyDown="OnKeyDown">
+      <Grid ColumnSpacing="16" Padding="0,0,12,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Spacing="16">
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_RangeHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <local:DateTimeRangeInput x:Name="RangeInput" RangeChanged="OnRangeChanged" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                  x:Uid="Search_Preset7Days"
+                  Tag="7"
+                  Click="OnPreset"
+                  Style="{StaticResource SearchPresetStyle}"
+                />
+                <Button
+                  x:Uid="Search_Preset30Days"
+                  Tag="30"
+                  Click="OnPreset"
+                  Style="{StaticResource SearchPresetStyle}"
+                />
+                <Button
+                  x:Uid="Search_Preset90Days"
+                  Tag="90"
+                  Click="OnPreset"
+                  Style="{StaticResource SearchPresetStyle}"
+                />
+                <Button
+                  x:Uid="Search_Preset1Year"
+                  Tag="365"
+                  Click="OnPreset"
+                  Style="{StaticResource SearchPresetStyle}"
+                />
+              </StackPanel>
+              <TextBlock x:Name="RangePreviewText" Style="{StaticResource SearchHintStyle}" />
+              <TextBlock x:Name="RangeIssueText" Style="{StaticResource SearchIssueStyle}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_TargetHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <ComboBox
+                x:Uid="Search_TargetBox"
+                x:Name="TargetBox"
+                MinWidth="200"
+                SelectionChanged="OnChoiceChanged"
+              />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_NameHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Uid="Search_NameBox" x:Name="NameBox" TextChanged="OnTextChanged" />
+                <ComboBox
+                  x:Uid="Search_NameModeBox"
+                  x:Name="NameModeBox"
+                  Grid.Column="1"
+                  MinWidth="150"
+                  SelectionChanged="OnChoiceChanged"
+                />
+              </Grid>
+              <TextBlock x:Name="NameIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBox
+                x:Uid="Search_ExtensionsBox"
+                x:Name="ExtensionsBox"
+                TextChanged="OnTextChanged"
+              />
+              <TextBlock x:Name="ExtensionsIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBox
+                x:Uid="Search_BaseFolderBox"
+                x:Name="BaseFolderBox"
+                TextChanged="OnTextChanged"
+              />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBox
+                  x:Uid="Search_MinDepthBox"
+                  x:Name="MinDepthBox"
+                  Width="110"
+                  TextChanged="OnTextChanged"
+                />
+                <TextBox
+                  x:Uid="Search_MaxDepthBox"
+                  x:Name="MaxDepthBox"
+                  Width="110"
+                  TextChanged="OnTextChanged"
+                />
+              </StackPanel>
+              <TextBlock x:Name="DepthIssueText" Style="{StaticResource SearchIssueStyle}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_AttributesHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <Grid ColumnSpacing="12" RowSpacing="12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <ComboBox
+                  x:Uid="Search_HiddenBox"
+                  x:Name="HiddenBox"
+                  HorizontalAlignment="Stretch"
+                  SelectionChanged="OnChoiceChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_SystemBox"
+                  x:Name="SystemBox"
+                  Grid.Column="1"
+                  HorizontalAlignment="Stretch"
+                  SelectionChanged="OnChoiceChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_CompressedBox"
+                  x:Name="CompressedBox"
+                  Grid.Column="2"
+                  HorizontalAlignment="Stretch"
+                  SelectionChanged="OnChoiceChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_SparseBox"
+                  x:Name="SparseBox"
+                  Grid.Row="1"
+                  HorizontalAlignment="Stretch"
+                  SelectionChanged="OnChoiceChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_StreamsBox"
+                  x:Name="StreamsBox"
+                  Grid.Row="1"
+                  Grid.Column="1"
+                  Grid.ColumnSpan="2"
+                  HorizontalAlignment="Stretch"
+                  SelectionChanged="OnChoiceChanged"
+                />
+              </Grid>
+              <TextBlock x:Uid="Search_AttributesHint" Style="{StaticResource SearchHintStyle}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="16">
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_SizeHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <ComboBox
+                x:Uid="Search_SizeKindBox"
+                x:Name="SizeKindBox"
+                MinWidth="200"
+                SelectionChanged="OnChoiceChanged"
+              />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBox
+                  x:Uid="Search_MinSizeBox"
+                  x:Name="MinSizeBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <TextBox
+                  x:Uid="Search_MaxSizeBox"
+                  x:Name="MaxSizeBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_SizeUnitBox"
+                  x:Name="SizeUnitBox"
+                  Width="100"
+                  SelectionChanged="OnChoiceChanged"
+                />
+              </StackPanel>
+              <TextBlock x:Name="SizeIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <TextBlock x:Uid="Search_SizeHint" Style="{StaticResource SearchHintStyle}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_ChangeHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBox
+                  x:Uid="Search_MinDeltaBox"
+                  x:Name="MinDeltaBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <TextBox
+                  x:Uid="Search_MaxDeltaBox"
+                  x:Name="MaxDeltaBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_DeltaUnitBox"
+                  x:Name="DeltaUnitBox"
+                  Width="100"
+                  SelectionChanged="OnChoiceChanged"
+                />
+              </StackPanel>
+              <TextBlock x:Name="DeltaIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBox
+                  x:Uid="Search_MinRateBox"
+                  x:Name="MinRateBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <TextBox
+                  x:Uid="Search_MaxRateBox"
+                  x:Name="MaxRateBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+              </StackPanel>
+              <TextBlock x:Name="RateIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBox
+                  x:Uid="Search_MinSwingBox"
+                  x:Name="MinSwingBox"
+                  Width="130"
+                  TextChanged="OnTextChanged"
+                />
+                <ComboBox
+                  x:Uid="Search_SwingUnitBox"
+                  x:Name="SwingUnitBox"
+                  Width="100"
+                  SelectionChanged="OnChoiceChanged"
+                />
+              </StackPanel>
+              <TextBlock x:Name="SwingIssueText" Style="{StaticResource SearchIssueStyle}" />
+              <ComboBox
+                x:Uid="Search_TrendBox"
+                x:Name="TrendBox"
+                MinWidth="200"
+                SelectionChanged="OnChoiceChanged"
+              />
+              <TextBlock x:Uid="Search_ChangeHint" Style="{StaticResource SearchHintStyle}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SearchSectionStyle}">
+            <StackPanel Spacing="12">
+              <TextBlock
+                x:Uid="Search_PresenceHeader"
+                Style="{StaticResource SearchSectionHeaderStyle}"
+              />
+              <ComboBox
+                x:Uid="Search_PresenceBox"
+                x:Name="PresenceBox"
+                MinWidth="200"
+                SelectionChanged="OnChoiceChanged"
+              />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+    <Grid Grid.Row="1" ColumnSpacing="12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock
+        x:Name="StatusText"
+        VerticalAlignment="Center"
+        Style="{StaticResource SearchHintStyle}"
+      />
+      <Button x:Uid="Search_ClearButton" x:Name="ClearButton" Grid.Column="1" Click="OnClear" />
+      <Button
+        x:Uid="Search_SearchButton"
+        x:Name="SearchButton"
+        Grid.Column="2"
+        Style="{StaticResource AccentButtonStyle}"
+        Click="OnSearch"
+        IsEnabled="False"
+      />
+    </Grid>
+  </Grid>
+</UserControl>
