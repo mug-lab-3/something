@@ -53,8 +53,13 @@ public sealed partial class DelayedLoadingRegion : UserControl
         Loaded += (_, _) => UpdatePresentation();
     }
 
+    /// <summary>Raised when the animation has just appeared, so that something that belongs with
+    /// it (a cancel button) can appear with it and not before it.</summary>
+    internal event EventHandler? IndicatorShown;
+
     private void UpdatePresentation()
     {
+        bool wasShown = Indicator.Visibility == Visibility.Visible;
         if (pending && presentationStarted)
             Indicator.Visibility = Visibility.Visible;
         Animation.SetBusy(pending && presentationStarted && IsLoaded);
@@ -64,6 +69,8 @@ public sealed partial class DelayedLoadingRegion : UserControl
         Indicator.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;
         if (!pending && !Animation.IsPlaying)
             presentationStarted = false;
+        if (!wasShown && Indicator.Visibility == Visibility.Visible)
+            IndicatorShown?.Invoke(this, EventArgs.Empty);
     }
 
     internal sealed class UpdateLease(DelayedLoadingRegion region, IDisposable lease)

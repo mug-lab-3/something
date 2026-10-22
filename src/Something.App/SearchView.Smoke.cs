@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Something.Application.Search;
 
 namespace Something.App;
@@ -7,7 +8,7 @@ public sealed partial class SearchView
     internal SearchConditionsView ConditionsScreen => Conditions;
     internal bool HasResult => current is not null;
     internal bool CanReturnToResults => Conditions.CanReturnToResults;
-    internal bool ConditionsShown => Conditions.Visibility == Microsoft.UI.Xaml.Visibility.Visible;
+    internal bool ConditionsShown => Conditions.Visibility == Visibility.Visible;
 
     // Waits for the latest read of the range, not just for some preview to be shown: an older
     // one may describe scans from before.
@@ -35,19 +36,32 @@ public sealed partial class SearchView
 
     // Shows the busy state as a search would: the loading animation alone on the screen (the
     // conditions and results are not shown) and the cancel button, which stands alone because the
-    // animation already says that it is working.
+    // animation already says that it is working. The button must not come before the animation.
     internal async Task ShowBusyForSmokeAsync(CancellationToken token, Func<Task> capture)
     {
-        await using var lease = Region.BeginUpdate();
-        CancelBar.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        using var running = CancellationTokenSource.CreateLinkedTokenSource(token);
+        searching = running;
         try
         {
-            for (int waited = 0; !Region.IsIndicatorVisible; waited += 50)
+            await using var lease = Region.BeginUpdate();
+            // Right after the start neither the animation nor the button is there.
+            if (Region.IsIndicatorVisible || CancelBar.Visibility == Visibility.Visible)
+                throw new InvalidOperationException("The busy state showed up without delay.");
+            for (int waited = 0; !Region.IsIndicatorVisible; waited += 20)
             {
                 if (waited > 5_000)
                     throw new InvalidOperationException("The searching animation did not appear.");
-                await Task.Delay(50, token);
+                if (CancelBar.Visibility == Visibility.Visible)
+                    throw new InvalidOperationException(
+                        "The cancel button came before the animation."
+                    );
+                await Task.Delay(20, token);
             }
+            // With it (in the same step) the button is there.
+            if (CancelBar.Visibility != Visibility.Visible)
+                throw new InvalidOperationException(
+                    "The cancel button did not come with the animation."
+                );
             await Task.Delay(1200, token);
             if (Region.BodyOpacity != 0 || CancelBar.Children.Count != 1)
                 throw new InvalidOperationException(
@@ -57,7 +71,8 @@ public sealed partial class SearchView
         }
         finally
         {
-            CancelBar.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            searching = null;
+            CancelBar.Visibility = Visibility.Collapsed;
         }
     }
 

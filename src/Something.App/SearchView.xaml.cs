@@ -29,6 +29,13 @@ public sealed partial class SearchView : UserControl
     {
         InitializeComponent();
         Conditions.IsDriveAvailable = false;
+        // The cancel button comes with the animation, which waits a moment so that a quick
+        // search shows neither.
+        Region.IndicatorShown += (_, _) =>
+        {
+            if (searching is not null)
+                CancelBar.Visibility = Visibility.Visible;
+        };
     }
 
     public SearchResultsView Results => ResultsScreen;
@@ -206,7 +213,6 @@ public sealed partial class SearchView : UserControl
         searching = cancellation;
         await DiscardResultAsync();
         Conditions.SetBusy(true);
-        CancelBar.Visibility = Visibility.Visible;
         HistorySearch? search = null;
         try
         {
