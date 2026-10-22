@@ -52,7 +52,7 @@ internal static class RecordFileComparison
             return 1;
         }
         Console.WriteLine(
-            $"Record {index}: sequence={after.Reference.SequenceNumber}; Windows-logical={after.LogicalBytes}; Windows-allocated={storageAfter.AllocatedBytes}; allocation-source={(storageAfter.UsesCompressionInfo ? "FileCompressionInfo" : "FileStandardInfo")}; compressed={(after.FileAttributes & 0x800u) != 0}; sparse={(after.FileAttributes & 0x200u) != 0}; compression-format={storageAfter.Compression.CompressionFormat}"
+            $"Record {index}: sequence={after.Reference.SequenceNumber}; Windows-logical={after.LogicalBytes}; Windows-allocated={storageAfter.AllocatedBytes}; allocation-source={(storageAfter.UsesCompressionInfo ? "FileCompressionInfo" : "FileStandardInfo")}; compressed={((FileAttributes)after.FileAttributes).HasFlag(FileAttributes.Compressed)}; sparse={((FileAttributes)after.FileAttributes).HasFlag(FileAttributes.SparseFile)}; compression-format={storageAfter.Compression.CompressionFormat}"
         );
         if (result.File is not { } resolved)
         {

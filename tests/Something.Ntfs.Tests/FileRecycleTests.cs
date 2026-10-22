@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using Something.Application;
-using Something.Ntfs;
 using Something.Windows;
 
 namespace Something.Ntfs.Tests;

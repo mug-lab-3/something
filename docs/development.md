@@ -51,7 +51,7 @@ dotnet csharpier format . --ignore-path .csharpierignore
 dotnet csharpier check . --ignore-path .csharpierignore
 ```
 
-書式とは別に、Roslyn アナライザーと、警告をエラーとして扱う設定で品質を検査します。テストの実行とカバレッジは[テスト](testing.md)を参照してください。
+書式とは別に、Roslyn アナライザーと、警告をエラーとして扱う設定で品質を検査します。ビルドは、使われていない using（IDE0005）と XML コメントの不備（引数名の誤りなど）も検出します。EF Core が生成したマイグレーションは、`.editorconfig` で生成コードとして扱い、スタイルの検査から外します。テストの実行とカバレッジは[テスト](testing.md)を参照してください。
 
 ## アプリのバージョン
 

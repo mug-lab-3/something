@@ -1,11 +1,13 @@
 using DuckDB.NET.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.History;
+using Something.Application.Scanning;
 
 namespace Something.Storage;
 
 /// <summary>All volumes and generations share one DuckDB file. Typed generation imports and retention are atomic.</summary>
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     private readonly string root;
     private readonly object sync;
@@ -88,8 +90,10 @@ public sealed partial class ScanHistoryArchive
     private ScanStore NewHistoryStore(ulong? cacheBytes, CancellationToken token) =>
         ScanStore.OpenSharedHistoryWriter(DatabasePath, cacheBytes, token);
 
-    public ScanHistoryEntry Publish(
-        BufferedScan buffer,
+    /// <summary>Publishes and opens the new generation without releasing the archive lock, so no
+    /// pruning can retire it before the caller holds its lease.</summary>
+    internal HistorySnapshot PublishAndOpen(
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         string drive,
         TimeSpan elapsed,
@@ -100,16 +104,45 @@ public sealed partial class ScanHistoryArchive
         Action<ulong>? accountMemoryLimit = null
     )
     {
-        ValidateArguments(buffer.Descriptor.VolumeKey, drive, elapsed);
+        lock (sync)
+        {
+            var entry = Publish(
+                completedScan,
+                endedUtc,
+                drive,
+                elapsed,
+                cacheBytes,
+                token,
+                progress,
+                reserveMemoryGrowth,
+                accountMemoryLimit
+            );
+            return Open(entry.Id, token);
+        }
+    }
+
+    public ScanHistoryEntry Publish(
+        CompletedScan completedScan,
+        DateTimeOffset endedUtc,
+        string drive,
+        TimeSpan elapsed,
+        ulong cacheBytes,
+        CancellationToken token = default,
+        Action<ScanWorkProgress>? progress = null,
+        Func<ulong, ulong?>? reserveMemoryGrowth = null,
+        Action<ulong>? accountMemoryLimit = null
+    )
+    {
+        ValidateArguments(completedScan.Descriptor.VolumeKey, drive, elapsed);
         progress?.Invoke(new(ScanWorkStage.WritingFiles, 0, null));
         lock (sync)
         {
             using var target = OpenDatabase(token, cacheBytes);
             var metadata = ToEntity(
-                NewEntry(Guid.Empty, buffer.Descriptor.VolumeKey, drive, endedUtc, elapsed)
+                NewEntry(Guid.Empty, completedScan.Descriptor.VolumeKey, drive, endedUtc, elapsed)
             );
             target.PublishHistoryBuffer(
-                buffer,
+                completedScan,
                 endedUtc,
                 metadata,
                 token,
@@ -123,7 +156,7 @@ public sealed partial class ScanHistoryArchive
         }
     }
 
-    public ScanHistoryEntry Save(
+    internal ScanHistoryEntry Save(
         ScanStore source,
         Guid scanId,
         string drive,
@@ -362,7 +395,7 @@ public sealed partial class ScanHistoryArchive
         );
 }
 
-public sealed class HistorySnapshot(
+internal sealed class HistorySnapshot(
     ScanStore store,
     ScanHistoryEntry entry,
     ulong sizeBytes,

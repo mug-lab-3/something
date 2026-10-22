@@ -1,41 +1,12 @@
 using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Browsing;
 using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Storage;
 
-public enum FolderEntrySort
-{
-    AllocatedBytes,
-    LogicalBytes,
-}
-
-public sealed record FolderEntry(
-    FileReference Reference,
-    int NameOrdinal,
-    string Name,
-    bool IsDirectory,
-    CapacityAmount? Data,
-    bool NamesComplete,
-    bool CanBrowse,
-    bool CapacityIncomplete
-)
-{
-    public uint? StandardFileAttributes { get; init; }
-    public bool? IsHidden =>
-        StandardFileAttributes is { } attributes ? (attributes & 0x2) != 0 : null;
-    public bool? IsSystem =>
-        StandardFileAttributes is { } attributes ? (attributes & 0x4) != 0 : null;
-}
-
-public sealed record FolderEntryPage(
-    ImmutableArray<FolderEntry> Entries,
-    bool HasMore,
-    long? TotalCount = null
-);
-
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Returns the unique observed parent for this visible folder name.
     /// Validates both sequence identities; ambiguous or missing parents remain unavailable.</summary>

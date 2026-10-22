@@ -1,6 +1,5 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Something.Application;
 using Something.Statistics;
 
@@ -169,6 +168,7 @@ public sealed partial class MainWindow
                 WorkspaceTabs.IsEnabled = !historyMaintenance;
                 foreach (var card in cards)
                     card.IsEnabled = !historyMaintenance;
+                SyncSearchPanel();
             }
         }
     }

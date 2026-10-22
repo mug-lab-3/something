@@ -1,7 +1,8 @@
 using System.Numerics;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
-using Something.Ntfs;
+using Something.Application.Browsing;
+using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
 
@@ -79,7 +80,11 @@ public sealed class DuckStorageTests
             )
         );
         buffer.Complete(Token);
-        var id = database.Store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var id = database.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
 
         foreach (bool descending in new[] { true, false })
         {
@@ -193,7 +198,7 @@ public sealed class DuckStorageTests
         int attempts = 0;
 
         var id = store.PublishHistoryBuffer(
-            buffer,
+            buffer.Complete(TestContext.Current.CancellationToken),
             Start.AddSeconds(1),
             new()
             {
@@ -249,13 +254,17 @@ public sealed class DuckStorageTests
         using var database = TemporaryScanDatabase.Create(Token);
         var store = database.Store;
         var buffer = Buffer();
-        var previous = store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var previous = store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
         var updates = new List<ScanWorkProgress>();
         int attempts = 0,
             increases = 0;
 
         var id = store.PublishHistoryBuffer(
-            buffer,
+            buffer.Complete(TestContext.Current.CancellationToken),
             Start.AddSeconds(2),
             new()
             {
@@ -306,12 +315,16 @@ public sealed class DuckStorageTests
         using var database = TemporaryScanDatabase.Create(Token);
         var store = database.Store;
         var buffer = Buffer();
-        var previous = store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var previous = store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
         int attempts = 0;
         Action publish = () =>
             store.PublishHistoryBuffer(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 Start.AddSeconds(2),
                 new()
                 {
@@ -418,7 +431,11 @@ public sealed class DuckStorageTests
             boundedMemory: true,
             fileCacheBytes: 2UL << 30
         );
-        var id = database.Store.PublishBufferedScan(Buffer(), Start.AddSeconds(1), Token);
+        var id = database.Store.PublishBufferedScan(
+            Buffer().Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
         using var smallDrive = ScanStore.OpenHistoryWriter(
             database.SnapshotPath,
             64UL << 20,
@@ -489,7 +506,7 @@ public sealed class DuckStorageTests
         var publication = new List<ScanWorkProgress>();
 
         var id = database.Store.PublishBufferedScan(
-            buffer,
+            buffer.Complete(TestContext.Current.CancellationToken),
             Start.AddSeconds(1),
             Token,
             publication.Add
@@ -535,13 +552,17 @@ public sealed class DuckStorageTests
     {
         using var database = TemporaryScanDatabase.Create(Token);
         var buffer = Buffer();
-        var previous = database.Store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var previous = database.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
         var updates = new List<ScanWorkProgress>();
 
         Assert.Throws<OperationCanceledException>(() =>
             database.Store.PublishBufferedScan(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 Start.AddSeconds(2),
                 cancellation.Token,
                 progress =>
@@ -565,7 +586,11 @@ public sealed class DuckStorageTests
     public void FileStoreUsesNativeColumnsAndBrowsableNamesWithoutDroppingStreams()
     {
         using var database = TemporaryScanDatabase.Create(Token);
-        var id = database.Store.PublishBufferedScan(Buffer(), Start.AddSeconds(1), Token);
+        var id = database.Store.PublishBufferedScan(
+            Buffer().Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
 
         var rows = database.Store.ReadFolderEntries(id, Root, cancellationToken: Token);
         var file = Assert.Single(
@@ -632,11 +657,15 @@ public sealed class DuckStorageTests
         using var database = TemporaryScanDatabase.Create(Token);
         var store = database.Store;
         var buffer = Buffer();
-        var previous = store.PublishBufferedScan(buffer, Start.AddSeconds(1), Token);
+        var previous = store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
         void Publish() =>
             store.PublishHistoryBuffer(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 Start.AddSeconds(2),
                 new()
                 {
@@ -682,7 +711,11 @@ public sealed class DuckStorageTests
     public void ExplicitMemoryDiagnosticExportsToNewFileAndDoesNotOverwriteIt()
     {
         using var database = TemporaryScanDatabase.Create(Token, inMemory: true);
-        var id = database.Store.PublishBufferedScan(Buffer(), Start.AddSeconds(1), Token);
+        var id = database.Store.PublishBufferedScan(
+            Buffer().Complete(TestContext.Current.CancellationToken),
+            Start.AddSeconds(1),
+            Token
+        );
 
         Assert.True(database.ExportSnapshot(Token) > 0);
         using var exported = database.OpenSnapshot(Token);

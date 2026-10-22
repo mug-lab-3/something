@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
-using Something.Storage;
 
 namespace Something.App;
 
@@ -14,7 +13,7 @@ public sealed partial class MainWindow
     // database operation they confirm themselves.
     private readonly HashSet<Task> settingsTasks = [];
 
-    private ScanHistoryArchive CreateConfiguredHistory()
+    private HistoryService CreateConfiguredHistory()
     {
         databaseSettings = new(
             Path.Combine(
@@ -23,9 +22,7 @@ public sealed partial class MainWindow
                 "database-settings.json"
             )
         );
-        return databaseSettings.LoadDirectory() is { } directory
-            ? new(directory)
-            : ScanHistoryArchive.CreateDefault();
+        return Composition.OpenHistory(databaseSettings.LoadDirectory());
     }
 
     private void InitializeSettingsPage()
@@ -207,22 +204,17 @@ public sealed partial class MainWindow
         {
             await ReleaseDatabaseViewsAsync();
             if (destination is null)
-                await Task.Run(() => history.DeleteDatabase(lifetime.Token), lifetime.Token);
+                await history.DeleteDatabaseAsync(lifetime.Token);
             else
-                history = await Task.Run(
-                    () =>
-                        history.Relocate(
-                            destination,
-                            path => databaseSettings?.SaveDirectory(path),
-                            lifetime.Token
-                        ),
+                await history.MoveAsync(
+                    destination,
+                    path => databaseSettings?.SaveDirectory(path),
                     lifetime.Token
                 );
             succeeded = true;
         }
         finally
         {
-            scanner = new(history);
             HistoryManagement.Configure(
                 history,
                 RefreshAfterHistoryDeletionAsync,
@@ -262,6 +254,7 @@ public sealed partial class MainWindow
 
     private async Task ReleaseDatabaseViewsAsync()
     {
+        await SearchPanel.ReleaseAsync();
         listingCancellation?.Cancel();
         historyVersion++;
         navigationVersion++;

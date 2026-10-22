@@ -3,8 +3,10 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Something.Application;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
+using Something.Application.History;
 using Something.Ntfs;
-using Something.Storage;
 
 namespace Something.App;
 
@@ -331,12 +333,7 @@ public sealed partial class MainWindow
                     RequestedBaselineUtc = range.RequestedBeforeUtc,
                     AsOfUtc = range.RequestedAfterUtc,
                 };
-            owned = await ScanSession.OpenHistoryAsync(
-                history,
-                before.Id,
-                card.Choice.Drive,
-                token
-            );
+            owned = await history.OpenAsync(before.Id, card.Choice.Drive, token);
             report = await ScanSession.ApplyVisibilityToComparisonAsync(
                 report,
                 owned,

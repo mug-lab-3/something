@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using DiscUtils.Ntfs;
 using DiscUtils.Partitions;
-using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Ntfs.Tests;

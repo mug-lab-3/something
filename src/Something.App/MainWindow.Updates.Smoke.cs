@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using Microsoft.UI.Xaml.Controls;
-using Something.Application;
 
 namespace Something.App;
 

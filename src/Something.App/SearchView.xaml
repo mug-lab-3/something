@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="Something.App.SearchView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Something.App"
+>
+  <Grid>
+    <local:DelayedLoadingRegion x:Name="Region">
+      <local:DelayedLoadingRegion.Body>
+        <Grid>
+          <local:SearchConditionsView
+            x:Name="Conditions"
+            SearchRequested="OnSearchRequested"
+            RangeChanged="OnRangeChanged"
+            InputChanged="OnInputChanged"
+            ReturnToResultsRequested="OnReturnToResults"
+          />
+          <local:SearchResultsView
+            x:Name="ResultsScreen"
+            Visibility="Collapsed"
+            BackToConditionsRequested="OnBackToConditions"
+          />
+        </Grid>
+      </local:DelayedLoadingRegion.Body>
+    </local:DelayedLoadingRegion>
+    <StackPanel
+      x:Name="CancelBar"
+      Orientation="Horizontal"
+      Spacing="12"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Bottom"
+      Margin="0,0,0,24"
+      Visibility="Collapsed"
+      Canvas.ZIndex="5"
+    >
+      <Button x:Uid="Search_CancelButton" Click="OnCancel" />
+    </StackPanel>
+  </Grid>
+</UserControl>

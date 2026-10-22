@@ -1,9 +1,7 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace Something.Storage;
 
 /// <summary>A disposable database for one diagnostic volume scan; never opens or replaces saved history.</summary>
-public sealed class TemporaryScanDatabase : IDisposable
+internal sealed class TemporaryScanDatabase : IDisposable
 {
     private readonly string directory;
     private bool disposed;

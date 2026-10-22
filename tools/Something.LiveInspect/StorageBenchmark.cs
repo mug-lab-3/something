@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -99,11 +100,15 @@ internal static class StorageBenchmark
         );
         var result = buffer is null
             ? store.CompleteScan(id, DateTimeOffset.UtcNow, cancellation.Token)
-            : buffer.Complete(cancellation.Token);
+            : buffer.Complete(cancellation.Token).Aggregation;
         var aggregate = watch.Elapsed - stage;
         var persistStart = watch.Elapsed;
         if (buffer is not null)
-            id = store.PublishBufferedScan(buffer, DateTimeOffset.UtcNow, cancellation.Token);
+            id = store.PublishBufferedScan(
+                buffer.Complete(),
+                DateTimeOffset.UtcNow,
+                cancellation.Token
+            );
         var complete = watch.Elapsed - stage;
         var persist = watch.Elapsed - persistStart;
         var export = TimeSpan.Zero;

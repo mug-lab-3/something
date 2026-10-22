@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using Something.Ntfs;
+using Something.Application.Scanning;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     /// <summary>Publishes completed in-memory facts and their verified aggregation in one transaction.
     /// No observation staging, readback or intermediate commits. Previous publication survives any failure.</summary>
     public Guid PublishBufferedScan(
-        BufferedScan buffer,
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         CancellationToken cancellationToken = default,
         Action<ScanWorkProgress>? progress = null,
@@ -16,7 +16,7 @@ public sealed partial class ScanStore
         Action<ulong>? accountMemoryLimit = null
     ) =>
         PublishBufferedScanCore(
-            buffer,
+            completedScan,
             endedUtc,
             null,
             cancellationToken,
@@ -26,7 +26,7 @@ public sealed partial class ScanStore
         );
 
     internal Guid PublishHistoryBuffer(
-        BufferedScan buffer,
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         HistorySnapshotEntity history,
         CancellationToken token,
@@ -36,7 +36,7 @@ public sealed partial class ScanStore
         Action<ulong>? accountMemoryLimit = null
     ) =>
         PublishBufferedScanCore(
-            buffer,
+            completedScan,
             endedUtc,
             history,
             token,
@@ -47,7 +47,7 @@ public sealed partial class ScanStore
         );
 
     private Guid PublishBufferedScanCore(
-        BufferedScan buffer,
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         HistorySnapshotEntity? history,
         CancellationToken cancellationToken,
@@ -59,7 +59,7 @@ public sealed partial class ScanStore
     {
         if (context is not DuckScanDbContext duck)
             return PublishBufferedScanOnce(
-                buffer,
+                completedScan,
                 endedUtc,
                 history,
                 cancellationToken,
@@ -71,7 +71,7 @@ public sealed partial class ScanStore
             duck,
             report =>
                 PublishBufferedScanOnce(
-                    buffer,
+                    completedScan,
                     endedUtc,
                     history,
                     cancellationToken,
@@ -96,7 +96,7 @@ public sealed partial class ScanStore
     }
 
     private Guid PublishBufferedScanOnce(
-        BufferedScan buffer,
+        CompletedScan completedScan,
         DateTimeOffset endedUtc,
         HistorySnapshotEntity? history,
         CancellationToken cancellationToken,
@@ -105,15 +105,18 @@ public sealed partial class ScanStore
         Action<Guid>? attempting = null
     )
     {
-        ArgumentNullException.ThrowIfNull(buffer);
+        ArgumentNullException.ThrowIfNull(completedScan);
         cancellationToken.ThrowIfCancellationRequested();
-        var result = buffer.Aggregation;
+        var result = completedScan.Aggregation;
         var reporter = new ScanWorkReporter(progress);
-        var scan = CreateScanEntity(buffer.Descriptor);
+        var scan = CreateScanEntity(completedScan.Descriptor);
         if (history is { Id: var importedId } && importedId != Guid.Empty)
             scan.Id = importedId;
         attempting?.Invoke(scan.Id);
-        ValidateEnd(new(scan.Id, buffer.Descriptor, StoredScanState.Running, null), endedUtc);
+        ValidateEnd(
+            new(scan.Id, completedScan.Descriptor, StoredScanState.Running, null),
+            endedUtc
+        );
         Write(
             () =>
             {
@@ -139,16 +142,16 @@ public sealed partial class ScanStore
                         SharedHistoryPublication.Publish(
                             shared,
                             scan,
-                            buffer,
+                            completedScan,
                             cancellationToken,
                             reporter
                         );
                     else
-                        WriteFacts(scan.Id, buffer, cancellationToken, reporter);
+                        WriteFacts(scan.Id, completedScan, cancellationToken, reporter);
                     context.Volumes.Add(ToEntity(scan.Id, result));
                     scan.State = StoredScanState.Completed;
                     scan.Ended = endedUtc;
-                    SetPublishedGeneration(scan.Id, buffer.Descriptor);
+                    SetPublishedGeneration(scan.Id, completedScan.Descriptor);
                     if (history is not null)
                     {
                         history.Id = scan.Id;
@@ -173,20 +176,20 @@ public sealed partial class ScanStore
 
     private void WriteFacts(
         Guid id,
-        BufferedScan buffer,
+        CompletedScan completedScan,
         CancellationToken cancellationToken,
         ScanWorkReporter reporter
     )
     {
-        var result = buffer.Aggregation;
+        var result = completedScan.Aggregation;
         using var rows = new ModelInsert<ObservationEntity>(context);
         using var names = new ModelInsert<FileNameEntity>(context);
         using var streams = new ModelInsert<StreamEntity>(context);
         using var folders = new ModelInsert<FolderSampleEntity>(context);
         using var historyNames = new ModelInsert<FolderNameEntity>(context);
-        reporter.Start(ScanWorkStage.WritingFiles, buffer.Count);
+        reporter.Start(ScanWorkStage.WritingFiles, completedScan.Observations.Count);
         long completed = 0;
-        foreach (var item in buffer.Observations)
+        foreach (var item in completedScan.Observations)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var entity = ToEntity(id, item);
@@ -205,9 +208,9 @@ public sealed partial class ScanStore
             reporter.Advance(++completed);
         }
         // The traversal includes non-directories, so its denominator is all observations.
-        reporter.Start(ScanWorkStage.WritingFolderNames, buffer.Count);
+        reporter.Start(ScanWorkStage.WritingFolderNames, completedScan.Observations.Count);
         completed = 0;
-        foreach (var item in buffer.Observations)
+        foreach (var item in completedScan.Observations)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (

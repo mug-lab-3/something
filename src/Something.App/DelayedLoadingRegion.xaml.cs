@@ -18,6 +18,10 @@ public sealed partial class DelayedLoadingRegion : UserControl
         set => SetValue(BodyProperty, value);
     }
 
+    /// <summary>How visible the body is now: 1 normally, 0 while the animation covers it. As in
+    /// the whole-view loading screen, the old content is not shown behind the animation.</summary>
+    internal double BodyOpacity => BodyHost.Opacity;
+
     private readonly DelayedActivity activity;
     private bool pending;
     private bool presentationStarted;
@@ -49,17 +53,24 @@ public sealed partial class DelayedLoadingRegion : UserControl
         Loaded += (_, _) => UpdatePresentation();
     }
 
+    /// <summary>Raised when the animation has just appeared, so that something that belongs with
+    /// it (a cancel button) can appear with it and not before it.</summary>
+    internal event EventHandler? IndicatorShown;
+
     private void UpdatePresentation()
     {
+        bool wasShown = Indicator.Visibility == Visibility.Visible;
         if (pending && presentationStarted)
             Indicator.Visibility = Visibility.Visible;
         Animation.SetBusy(pending && presentationStarted && IsLoaded);
         bool covered = presentationStarted && (pending || Animation.IsPlaying);
         BodyHost.IsEnabled = !pending && !covered;
-        BodyHost.Opacity = covered ? 0.45 : 1;
+        BodyHost.Opacity = covered ? 0 : 1;
         Indicator.Visibility = covered ? Visibility.Visible : Visibility.Collapsed;
         if (!pending && !Animation.IsPlaying)
             presentationStarted = false;
+        if (!wasShown && Indicator.Visibility == Visibility.Visible)
+            IndicatorShown?.Invoke(this, EventArgs.Empty);
     }
 
     internal sealed class UpdateLease(DelayedLoadingRegion region, IDisposable lease)

@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Something.Storage;
+using Something.Application;
+using Something.Application.History;
 
 namespace Something.App;
 
@@ -12,7 +13,7 @@ internal sealed record ManagedHistoryRow(ScanHistoryEntry Entry, long RecordCoun
 
 public sealed partial class HistoryManagementView : UserControl
 {
-    private ScanHistoryArchive? archive;
+    private HistoryService? history;
     private Func<Guid[], Task>? refreshViews;
     private CancellationToken token;
     private string? volumeKey;
@@ -49,14 +50,14 @@ public sealed partial class HistoryManagementView : UserControl
     }
 
     internal void Configure(
-        ScanHistoryArchive? archive,
+        HistoryService? history,
         Func<Guid[], Task> refreshViews,
         Func<Task<HistoryCompactionResult>> optimize,
         Func<string, LoadingAnimationKind, IAsyncDisposable> beginProgress,
         CancellationToken token
     )
     {
-        this.archive = archive;
+        this.history = history;
         this.refreshViews = refreshViews;
         this.optimize = optimize;
         this.beginProgress = beginProgress;
@@ -68,12 +69,12 @@ public sealed partial class HistoryManagementView : UserControl
     {
         try
         {
-            if (archive is null)
+            if (history is null)
             {
                 DatabaseSizeText.Text = "";
                 return;
             }
-            var info = archive.ReadDatabaseInfo();
+            var info = history.ReadDatabaseInfo();
             DatabaseSizeText.Text = Strings.Format(
                 "HistoryManagement_DatabaseSize",
                 DisplayText.Bytes((UInt128)info.TotalBytes)
@@ -117,8 +118,8 @@ public sealed partial class HistoryManagementView : UserControl
         try
         {
             var rows =
-                archive is not null && key is not null
-                    ? await Task.Run(() => archive.ListSummaries(key, token), token)
+                history is not null && key is not null
+                    ? await history.ListSummariesAsync(key, token)
                     : [];
             if (version != loadVersion || token.IsCancellationRequested)
                 return;
@@ -547,12 +548,12 @@ public sealed partial class HistoryManagementView : UserControl
         Action<string, LoadingAnimationKind> showProgress
     )
     {
-        var removed = await Task.Run(() => archive!.Delete(ids, token), token);
+        var removed = await history!.DeleteAsync(ids, token);
         string completed = Strings.Format("HistoryManagement_Deleted", removed.Length);
         try
         {
             await refreshViews!(removed);
-            int deferred = await Task.Run(() => archive!.CollectRetired(token), token);
+            int deferred = await history!.CollectRetiredAsync(token);
             if (deferred > 0)
                 completed += Strings.Format("HistoryManagement_DeferredCleanup", deferred);
             if (optimizeAfter)
@@ -566,7 +567,7 @@ public sealed partial class HistoryManagementView : UserControl
                     InfoBarSeverity.Success
                 );
             }
-            await Task.Run(() => archive!.Checkpoint(token), token);
+            await history!.CheckpointAsync(token);
             return new(completed, InfoBarSeverity.Success);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)

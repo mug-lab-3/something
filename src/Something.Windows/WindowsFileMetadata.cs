@@ -143,7 +143,7 @@ public sealed record WindowsFileInfo(
             serial,
             (long)length,
             links,
-            (attributes & 0x10) != 0,
+            ((System.IO.FileAttributes)attributes).HasFlag(System.IO.FileAttributes.Directory),
             BinaryPrimitives.ReadUInt64LittleEndian(bytes[20..])
         )
         {

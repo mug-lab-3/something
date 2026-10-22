@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Net;
-using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using Something.Storage;
 
 namespace Something.Application.Export;
 
@@ -22,11 +20,14 @@ public static class TableExporter
         ExportFormat format,
         ExportTable table,
         Func<ExportColumn, object?, string> display,
-        CancellationToken token
+        CancellationToken token,
+        IParquetTableWriter? parquet = null
     )
     {
         ArgumentNullException.ThrowIfNull(table);
         ArgumentNullException.ThrowIfNull(display);
+        if (format == ExportFormat.Parquet)
+            ArgumentNullException.ThrowIfNull(parquet);
         if (!Path.IsPathFullyQualified(path))
             throw new ArgumentException("The export path must be absolute.", nameof(path));
         foreach (var row in table.Rows)
@@ -40,7 +41,7 @@ public static class TableExporter
         try
         {
             if (format == ExportFormat.Parquet)
-                await Task.Run(() => WriteParquet(temporary, table, token), token);
+                await Task.Run(() => WriteParquet(parquet!, temporary, table, token), token);
             else
             {
                 string text = format switch
@@ -255,7 +256,12 @@ public static class TableExporter
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private static void WriteParquet(string path, ExportTable table, CancellationToken token)
+    private static void WriteParquet(
+        IParquetTableWriter parquet,
+        string path,
+        ExportTable table,
+        CancellationToken token
+    )
     {
         var columns = table
             .Columns.Select(column => new ParquetColumn(
@@ -288,7 +294,7 @@ public static class TableExporter
                     $"{ExportTable.FormatName} {ExportTable.FormatVersion}"
                 )
             );
-        ParquetTableWriter.Write(path, columns, rows, metadata, token);
+        parquet.Write(path, columns, rows, metadata, token);
     }
 
     private static string Raw(object? value) =>

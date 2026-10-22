@@ -10,7 +10,7 @@ namespace Something.Storage;
 // DuckDB whole-generation reads. EF materialization took about half of a two-million-file read
 // (3.1 s total, 1.5 s in the engine), so these read typed columns directly from ordered streams.
 // Values are validated exactly as the entity path validates them; SQLite keeps the EF queries.
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     private sealed class NativeRows : IDisposable
     {
@@ -18,11 +18,15 @@ public sealed partial class ScanStore
         internal DbDataReader Reader { get; }
         internal bool HasRow { get; private set; }
 
-        internal NativeRows(ScanDbContext context, string sql)
+        // Streaming keeps a large result out of the engine's memory; the connection then runs
+        // no other command until the reader is disposed.
+        internal NativeRows(ScanDbContext context, string sql, bool streaming = false)
         {
             command = context.Database.GetDbConnection().CreateCommand();
             command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
             command.CommandText = sql;
+            if (streaming)
+                ((DuckDB.NET.Data.DuckDBCommand)command).UseStreamingMode = true;
             Reader = command.ExecuteReader();
             HasRow = Reader.Read();
         }

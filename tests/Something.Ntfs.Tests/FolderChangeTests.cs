@@ -1,7 +1,9 @@
 using System.Numerics;
 using Microsoft.EntityFrameworkCore;
 using Something.Application;
-using Something.Ntfs;
+using Something.Application.Comparison;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
 
@@ -41,12 +43,9 @@ public sealed class FolderChangeTests
         );
         fixture.Save(Now.AddMinutes(1), [new(20, "future", 9999)]);
 
-        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
-            "volume:A",
-            period,
-            Token,
-            Now
-        );
+        var report = await new FolderHistoryService(
+            TestHistory.For(fixture.Archive)
+        ).ReadChangesAsync("volume:A", period, Token, Now);
 
         Assert.Equal(FolderComparisonAvailability.Available, report.Availability);
         Assert.Equal(Now.AddDays(-days), report.RequestedBaselineUtc);
@@ -320,7 +319,7 @@ public sealed class FolderChangeTests
             buffer.Complete(Token);
             Assert.Throws<DbUpdateException>(() =>
                 writer.PublishHistoryBuffer(
-                    buffer,
+                    buffer.Complete(TestContext.Current.CancellationToken),
                     Now,
                     new()
                     {
@@ -395,12 +394,9 @@ public sealed class FolderChangeTests
         var after = fixture.Save(Now.AddMinutes(-10), [new(20, "folder", 300)]);
         var other = fixture.Save(Now.AddMinutes(-5), [new(20, "folder", 999)], "volume:B");
 
-        var report = await new FolderHistoryService(fixture.Archive).ReadChangesAsync(
-            "volume:A",
-            before.Id,
-            after.Id,
-            Token
-        );
+        var report = await new FolderHistoryService(
+            TestHistory.For(fixture.Archive)
+        ).ReadChangesAsync("volume:A", before.Id, after.Id, Token);
 
         Assert.Equal(new BigInteger(200), Assert.Single(report.ChangedFolders).AllocatedDelta);
         Assert.Equal(new BigInteger(200), report.Root!.AllocatedDelta);
@@ -514,7 +510,7 @@ public sealed class FolderChangeTests
             }
             buffer.Complete(Token);
             return Archive.Publish(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 ended,
                 "Demo",
                 TimeSpan.FromSeconds(1),

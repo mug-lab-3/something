@@ -1,13 +1,9 @@
 using System.Buffers;
+using Something.Application.History;
 
 namespace Something.Storage;
 
-public sealed record HistoryDatabaseInfo(string Path, long DatabaseBytes, long WalBytes)
-{
-    public long TotalBytes => checked(DatabaseBytes + WalBytes);
-}
-
-public sealed partial class ScanHistoryArchive
+internal sealed partial class ScanHistoryArchive
 {
     private static readonly object LocationOperations = new();
     private bool HasDatabaseFiles =>

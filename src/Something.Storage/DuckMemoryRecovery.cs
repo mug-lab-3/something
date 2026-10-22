@@ -1,5 +1,6 @@
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Scanning;
 
 namespace Something.Storage;
 

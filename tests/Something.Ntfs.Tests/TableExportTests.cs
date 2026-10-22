@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using DuckDB.NET.Data;
 using Something.Application.Export;
+using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 
@@ -206,7 +207,8 @@ public sealed class TableExportTests
                 ExportFormat.Parquet,
                 table,
                 Display,
-                TestContext.Current.CancellationToken
+                TestContext.Current.CancellationToken,
+                StorageRepositories.Parquet
             );
 
             // Assert
@@ -253,7 +255,8 @@ public sealed class TableExportTests
                 ExportFormat.Parquet,
                 table,
                 Display,
-                TestContext.Current.CancellationToken
+                TestContext.Current.CancellationToken,
+                StorageRepositories.Parquet
             )
         );
 
@@ -284,7 +287,8 @@ public sealed class TableExportTests
                 format,
                 Table(),
                 Display,
-                TestContext.Current.CancellationToken
+                TestContext.Current.CancellationToken,
+                StorageRepositories.Parquet
             );
 
             // Assert

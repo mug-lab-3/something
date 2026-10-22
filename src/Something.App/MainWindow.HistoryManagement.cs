@@ -1,8 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Something.Application;
-using Something.Storage;
-using Something.Windows;
+using Something.Application.History;
 
 namespace Something.App;
 
@@ -10,9 +9,22 @@ public sealed partial class MainWindow
 {
     private bool historyMaintenance;
 
+    private bool Searching => ReferenceEquals(WorkspaceTabs.SelectedItem, SearchWorkspaceTab);
+
     private void InitializeHistoryManagement()
     {
         DatabaseWorkspaceTab.IsEnabled = history is not null;
+        SearchWorkspaceTab.IsEnabled = history is not null;
+        if (history is not null)
+            SearchPanel.Configure(
+                new HistorySearchService(history, scanner.MemoryBudget),
+                error =>
+                {
+                    if (!closed)
+                        ShowError(error);
+                },
+                lifetime.Token
+            );
         HistoryManagement.Configure(
             history,
             RefreshAfterHistoryDeletionAsync,
@@ -42,6 +54,7 @@ public sealed partial class MainWindow
             Strings.Get("Database_Optimizing"),
             LoadingAnimationKind.OptimizeDatabase
         );
+        await SearchPanel.ReleaseAsync();
         Guid? selectedScan = session?.ScanId;
         var selectedLocation = location;
         int period = ComparisonPeriodBox.SelectedIndex;
@@ -64,37 +77,22 @@ public sealed partial class MainWindow
                     .Distinct()
                     .Select(current => current.DisposeAsync().AsTask())
             );
-            var memory = WindowsMemoryAvailability.TryRead();
-            ulong available = memory is not null
-                ? Math.Min(
-                    memory.AvailablePhysicalBytes,
-                    Math.Min(memory.AvailableCommitBytes, memory.AvailableVirtualBytes)
-                )
-                : checked(
-                    (ulong)
-                        Math.Max(
-                            0,
-                            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
-                                - GC.GetGCMemoryInfo().MemoryLoadBytes
-                        )
+            try
+            {
+                return await history.OptimizeAsync(
+                    stage =>
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            if (!closed)
+                                ViewLoadingText.Text = StatusText.Describe(stage);
+                        }),
+                    lifetime.Token
                 );
-            ulong limit = Math.Min(MaximumNativeMemoryLimit, available / 4 * 3) / 16384 * 16384;
-            if (limit < 16384)
+            }
+            catch (InsufficientMemoryException)
+            {
                 throw new InvalidOperationException(Strings.Get("Database_OptimizeMemory"));
-            return await Task.Run(
-                () =>
-                    history.Compact(
-                        limit,
-                        lifetime.Token,
-                        stage =>
-                            DispatcherQueue.TryEnqueue(() =>
-                            {
-                                if (!closed)
-                                    ViewLoadingText.Text = StatusText.Describe(stage);
-                            })
-                    ),
-                lifetime.Token
-            );
+            }
         }
         finally
         {
@@ -103,10 +101,7 @@ public sealed partial class MainWindow
                 await InitializeHistoryAsync();
                 if (selectedCard is { } card && volumeKeys.TryGetValue(card, out var key))
                 {
-                    var entries = await Task.Run(
-                        () => history.List(key, lifetime.Token),
-                        lifetime.Token
-                    );
+                    var entries = await history.ListAsync(key, lifetime.Token);
                     if (
                         selectedScan != session?.ScanId
                         && entries.FirstOrDefault(row => row.Id == selectedScan) is { } saved
@@ -128,8 +123,6 @@ public sealed partial class MainWindow
             }
         }
     }
-
-    private const ulong MaximumNativeMemoryLimit = (ulong)long.MaxValue / 16384 * 16384;
 
     private async void TrackHistoryManagementWork(Task task)
     {
@@ -161,6 +154,11 @@ public sealed partial class MainWindow
             await RefreshManagementIfVisibleAsync();
         else if (analyzing)
             await LoadRankingAsync();
+        else if (Searching)
+        {
+            SyncSearchPanel();
+            SearchPanel.Activate();
+        }
     }
 
     // The settings page replaces the selected workspace without changing the selected tab.
@@ -169,12 +167,23 @@ public sealed partial class MainWindow
         bool managing = ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab);
         bool analyzing = ReferenceEquals(WorkspaceTabs.SelectedItem, AnalysisWorkspaceTab);
         bool settings = SettingsOpen;
-        ViewHost.Visibility = settings || managing ? Visibility.Collapsed : Visibility.Visible;
+        bool searching = Searching;
+        ViewHost.Visibility =
+            settings || managing || searching ? Visibility.Collapsed : Visibility.Visible;
         HistoryManagement.Visibility =
             !settings && managing ? Visibility.Visible : Visibility.Collapsed;
+        SearchPanel.Visibility = !settings && searching ? Visibility.Visible : Visibility.Collapsed;
         FileListPanel.Visibility = analyzing ? Visibility.Collapsed : Visibility.Visible;
         RankingLoadingRegion.Visibility = analyzing ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    // Gives the search tab the drive and display settings it searches with.
+    private void SyncSearchPanel() =>
+        SearchPanel.SetContext(
+            selectedCard is { } card ? volumeKeys.GetValueOrDefault(card) : null,
+            selectedCard?.Choice.Drive ?? "",
+            visibilityOptions
+        );
 
     private async Task RefreshManagementIfVisibleAsync()
     {
@@ -217,7 +226,7 @@ public sealed partial class MainWindow
         if (
             session?.Drive != cards[1].Choice.Drive
             || !HistoryManagement.IsShowingVolume(volumeKeys[cards[1]])
-            || history.List(volumeKeys[cards[1]], lifetime.Token).Length == 0
+            || (await history.ListAsync(volumeKeys[cards[1]], lifetime.Token)).Length == 0
         )
             throw new InvalidOperationException("Drive selection did not preserve other history.");
         await Task.WhenAll(SelectDriveAsync(cards[2]), SelectDriveAsync(cards[1]));
@@ -305,15 +314,10 @@ public sealed partial class MainWindow
                 || !volumeKeys.TryGetValue(card, out var key)
             )
                 continue;
-            var rows = await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token);
+            var rows = await history.ListAsync(key, lifetime.Token);
             if (rows.Length == 0)
                 continue;
-            var next = await ScanSession.OpenHistoryAsync(
-                history,
-                rows[0].Id,
-                drive,
-                lifetime.Token
-            );
+            var next = await history.OpenAsync(rows[0].Id, drive, lifetime.Token);
             if (closed || sessions.ContainsKey(drive) || scans.ContainsKey(card))
                 await next.DisposeAsync();
             else

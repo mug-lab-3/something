@@ -7,6 +7,10 @@
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <!-- DuckDB allocates through the CRT on Windows. With the default heap, repeating a large
+           aggregation in one process slowed it from 0.81 s to 1.84 s over ten runs; with the
+           segment heap it stayed at 0.69-0.76 s. Windows before 10 2004 ignores this setting. -->
+      <heapType xmlns="http://schemas.microsoft.com/SMI/2020/WindowsSettings">SegmentHeap</heapType>
     </windowsSettings>
   </application>
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">

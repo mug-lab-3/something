@@ -1,7 +1,8 @@
 using System.Numerics;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
 using Something.Ntfs;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.Application;
 
@@ -45,7 +46,7 @@ public sealed partial class ScanSession
                     () =>
                         new VisibleScan(
                             Root,
-                            () => store.ReadFiles(ScanId, token),
+                            () => snapshot.ReadFiles(token),
                             options,
                             token,
                             ReadVisibilityFolders(token)
@@ -89,7 +90,7 @@ public sealed partial class ScanSession
         if (cachedVisibleParent != parent)
         {
             var rows = new List<FolderEntry>();
-            foreach (var entry in store.ReadAllFolderEntries(ScanId, parent, token))
+            foreach (var entry in snapshot.ReadAllFolderEntries(parent, token))
             {
                 token.ThrowIfCancellationRequested();
                 if (
@@ -150,7 +151,7 @@ public sealed partial class ScanSession
     {
         if (visibilityFolders is { } cached)
             return cached;
-        var folders = store.ReadVisibilityFolders(ScanId, token).ToArray();
+        var folders = snapshot.ReadVisibilityFolders(token).ToArray();
         token.ThrowIfCancellationRequested();
         return visibilityFolders = folders;
     }
@@ -171,7 +172,9 @@ public sealed partial class ScanSession
             var all = new FileVisibilityOptions();
             if (!analysisCache.TryGetValue(all, out var source))
             {
-                source = store.ReadFolderAnalysis(ScanId, new(), token).ToArray();
+                source = snapshot
+                    .ReadFolderAnalysis(new(), FolderEntrySort.AllocatedBytes, token)
+                    .ToArray();
                 token.ThrowIfCancellationRequested();
                 analysisCache.Add(all, source);
             }

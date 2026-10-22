@@ -1,10 +1,10 @@
-using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Something.Ntfs;
+using Something.Application.Browsing;
+using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
 
@@ -208,11 +208,12 @@ public sealed class ScanStoreTests
     }
 
     [Theory]
-    [InlineData(StoredScanState.Cancelled)]
-    [InlineData(StoredScanState.Failed)]
-    [InlineData(StoredScanState.Interrupted)]
-    public void StoppedOrFailedNewGeneration_PreservesPreviousPublishedResult(StoredScanState state)
+    [InlineData(nameof(StoredScanState.Cancelled))]
+    [InlineData(nameof(StoredScanState.Failed))]
+    [InlineData(nameof(StoredScanState.Interrupted))]
+    public void StoppedOrFailedNewGeneration_PreservesPreviousPublishedResult(string stateName)
     {
+        var state = Enum.Parse<StoredScanState>(stateName);
         using var fixture = new DatabaseFixture();
         var descriptor = Descriptor();
         var first = fixture.Store.BeginScan(descriptor, TestContext.Current.CancellationToken);
@@ -817,19 +818,18 @@ public sealed class ScanStoreTests
         staged.Store.StageBatch(stagedId, facts, token);
         var expected = staged.Store.CompleteScan(stagedId, Started.AddMinutes(1), token);
         var buffer = new BufferedScan(descriptor);
-        Assert.Throws<InvalidOperationException>(() =>
-            buffer.ReadAccountingDiagnostics(Root, cancellationToken: token)
-        );
         foreach (var fact in facts.Reverse())
             buffer.Add(fact, token);
-        Assert.Throws<InvalidOperationException>(() =>
-            buffered.Store.PublishBufferedScan(buffer, Started.AddMinutes(1), token)
+        var completed = buffer.Complete(token);
+        var actual = completed.Aggregation;
+        var bufferedId = buffered.Store.PublishBufferedScan(
+            completed,
+            Started.AddMinutes(1),
+            token
         );
-        var actual = buffer.Complete(token);
-        var bufferedId = buffered.Store.PublishBufferedScan(buffer, Started.AddMinutes(1), token);
 
         Assert.Equal(facts.Length, buffer.Count);
-        Assert.Same(actual, buffer.Complete(token));
+        Assert.Same(completed, buffer.Complete(token));
         Assert.Equal(expected.Metadata, actual.Metadata);
         Assert.Equal(expected.Unattributed, actual.Unattributed);
         Assert.Equal(expected.HasUnknownAttribution, actual.HasUnknownAttribution);
@@ -838,7 +838,7 @@ public sealed class ScanStoreTests
             Assert.Equal(pair.Value, actual.Folders[pair.Key]);
             Assert.Equal(
                 pair.Value.SubtreeData,
-                buffer.ReadAccountingDiagnostics(pair.Key, cancellationToken: token).AssignedData
+                completed.ReadAccountingDiagnostics(pair.Key, cancellationToken: token).AssignedData
             );
         }
         var stored = buffered.Store.ReadFiles(bufferedId, token).ToDictionary(f => f.Reference);
@@ -912,7 +912,11 @@ public sealed class ScanStoreTests
             using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
             cancelled.Cancel();
             Assert.Throws<OperationCanceledException>(() =>
-                fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), cancelled.Token)
+                fixture.Store.PublishBufferedScan(
+                    buffer.Complete(TestContext.Current.CancellationToken),
+                    Started.AddSeconds(2),
+                    cancelled.Token
+                )
             );
         }
         else
@@ -926,7 +930,11 @@ public sealed class ScanStoreTests
                 "CREATE TRIGGER reject_test_file BEFORE INSERT ON file_name WHEN NEW.RecordIndex = 100 BEGIN SELECT RAISE(ABORT, 'test failure'); END;";
             command.ExecuteNonQuery();
             Assert.Throws<DbUpdateException>(() =>
-                fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), token)
+                fixture.Store.PublishBufferedScan(
+                    buffer.Complete(TestContext.Current.CancellationToken),
+                    Started.AddSeconds(2),
+                    token
+                )
             );
             command.CommandText = "DROP TRIGGER reject_test_file";
             command.ExecuteNonQuery();
@@ -939,7 +947,11 @@ public sealed class ScanStoreTests
         Assert.Single(inspection.Scans.AsNoTracking());
         Assert.Equal(old, fixture.Store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range));
         Assert.Equal(4, inspection.Observations.Count());
-        var retry = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(2), token);
+        var retry = fixture.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(2),
+            token
+        );
         Assert.Equal(retry, fixture.Store.GetPublishedScan(descriptor.VolumeKey, descriptor.Range));
         Assert.Equal(
             new CapacityAmount(200, 200),
@@ -961,7 +973,7 @@ public sealed class ScanStoreTests
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
         cancelled.Cancel();
         Assert.Throws<OperationCanceledException>(() => buffer.Complete(cancelled.Token));
-        Assert.Equal(new CapacityAmount(1, 1), buffer.Complete(token).Folders[Root].SubtreeData);
+        Assert.Equal(new CapacityAmount(1, 1), buffer.Complete(token).Root.SubtreeData);
     }
 
     [Theory]
@@ -1149,19 +1161,19 @@ public sealed class ScanStoreTests
             ObservedHardLinkCount = 1,
             LinkSetComplete = false,
         };
-        Assert.Throws<InvalidOperationException>(() => buffer.Diagnostics);
         buffer.Add(Stage(Directory(5, Root)), token);
         buffer.Add(Stage(incomplete), token);
         buffer.Add(Stage(File(101, 23, Ref(999))), token);
-        var result = buffer.Complete(token);
-        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var completed = buffer.Complete(token);
+        var result = completed.Aggregation;
+        var id = fixture.Store.PublishBufferedScan(completed, Started.AddSeconds(1), token);
         Assert.Equal(new CapacityAmount(94, 94), result.Unattributed.KnownData);
         Assert.Equal(default, result.Folders[Root].SubtreeData);
-        Assert.Equal(2, buffer.Diagnostics.Length);
-        Assert.Equal(UnattributedReason.IncompleteLinks, buffer.Diagnostics[0].Reason);
-        Assert.Equal(new CapacityAmount(71, 71), buffer.Diagnostics[0].KnownData);
-        Assert.Equal(UnattributedReason.MissingParent, buffer.Diagnostics[1].Reason);
-        Assert.Equal(Ref(999), buffer.Diagnostics[1].Samples[0].ProblemParent);
+        Assert.Equal(2, completed.Diagnostics.Length);
+        Assert.Equal(UnattributedReason.IncompleteLinks, completed.Diagnostics[0].Reason);
+        Assert.Equal(new CapacityAmount(71, 71), completed.Diagnostics[0].KnownData);
+        Assert.Equal(UnattributedReason.MissingParent, completed.Diagnostics[1].Reason);
+        Assert.Equal(Ref(999), completed.Diagnostics[1].Samples[0].ProblemParent);
         Assert.Equal(result.Unattributed, fixture.Store.ReadAggregation(id, token).Unattributed);
         var stored = fixture
             .Store.ReadFiles(id, token)
@@ -1492,8 +1504,12 @@ public sealed class ScanStoreTests
         var buffer = new BufferedScan(Descriptor());
         foreach (var fact in BasicFacts())
             buffer.Add(fact, token);
-        var expected = buffer.Complete(token);
-        var id = temporary.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var expected = buffer.Complete(token).Aggregation;
+        var id = temporary.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
         Assert.Empty(System.IO.Directory.EnumerateFiles(directory));
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
         cancelled.Cancel();
@@ -1643,19 +1659,22 @@ public sealed class ScanStoreTests
             small.Add(fact, token);
         foreach (var fact in BasicFacts(long.MaxValue))
             large.Add(fact, token);
-        Assert.Throws<InvalidOperationException>(() => small.EstimateDatabaseBytes(token));
-        var expected = small.Complete(token);
-        large.Complete(token);
-        Assert.Equal(small.EstimateDatabaseBytes(token), large.EstimateDatabaseBytes(token));
-        Assert.True(small.EstimateDatabaseBytes(token) >= 64 * 1024);
-        Assert.Equal(0UL, small.EstimateDatabaseBytes(token) % 16384);
+        var smallScan = small.Complete(token);
+        var largeScan = large.Complete(token);
+        var expected = smallScan.Aggregation;
+        Assert.Equal(
+            DatabaseSizeEstimate.For(smallScan, token),
+            DatabaseSizeEstimate.For(largeScan, token)
+        );
+        Assert.True(DatabaseSizeEstimate.For(smallScan, token) >= 64 * 1024);
+        Assert.Equal(0UL, DatabaseSizeEstimate.For(smallScan, token) % 16384);
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(token);
         cancelled.Cancel();
         Assert.Throws<OperationCanceledException>(() =>
-            small.EstimateDatabaseBytes(cancelled.Token)
+            DatabaseSizeEstimate.For(smallScan, cancelled.Token)
         );
         using var temporary = TemporaryScanDatabase.CreateSqlite(token, boundedMemory: true);
-        var id = temporary.Store.PublishBufferedScan(small, Started.AddSeconds(1), token);
+        var id = temporary.Store.PublishBufferedScan(smallScan, Started.AddSeconds(1), token);
         var actual = temporary.Store.ReadAggregation(id, token);
         foreach (var pair in expected.Folders)
             Assert.Equal(pair.Value, actual.Folders[pair.Key]);
@@ -1705,8 +1724,12 @@ public sealed class ScanStoreTests
         var buffer = new BufferedScan(Descriptor());
         foreach (var fact in BasicFacts())
             buffer.Add(fact, token);
-        var expected = buffer.Complete(token);
-        var id = temporary.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var expected = buffer.Complete(token).Aggregation;
+        var id = temporary.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
         var actual = temporary.Store.ReadAggregation(id, token);
         foreach (var pair in expected.Folders)
             Assert.Equal(pair.Value, actual.Folders[pair.Key]);
@@ -1787,7 +1810,11 @@ public sealed class ScanStoreTests
             token
         );
         buffer.Complete(token);
-        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var id = fixture.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
 
         Assert.Equal(Root, fixture.Store.ReadParentFolder(id, Ref(20), "synthetic-0", token));
         Assert.Equal(Ref(20), fixture.Store.ReadParentFolder(id, Ref(22), "synthetic-0", token));
@@ -1833,7 +1860,11 @@ public sealed class ScanStoreTests
         buffer.Add(Stage(unknown), token);
         buffer.Add(Stage(reusedParent), token);
         buffer.Complete(token);
-        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var id = fixture.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
 
         var first = fixture.Store.ReadFolderEntries(
             id,
@@ -1926,7 +1957,11 @@ public sealed class ScanStoreTests
             token
         );
         buffer.Complete(token);
-        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var id = fixture.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
 
         var allocated = fixture.Store.ReadFolderEntries(
             id,
@@ -1997,7 +2032,11 @@ public sealed class ScanStoreTests
             foreach (var fact in facts)
                 buffer.Add(fact, token);
             buffer.Complete(token);
-            scan = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+            scan = fixture.Store.PublishBufferedScan(
+                buffer.Complete(TestContext.Current.CancellationToken),
+                Started.AddSeconds(1),
+                token
+            );
         }
         else
         {
@@ -2040,7 +2079,11 @@ public sealed class ScanStoreTests
         buffer.Add(Stage(File(100, 0, Ref(20)) with { Streams = [new("", 10000, 4096)] }), token);
         buffer.Add(Stage(File(101, 0, Ref(21)) with { Streams = [new("", 1000, 8192)] }), token);
         buffer.Complete(token);
-        var id = fixture.Store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var id = fixture.Store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
 
         var disk = fixture.Store.ReadLargestFolders(id, cancellationToken: token);
         var logical = fixture.Store.ReadLargestFolders(
@@ -2076,7 +2119,11 @@ public sealed class ScanStoreTests
         foreach (var fact in BasicFacts())
             buffer.Add(fact, token);
         buffer.Complete(token);
-        var previous = store.PublishBufferedScan(buffer, Started.AddSeconds(1), token);
+        var previous = store.PublishBufferedScan(
+            buffer.Complete(TestContext.Current.CancellationToken),
+            Started.AddSeconds(1),
+            token
+        );
         store.HistoryContext.Database.ExecuteSqlRaw(
             "CREATE TABLE read_model_probe(Value INTEGER);"
         );
@@ -2084,7 +2131,7 @@ public sealed class ScanStoreTests
 
         void Publish() =>
             store.PublishHistoryBuffer(
-                buffer,
+                buffer.Complete(TestContext.Current.CancellationToken),
                 Started.AddSeconds(2),
                 new()
                 {

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Something.Storage;
+namespace Something.Application.Scanning;
 
 public enum ScanWorkStage
 {
@@ -38,20 +38,20 @@ public readonly record struct ScanWorkProgress(ScanWorkStage Stage, long Complet
 
 /// <summary>Synchronous worker callback; no timers, DB queries or per-record UI dispatch.
 /// Start/end are always reported. Intermediate updates are limited to four per second.</summary>
-internal sealed class ScanWorkReporter(Action<ScanWorkProgress>? callback)
+public sealed class ScanWorkReporter(Action<ScanWorkProgress>? callback)
 {
     private ScanWorkStage stage;
     private long? total;
     private long lastReport;
 
-    internal void Start(ScanWorkStage next, long? count = null)
+    public void Start(ScanWorkStage next, long? count = null)
     {
         stage = next;
         total = count;
         Emit(0);
     }
 
-    internal void Advance(long completed)
+    public void Advance(long completed)
     {
         if (callback is null)
             return;

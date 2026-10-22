@@ -24,10 +24,14 @@ public sealed partial class MainWindow
                 "Database settings smoke requires its own synthetic history directory."
             );
         await Task.WhenAll(historyTasks.ToArray());
-        var ids = cards.ToDictionary(
-            card => card.Choice.Drive,
-            card => history.List(volumeKeys[card], lifetime.Token).Select(row => row.Id).ToArray()
-        );
+        var ids = new Dictionary<string, Guid[]>();
+        foreach (var card in cards)
+            ids[card.Choice.Drive] =
+            [
+                .. (await history.ListAsync(volumeKeys[card], lifetime.Token)).Select(row =>
+                    row.Id
+                ),
+            ];
         string source = history.DatabasePath;
         databaseSettings = new(Path.Combine(ownedRoot, "database-settings.json"));
         WorkspaceTabs.SelectedItem = DatabaseWorkspaceTab;
@@ -130,7 +134,9 @@ public sealed partial class MainWindow
             if (
                 !ids[card.Choice.Drive]
                     .SequenceEqual(
-                        history.List(volumeKeys[card], lifetime.Token).Select(row => row.Id)
+                        (await history.ListAsync(volumeKeys[card], lifetime.Token)).Select(row =>
+                            row.Id
+                        )
                     )
             )
                 throw new InvalidOperationException("DB relocation lost a drive's history.");

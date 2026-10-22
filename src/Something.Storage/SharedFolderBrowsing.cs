@@ -3,7 +3,7 @@ using Something.Ntfs;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     // Select immutable listing IDs before reading entries. This avoids starting a folder
     // request from a view of every file in every generation. Sorting/paging remain LINQ.

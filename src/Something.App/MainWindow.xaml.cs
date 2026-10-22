@@ -8,8 +8,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Something.Application;
-using Something.Ntfs;
-using Something.Storage;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
+using Something.Application.Scanning;
 using Something.Windows;
 using Windows.Graphics.Imaging;
 
@@ -19,7 +20,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly CancellationTokenSource lifetime = new();
     private DriveScanner scanner;
-    private ScanHistoryArchive? history;
+    private HistoryService? history;
     private readonly Dictionary<DriveCard, string> volumeKeys = [];
     private ScanSession? historicalSession;
     private int historyVersion;
@@ -78,18 +79,16 @@ public sealed partial class MainWindow : Window
         int demoHistory = Array.IndexOf(arguments, "--demo-history");
         history = demo
             ? demoHistory >= 0 && demoHistory + 1 < arguments.Length
-                ? new ScanHistoryArchive(arguments[demoHistory + 1])
+                ? Composition.OpenHistory(arguments[demoHistory + 1])
                 : null
             : CreateConfiguredHistory();
-        scanner = new(history);
+        scanner = Composition.CreateScanner(history);
         HistoryBox.LoadCounts = ComparisonBeforeBox.LoadCounts = ids =>
-            Task.Run<IReadOnlyDictionary<Guid, long>>(
-                () =>
-                    history?.ReadRecordCounts(ids, lifetime.Token) ?? new Dictionary<Guid, long>(),
-                lifetime.Token
-            );
+            history?.ReadRecordCountsAsync(ids, lifetime.Token)
+            ?? Task.FromResult<IReadOnlyDictionary<Guid, long>>(new Dictionary<Guid, long>());
         InitializeComparisonControls();
         InitializeHistoryManagement();
+        InitializeSearchActions();
         InitializeSettingsPage();
         InitializeNavigationInput();
         if (demo && history is null)
@@ -344,6 +343,8 @@ public sealed partial class MainWindow : Window
                 await VerifyTreeFollowsListAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-export"))
                 await VerifyExportAsync(path);
+            if (Environment.GetCommandLineArgs().Contains("--smoke-search"))
+                await VerifySearchAsync(path);
             if (Environment.GetCommandLineArgs().Contains("--smoke-analysis"))
             {
                 WorkspaceTabs.SelectedItem = AnalysisWorkspaceTab;
@@ -467,10 +468,7 @@ public sealed partial class MainWindow : Window
         await ChangeHistoryAsync(newRow);
         if (session != latest || historicalSession is not null)
             throw new InvalidOperationException("Latest scan could not be restored from history.");
-        var foreign = await Task.Run(
-            () => history!.List($"demo:{cards[1].Choice.Drive}", lifetime.Token),
-            lifetime.Token
-        );
+        var foreign = await history!.ListAsync($"demo:{cards[1].Choice.Drive}", lifetime.Token);
         await ChangeHistoryAsync(new(foreign[0]));
         if (session != latest)
             throw new InvalidOperationException("History selection crossed volume identities.");
@@ -521,6 +519,7 @@ public sealed partial class MainWindow : Window
                 await ShowSessionAsync(latest);
             }
             await RefreshHistoryChoicesAsync(selected);
+            SyncSearchPanel();
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error)
@@ -555,15 +554,14 @@ public sealed partial class MainWindow : Window
                 if (closed)
                     return;
                 volumeKeys[card] = key;
-                var rows = await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token);
+                var rows = await history.ListAsync(key, lifetime.Token);
                 if (
                     rows.Length > 0
                     && !sessions.ContainsKey(card.Choice.Drive)
                     && !scans.ContainsKey(card)
                 )
                 {
-                    var latest = await ScanSession.OpenHistoryAsync(
-                        history,
+                    var latest = await history.OpenAsync(
                         rows[0].Id,
                         card.Choice.Drive,
                         lifetime.Token
@@ -611,7 +609,7 @@ public sealed partial class MainWindow : Window
             if (sessions.GetValueOrDefault(card.Choice.Drive)?.History is { } saved)
                 volumeKeys[card] = saved.VolumeKey;
             var entries = volumeKeys.TryGetValue(card, out var key)
-                ? await Task.Run(() => history.List(key, lifetime.Token), lifetime.Token)
+                ? await history.ListAsync(key, lifetime.Token)
                 : [];
             if (closed || selectedCard != card)
                 return;
@@ -696,8 +694,7 @@ public sealed partial class MainWindow : Window
             var next =
                 latest?.ScanId == row.Entry.Id
                     ? latest
-                    : owned = await ScanSession.OpenHistoryAsync(
-                        history,
+                    : owned = await history.OpenAsync(
                         row.Entry.Id,
                         card.Choice.Drive,
                         lifetime.Token
@@ -746,6 +743,7 @@ public sealed partial class MainWindow : Window
             Strings.Format("View_SwitchingDrive", card.Choice.Drive)
         );
         selectedCard = card;
+        SyncSearchPanel();
         UpdateScanActivity();
         await ClearComparisonAsync();
         if (closed || selectedCard != card)
@@ -802,6 +800,7 @@ public sealed partial class MainWindow : Window
         )
             DisplayProgress(card, progress);
         await RefreshHistoryChoicesAsync(card);
+        SyncSearchPanel();
     }
 
     private async Task ShowSessionAsync(ScanSession current)
@@ -915,18 +914,6 @@ public sealed partial class MainWindow : Window
                     stage
                 )
                 : await scanner.ScanAsync(drive, progress, operation.Cancellation.Token);
-            if (demo && history is not null)
-            {
-                try
-                {
-                    await next.SaveHistoryAsync(history, operation.Cancellation.Token);
-                }
-                catch
-                {
-                    await next.DisposeAsync();
-                    throw;
-                }
-            }
             operation.Finished = true;
             if (demo)
                 demoStages[drive] = DemoScanScenario.Next(stage);
@@ -1538,6 +1525,17 @@ public sealed partial class MainWindow : Window
     )
     {
         var menu = new MenuFlyout();
+        AddPathItems(menu, path, directoryPath, isDirectory);
+        if (args.TryGetPosition(target, out var position))
+            menu.ShowAt(target, new FlyoutShowOptions { Position = position });
+        else
+            menu.ShowAt(target);
+        args.Handled = true;
+    }
+
+    // The items every path menu starts with: open, and copy the path (and the folder's, for a file).
+    private void AddPathItems(MenuFlyout menu, string path, string? directoryPath, bool isDirectory)
+    {
         menu.Opened += (_, _) =>
         {
             MenuCursor.RestoreArrow();
@@ -1573,11 +1571,6 @@ public sealed partial class MainWindow : Window
             directoryPath is null ? Strings.Get("Menu_CopyPath") : Strings.Get("Menu_CopyFilePath"),
             path
         );
-        if (args.TryGetPosition(target, out var position))
-            menu.ShowAt(target, new FlyoutShowOptions { Position = position });
-        else
-            menu.ShowAt(target);
-        args.Handled = true;
     }
 
     private static object? FindContextRow(ListView list, DependencyObject? source)
@@ -1964,6 +1957,8 @@ public sealed partial class MainWindow : Window
         foreach (var indicator in treeLoads.Values)
             indicator.Dispose();
         lifetime.Cancel();
+        foreach (var graph in graphWindows.ToArray())
+            graph.Close();
         recycleDialog?.Hide();
         databaseDeleteDialog?.Hide();
         exportDialog?.Hide();
@@ -1971,6 +1966,7 @@ public sealed partial class MainWindow : Window
         ComparisonBeforeBox.CloseDialog();
         HistoryManagement.CloseForShutdown();
         listingCancellation?.Cancel();
+        await SearchPanel.DisposeAsync();
         await Task.WhenAll(scans.Values.Select(scan => scan.Task).ToArray());
         await startupTask;
         await Task.WhenAll(historyTasks.Concat(settingsTasks).ToArray());

@@ -1,7 +1,8 @@
 using System.Numerics;
-using Something.Ntfs;
+using Something.Application.Browsing;
+using Something.Application.Comparison;
+using Something.Application.History;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.Ntfs.Tests;
 

@@ -1,10 +1,9 @@
 using System.Buffers.Binary;
-using Something.Ntfs;
-using Something.Statistics;
+using Something.Application.Scanning;
 
 namespace Something.Storage;
 
-public enum StoredScanState
+internal enum StoredScanState
 {
     Running,
     Completed,
@@ -13,35 +12,7 @@ public enum StoredScanState
     Interrupted,
 }
 
-/// <summary>Persistent VolumeKey requires validated volume identity, not a drive letter. A disposable single-volume diagnostic may use an invocation-scoped key. Epoch continuity is caller evidence.</summary>
-public sealed record ScanDescriptor(
-    string VolumeKey,
-    Guid Epoch,
-    ulong VolumeSerial,
-    MftScanRange Range,
-    DateTimeOffset StartedUtc
-);
-
-public sealed record StagedObservation(
-    ulong RecordIndex,
-    MftScanEntryKind Kind,
-    LiveFileReadStatus Status,
-    FileCapacityObservation? File
-)
-{
-    public static StagedObservation FromEntry(
-        MftScanEntry entry,
-        CancellationToken cancellationToken = default
-    ) =>
-        new(
-            entry.RecordIndex,
-            entry.Kind,
-            entry.Status,
-            MftObservationAdapter.Convert(entry, cancellationToken)
-        );
-}
-
-public sealed record StoredScan(
+internal sealed record StoredScan(
     Guid Id,
     ScanDescriptor Descriptor,
     StoredScanState State,

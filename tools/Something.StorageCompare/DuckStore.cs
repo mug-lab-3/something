@@ -1,10 +1,10 @@
-using System.Data.Common;
 using System.Globalization;
 using System.Numerics;
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Something.Application.Scanning;
 using Something.Storage;
 
 namespace Something.StorageCompare;
@@ -162,7 +162,7 @@ internal sealed class DuckStore : IDisposable
     }
 
     internal Guid Publish(
-        BufferedScan buffer,
+        CompletedScan buffer,
         int generation,
         CancellationToken token,
         Action? beforeCommit = null
@@ -318,7 +318,7 @@ internal sealed class DuckStore : IDisposable
         browserCreated = false;
     }
 
-    private static IEnumerable<FolderNameEntity> FolderNames(BufferedScan buffer, Guid id)
+    private static IEnumerable<FolderNameEntity> FolderNames(CompletedScan buffer, Guid id)
     {
         foreach (var item in buffer.Observations)
         {

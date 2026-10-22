@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.Storage.Pickers;
 using Something.Application;
 using Something.Statistics;
-using Something.Storage;
 
 namespace Something.App;
 
@@ -120,20 +119,20 @@ public sealed partial class SettingsView : UserControl
     /// <summary>Shows current preferences and, when given, reloads the database location.</summary>
     internal void Present(
         FileVisibilityOptions options,
-        ScanHistoryArchive? archive,
+        HistoryService? history,
         bool maintainable,
         bool applying
     )
     {
-        string? directory = archive?.DirectoryPath;
+        string? directory = history?.DirectoryPath;
         if (!string.Equals(directory, currentDirectory, StringComparison.OrdinalIgnoreCase))
         {
             currentDirectory = directory;
             DirectoryBox.Text = directory ?? "";
         }
-        if (archive is not null)
+        if (history is not null)
         {
-            var info = archive.ReadDatabaseInfo();
+            var info = history.ReadDatabaseInfo();
             SizeText.Text = DisplayText.Bytes((UInt128)info.TotalBytes);
             CurrentPathText.Text = info.Path;
         }

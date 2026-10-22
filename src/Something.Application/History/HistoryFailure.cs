@@ -1,4 +1,4 @@
-namespace Something.Storage;
+namespace Something.Application.History;
 
 /// <summary>History failures that the user interface describes in the user's language.</summary>
 public enum HistoryFailure
@@ -34,7 +34,7 @@ public enum HistoryCompactionStage
 /// </summary>
 public static class HistoryFailures
 {
-    private const string Key = "Something.Storage.HistoryFailure";
+    private const string Key = "Something.Application.HistoryFailure";
 
     public static TException WithFailure<TException>(this TException error, HistoryFailure failure)
         where TException : Exception

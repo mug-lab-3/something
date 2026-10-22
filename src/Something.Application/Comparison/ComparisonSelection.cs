@@ -1,4 +1,6 @@
-namespace Something.Storage;
+using Something.Application.History;
+
+namespace Something.Application.Comparison;
 
 public sealed record ComparisonSelection(
     DateTimeOffset RequestedBeforeUtc,

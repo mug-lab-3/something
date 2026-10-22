@@ -6,10 +6,11 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
-    <ProjectReference Include="../Something.Statistics/Something.Statistics.csproj" />
+    <ProjectReference Include="../Something.Application/Something.Application.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="SQLitePCLRaw.core" Version="2.1.12" />
     <InternalsVisibleTo Include="Something.Ntfs.Tests" />
     <InternalsVisibleTo Include="Something.StorageCompare" />
+    <InternalsVisibleTo Include="Something.LiveInspect" />
   </ItemGroup>
 </Project>

@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Storage;
 
-public sealed partial class ScanStore
+internal sealed partial class ScanStore
 {
     internal void CopyHistoryGeneration(
         ScanStore source,
@@ -63,8 +64,7 @@ public sealed partial class ScanStore
                     token
                 );
             }
-            buffer.Complete(token);
-            PublishHistoryBuffer(buffer, scan.Ended!.Value, metadata, token);
+            PublishHistoryBuffer(buffer.Complete(token), scan.Ended!.Value, metadata, token);
             if (
                 source.context is DuckScanDbContext
                 && source.ReadTimings(scan.Id, token) is { } timing

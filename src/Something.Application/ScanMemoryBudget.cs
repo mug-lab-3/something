@@ -1,4 +1,4 @@
-using Something.Storage;
+using Something.Application.Memory;
 
 namespace Something.Application;
 
@@ -7,6 +7,22 @@ namespace Something.Application;
 /// in the OS sample; subtracting the full competing budget deliberately errs toward file storage.</summary>
 public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
 {
+    /// <summary>Current availability of this machine; null when it cannot be read.</summary>
+    public static AvailableMemory? ReadSystem()
+    {
+        var memory = OperatingSystem.IsWindows()
+            ? Windows.WindowsMemoryAvailability.TryRead()
+            : null;
+        return memory is null
+            ? null
+            : new(
+                memory.TotalPhysicalBytes,
+                memory.AvailablePhysicalBytes,
+                memory.AvailableCommitBytes,
+                memory.AvailableVirtualBytes
+            );
+    }
+
     private readonly object sync = new();
     private readonly Dictionary<Guid, ulong> reservations = [];
     private TaskCompletionSource changed = NewSignal();
@@ -21,12 +37,10 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             lock (sync)
             {
                 var available = Subtract(readAvailable(), TotalExcept(Guid.Empty));
-                ulong reserve = available is null
-                    ? 1024UL * 1024 * 1024
-                    : Math.Clamp(available.TotalPhysicalBytes / 5, 1UL << 30, 4UL << 30);
+                ulong reserve = MemoryHeadroom.OsReserve(available);
                 // A lone scan keeps the existing single-drive behavior, even when its
                 // estimated buffer exceeds headroom or memory information is unavailable.
-                if (reservations.Count == 0 || Fits(available, bufferBytes, reserve))
+                if (reservations.Count == 0 || MemoryHeadroom.Fits(available, bufferBytes, reserve))
                 {
                     var id = Guid.NewGuid();
                     reservations.Add(id, bufferBytes);
@@ -35,30 +49,6 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
                 wait = changed.Task;
             }
             await wait.WaitAsync(token);
-        }
-    }
-
-    private DiagnosticDatabaseSelection Select(
-        Guid id,
-        ulong bufferBytes,
-        ulong estimate,
-        DiagnosticDatabasePreference preference,
-        bool duckDb = false
-    )
-    {
-        lock (sync)
-        {
-            ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            var available = Subtract(readAvailable(), TotalExcept(id));
-            var selection = duckDb
-                ? DiagnosticDatabaseSelector.SelectDuckDb(estimate, available, preference)
-                : DiagnosticDatabaseSelector.Select(estimate, available, preference);
-            ulong databaseBudget = Saturate(
-                (UInt128)(selection.UseMemory ? estimate : selection.FileCacheBytes) * 2
-            );
-            reservations[id] = Saturate((UInt128)bufferBytes + databaseBudget);
-            Signal();
-            return selection;
         }
     }
 
@@ -71,51 +61,26 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         }
     }
 
-    private ulong? TryGrowDuckDatabase(Guid id, ulong bufferBytes, ulong currentLimit)
+    private T Charge<T>(Guid id, ulong bufferBytes, Func<AvailableMemory?, MemoryChoice<T>> decide)
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            var available = Subtract(readAvailable(), TotalExcept(id));
-            if (available is null)
-                return null;
-            ulong reserve = Math.Clamp(available.TotalPhysicalBytes / 5, 1UL << 30, 4UL << 30);
-            ulong headroom = Math.Min(
-                available.PhysicalBytes,
-                Math.Min(available.CommitBytes, available.VirtualBytes)
-            );
-            ulong surplus = headroom > reserve ? headroom - reserve : 0;
-            ulong next = (ulong)
-                UInt128.Min(
-                    (UInt128)currentLimit + surplus / 2,
-                    (UInt128)long.MaxValue / 16384 * 16384
-                );
-            next = next / 16384 * 16384;
-            if (next <= currentLimit)
-                return null;
-            // OS availability already charges the live buffer and existing native allocations.
-            // Budget twice the incremental growth for native overhead, not all existing RAM again.
-            ulong additional = Saturate((UInt128)(next - currentLimit) * 2);
-            if (!Fits(available, additional, reserve))
-                return null;
-            reservations[id] = Math.Max(
-                reservations[id],
-                Saturate((UInt128)bufferBytes + (UInt128)next * 2)
-            );
-            Signal();
-            return next;
+            var choice = decide(Subtract(readAvailable(), TotalExcept(id)));
+            Hold(id, bufferBytes, choice.Bytes);
+            return choice.Value;
         }
     }
 
-    private void AccountDuckDatabaseLimit(Guid id, ulong bufferBytes, ulong limit)
+    // The reservation never shrinks: it holds the buffer and the largest charge so far.
+    private void Hold(Guid id, ulong bufferBytes, ulong bytes)
     {
         lock (sync)
         {
             ObjectDisposedException.ThrowIf(!reservations.ContainsKey(id), typeof(Reservation));
-            reservations[id] = Math.Max(
-                reservations[id],
-                Saturate((UInt128)bufferBytes + (UInt128)limit * 2)
-            );
+            if (bytes == 0)
+                return;
+            reservations[id] = Math.Max(reservations[id], Saturate((UInt128)bufferBytes + bytes));
             Signal();
         }
     }
@@ -143,27 +108,20 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
         value > ulong.MaxValue ? ulong.MaxValue : (ulong)value;
 
     private static AvailableMemory? Subtract(AvailableMemory? memory, ulong reserved) =>
-        memory is null
-        || memory.TotalPhysicalBytes == 0
-        || memory.PhysicalBytes > memory.TotalPhysicalBytes
-            ? null
-            : memory with
+        MemoryHeadroom.Validate(memory) is { } valid
+            ? valid with
             {
-                PhysicalBytes = Remaining(memory.PhysicalBytes, reserved),
-                CommitBytes = Remaining(memory.CommitBytes, reserved),
-                VirtualBytes = Remaining(memory.VirtualBytes, reserved),
-            };
+                PhysicalBytes = Remaining(valid.PhysicalBytes, reserved),
+                CommitBytes = Remaining(valid.CommitBytes, reserved),
+                VirtualBytes = Remaining(valid.VirtualBytes, reserved),
+            }
+            : null;
 
     private static ulong Remaining(ulong bytes, ulong reserved) =>
         bytes > reserved ? bytes - reserved : 0;
 
-    private static bool Fits(AvailableMemory? memory, ulong bytes, ulong reserve) =>
-        memory is not null
-        && (UInt128)bytes + reserve <= memory.PhysicalBytes
-        && (UInt128)bytes + reserve <= memory.CommitBytes
-        && (UInt128)bytes + reserve <= memory.VirtualBytes;
-
-    public sealed class Reservation : IDisposable
+    /// <summary>The memory one scan or search holds until disposed.</summary>
+    public sealed class Reservation : IMemoryAllowance, IDisposable
     {
         private readonly ScanMemoryBudget owner;
         private readonly Guid id;
@@ -176,26 +134,11 @@ public sealed class ScanMemoryBudget(Func<AvailableMemory?> readAvailable)
             this.bufferBytes = bufferBytes;
         }
 
-        public DiagnosticDatabaseSelection SelectDatabase(
-            ulong estimate,
-            DiagnosticDatabasePreference preference = DiagnosticDatabasePreference.Automatic
-        ) => owner.Select(id, bufferBytes, estimate, preference);
+        public T Charge<T>(Func<AvailableMemory?, MemoryChoice<T>> decide) =>
+            owner.Charge(id, bufferBytes, decide);
 
-        public DiagnosticDatabaseSelection SelectDuckDatabase(ulong estimate) =>
-            owner.Select(
-                id,
-                bufferBytes,
-                estimate,
-                DiagnosticDatabasePreference.File,
-                duckDb: true
-            );
+        public void Hold(ulong bytes) => owner.Hold(id, bufferBytes, bytes);
 
         public void Dispose() => owner.Release(id);
-
-        public ulong? TryGrowDuckDatabase(ulong currentLimit) =>
-            owner.TryGrowDuckDatabase(id, bufferBytes, currentLimit);
-
-        public void AccountDuckDatabaseLimit(ulong limit) =>
-            owner.AccountDuckDatabaseLimit(id, bufferBytes, limit);
     }
 }

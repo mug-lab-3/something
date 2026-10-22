@@ -7,5 +7,8 @@ public sealed record FileVisibilityOptions(bool IncludeSystem = true, bool Inclu
 
     public bool Includes(uint? attributes) =>
         attributes is not { } value
-        || ((IncludeSystem || (value & 0x4) == 0) && (IncludeHidden || (value & 0x2) == 0));
+        || (
+            (IncludeSystem || !((FileAttributes)value).HasFlag(FileAttributes.System))
+            && (IncludeHidden || !((FileAttributes)value).HasFlag(FileAttributes.Hidden))
+        );
 }

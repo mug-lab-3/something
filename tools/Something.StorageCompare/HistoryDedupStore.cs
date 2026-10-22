@@ -1,5 +1,6 @@
 using DuckDB.NET.Data;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Scanning;
 using Something.Ntfs;
 using Something.Statistics;
 using Something.Storage;
@@ -164,7 +165,7 @@ internal sealed class HistoryDedupStore : IDisposable
         );
     }
 
-    internal Guid Publish(BufferedScan buffer, CancellationToken token)
+    internal Guid Publish(CompletedScan buffer, CancellationToken token)
     {
         if (mode is "full" or "production")
         {
@@ -179,13 +180,13 @@ internal sealed class HistoryDedupStore : IDisposable
                 NewListings = shared.Entries.Select(e => e.Listing).Distinct().LongCount();
             }
             else
-                NewFacts += buffer.Count;
+                NewFacts += buffer.Observations.Count;
             return published;
         }
         var scan = ScanStore.CreateScanEntity(buffer.Descriptor);
         scan.State = StoredScanState.Completed;
         scan.Ended = buffer.Descriptor.StartedUtc.AddMinutes(1);
-        var versions = new Dictionary<ulong, Guid>(buffer.Count);
+        var versions = new Dictionary<ulong, Guid>(buffer.Observations.Count);
         var changed = new List<StagedObservation>();
         foreach (var fact in buffer.Observations)
         {
@@ -297,7 +298,7 @@ internal sealed class HistoryDedupStore : IDisposable
     }
 
     private void PublishListings(
-        BufferedScan buffer,
+        CompletedScan buffer,
         Dictionary<ulong, Guid> versions,
         Guid scanId,
         CancellationToken token

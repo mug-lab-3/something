@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using System.Numerics;
-using Something.Ntfs;
+using Something.Application.Browsing;
 
-namespace Something.Storage;
+namespace Something.Application.Comparison;
 
 public sealed record EntryChange(
     FolderEntry? Before,

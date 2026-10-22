@@ -1,7 +1,6 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Something.Application;
-using Something.Ntfs;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
 using Something.Windows;
@@ -105,12 +104,9 @@ public sealed partial class ScanHistoryTests
         var saved = fixture.Save(Now.AddMinutes(-1), Token);
         var reopened = new ScanHistoryArchive(fixture.Root, fixture.Clock, TimeZoneInfo.Utc);
         Assert.Equal(saved, Assert.Single(reopened.List("volume:A", Token)));
-        await using var session = await ScanSession.OpenHistoryAsync(
-            reopened,
-            saved.Id,
-            "Demo",
-            Token
-        );
+        await using var session = await TestHistory
+            .For(reopened)
+            .OpenAsync(saved.Id, "Demo", Token);
         var root = FileReference.Create(5, 1);
 
         var rows = await session.ReadFolderAsync(root, 0, false, Token, includeTotalCount: true);
@@ -378,7 +374,11 @@ public sealed partial class ScanHistoryTests
                     token
                 );
             buffer.Complete(token);
-            var id = source.PublishBufferedScan(buffer, ended, token);
+            var id = source.PublishBufferedScan(
+                buffer.Complete(TestContext.Current.CancellationToken),
+                ended,
+                token
+            );
             beforeSave?.Invoke(id);
             return Archive.Save(source, id, "Demo", TimeSpan.FromSeconds(1), token);
         }

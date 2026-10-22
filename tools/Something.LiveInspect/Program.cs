@@ -3,6 +3,7 @@ using System.Security.Principal;
 using DuckDB.NET.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Something.Application.Browsing;
 using Something.Ntfs;
 using Something.Storage;
 using Something.Windows;

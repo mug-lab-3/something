@@ -393,10 +393,23 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "something.application": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Statistics": "[1.0.0, )",
+          "Something.Windows": "[1.0.0, )"
+        }
+      },
       "something.ntfs": {
         "type": "Project"
       },
       "something.statistics": {
+        "type": "Project",
+        "dependencies": {
+          "Something.Ntfs": "[1.0.0, )"
+        }
+      },
+      "something.windows": {
         "type": "Project",
         "dependencies": {
           "Something.Ntfs": "[1.0.0, )"

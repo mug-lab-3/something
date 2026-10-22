@@ -102,6 +102,13 @@ public sealed partial class MainWindow
         }
         if (ReferenceEquals(WorkspaceTabs.SelectedItem, DatabaseWorkspaceTab))
             return false;
+        if (Searching)
+            return direction switch
+            {
+                BrowseDirection.Back => SearchPanel.GoBack(),
+                BrowseDirection.Forward => SearchPanel.GoForward(),
+                _ => SearchPanel.GoUp(),
+            };
         bool enabled = direction switch
         {
             BrowseDirection.Back => BackButton.IsEnabled,

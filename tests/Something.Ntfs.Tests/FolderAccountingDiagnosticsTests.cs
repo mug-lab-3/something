@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using Something.Ntfs;
 using Something.Statistics;
 
 namespace Something.Ntfs.Tests;

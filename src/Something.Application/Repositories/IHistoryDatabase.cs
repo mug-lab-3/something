@@ -1,0 +1,48 @@
+using Something.Application.History;
+using Something.Application.Memory;
+
+namespace Something.Application.Repositories;
+
+/// <summary>The file that holds the history. Methods run on the calling thread. Compaction,
+/// relocation and deletion require that no scan or search result is open.</summary>
+public interface IHistoryDatabase
+{
+    string DatabasePath { get; }
+    string DirectoryPath { get; }
+
+    /// <summary>Why the last pruning after a publication failed, if it did.</summary>
+    string? MaintenanceError { get; }
+
+    /// <summary>File sizes only; cheap enough for the calling thread.</summary>
+    HistoryDatabaseInfo ReadInfo();
+
+    void Checkpoint(CancellationToken token);
+
+    /// <summary>Rewrites the database compactly. Throws <see cref="InsufficientMemoryException"/> when the
+    /// allowance leaves too little memory to do so.</summary>
+    HistoryCompactionResult Compact(
+        IMemoryAllowance allowance,
+        Action<HistoryCompactionStage>? progress,
+        CancellationToken token
+    );
+
+    /// <summary>Moves every drive's history to <paramref name="directory"/> and returns the
+    /// repositories there. <paramref name="saveLocation"/> records the new location before the
+    /// old database is deleted.</summary>
+    HistoryRepositories Relocate(
+        string directory,
+        Action<string> saveLocation,
+        CancellationToken token
+    );
+
+    void DeleteDatabase(CancellationToken token);
+}
+
+/// <summary>The repositories of one history location; replaced as a whole when it moves.</summary>
+public sealed record HistoryRepositories(
+    IScanHistoryRepository Scans,
+    IScanPublisher Publisher,
+    IFolderChangeRepository Changes,
+    IHistorySearchRepository Searches,
+    IHistoryDatabase Database
+);

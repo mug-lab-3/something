@@ -1,5 +1,5 @@
+using Something.Application.Browsing;
 using Something.Ntfs;
-using Something.Storage;
 
 namespace Something.Application;
 
@@ -29,7 +29,7 @@ public sealed partial class ScanSession
                             .ToDictionary(f => f.Sample.Reference, f => f.RelativePath);
                         paths.Add(Root, "");
                         var files = new List<FileAnalysisEntry>();
-                        foreach (var file in store.ReadAnalysisFiles(ScanId, token))
+                        foreach (var file in snapshot.ReadAnalysisFiles(token))
                         {
                             token.ThrowIfCancellationRequested();
                             // Only a validated parent identity can give a file an attributed path.

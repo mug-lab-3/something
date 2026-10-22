@@ -20,6 +20,8 @@ internal sealed class DuckModelInsert<T> : IDisposable
     private readonly List<(T Row, IProperty Property, BigInteger Value)> large = [];
     private bool disposed;
 
+    /// <param name="context">The connection the appender writes through.</param>
+    /// <param name="targetTable">The table to write, when it is not the entity's own table.</param>
     /// <param name="version">Writes a fact-model row into a shared state table: the integer
     /// version column replaces the entity's generation UUID (<c>ScanId</c>).</param>
     internal DuckModelInsert(

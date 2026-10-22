@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Something.Ntfs;
+using Something.Application.History;
+using Something.Application.Scanning;
 using Something.Statistics;
 using Something.Storage;
 
@@ -409,7 +410,10 @@ public sealed class SharedHistoryTests
         Assert.True(
             old.Names.AsSpan()
                 .SequenceEqual(
-                    Buffer().Observations.Single(o => o.RecordIndex == 1000).File!.Names.AsSpan()
+                    Buffer()
+                        .Complete(TestContext.Current.CancellationToken)
+                        .Observations.Single(o => o.RecordIndex == 1000)
+                        .File!.Names.AsSpan()
                 )
         );
         Assert.False(Equal(old, current));
@@ -519,7 +523,7 @@ public sealed class SharedHistoryTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
         Assert.Throws<OperationCanceledException>(() =>
             fixture.Archive.Publish(
-                Buffer("size"),
+                Buffer("size").Complete(TestContext.Current.CancellationToken),
                 Now.AddMinutes(-1),
                 "Demo",
                 TimeSpan.FromSeconds(1),
@@ -715,7 +719,7 @@ public sealed class SharedHistoryTests
         var previous = fixture.Save(Buffer(), Now.AddMinutes(-2));
         int retries = 0;
         var saved = fixture.Archive.Publish(
-            Buffer("size"),
+            Buffer("size").Complete(TestContext.Current.CancellationToken),
             Now.AddMinutes(-1),
             "Demo",
             TimeSpan.FromSeconds(1),
@@ -768,7 +772,7 @@ public sealed class SharedHistoryTests
         int growthRequests = 0;
         var observed = new List<(int Attempt, bool Spilling, string Setting)>();
         var saved = fixture.Archive.Publish(
-            Buffer("size"),
+            Buffer("size").Complete(TestContext.Current.CancellationToken),
             Now.AddMinutes(-1),
             "Demo",
             TimeSpan.FromSeconds(1),
@@ -821,7 +825,7 @@ public sealed class SharedHistoryTests
         int attempts = 0;
         Assert.Throws<DuckDB.NET.Data.DuckDBException>(() =>
             fixture.Archive.Publish(
-                Buffer("size"),
+                Buffer("size").Complete(TestContext.Current.CancellationToken),
                 Now.AddMinutes(-1),
                 "Demo",
                 TimeSpan.FromSeconds(1),
@@ -1204,7 +1208,14 @@ public sealed class SharedHistoryTests
             );
 
         internal ScanHistoryEntry Save(BufferedScan buffer, DateTimeOffset ended) =>
-            Archive.Publish(buffer, ended, "Demo", TimeSpan.FromSeconds(1), 1UL << 30, Token);
+            Archive.Publish(
+                buffer.Complete(TestContext.Current.CancellationToken),
+                ended,
+                "Demo",
+                TimeSpan.FromSeconds(1),
+                1UL << 30,
+                Token
+            );
 
         public void Dispose()
         {

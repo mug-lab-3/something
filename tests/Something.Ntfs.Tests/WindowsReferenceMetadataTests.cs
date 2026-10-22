@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using Something.Ntfs;
 using Something.Windows;
 
 namespace Something.Ntfs.Tests;
