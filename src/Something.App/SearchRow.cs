@@ -7,7 +7,7 @@ using Something.Ntfs;
 namespace Something.App;
 
 /// <summary>One row of the search result list: a folder of the result or a matched file.</summary>
-public sealed class SearchRow(SearchItem item, string drive, string parentPath)
+public sealed class SearchRow(SearchItem item, SearchValues values, string drive, string parentPath)
 {
     public SearchItem Item { get; } = item;
 
@@ -44,13 +44,19 @@ public sealed class SearchRow(SearchItem item, string drive, string parentPath)
     /// <summary>The size in the last scan the item was seen in; an asterisk marks a value that
     /// is incomplete or that a condition could not be decided on.</summary>
     public string Size =>
-        DisplayText.Bytes(Item.Size) + (Item.Size is not null && IsApproximate ? " *" : "");
+        DisplayText.Bytes(values.Size)
+        + (values.Size is not null && values.SizeIncomplete ? " *" : "");
 
-    public string Delta => Item.Delta is BigInteger delta ? DisplayText.Change(delta, null) : "—";
+    public string Delta =>
+        values.Delta is BigInteger delta
+            ? DisplayText.Change(delta, null) + (values.DeltaIncomplete ? " *" : "")
+            : "—";
 
     public string SizeDescription =>
         Strings.Get("Search_SizeDescription")
-        + (IsApproximate ? Strings.Get("Search_UncertainNote") : "");
-
-    private bool IsApproximate => Item.Uncertain || Item.HasUnresolvedSize;
+        + (
+            values.SizeIncomplete || values.DeltaIncomplete
+                ? Strings.Get("Search_UncertainNote")
+                : ""
+        );
 }

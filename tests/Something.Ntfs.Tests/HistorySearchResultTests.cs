@@ -192,6 +192,139 @@ public sealed class HistorySearchResultTests
         Assert.Equal(0, result.MatchedFolders + result.MatchedFiles + result.UncertainCount);
     }
 
+    // A file with a size, and a change when it was in the first scan of the range.
+    private static SearchItem Sized(
+        ulong index,
+        string name,
+        FileReference parent,
+        ulong? size,
+        ulong? first = null
+    ) =>
+        new(Ref(index), parent, name, false, 0, 0, 0, 1, first, size, size, size, false)
+        {
+            Matched = true,
+        };
+
+    [Fact]
+    public void AFolderOnTheWayToMatchesShowsTheSumOfWhatMatchedBelowIt()
+    {
+        // Arrange: Data holds a.bin (100, was 40) and Logs; Logs holds b.bin (50, was 70).
+        var result = Result(
+            [Folder(20, "Data"), Folder(21, "Logs", Ref(20))],
+            [
+                Sized(30, "a.bin", Ref(20), 100, 40),
+                Sized(31, "b.bin", Ref(21), 50, 70),
+                Sized(32, "c.bin", Root, 9, 9),
+            ]
+        );
+
+        // Act
+        var data = result.ValuesOf(result.Folder(Ref(20))!);
+        var logs = result.ValuesOf(result.Folder(Ref(21))!);
+
+        // Assert
+        Assert.Equal(new SearchValues(150, 40, false, false), data);
+        Assert.Equal(new SearchValues(50, -20, false, false), logs);
+    }
+
+    [Fact]
+    public void AMatchedFolderShowsItsWholeSizeAndIsCountedOnceAboveIt()
+    {
+        // Arrange: Data (not matched) holds Big, a matched folder of 1000 whose matched file x is 10.
+        var big = Folder(21, "Big", Ref(20), matched: true) with
+        {
+            Size = 1000,
+            FirstSize = 600,
+        };
+        var result = Result(
+            [Folder(20, "Data"), big],
+            [Sized(30, "x.bin", Ref(21), 10, 10), Sized(31, "y.bin", Ref(20), 5, 5)]
+        );
+
+        // Act
+        var data = result.ValuesOf(result.Folder(Ref(20))!);
+        var own = result.ValuesOf(result.Folder(Ref(21))!);
+
+        // Assert: Big counts once, with its whole size; x inside it is not added again.
+        Assert.Equal(new SearchValues(1005, 400, false, false), data);
+        Assert.Equal(new SearchValues(1000, 400, false, false), own);
+    }
+
+    [Fact]
+    public void AnUnmatchedFolderInsideAMatchedFolderSumsItsOwnMatches()
+    {
+        // Arrange: Outer is matched; Inner is only on the way to z.bin inside it.
+        var result = Result(
+            [Folder(20, "Outer", matched: true), Folder(21, "Inner", Ref(20))],
+            [Sized(30, "z.bin", Ref(21), 7, 7)]
+        );
+
+        // Act
+        var inner = result.ValuesOf(result.Folder(Ref(21))!);
+
+        // Assert
+        Assert.Equal(new SearchValues(7, 0, false, false), inner);
+    }
+
+    [Fact]
+    public void UnknownValuesMarkASumIncompleteWithoutBeingTakenAsZero()
+    {
+        // Arrange: one file with no known change (it appeared later), one without a size.
+        var result = Result(
+            [Folder(20, "Data"), Folder(21, "Empty", Ref(20)), Folder(22, "Unknown", Root)],
+            [
+                Sized(30, "new.bin", Ref(20), 100),
+                Sized(31, "a.bin", Ref(20), 10, 4),
+                Sized(32, "gone.bin", Ref(22), null),
+            ]
+        );
+
+        // Act
+        var data = result.ValuesOf(result.Folder(Ref(20))!);
+        var unknown = result.ValuesOf(result.Folder(Ref(22))!);
+        var empty = result.ValuesOf(result.Folder(Ref(21))!);
+
+        // Assert
+        Assert.Equal(new SearchValues(110, 6, false, true), data);
+        Assert.Equal(new SearchValues(null, null, true, true), unknown);
+        Assert.Equal(new SearchValues(null, null, false, false), empty);
+    }
+
+    [Fact]
+    public void FilesKeepTheirOwnValuesAndUncertaintyMarksThemIncomplete()
+    {
+        // Arrange
+        var file = Sized(30, "a.bin", Root, 100, 40) with
+        {
+            Uncertain = true,
+        };
+        var result = Result([], [file]);
+
+        // Act
+        var values = result.ValuesOf(file);
+
+        // Assert
+        Assert.Equal(new SearchValues(100, 60, true, true), values);
+        Assert.Throws<ArgumentNullException>(() => result.ValuesOf(null!));
+    }
+
+    [Fact]
+    public void ADeepTreeIsSummedWithoutRecursion()
+    {
+        // Arrange: a chain of 20000 folders with one file at the bottom.
+        const int Depth = 20_000;
+        var folders = Enumerable
+            .Range(0, Depth)
+            .Select(i => Folder((ulong)(1000 + i), $"d{i}", i == 0 ? Root : Ref((ulong)(999 + i))));
+        var result = Result(folders, [Sized(1, "f.bin", Ref((ulong)(999 + Depth)), 5, 5)]);
+
+        // Act
+        var top = result.ValuesOf(result.Folder(Ref(1000))!);
+
+        // Assert
+        Assert.Equal(new SearchValues(5, 0, false, false), top);
+    }
+
     [Fact]
     public async Task SeriesReadsRunOneAtATime()
     {

@@ -66,6 +66,20 @@ public enum CapacityObservationState
     NotObserved,
 }
 
+/// <summary>The size and change a list row shows for an item. A file or a matched folder shows its own
+/// values. A folder that is only on the way to matches shows the sum of what matched below it,
+/// counting a matched folder once with its whole size rather than the items inside it.</summary>
+/// <param name="Size">The sum of the known sizes, or null when none is known.</param>
+/// <param name="Delta">The sum of the known changes, or null when none is known.</param>
+/// <param name="SizeIncomplete">Some size that belongs in the sum is unknown or undecided.</param>
+/// <param name="DeltaIncomplete">Some change that belongs in the sum is unknown.</param>
+public readonly record struct SearchValues(
+    UInt128? Size,
+    BigInteger? Delta,
+    bool SizeIncomplete,
+    bool DeltaIncomplete
+);
+
 /// <summary>The folders and files a search placed, as a tree below the volume root: matched items
 /// and the folders that lead to them. Immutable; the scans stay open through the search session
 /// that produced it, not through this data.</summary>
@@ -74,6 +88,7 @@ public sealed class HistorySearchResult
     private readonly Dictionary<FileReference, SearchItem> folders = [];
     private readonly Dictionary<FileReference, List<SearchItem>> childFolders = [];
     private readonly Dictionary<FileReference, List<SearchItem>> files = [];
+    private readonly Dictionary<FileReference, SearchValues> sums = [];
 
     /// <summary>Checks that every folder and file hangs below <paramref name="root"/>: each parent
     /// is the root or one of <paramref name="folders"/>, folders form no cycle, and no folder
@@ -131,6 +146,7 @@ public sealed class HistorySearchResult
                 UncertainCount++;
         }
         ValidateTree();
+        SumBelowUnmatchedFolders();
     }
 
     /// <summary>A search that did not run, such as one without scans in its range.</summary>
@@ -163,6 +179,16 @@ public sealed class HistorySearchResult
     public long UnknownAttributeCount { get; }
 
     public SearchItem? Folder(FileReference reference) => folders.GetValueOrDefault(reference);
+
+    /// <summary>What a list row of <paramref name="item"/> shows: its own size and change, or for
+    /// a folder that only leads to matches, the sum of what matched below it.</summary>
+    public SearchValues ValuesOf(SearchItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return !item.IsDirectory || item.Matched || !sums.TryGetValue(item.Reference, out var sum)
+            ? Own(item)
+            : sum;
+    }
 
     /// <summary>Folders below <paramref name="parent"/> that are matched or contain a match, by name.</summary>
     public ImmutableArray<SearchItem> ChildFolders(FileReference parent) =>
@@ -198,6 +224,58 @@ public sealed class HistorySearchResult
             groups.Add(item.Parent, children = []);
         children.Add(item);
     }
+
+    private static SearchValues Own(SearchItem item) =>
+        new(
+            item.Size,
+            item.Delta,
+            item.Size is null || item.Uncertain || item.HasUnresolvedSize,
+            item.Delta is null || item.Uncertain || item.HasUnresolvedSize
+        );
+
+    // A folder that is not itself matched adds up its matched files and, for each folder below, the
+    // matched folder's own values or the sum of the unmatched folder. Children are summed first.
+    private void SumBelowUnmatchedFolders()
+    {
+        var pending = new Dictionary<FileReference, int>();
+        var accumulated = new Dictionary<FileReference, SearchValues>();
+        var ready = new Queue<FileReference>();
+        foreach (var folder in folders.Values.Where(folder => !folder.Matched))
+            pending[folder.Reference] = childFolders
+                .GetValueOrDefault(folder.Reference, [])
+                .Count(child => !child.Matched);
+        foreach (var (reference, count) in pending)
+        {
+            var sum = new SearchValues(null, null, false, false);
+            foreach (var file in files.GetValueOrDefault(reference, []))
+                sum = Add(sum, Own(file));
+            foreach (var child in childFolders.GetValueOrDefault(reference, []))
+                if (child.Matched)
+                    sum = Add(sum, Own(child));
+            accumulated[reference] = sum;
+            if (count == 0)
+                ready.Enqueue(reference);
+        }
+        while (ready.TryDequeue(out var reference))
+        {
+            var sum = accumulated[reference];
+            sums[reference] = sum;
+            var parent = folders[reference].Parent;
+            if (!pending.ContainsKey(parent))
+                continue;
+            accumulated[parent] = Add(accumulated[parent], sum);
+            if (--pending[parent] == 0)
+                ready.Enqueue(parent);
+        }
+    }
+
+    private static SearchValues Add(SearchValues sum, SearchValues part) =>
+        new(
+            part.Size is { } size ? (sum.Size ?? UInt128.Zero) + size : sum.Size,
+            part.Delta is { } delta ? (sum.Delta ?? BigInteger.Zero) + delta : sum.Delta,
+            sum.SizeIncomplete || part.SizeIncomplete,
+            sum.DeltaIncomplete || part.DeltaIncomplete
+        );
 
     // Every parent chain must end at the root without revisiting a folder.
     private void ValidateTree()

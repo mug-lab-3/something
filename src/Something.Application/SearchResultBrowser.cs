@@ -156,8 +156,8 @@ public sealed class SearchResultBrowser
         );
         var ordered = SortColumn switch
         {
-            SearchColumn.Size => ByKnown(folders, item => item.Size),
-            SearchColumn.Delta => ByKnown(folders, item => item.Delta),
+            SearchColumn.Size => ByKnown(folders, item => result.ValuesOf(item).Size),
+            SearchColumn.Delta => ByKnown(folders, item => result.ValuesOf(item).Delta),
             _ => Descending
                 ? folders
                     .ThenByDescending(item => item.Name, StringComparer.OrdinalIgnoreCase)

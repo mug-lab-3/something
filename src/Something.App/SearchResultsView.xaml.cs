@@ -120,7 +120,9 @@ public sealed partial class SearchResultsView : UserControl
     {
         if (browser?.Result.Folder(folder) is not { } item)
             return null;
-        return Prepared(new(item, drive, browser.Result.PathOf(item.Parent)));
+        return Prepared(
+            new(item, browser.Result.ValuesOf(item), drive, browser.Result.PathOf(item.Parent))
+        );
     }
 
     private SearchRow Prepared(SearchRow row)
@@ -337,7 +339,9 @@ public sealed partial class SearchResultsView : UserControl
         var page = browser.Page(nextPage++, out hasMore);
         string parentPath = browser.Result.PathOf(browser.Current);
         foreach (var item in page)
-            rows.Add(Prepared(new SearchRow(item, drive, parentPath)));
+            rows.Add(
+                Prepared(new SearchRow(item, browser.Result.ValuesOf(item), drive, parentPath))
+            );
     }
 
     private void OnContainerContentChanging(

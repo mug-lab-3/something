@@ -53,6 +53,11 @@ public sealed partial class MainWindow
         if (results.ChipCount < 2 || results.CountsTextForSmoke.Length == 0)
             throw new InvalidOperationException("The conditions or counts were not summarized.");
         await ExpectRowsAsync(results, ["Projects"]);
+        // Projects holds preview.png and more, but only source.zip (1.5 GiB) matched.
+        if (results.Rows[0].Size != DisplayText.Bytes(1_610_612_736))
+            throw new InvalidOperationException(
+                $"The folder showed {results.Rows[0].Size}, not the matched size."
+            );
         results.OpenFolder(results.Result.ChildFolders(results.Result.Root)[0].Reference);
         await ExpectRowsAsync(results, ["Archive"]);
         results.OpenFolder(results.Browser!.TreeChildren(results.Browser.Current)[0].Reference);

@@ -246,6 +246,32 @@ public sealed class SearchResultBrowserTests
     }
 
     [Fact]
+    public void FoldersSortByTheSumOfWhatMatchedBelowThem()
+    {
+        // Arrange: A holds a small match, B a large one; the folders' own sizes are unknown.
+        var browser = Browser(
+            [Folder(20, "A") with { Matched = false }, Folder(21, "B") with { Matched = false }],
+            [
+                File(30, "a.bin", Ref(20), size: 5, first: 5),
+                File(31, "b.bin", Ref(21), size: 900, first: 100),
+            ]
+        );
+
+        // Act
+        browser.Sort(SearchColumn.Size);
+        string[] bySize = Names(browser);
+        browser.Sort(SearchColumn.Delta);
+        string[] byChange = Names(browser);
+        browser.Sort(SearchColumn.Delta);
+        string[] reversed = Names(browser);
+
+        // Assert
+        Assert.Equal(["B", "A"], bySize);
+        Assert.Equal(["B", "A"], byChange);
+        Assert.Equal(["A", "B"], reversed);
+    }
+
+    [Fact]
     public void ANewColumnStartsWithItsNaturalOrderAndTheSameColumnReverses()
     {
         // Arrange
