@@ -38,7 +38,7 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" KeyDown="OnKeyDown">
+    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
       <Grid ColumnSpacing="16" Padding="0,0,12,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -157,17 +157,25 @@
                 TextChanged="OnTextChanged"
               />
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MinDepthBox"
                   x:Name="MinDepthBox"
                   Width="110"
-                  TextChanged="OnTextChanged"
+                  Minimum="0"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MaxDepthBox"
                   x:Name="MaxDepthBox"
                   Width="110"
-                  TextChanged="OnTextChanged"
+                  Minimum="0"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
               </StackPanel>
               <TextBlock
@@ -254,17 +262,25 @@
                 Style="{StaticResource SearchSectionHeaderStyle}"
               />
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MinSizeBox"
                   x:Name="MinSizeBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  Minimum="0"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MaxSizeBox"
                   x:Name="MaxSizeBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  Minimum="0"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
                 <ComboBox
                   x:Uid="Search_SizeUnitBox"
@@ -296,17 +312,23 @@
                 Style="{StaticResource SearchSectionHeaderStyle}"
               />
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MinDeltaBox"
                   x:Name="MinDeltaBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MaxDeltaBox"
                   x:Name="MaxDeltaBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
                 <ComboBox
                   x:Uid="Search_DeltaUnitBox"
@@ -321,17 +343,23 @@
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
               />
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MinRateBox"
                   x:Name="MinRateBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MaxRateBox"
                   x:Name="MaxRateBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
               </StackPanel>
               <TextBlock
@@ -340,11 +368,15 @@
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
               />
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBox
+                <local:SteppingNumberBox
                   x:Uid="Search_MinSwingBox"
                   x:Name="MinSwingBox"
                   Width="130"
-                  TextChanged="OnTextChanged"
+                  Minimum="0"
+                  SmallChange="1"
+                  SpinButtonPlacementMode="Hidden"
+                  ValidationMode="InvalidInputOverwritten"
+                  ValueChanged="OnNumberChanged"
                 />
                 <ComboBox
                   x:Uid="Search_SwingUnitBox"

@@ -1,6 +1,8 @@
+using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Something.Application;
 using Something.Application.Search;
 using Something.Statistics;
@@ -22,6 +24,8 @@ public sealed partial class SearchConditionsView : UserControl
     public SearchConditionsView()
     {
         InitializeComponent();
+        // Handled Enter is needed too: a number box handles it when it commits its text.
+        Scroller.AddHandler(KeyDownEvent, new KeyEventHandler(OnKeyDown), true);
         loading = true;
         FillChoices();
         // The last 30 days, up to the next minute so that a scan finishing now is included.
@@ -178,22 +182,22 @@ public sealed partial class SearchConditionsView : UserControl
         Choose(NameModeBox, Form.NameMode);
         ExtensionsBox.Text = Form.Extensions;
         BaseFolderBox.Text = Form.BaseFolder;
-        MinDepthBox.Text = Form.MinimumDepth;
-        MaxDepthBox.Text = Form.MaximumDepth;
+        MinDepthBox.Value = ValueOf(Form.MinimumDepth);
+        MaxDepthBox.Value = ValueOf(Form.MaximumDepth);
         Choose(HiddenBox, Form.Hidden);
         Choose(SystemBox, Form.System);
         Choose(CompressedBox, Form.Compressed);
         Choose(SparseBox, Form.Sparse);
         Choose(StreamsBox, Form.NamedStreams);
-        MinSizeBox.Text = Form.MinimumSize;
-        MaxSizeBox.Text = Form.MaximumSize;
+        MinSizeBox.Value = ValueOf(Form.MinimumSize);
+        MaxSizeBox.Value = ValueOf(Form.MaximumSize);
         Choose(SizeUnitBox, Form.SizeUnit);
-        MinDeltaBox.Text = Form.MinimumDelta;
-        MaxDeltaBox.Text = Form.MaximumDelta;
+        MinDeltaBox.Value = ValueOf(Form.MinimumDelta);
+        MaxDeltaBox.Value = ValueOf(Form.MaximumDelta);
         Choose(DeltaUnitBox, Form.DeltaUnit);
-        MinRateBox.Text = Form.MinimumRate;
-        MaxRateBox.Text = Form.MaximumRate;
-        MinSwingBox.Text = Form.MinimumSwing;
+        MinRateBox.Value = ValueOf(Form.MinimumRate);
+        MaxRateBox.Value = ValueOf(Form.MaximumRate);
+        MinSwingBox.Value = ValueOf(Form.MinimumSwing);
         Choose(SwingUnitBox, Form.SwingUnit);
         Choose(TrendBox, Form.Trend);
         Choose(PresenceBox, Form.Presence);
@@ -209,22 +213,22 @@ public sealed partial class SearchConditionsView : UserControl
         Form.NameMode = Chosen<NameMatchMode>(NameModeBox);
         Form.Extensions = ExtensionsBox.Text;
         Form.BaseFolder = BaseFolderBox.Text;
-        Form.MinimumDepth = MinDepthBox.Text;
-        Form.MaximumDepth = MaxDepthBox.Text;
+        Form.MinimumDepth = TextOf(MinDepthBox);
+        Form.MaximumDepth = TextOf(MaxDepthBox);
         Form.Hidden = Chosen<AttributeRequirement>(HiddenBox);
         Form.System = Chosen<AttributeRequirement>(SystemBox);
         Form.Compressed = Chosen<AttributeRequirement>(CompressedBox);
         Form.Sparse = Chosen<AttributeRequirement>(SparseBox);
         Form.NamedStreams = Chosen<AttributeRequirement>(StreamsBox);
-        Form.MinimumSize = MinSizeBox.Text;
-        Form.MaximumSize = MaxSizeBox.Text;
+        Form.MinimumSize = TextOf(MinSizeBox);
+        Form.MaximumSize = TextOf(MaxSizeBox);
         Form.SizeUnit = Chosen<SearchSizeUnit>(SizeUnitBox);
-        Form.MinimumDelta = MinDeltaBox.Text;
-        Form.MaximumDelta = MaxDeltaBox.Text;
+        Form.MinimumDelta = TextOf(MinDeltaBox);
+        Form.MaximumDelta = TextOf(MaxDeltaBox);
         Form.DeltaUnit = Chosen<SearchSizeUnit>(DeltaUnitBox);
-        Form.MinimumRate = MinRateBox.Text;
-        Form.MaximumRate = MaxRateBox.Text;
-        Form.MinimumSwing = MinSwingBox.Text;
+        Form.MinimumRate = TextOf(MinRateBox);
+        Form.MaximumRate = TextOf(MaxRateBox);
+        Form.MinimumSwing = TextOf(MinSwingBox);
         Form.SwingUnit = Chosen<SearchSizeUnit>(SwingUnitBox);
         Form.Trend = Chosen<SizeTrend>(TrendBox);
         Form.Presence = Chosen<SearchPresence>(PresenceBox);
@@ -240,6 +244,51 @@ public sealed partial class SearchConditionsView : UserControl
     }
 
     private void OnTextChanged(object sender, TextChangedEventArgs args) => Edited();
+
+    private void OnNumberChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) => Edited();
+
+    // The form keeps what was typed as text, in the culture of the screen. A number box holds a
+    // double, so a value is written back with at most 15 significant digits (what the box shows)
+    // and, when large, as whole digits, which the form reports as too large instead of misreading.
+    private static string TextOf(NumberBox box)
+    {
+        double value = box.Value;
+        if (double.IsNaN(value))
+            return "";
+        var culture = CultureInfo.CurrentCulture;
+        return Math.Abs(value) >= 1e15
+            ? value.ToString("F0", culture)
+            : ((decimal)value).ToString(culture);
+    }
+
+    private static double ValueOf(string text) =>
+        double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value)
+            ? value
+            : double.NaN;
+
+    private IEnumerable<SteppingNumberBox> NumberBoxes =>
+        [
+            MinDepthBox,
+            MaxDepthBox,
+            MinSizeBox,
+            MaxSizeBox,
+            MinDeltaBox,
+            MaxDeltaBox,
+            MinRateBox,
+            MaxRateBox,
+            MinSwingBox,
+        ];
+
+    private static bool IsInNumberBox(object? source)
+    {
+        for (var node = source as DependencyObject; node is not null; )
+        {
+            if (node is SteppingNumberBox)
+                return true;
+            node = VisualTreeHelper.GetParent(node);
+        }
+        return false;
+    }
 
     private void OnChoiceChanged(object sender, SelectionChangedEventArgs args) => Edited();
 
@@ -281,9 +330,10 @@ public sealed partial class SearchConditionsView : UserControl
     private void OnReturnToResults(object sender, RoutedEventArgs args) =>
         ReturnToResultsRequested?.Invoke(this, EventArgs.Empty);
 
+    // A number box may mark Enter as handled when it commits its text, so it is also taken then.
     private void OnKeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (args.Key != VirtualKey.Enter || !SearchButton.IsEnabled)
+        if (args.Key != VirtualKey.Enter || (args.Handled && !IsInNumberBox(args.OriginalSource)))
             return;
         args.Handled = true;
         Submit();
@@ -291,6 +341,9 @@ public sealed partial class SearchConditionsView : UserControl
 
     private void Submit()
     {
+        // Typed text that is not committed yet counts as input.
+        foreach (var box in NumberBoxes)
+            box.Commit();
         ReadControls();
         var result = Current;
         if (result.CanSearch && !busy)

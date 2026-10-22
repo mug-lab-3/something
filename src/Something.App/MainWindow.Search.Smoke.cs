@@ -28,6 +28,7 @@ public sealed partial class MainWindow
             || conditions.RangePreviewForSmoke == "—"
         )
             throw new InvalidOperationException("The conditions screen was not ready.");
+        conditions.VerifyNumberInputsForSmoke();
 
         // One matching file: zip files, shown with their folders only.
         var form = new SearchConditionsForm

@@ -48,11 +48,17 @@ public sealed class SteppingNumberBox : NumberBox
             Step(steps);
     }
 
+    /// <summary>Applies text that is typed but not yet committed (committing happens on Enter or
+    /// when focus leaves), through NumberBox's own localized validation.</summary>
+    internal void Commit()
+    {
+        if (GetTemplateChild("InputBox") is TextBox input && input.Text != Text)
+            Text = input.Text;
+    }
+
     internal void Step(long steps)
     {
-        // Commit the current edit through NumberBox's own localized validation before stepping.
-        if (GetTemplateChild("InputBox") is TextBox input)
-            Text = input.Text;
+        Commit();
         double current = double.IsNaN(Value) ? 0 : Value;
         Value = Math.Clamp(current + steps * SmallChange, Minimum, Maximum);
         if (GetTemplateChild("InputBox") is TextBox editor)
