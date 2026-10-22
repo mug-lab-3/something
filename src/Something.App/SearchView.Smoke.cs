@@ -33,6 +33,33 @@ public sealed partial class SearchView
         }
     }
 
+    // Shows the busy state as a search would: the loading animation over the screen and the
+    // cancel button, which stands alone because the animation already says that it is working.
+    internal async Task ShowBusyForSmokeAsync(CancellationToken token, Func<Task> capture)
+    {
+        await using var lease = Region.BeginUpdate();
+        CancelBar.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        try
+        {
+            for (int waited = 0; !Region.IsIndicatorVisible; waited += 50)
+            {
+                if (waited > 5_000)
+                    throw new InvalidOperationException("The searching animation did not appear.");
+                await Task.Delay(50, token);
+            }
+            await Task.Delay(1200, token);
+            if (Region.AnimationScaleFactor <= 1.5 || CancelBar.Children.Count != 1)
+                throw new InvalidOperationException(
+                    "The searching animation is small or the cancel bar has more than a button."
+                );
+            await capture();
+        }
+        finally
+        {
+            CancelBar.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        }
+    }
+
     internal Task RunForSmokeAsync(HistorySearchCriteria criteria) => RunSearchAsync(criteria);
 
     internal void ResultsForSmokeBack() => OnBackToConditions(this, EventArgs.Empty);

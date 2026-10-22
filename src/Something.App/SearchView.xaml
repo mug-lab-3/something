@@ -6,7 +6,7 @@
   xmlns:local="using:Something.App"
 >
   <Grid>
-    <local:DelayedLoadingRegion x:Name="Region">
+    <local:DelayedLoadingRegion x:Name="Region" FillsRegion="True">
       <local:DelayedLoadingRegion.Body>
         <Grid>
           <local:SearchConditionsView
@@ -34,11 +34,6 @@
       Visibility="Collapsed"
       Canvas.ZIndex="5"
     >
-      <TextBlock
-        x:Uid="Search_Searching"
-        VerticalAlignment="Center"
-        AutomationProperties.LiveSetting="Polite"
-      />
       <Button x:Uid="Search_CancelButton" Click="OnCancel" />
     </StackPanel>
   </Grid>

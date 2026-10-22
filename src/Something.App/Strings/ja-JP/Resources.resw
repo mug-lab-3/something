@@ -2038,9 +2038,6 @@
   <data name="Search_NoDriveHistory" xml:space="preserve">
     <value>このドライブにはスキャンの履歴がありません。</value>
   </data>
-  <data name="Search_Searching.Text" xml:space="preserve">
-    <value>検索しています…</value>
-  </data>
   <data name="Search_CancelButton.Content" xml:space="preserve">
     <value>キャンセル</value>
   </data>

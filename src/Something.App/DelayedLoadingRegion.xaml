@@ -22,7 +22,18 @@
         Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
       >
         <StackPanel Spacing="8">
-          <local:RecordLoadingAnimation x:Name="Animation" />
+          <Grid x:Name="AnimationHost">
+            <local:RecordLoadingAnimation
+              x:Name="Animation"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              RenderTransformOrigin="0,0"
+            >
+              <local:RecordLoadingAnimation.RenderTransform>
+                <ScaleTransform x:Name="AnimationScale" />
+              </local:RecordLoadingAnimation.RenderTransform>
+            </local:RecordLoadingAnimation>
+          </Grid>
           <TextBlock
             x:Uid="DelayedLoading_Text"
             HorizontalAlignment="Center"
