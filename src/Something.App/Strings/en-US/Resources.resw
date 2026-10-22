@@ -1852,4 +1852,171 @@ Some names could not be read.</value>
   <data name="Search_Issue_RateRangeInvalid" xml:space="preserve">
     <value>The minimum rate exceeds the maximum.</value>
   </data>
+  <data name="Search_BackToConditionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Back to conditions</value>
+  </data>
+  <data name="Search_BackToConditionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Edit the search conditions</value>
+  </data>
+  <data name="Search_BackToConditionsText.Text" xml:space="preserve">
+    <value>Back to conditions</value>
+  </data>
+  <data name="Search_MoreConditionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Show all conditions</value>
+  </data>
+  <data name="Search_MoreConditionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show all conditions</value>
+  </data>
+  <data name="Search_AllConditionsTitle.Text" xml:space="preserve">
+    <value>Conditions searched</value>
+  </data>
+  <data name="Search_TreeHeader.Text" xml:space="preserve">
+    <value>Folders in the result</value>
+  </data>
+  <data name="Search_GraphButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Open the size history as a graph</value>
+  </data>
+  <data name="Search_GraphButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Open the size history as a graph</value>
+  </data>
+  <data name="Search_GraphMenuItem" xml:space="preserve">
+    <value>Open as graph</value>
+  </data>
+  <data name="Search_SizeDescription" xml:space="preserve">
+    <value>Allocated size in the last scan of the range in which this item was seen.</value>
+  </data>
+  <data name="Search_UncertainNote" xml:space="preserve">
+    <value> * means some sizes were unresolved, so the value is not certain.</value>
+  </data>
+  <data name="Search_Counts" xml:space="preserve">
+    <value>{0} folders and {1} files matched</value>
+    <comment>{0} = result.MatchedFolders; {1} = result.MatchedFiles</comment>
+  </data>
+  <data name="Search_CountsUncertain" xml:space="preserve">
+    <value>{0} items could not be decided because of unresolved sizes</value>
+    <comment>{0} = result.UncertainCount</comment>
+  </data>
+  <data name="Search_CountsUnknownAttributes" xml:space="preserve">
+    <value>{0} items left out because their attributes are unknown</value>
+    <comment>{0} = result.UnknownAttributeCount</comment>
+  </data>
+  <data name="Search_CountsSeparator" xml:space="preserve">
+    <value> · </value>
+  </data>
+  <data name="Search_ResultNoScans" xml:space="preserve">
+    <value>Nothing was searched because the range has no scans.</value>
+  </data>
+  <data name="Search_ResultChangesNeedTwoScans" xml:space="preserve">
+    <value>Nothing was searched because change conditions need at least two scans in the range.</value>
+  </data>
+  <data name="Search_ResultEmpty" xml:space="preserve">
+    <value>No items matched.</value>
+  </data>
+  <data name="Search_MoreConditions" xml:space="preserve">
+    <value>+{0}</value>
+    <comment>{0} = number of conditions not shown</comment>
+  </data>
+  <data name="Summary_Range" xml:space="preserve">
+    <value>{0} – {1} ({2} scans)</value>
+    <comment>{0} = first scan; {1} = last scan; {2} = scan count</comment>
+  </data>
+  <data name="Summary_NameContains" xml:space="preserve">
+    <value>Name contains &quot;{0}&quot;</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_NameWildcard" xml:space="preserve">
+    <value>Name (wildcard): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_NameRegex" xml:space="preserve">
+    <value>Name (regex): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_Extensions" xml:space="preserve">
+    <value>Extensions: {0}</value>
+    <comment>{0} = extensions</comment>
+  </data>
+  <data name="Summary_BaseFolder" xml:space="preserve">
+    <value>Base folder: {0}</value>
+    <comment>{0} = path</comment>
+  </data>
+  <data name="Summary_DepthMin" xml:space="preserve">
+    <value>Depth ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_DepthMax" xml:space="preserve">
+    <value>Depth ≤ {0}</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_DepthBetween" xml:space="preserve">
+    <value>Depth {0}–{1}</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_Attribute" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>{0} = attribute; {1} = set or clear</comment>
+  </data>
+  <data name="Summary_AttributeHidden" xml:space="preserve">
+    <value>Hidden</value>
+  </data>
+  <data name="Summary_AttributeSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Summary_AttributeCompressed" xml:space="preserve">
+    <value>Compressed</value>
+  </data>
+  <data name="Summary_AttributeSparse" xml:space="preserve">
+    <value>Sparse</value>
+  </data>
+  <data name="Summary_AttributeNamedStreams" xml:space="preserve">
+    <value>Named streams</value>
+  </data>
+  <data name="Summary_SizeMin" xml:space="preserve">
+    <value>{0} ≥ {1}</value>
+    <comment>{0} = kind of size; {1} = minimum</comment>
+  </data>
+  <data name="Summary_SizeMax" xml:space="preserve">
+    <value>{0} ≤ {1}</value>
+    <comment>{0} = kind of size; {1} = maximum</comment>
+  </data>
+  <data name="Summary_SizeBetween" xml:space="preserve">
+    <value>{0}: {1} – {2}</value>
+    <comment>{0} = kind of size; {1} = minimum; {2} = maximum</comment>
+  </data>
+  <data name="Summary_DeltaMin" xml:space="preserve">
+    <value>Change ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_DeltaMax" xml:space="preserve">
+    <value>Change ≤ {0}</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_DeltaBetween" xml:space="preserve">
+    <value>Change {0} … {1}</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_RateMin" xml:space="preserve">
+    <value>Rate ≥ {0}%</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_RateMax" xml:space="preserve">
+    <value>Rate ≤ {0}%</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_RateBetween" xml:space="preserve">
+    <value>Rate {0}% … {1}%</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_SwingMin" xml:space="preserve">
+    <value>Swing ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_Trend" xml:space="preserve">
+    <value>Trend: {0}</value>
+    <comment>{0} = increasing or decreasing</comment>
+  </data>
+  <data name="Summary_Presence" xml:space="preserve">
+    <value>Presence: {0}</value>
+    <comment>{0} = presence condition</comment>
+  </data>
 </root>

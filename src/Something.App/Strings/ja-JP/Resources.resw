@@ -1852,4 +1852,171 @@
   <data name="Search_Issue_RateRangeInvalid" xml:space="preserve">
     <value>増減率の最小が最大を超えています。</value>
   </data>
+  <data name="Search_BackToConditionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>条件に戻る</value>
+  </data>
+  <data name="Search_BackToConditionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>検索の条件を編集します</value>
+  </data>
+  <data name="Search_BackToConditionsText.Text" xml:space="preserve">
+    <value>条件に戻る</value>
+  </data>
+  <data name="Search_MoreConditionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>すべての条件を表示</value>
+  </data>
+  <data name="Search_MoreConditionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>すべての条件を表示</value>
+  </data>
+  <data name="Search_AllConditionsTitle.Text" xml:space="preserve">
+    <value>検索した条件</value>
+  </data>
+  <data name="Search_TreeHeader.Text" xml:space="preserve">
+    <value>検索結果のフォルダー</value>
+  </data>
+  <data name="Search_GraphButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>サイズの推移をグラフで開く</value>
+  </data>
+  <data name="Search_GraphButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>サイズの推移をグラフで開く</value>
+  </data>
+  <data name="Search_GraphMenuItem" xml:space="preserve">
+    <value>グラフで開く</value>
+  </data>
+  <data name="Search_SizeDescription" xml:space="preserve">
+    <value>範囲内で、この項目を最後に観測したスキャンでの割り当てサイズです。</value>
+  </data>
+  <data name="Search_UncertainNote" xml:space="preserve">
+    <value> * は、一部のサイズが未解決のため確定できない値を含みます。</value>
+  </data>
+  <data name="Search_Counts" xml:space="preserve">
+    <value>フォルダー {0} 件、ファイル {1} 件が一致</value>
+    <comment>{0} = result.MatchedFolders; {1} = result.MatchedFiles</comment>
+  </data>
+  <data name="Search_CountsUncertain" xml:space="preserve">
+    <value>サイズ未解決で判定できない項目 {0} 件</value>
+    <comment>{0} = result.UncertainCount</comment>
+  </data>
+  <data name="Search_CountsUnknownAttributes" xml:space="preserve">
+    <value>属性不明のため除外 {0} 件</value>
+    <comment>{0} = result.UnknownAttributeCount</comment>
+  </data>
+  <data name="Search_CountsSeparator" xml:space="preserve">
+    <value> ・ </value>
+  </data>
+  <data name="Search_ResultNoScans" xml:space="preserve">
+    <value>指定した範囲にスキャンがないため、検索しませんでした。</value>
+  </data>
+  <data name="Search_ResultChangesNeedTwoScans" xml:space="preserve">
+    <value>変動の条件には範囲内に 2 つ以上のスキャンが必要なため、検索しませんでした。</value>
+  </data>
+  <data name="Search_ResultEmpty" xml:space="preserve">
+    <value>一致する項目はありません。</value>
+  </data>
+  <data name="Search_MoreConditions" xml:space="preserve">
+    <value>+{0}</value>
+    <comment>{0} = number of conditions not shown</comment>
+  </data>
+  <data name="Summary_Range" xml:space="preserve">
+    <value>{0} – {1} ({2} 件)</value>
+    <comment>{0} = first scan; {1} = last scan; {2} = scan count</comment>
+  </data>
+  <data name="Summary_NameContains" xml:space="preserve">
+    <value>名前に「{0}」を含む</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_NameWildcard" xml:space="preserve">
+    <value>名前 (ワイルドカード): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_NameRegex" xml:space="preserve">
+    <value>名前 (正規表現): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_Extensions" xml:space="preserve">
+    <value>拡張子: {0}</value>
+    <comment>{0} = extensions</comment>
+  </data>
+  <data name="Summary_BaseFolder" xml:space="preserve">
+    <value>起点: {0}</value>
+    <comment>{0} = path</comment>
+  </data>
+  <data name="Summary_DepthMin" xml:space="preserve">
+    <value>深さ ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_DepthMax" xml:space="preserve">
+    <value>深さ ≤ {0}</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_DepthBetween" xml:space="preserve">
+    <value>深さ {0}–{1}</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_Attribute" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>{0} = attribute; {1} = set or clear</comment>
+  </data>
+  <data name="Summary_AttributeHidden" xml:space="preserve">
+    <value>隠し</value>
+  </data>
+  <data name="Summary_AttributeSystem" xml:space="preserve">
+    <value>システム</value>
+  </data>
+  <data name="Summary_AttributeCompressed" xml:space="preserve">
+    <value>圧縮</value>
+  </data>
+  <data name="Summary_AttributeSparse" xml:space="preserve">
+    <value>スパース</value>
+  </data>
+  <data name="Summary_AttributeNamedStreams" xml:space="preserve">
+    <value>名前付きストリーム</value>
+  </data>
+  <data name="Summary_SizeMin" xml:space="preserve">
+    <value>{0} ≥ {1}</value>
+    <comment>{0} = kind of size; {1} = minimum</comment>
+  </data>
+  <data name="Summary_SizeMax" xml:space="preserve">
+    <value>{0} ≤ {1}</value>
+    <comment>{0} = kind of size; {1} = maximum</comment>
+  </data>
+  <data name="Summary_SizeBetween" xml:space="preserve">
+    <value>{0}: {1} – {2}</value>
+    <comment>{0} = kind of size; {1} = minimum; {2} = maximum</comment>
+  </data>
+  <data name="Summary_DeltaMin" xml:space="preserve">
+    <value>増減 ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_DeltaMax" xml:space="preserve">
+    <value>増減 ≤ {0}</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_DeltaBetween" xml:space="preserve">
+    <value>増減 {0} … {1}</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_RateMin" xml:space="preserve">
+    <value>増減率 ≥ {0}%</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_RateMax" xml:space="preserve">
+    <value>増減率 ≤ {0}%</value>
+    <comment>{0} = maximum</comment>
+  </data>
+  <data name="Summary_RateBetween" xml:space="preserve">
+    <value>増減率 {0}% … {1}%</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
+  </data>
+  <data name="Summary_SwingMin" xml:space="preserve">
+    <value>振れ幅 ≥ {0}</value>
+    <comment>{0} = minimum</comment>
+  </data>
+  <data name="Summary_Trend" xml:space="preserve">
+    <value>傾向: {0}</value>
+    <comment>{0} = increasing or decreasing</comment>
+  </data>
+  <data name="Summary_Presence" xml:space="preserve">
+    <value>存在: {0}</value>
+    <comment>{0} = presence condition</comment>
+  </data>
 </root>
