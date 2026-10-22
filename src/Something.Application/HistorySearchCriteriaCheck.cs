@@ -72,7 +72,8 @@ public sealed record SearchRangePart(DateTimeOffset FirstUtc, DateTimeOffset Las
 
 public sealed record SearchTargetPart(SearchTarget Target) : SearchSummaryPart;
 
-public sealed record SearchNamePart(string Pattern, NameMatchMode Mode) : SearchSummaryPart;
+public sealed record SearchNamePart(string Pattern, NameMatchMode Mode, bool IncludesPath = false)
+    : SearchSummaryPart;
 
 public sealed record SearchExtensionsPart(ImmutableArray<string> Extensions) : SearchSummaryPart;
 
@@ -126,7 +127,13 @@ public static class HistorySearchSummary
         if (criteria.Target != SearchTarget.Both)
             parts.Add(new SearchTargetPart(criteria.Target));
         if (!string.IsNullOrEmpty(criteria.NamePattern))
-            parts.Add(new SearchNamePart(criteria.NamePattern, criteria.NameMode));
+            parts.Add(
+                new SearchNamePart(
+                    criteria.NamePattern,
+                    criteria.NameMode,
+                    criteria.NameIncludesPath
+                )
+            );
         if (!criteria.Extensions.IsEmpty)
             parts.Add(new SearchExtensionsPart(criteria.Extensions));
         if (!string.IsNullOrEmpty(criteria.BaseFolder?.Trim('\\')))

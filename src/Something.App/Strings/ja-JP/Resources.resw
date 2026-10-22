@@ -1631,7 +1631,12 @@
   <data name="Search_NameModeBox.Header" xml:space="preserve">
     <value>照合の方法</value>
   </data>
-  <data name="Search_ExtensionsBox.Header" xml:space="preserve">
+  <data name="Search_NameIncludesPathBox.Content" xml:space="preserve">
+    <value>パスも照合する（一致したフォルダー以下をすべて対象にする）</value>
+  </data>
+  <data name="Search_NameIncludesPathBox.ToolTipService.ToolTip" xml:space="preserve">
+    <value>ドライブ名を除いた、ドライブの直下からのパス全体に照合します。名前に一致するフォルダーがあれば、その中のファイルとフォルダーもすべて対象になります。</value>
+  </data>  <data name="Search_ExtensionsBox.Header" xml:space="preserve">
     <value>拡張子</value>
   </data>
   <data name="Search_ExtensionsBox.PlaceholderText" xml:space="preserve">
@@ -1923,7 +1928,18 @@
     <value>名前 (正規表現): {0}</value>
     <comment>{0} = pattern</comment>
   </data>
-  <data name="Summary_Extensions" xml:space="preserve">
+  <data name="Summary_PathContains" xml:space="preserve">
+    <value>パスに「{0}」を含む</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_PathWildcard" xml:space="preserve">
+    <value>パス (ワイルドカード): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_PathRegex" xml:space="preserve">
+    <value>パス (正規表現): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>  <data name="Summary_Extensions" xml:space="preserve">
     <value>拡張子: {0}</value>
     <comment>{0} = extensions</comment>
   </data>

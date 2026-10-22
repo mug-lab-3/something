@@ -73,6 +73,10 @@ public sealed class SearchConditionsForm
     public string NamePattern { get; set; } = "";
     public NameMatchMode NameMode { get; set; }
 
+    /// <summary>Whether the name pattern is matched against the whole path, so that everything
+    /// under a folder with a matching name is included. On unless it is switched off.</summary>
+    public bool NameIncludesPath { get; set; } = true;
+
     /// <summary>Separated by spaces, commas or semicolons; a leading dot is ignored.</summary>
     public string Extensions { get; set; } = "";
 
@@ -105,6 +109,7 @@ public sealed class SearchConditionsForm
         Target = fresh.Target;
         NamePattern = fresh.NamePattern;
         NameMode = fresh.NameMode;
+        NameIncludesPath = fresh.NameIncludesPath;
         Extensions = fresh.Extensions;
         BaseFolder = fresh.BaseFolder;
         MinimumDepth = fresh.MinimumDepth;
@@ -129,6 +134,7 @@ public sealed class SearchConditionsForm
             form.Target,
             form.NamePattern,
             form.NameMode,
+            form.NameIncludesPath,
             form.Extensions,
             form.BaseFolder,
             form.MinimumDepth,
@@ -240,6 +246,7 @@ public sealed class SearchConditionsForm
             Target = Target,
             NamePattern = string.IsNullOrEmpty(NamePattern) ? null : NamePattern,
             NameMode = NameMode,
+            NameIncludesPath = NameIncludesPath,
             Extensions = ReadExtensions(Extensions),
             BaseFolder = ReadBaseFolder(BaseFolder),
             MinimumDepth = minimumDepth,

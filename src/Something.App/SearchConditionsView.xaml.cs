@@ -206,6 +206,7 @@ public sealed partial class SearchConditionsView : UserControl
         Choose(TargetBox, Form.Target);
         NameBox.Text = Form.NamePattern;
         Choose(NameModeBox, Form.NameMode);
+        NameIncludesPathBox.IsChecked = Form.NameIncludesPath;
         ExtensionsBox.Text = Form.Extensions;
         BaseFolderBox.Text = Form.BaseFolder;
         MinDepthBox.Value = ValueOf(Form.MinimumDepth);
@@ -237,6 +238,7 @@ public sealed partial class SearchConditionsView : UserControl
         Form.Target = Chosen<SearchTarget>(TargetBox);
         Form.NamePattern = NameBox.Text;
         Form.NameMode = Chosen<NameMatchMode>(NameModeBox);
+        Form.NameIncludesPath = NameIncludesPathBox.IsChecked == true;
         Form.Extensions = ExtensionsBox.Text;
         Form.BaseFolder = BaseFolderBox.Text;
         Form.MinimumDepth = TextOf(MinDepthBox);
@@ -317,6 +319,8 @@ public sealed partial class SearchConditionsView : UserControl
     }
 
     private void OnChoiceChanged(object sender, SelectionChangedEventArgs args) => Edited();
+
+    private void OnCheckChanged(object sender, RoutedEventArgs args) => Edited();
 
     private void OnRangeChanged(object? sender, EventArgs args)
     {

@@ -78,6 +78,15 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
         && !string.IsNullOrEmpty(criteria.NamePattern)
             ? HistorySearchCriteria.CreateRegex(criteria.NamePattern)
             : null;
+
+    // In a path, a backslash separates folders: it is not the escape of a wildcard, and a slash
+    // reads as a backslash. A regular expression is the user's own.
+    private readonly string? pathPattern = criteria.NameMode switch
+    {
+        NameMatchMode.Wildcard => criteria.NamePattern?.Replace('/', '\\').Replace("\\", "\\\\"),
+        NameMatchMode.Contains => criteria.NamePattern?.Replace('/', '\\'),
+        _ => criteria.NamePattern,
+    };
     private readonly string? baseFolder = string.IsNullOrEmpty(criteria.BaseFolder?.Trim('\\'))
         ? null
         : criteria.BaseFolder.Trim('\\') + '\\';
@@ -86,8 +95,12 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
     public int ScanCount { get; } = scanCount;
     private int Last => ScanCount - 1;
 
-    /// <summary>Whether display paths are needed: only the base folder condition uses them.</summary>
-    public bool NeedsPaths => baseFolder is not null;
+    // The name pattern applies to the path, which is only known with the item's folders.
+    private bool NameOnPath =>
+        Criteria.NameIncludesPath && !string.IsNullOrEmpty(Criteria.NamePattern);
+
+    /// <summary>Whether display paths are needed: the base folder and a name on the path use them.</summary>
+    public bool NeedsPaths => baseFolder is not null || NameOnPath;
 
     public bool NeedsNamedStreams => Criteria.Attributes.NamedStreams != AttributeRequirement.Any;
 
@@ -107,7 +120,7 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
         if (
             Criteria.Target == SearchTarget.Folders && !item.IsDirectory
             || Criteria.Target == SearchTarget.Files && item.IsDirectory
-            || !NameMatches(item.Name)
+            || !NameOnPath && !NameMatches(item.Name, Criteria.NamePattern)
             || !Criteria.Extensions.IsEmpty && (item.IsDirectory || !HasExtension(item.Name))
             || !PresenceMatches(item)
         )
@@ -210,18 +223,26 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
     public ConditionOutcome DecideTrend(IReadOnlyList<UInt128?> sizes) =>
         sizes.Count == 0 ? ConditionOutcome.Fail : DecideTrend(SizeTrendEvidence.FromSeries(sizes));
 
-    /// <summary>Depth and base folder. <paramref name="parentPath"/> is the parent's display path
-    /// relative to the root (empty for the root); it may be null when <see cref="NeedsPaths"/> is false.</summary>
+    /// <summary>Depth, base folder and, when it applies to the path, the name pattern.
+    /// <paramref name="parentPath"/> is the parent's display path relative to the root (empty for
+    /// the root); it may be null when <see cref="NeedsPaths"/> is false.</summary>
     public bool PathMatches(int depth, string? parentPath, string name)
     {
         if (depth < Criteria.MinimumDepth || depth > Criteria.MaximumDepth)
             return false;
-        if (baseFolder is null)
+        if (!NeedsPaths)
             return true;
         ArgumentNullException.ThrowIfNull(parentPath);
         string path = parentPath.Length == 0 ? name : parentPath + '\\' + name;
-        return path.Length > baseFolder.Length
-            && path.StartsWith(baseFolder, StringComparison.OrdinalIgnoreCase);
+        if (
+            baseFolder is not null
+            && !(
+                path.Length > baseFolder.Length
+                && path.StartsWith(baseFolder, StringComparison.OrdinalIgnoreCase)
+            )
+        )
+            return false;
+        return !NameOnPath || NameMatches(path, pathPattern!);
     }
 
     public bool NamedStreamsMatch(bool hasNamedStreams) =>
@@ -244,17 +265,18 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
             _ => true,
         };
 
-    private bool NameMatches(string name) =>
-        string.IsNullOrEmpty(Criteria.NamePattern)
+    // The text is an item name, or its path with the pattern made for paths.
+    private bool NameMatches(string text, string? pattern) =>
+        string.IsNullOrEmpty(pattern)
         || Criteria.NameMode switch
         {
             NameMatchMode.Wildcard => FileSystemName.MatchesSimpleExpression(
-                Criteria.NamePattern,
-                name,
+                pattern,
+                text,
                 ignoreCase: true
             ),
-            NameMatchMode.RegularExpression => regex!.IsMatch(name),
-            _ => name.Contains(Criteria.NamePattern, StringComparison.OrdinalIgnoreCase),
+            NameMatchMode.RegularExpression => regex!.IsMatch(text),
+            _ => text.Contains(pattern, StringComparison.OrdinalIgnoreCase),
         };
 
     private bool HasExtension(string name) =>

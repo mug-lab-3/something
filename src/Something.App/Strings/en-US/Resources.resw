@@ -1631,7 +1631,12 @@ Some names could not be read.</value>
   <data name="Search_NameModeBox.Header" xml:space="preserve">
     <value>Match as</value>
   </data>
-  <data name="Search_ExtensionsBox.Header" xml:space="preserve">
+  <data name="Search_NameIncludesPathBox.Content" xml:space="preserve">
+    <value>Match the whole path (everything under a matching folder)</value>
+  </data>
+  <data name="Search_NameIncludesPathBox.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Matches the path from the drive root, without the drive name. When a folder name matches, every file and folder inside it is included.</value>
+  </data>  <data name="Search_ExtensionsBox.Header" xml:space="preserve">
     <value>Extensions</value>
   </data>
   <data name="Search_ExtensionsBox.PlaceholderText" xml:space="preserve">
@@ -1923,7 +1928,18 @@ Some names could not be read.</value>
     <value>Name (regex): {0}</value>
     <comment>{0} = pattern</comment>
   </data>
-  <data name="Summary_Extensions" xml:space="preserve">
+  <data name="Summary_PathContains" xml:space="preserve">
+    <value>Path contains &quot;{0}&quot;</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_PathWildcard" xml:space="preserve">
+    <value>Path (wildcard): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>
+  <data name="Summary_PathRegex" xml:space="preserve">
+    <value>Path (regex): {0}</value>
+    <comment>{0} = pattern</comment>
+  </data>  <data name="Summary_Extensions" xml:space="preserve">
     <value>Extensions: {0}</value>
     <comment>{0} = extensions</comment>
   </data>

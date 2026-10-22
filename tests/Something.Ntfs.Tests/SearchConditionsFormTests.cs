@@ -394,6 +394,31 @@ public sealed class SearchConditionsFormTests
     }
 
     [Fact]
+    public void TheNamePatternAppliesToThePathUnlessSwitchedOff()
+    {
+        // Arrange
+        var form = Form();
+        form.NamePattern = "mug";
+
+        // Act
+        var byPath = Build(form).Criteria!;
+        form.NameIncludesPath = false;
+        var byName = Build(form).Criteria!;
+
+        // Assert: the path is the default; the other is a different search, and clearing
+        // returns to the default without counting as a condition
+        Assert.True(byPath.NameIncludesPath);
+        Assert.False(byName.NameIncludesPath);
+        Assert.False(SearchConditionsForm.Same(byName, byPath));
+        Assert.True(form.DiffersFrom(byPath, new(), Culture));
+        Assert.True(form.HasConditions);
+        form.ClearConditions();
+        Assert.True(form.NameIncludesPath);
+        Assert.False(form.HasConditions);
+        Assert.False(Form().HasConditions);
+    }
+
+    [Fact]
     public void ChangingOnlyTheRangeIsNotAConditionButCountsAsADifference()
     {
         // Arrange

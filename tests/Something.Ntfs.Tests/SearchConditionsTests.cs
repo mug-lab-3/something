@@ -519,6 +519,116 @@ public sealed class SearchConditionsTests
     }
 
     [Theory]
+    [InlineData(NameMatchMode.Contains, "mug", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Contains, "MUG", "Users\\mug\\Docs", "a.txt", true)]
+    [InlineData(NameMatchMode.Contains, "mug", "Users\\other", "mug.txt", true)]
+    [InlineData(NameMatchMode.Contains, "mug", "Users\\other", "a.txt", false)]
+    [InlineData(NameMatchMode.Contains, "users\\mug", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Contains, "users/mug", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Wildcard, "users/mug/*", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Wildcard, "*\\mug\\*.txt", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Wildcard, "*\\mug\\*.txt", "Users\\mug", "a.log", false)]
+    [InlineData(NameMatchMode.Wildcard, "users\\mug\\*", "Users\\mug", "a.txt", true)]
+    [InlineData(NameMatchMode.Wildcard, "users\\mug\\*", "Users\\other", "a.txt", false)]
+    [InlineData(NameMatchMode.RegularExpression, "^Users\\\\mug(\\\\|$)", "Users\\mug", "a", true)]
+    [InlineData(
+        NameMatchMode.RegularExpression,
+        "^Users\\\\mug(\\\\|$)",
+        "Users\\mugs",
+        "a",
+        false
+    )]
+    public void ANamePatternOnThePathCoversEverythingBelowAMatchingFolder(
+        NameMatchMode mode,
+        string pattern,
+        string parent,
+        string name,
+        bool expected
+    )
+    {
+        // Arrange
+        var conditions = new SearchConditions(
+            Everything with
+            {
+                NamePattern = pattern,
+                NameMode = mode,
+                NameIncludesPath = true,
+            },
+            3
+        );
+
+        // Act
+        bool matches = conditions.PathMatches(parent.Count(c => c == '\\') + 2, parent, name);
+
+        // Assert
+        Assert.Equal(expected, matches);
+    }
+
+    [Fact]
+    public void ANamePatternOnThePathLeavesTheNameToThePathCheck()
+    {
+        // Arrange
+        var onPath = new SearchConditions(
+            Everything with
+            {
+                NamePattern = "mug",
+                NameIncludesPath = true,
+            },
+            3
+        );
+        var onName = new SearchConditions(Everything with { NamePattern = "mug" }, 3);
+
+        // Act
+        var itemOnPath = onPath.Evaluate(Item("a.log"), null);
+        var itemOnName = onName.Evaluate(Item("a.log"), null);
+
+        // Assert: the item name alone does not decide it when the path does
+        Assert.True(itemOnPath.Matches);
+        Assert.False(itemOnName.Matches);
+    }
+
+    [Theory]
+    [InlineData("mug", true, true)]
+    [InlineData("", true, false)]
+    [InlineData(null, true, false)]
+    [InlineData("mug", false, false)]
+    public void ANamePatternOnThePathNeedsPaths(string? pattern, bool onPath, bool expected)
+    {
+        // Act
+        var conditions = new SearchConditions(
+            Everything with
+            {
+                NamePattern = pattern,
+                NameIncludesPath = onPath,
+            },
+            3
+        );
+
+        // Assert
+        Assert.Equal(expected, conditions.NeedsPaths);
+    }
+
+    [Fact]
+    public void ANamePatternOnThePathAndABaseFolderMustBothHold()
+    {
+        // Arrange
+        var conditions = new SearchConditions(
+            Everything with
+            {
+                NamePattern = "mug",
+                NameIncludesPath = true,
+                BaseFolder = "Users\\mug\\Docs",
+            },
+            3
+        );
+
+        // Act and assert
+        Assert.True(conditions.PathMatches(4, "Users\\mug\\Docs", "a.txt"));
+        Assert.False(conditions.PathMatches(4, "Users\\mug\\Pics", "a.txt"));
+        Assert.False(conditions.PathMatches(3, "Users\\other\\Docs", "a.txt"));
+    }
+
+    [Theory]
     [InlineData(null, false)]
     [InlineData("", false)]
     [InlineData("\\", false)]

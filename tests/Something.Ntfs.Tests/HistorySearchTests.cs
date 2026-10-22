@@ -383,6 +383,83 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void ANameOnThePathSelectsEverythingUnderAMatchingFolder()
+    {
+        // Arrange
+        using var fixture = new Fixture();
+        Node[] nodes =
+        [
+            new(20, "Users", Directory: true),
+            new(21, "mug", 20, Directory: true),
+            new(22, "Docs", 21, Directory: true),
+            new(23, "other", 20, Directory: true),
+            new(30, "a.txt", 22, 1),
+            new(31, "b.txt", 21, 1),
+            new(32, "c.txt", 23, 1),
+            new(33, "mug.log", 23, 1),
+        ];
+        fixture.Save(Now.AddDays(-2), nodes);
+        fixture.Save(Now.AddDays(-1), nodes);
+
+        // Act
+        var byName = Search(fixture, Everything with { NamePattern = "mug" });
+        var byPath = Search(
+            fixture,
+            Everything with
+            {
+                NamePattern = "mug",
+                NameIncludesPath = true,
+            }
+        );
+
+        // Assert: by name only the folder and the file called mug; by path all that lies below it
+        Assert.Equal((1, 1), (byName.MatchedFolders, byName.MatchedFiles));
+        Assert.Equal((2, 3), (byPath.MatchedFolders, byPath.MatchedFiles));
+        Assert.Equal(
+            ["a.txt"],
+            byPath.Entries(Ref(22)).Where(e => !e.IsDirectory).Select(e => e.Name)
+        );
+        Assert.Null(byPath.Folder(Ref(23))?.Matched is true ? byPath.Folder(Ref(23)) : null);
+    }
+
+    [Fact]
+    public void ANameOnThePathUsesThePathOfTheLastObservation()
+    {
+        // Arrange: the file moved out of the matching folder between the scans
+        using var fixture = new Fixture();
+        fixture.Save(
+            Now.AddDays(-2),
+            [
+                new(21, "mug", Directory: true),
+                new(22, "Other", Directory: true),
+                new(30, "a.txt", 21, 1),
+            ]
+        );
+        fixture.Save(
+            Now.AddDays(-1),
+            [
+                new(21, "mug", Directory: true),
+                new(22, "Other", Directory: true),
+                new(30, "a.txt", 22, 1),
+            ]
+        );
+
+        // Act
+        var result = Search(
+            fixture,
+            Everything with
+            {
+                NamePattern = "mug",
+                NameIncludesPath = true,
+                Target = SearchTarget.Files,
+            }
+        );
+
+        // Assert
+        Assert.Equal(0, result.MatchedFiles);
+    }
+
+    [Fact]
     public void TrendsCompareConsecutiveKnownSizes()
     {
         // Arrange

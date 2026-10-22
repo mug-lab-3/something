@@ -35,6 +35,9 @@ public sealed partial class MainWindow
                     + $"search enabled {conditions.SearchEnabledForSmoke}, "
                     + $"range {conditions.RangePreviewForSmoke})."
             );
+        // The name applies to the whole path unless that is switched off.
+        if (!conditions.NameIncludesPathForSmoke || !conditions.Form.NameIncludesPath)
+            throw new InvalidOperationException("The name does not apply to the path by default.");
         conditions.VerifyNumberInputsForSmoke();
         // A range of "the last days" follows the clock when the tab is shown again.
         conditions.AgeRangeForSmoke();

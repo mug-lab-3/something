@@ -136,6 +136,11 @@
                   SelectionChanged="OnChoiceChanged"
                 />
               </Grid>
+              <CheckBox
+                x:Uid="Search_NameIncludesPathBox"
+                x:Name="NameIncludesPathBox"
+                Click="OnCheckChanged"
+              />
               <TextBlock
                 x:Name="NameIssueText"
                 Style="{StaticResource SearchIssueStyle}"

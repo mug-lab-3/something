@@ -79,6 +79,11 @@ public sealed record HistorySearchCriteria(DateTimeOffset StartUtc, DateTimeOffs
     public string? NamePattern { get; init; }
     public NameMatchMode NameMode { get; init; }
 
+    /// <summary>Matches <see cref="NamePattern"/> against the whole path of the item (relative
+    /// to the volume root, as the item was last observed) instead of its own name, so that
+    /// everything under a folder whose name matches matches as well.</summary>
+    public bool NameIncludesPath { get; init; }
+
     /// <summary>Without the leading dot; matches files only.</summary>
     public ImmutableArray<string> Extensions { get; init; } = [];
 

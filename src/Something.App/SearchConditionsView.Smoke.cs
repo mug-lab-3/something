@@ -8,6 +8,7 @@ public sealed partial class SearchConditionsView
 
     internal string RangePreviewForSmoke => RangePreviewText.Text;
     internal bool SearchEnabledForSmoke => SearchButton.IsEnabled;
+    internal bool NameIncludesPathForSmoke => NameIncludesPathBox.IsChecked == true;
 
     // Makes the range look as if the screen had been made some time ago.
     internal void AgeRangeForSmoke()

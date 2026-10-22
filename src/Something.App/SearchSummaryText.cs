@@ -22,6 +22,15 @@ internal static class SearchSummaryText
             ),
             SearchTargetPart { Target: SearchTarget.Files } => Strings.Get("Search_TargetFiles"),
             SearchTargetPart => Strings.Get("Search_TargetBoth"),
+            SearchNamePart { IncludesPath: true } path => path.Mode switch
+            {
+                NameMatchMode.Wildcard => Strings.Format("Summary_PathWildcard", path.Pattern),
+                NameMatchMode.RegularExpression => Strings.Format(
+                    "Summary_PathRegex",
+                    path.Pattern
+                ),
+                _ => Strings.Format("Summary_PathContains", path.Pattern),
+            },
             SearchNamePart name => name.Mode switch
             {
                 NameMatchMode.Wildcard => Strings.Format("Summary_NameWildcard", name.Pattern),
