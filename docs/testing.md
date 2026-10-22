@@ -69,9 +69,11 @@ UAC の確認なしで自動実行するには、管理者権限を求めない�
 ```powershell
 $manifest = (Resolve-Path 'artifacts').Path + '\smoke-build.manifest'
 (Get-Content src\Something.App\app.manifest -Raw).Replace('requireAdministrator','asInvoker') | Set-Content $manifest -Encoding utf8
-$out = (New-Item -ItemType Directory -Force 'artifacts\smoke-build\bin').FullName
-dotnet build src\Something.App\Something.App.csproj -c Release "-p:ApplicationManifest=$manifest" "-p:OutDir=$out\"
+$root = (Resolve-Path 'artifacts').Path
+dotnet build src\Something.App\Something.App.csproj -c Release "-p:ApplicationManifest=$manifest" "-p:OutDir=$root\smoke-build\bin\" "-p:IntermediateOutputPath=$root\smoke-build\obj\"
 ```
+
+出力先（`OutDir`）だけでなく、中間ファイルの出力先（`IntermediateOutputPath`）も分けてください。分けないと、`asInvoker` のアプリホストが `obj\Release` に残り、あとの通常のビルドがそれを再利用して、管理者権限を要求しない exe ができます。その exe ではボリュームを開けず、履歴が読み込めません（Win32 エラー 5）。通常の `bin\Release` の exe に `requireAdministrator` が入っているかは、バイト列を検索して確かめられます。
 
 画面のスモークテストは `--smoke-test <出力先>` の出力先に、画面の画像（`<出力先>`）を書き出します。`--smoke-search` は、条件画面（`.conditions.png`）とグラフのウィンドウ（`.graph.png`）の画像も書き出します。
 
