@@ -66,10 +66,13 @@ public sealed partial class SearchGraphWindow : Window
         var known = points
             .Where(point => point.Bytes is not null)
             .Select(point => point.Bytes!.Value);
-        // A little room above the largest size, so the line does not sit on the edge.
-        UInt128 largest = known.Any() ? known.Max() : UInt128.Zero;
-        var scale = SearchSizeSeries.ScaleFor(largest + largest / 8);
+        // The axis is fitted to the sizes, with room around them.
+        var scale = known.Any()
+            ? SearchSizeSeries.ScaleFor(known.Min(), known.Max())
+            : SearchSizeSeries.ScaleFor(0, 0);
         string unit = UnitName(scale.Unit);
+        // The window shows the path of the item; a scan in which it had another one says so.
+        string? shownPath = points.LastOrDefault(point => point.Path is not null)?.Path;
 
         var values = points
             .Select(point => new DateTimePoint(
@@ -79,7 +82,7 @@ public sealed partial class SearchGraphWindow : Window
             .ToArray();
         var line = new LineSeries<DateTimePoint>(values)
         {
-            Name = PathText.Text,
+            Name = "", // The tooltip shows the size, not a legend entry.
             LineSmoothness = 0,
             GeometrySize = 8,
             EnableNullSplitting = true,
@@ -92,11 +95,14 @@ public sealed partial class SearchGraphWindow : Window
                     .CompletedUtc.ToLocalTime()
                     .ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.CurrentCulture),
             YToolTipLabelFormatter = point =>
-                Strings.Format(
-                    "Graph_Tooltip",
-                    DisplayText.Bytes(points[point.Index].Bytes),
-                    DisplayText.Escape(points[point.Index].Path ?? "")
-                ),
+                points[point.Index].Path is { } path
+                && !string.Equals(path, shownPath, StringComparison.Ordinal)
+                    ? Strings.Format(
+                        "Graph_Tooltip",
+                        DisplayText.Bytes(points[point.Index].Bytes),
+                        DisplayText.Escape(path)
+                    )
+                    : DisplayText.Bytes(points[point.Index].Bytes),
         };
         Chart.Series = [line];
         Chart.Sections =
@@ -130,6 +136,8 @@ public sealed partial class SearchGraphWindow : Window
                 UnitWidth = unitOfTime.Ticks,
                 MinStep = unitOfTime.Ticks,
                 Labeler = value => SafeTime(value).ToString(format, CultureInfo.CurrentCulture),
+                // Slanted, so that wide labels do not run into the next one.
+                LabelsRotation = -45,
                 LabelsPaint = text,
                 SeparatorsPaint = grid,
             },
@@ -141,12 +149,12 @@ public sealed partial class SearchGraphWindow : Window
                 Name = Strings.Format("Graph_SizeAxis", unit),
                 NamePaint = text,
                 NameTextSize = 13,
-                MinLimit = 0,
+                MinLimit = (double)scale.Bottom,
                 MaxLimit = (double)scale.Top,
                 CustomSeparators = [.. scale.Ticks().Select(tick => (double)tick)],
                 Labeler = value =>
                     ((double)value / (double)scale.Unit).ToString(
-                        "0.##",
+                        "0.###",
                         CultureInfo.CurrentCulture
                     ),
                 LabelsPaint = text,

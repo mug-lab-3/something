@@ -156,60 +156,108 @@ public sealed class SearchSizeSeriesTests
     }
 
     [Theory]
-    [InlineData(0UL, 1UL, 1UL, 1UL)]
-    [InlineData(5UL, 1UL, 1UL, 5UL)]
-    [InlineData(7UL, 1UL, 2UL, 8UL)]
-    [InlineData(KiB, KiB, KiB / 4, KiB)]
-    [InlineData(900 * MiB, MiB, 256 * MiB, 1024 * MiB)]
-    [InlineData(GiB, GiB, GiB / 4, GiB)]
-    public void ScalesUseBinaryUnitsAndRoundSteps(ulong maximum, ulong unit, ulong step, ulong top)
+    [InlineData(0UL, 0UL, 0UL, 1UL)]
+    [InlineData(5UL, 5UL, 5UL, 6UL)]
+    [InlineData(7UL, 7UL, 7UL, 8UL)]
+    public void TinySizesGetAWholeByteStep(ulong lowest, ulong highest, ulong bottom, ulong top)
     {
         // Act
-        var scale = SearchSizeSeries.ScaleFor(maximum);
+        var scale = SearchSizeSeries.ScaleFor(lowest, highest);
 
         // Assert
-        Assert.Equal(new SizeAxisScale(unit, step, top), scale);
+        Assert.Equal(new SizeAxisScale(1, bottom, 1, top), scale);
     }
 
     [Fact]
-    public void AGraphOfAboutFourteenGibticksInFourGibSteps()
+    public void SizesThatHardlyDifferGetATrimmedAxisAroundThem()
+    {
+        // Arrange: a folder of about 54 GiB in several scans, within a tenth of a GiB.
+        var lowest = (UInt128)(53.90 * GiB);
+        var highest = (UInt128)(53.95 * GiB);
+
+        // Act
+        var scale = SearchSizeSeries.ScaleFor(lowest, highest);
+
+        // Assert: not drawn from zero, and not stretched to show the small difference
+        Assert.Equal(new SizeAxisScale(GiB, 50 * GiB, 2 * GiB, 58 * GiB), scale);
+        Assert.Equal(
+            [50 * GiB, 52 * GiB, 54 * GiB, 56 * GiB, 58 * GiB],
+            scale.Ticks().Select(tick => (ulong)tick)
+        );
+    }
+
+    [Fact]
+    public void SizesThatDoNotChangeAreCenteredInAWindowOfAboutATenth()
     {
         // Act
-        var scale = SearchSizeSeries.ScaleFor((UInt128)(13.97 * GiB));
+        var scale = SearchSizeSeries.ScaleFor(54 * GiB, 54 * GiB);
 
         // Assert
-        Assert.Equal(new SizeAxisScale(GiB, 4 * GiB, 16 * GiB), scale);
-        Assert.Equal([(UInt128)0, 4 * GiB, 8 * GiB, 12 * GiB, 16 * GiB], scale.Ticks());
+        Assert.Equal(new SizeAxisScale(GiB, 50 * GiB, 2 * GiB, 58 * GiB), scale);
+    }
+
+    [Fact]
+    public void SizesThatGrowFromNearZeroKeepZeroAsTheBottom()
+    {
+        // Act
+        var scale = SearchSizeSeries.ScaleFor(0, (UInt128)(13.97 * GiB));
+
+        // Assert
+        Assert.Equal(new SizeAxisScale(GiB, 0, 5 * GiB, 20 * GiB), scale);
+    }
+
+    [Fact]
+    public void AWideSpreadFillsTheAxisBetweenTheSizes()
+    {
+        // Act
+        var scale = SearchSizeSeries.ScaleFor(10 * GiB, 30 * GiB);
+
+        // Assert
+        Assert.True(scale.Bottom > 0);
+        Assert.True(scale.Bottom <= 10 * GiB);
+        Assert.True(scale.Top >= 30 * GiB);
     }
 
     [Theory]
-    [InlineData(1UL)]
-    [InlineData(3UL)]
-    [InlineData(1023UL)]
-    [InlineData(1025UL)]
-    [InlineData(123_456_789UL)]
-    [InlineData(ulong.MaxValue)]
-    public void EveryScaleCoversTheMaximumWithAtMostSixSteps(ulong maximum)
+    [InlineData(0UL, 0UL)]
+    [InlineData(1UL, 1UL)]
+    [InlineData(3UL, 1023UL)]
+    [InlineData(1025UL, 1025UL)]
+    [InlineData(123_456_789UL, 123_456_790UL)]
+    [InlineData(5 * GiB, 5 * GiB + 1)]
+    [InlineData(ulong.MaxValue - 1, ulong.MaxValue)]
+    public void EveryScaleCoversTheSizesWithAtMostSixSteps(ulong lowest, ulong highest)
     {
         // Act
-        var scale = SearchSizeSeries.ScaleFor(maximum);
+        var scale = SearchSizeSeries.ScaleFor(lowest, highest);
 
         // Assert
-        Assert.True(scale.Top >= maximum);
-        Assert.True(scale.Top / scale.Step <= 6);
+        Assert.True(scale.Bottom <= lowest);
+        Assert.True(scale.Top >= highest);
+        Assert.True(scale.Top > scale.Bottom);
+        Assert.True((scale.Top - scale.Bottom) / scale.Step <= 6);
+        Assert.Equal(UInt128.Zero, scale.Bottom % scale.Step);
         Assert.Equal(UInt128.Zero, scale.Top % scale.Step);
-        Assert.Equal(UInt128.Zero, scale.Step * 4 % scale.Unit);
-        Assert.Equal(scale.Top / scale.Step + 1, (UInt128)scale.Ticks().Count());
+        Assert.Equal((scale.Top - scale.Bottom) / scale.Step + 1, (UInt128)scale.Ticks().Count());
     }
 
     [Fact]
     public void SizesBeyondTheLargestUnitDoNotOverflow()
     {
         // Act
-        var scale = SearchSizeSeries.ScaleFor(UInt128.MaxValue);
+        var scale = SearchSizeSeries.ScaleFor(UInt128.MaxValue / 2, UInt128.MaxValue);
 
         // Assert
         Assert.True(scale.Top >= UInt128.MaxValue / 2);
         Assert.True(scale.Step > 0);
+        Assert.True(scale.Bottom <= UInt128.MaxValue / 2);
+        Assert.NotEmpty(scale.Ticks());
+    }
+
+    [Fact]
+    public void ALowestAboveTheHighestIsRejected()
+    {
+        // Act and assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => SearchSizeSeries.ScaleFor(2, 1));
     }
 }
