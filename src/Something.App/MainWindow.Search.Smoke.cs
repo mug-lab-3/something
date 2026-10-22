@@ -130,7 +130,7 @@ public sealed partial class MainWindow
         if (SearchPanel.HasResult || SearchPanel.CanReturnToResults)
             throw new InvalidOperationException("A changed condition did not drop the result.");
 
-        // The busy state of a search: a large animation over the screen, and only a cancel button.
+        // The busy state of a search: the animation alone, and only a cancel button.
         RootLayout.UpdateLayout();
         await SearchPanel.ShowBusyForSmokeAsync(
             lifetime.Token,

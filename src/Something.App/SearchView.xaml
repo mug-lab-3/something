@@ -6,7 +6,7 @@
   xmlns:local="using:Something.App"
 >
   <Grid>
-    <local:DelayedLoadingRegion x:Name="Region" FillsRegion="True">
+    <local:DelayedLoadingRegion x:Name="Region">
       <local:DelayedLoadingRegion.Body>
         <Grid>
           <local:SearchConditionsView

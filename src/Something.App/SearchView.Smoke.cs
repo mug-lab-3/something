@@ -33,8 +33,9 @@ public sealed partial class SearchView
         }
     }
 
-    // Shows the busy state as a search would: the loading animation over the screen and the
-    // cancel button, which stands alone because the animation already says that it is working.
+    // Shows the busy state as a search would: the loading animation alone on the screen (the
+    // conditions and results are not shown) and the cancel button, which stands alone because the
+    // animation already says that it is working.
     internal async Task ShowBusyForSmokeAsync(CancellationToken token, Func<Task> capture)
     {
         await using var lease = Region.BeginUpdate();
@@ -48,9 +49,9 @@ public sealed partial class SearchView
                 await Task.Delay(50, token);
             }
             await Task.Delay(1200, token);
-            if (Region.AnimationScaleFactor <= 1.5 || CancelBar.Children.Count != 1)
+            if (Region.BodyOpacity != 0 || CancelBar.Children.Count != 1)
                 throw new InvalidOperationException(
-                    "The searching animation is small or the cancel bar has more than a button."
+                    "The conditions stayed visible or the cancel bar has more than a button."
                 );
             await capture();
         }
