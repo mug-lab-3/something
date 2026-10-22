@@ -266,12 +266,6 @@
                 x:Uid="Search_SizeHeader"
                 Style="{StaticResource SearchSectionHeaderStyle}"
               />
-              <ComboBox
-                x:Uid="Search_SizeKindBox"
-                x:Name="SizeKindBox"
-                MinWidth="260"
-                SelectionChanged="OnChoiceChanged"
-              />
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <local:SteppingNumberBox
                   x:Uid="Search_MinSizeBox"

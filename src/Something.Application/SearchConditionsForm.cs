@@ -89,11 +89,6 @@ public sealed class SearchConditionsForm
     public AttributeRequirement Compressed { get; set; }
     public AttributeRequirement Sparse { get; set; }
     public AttributeRequirement NamedStreams { get; set; }
-
-    /// <summary>Which size the size, change and swing conditions, the values shown and the graph
-    /// use: the space allocated on disk (the default, as in the other tabs) or the length of the
-    /// file, which differs for compressed, sparse and cloud-only files.</summary>
-    public SearchSizeKind SizeKind { get; set; }
     public string MinimumSize { get; set; } = "";
     public string MaximumSize { get; set; } = "";
     public SearchSizeUnit SizeUnit { get; set; } = SearchSizeUnit.MiB;
@@ -120,7 +115,6 @@ public sealed class SearchConditionsForm
         MinimumDepth = fresh.MinimumDepth;
         MaximumDepth = fresh.MaximumDepth;
         Hidden = System = Compressed = Sparse = NamedStreams = AttributeRequirement.Any;
-        SizeKind = fresh.SizeKind;
         MinimumSize = MaximumSize = "";
         SizeUnit = fresh.SizeUnit;
         MinimumDelta = MaximumDelta = "";
@@ -150,7 +144,6 @@ public sealed class SearchConditionsForm
             form.Compressed,
             form.Sparse,
             form.NamedStreams,
-            form.SizeKind,
             form.MinimumSize,
             form.MaximumSize,
             form.SizeUnit,
@@ -259,7 +252,6 @@ public sealed class SearchConditionsForm
             MinimumDepth = minimumDepth,
             MaximumDepth = maximumDepth,
             Attributes = new(Hidden, System, Compressed, Sparse, NamedStreams),
-            SizeKind = SizeKind,
             MinimumSize = minimumSize,
             MaximumSize = maximumSize,
             MinimumDelta = minimumDelta,

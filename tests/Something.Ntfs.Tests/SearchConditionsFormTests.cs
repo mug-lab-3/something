@@ -419,28 +419,6 @@ public sealed class SearchConditionsFormTests
     }
 
     [Fact]
-    public void TheKindOfSizeIsAllocatedUnlessChosenAndCountsAsACondition()
-    {
-        // Arrange
-        var form = Form();
-        var allocated = Build(form).Criteria!;
-
-        // Act
-        form.SizeKind = SearchSizeKind.Logical;
-        var logical = Build(form).Criteria!;
-
-        // Assert: the default matches the other tabs; the other is a different search to run again
-        Assert.Equal(SearchSizeKind.Allocated, allocated.SizeKind);
-        Assert.Equal(SearchSizeKind.Logical, logical.SizeKind);
-        Assert.True(form.HasConditions);
-        Assert.True(form.DiffersFrom(allocated, new(), Culture));
-        Assert.False(SearchConditionsForm.Same(allocated, logical));
-        form.ClearConditions();
-        Assert.Equal(SearchSizeKind.Allocated, form.SizeKind);
-        Assert.False(form.HasConditions);
-    }
-
-    [Fact]
     public void ChangingOnlyTheRangeIsNotAConditionButCountsAsADifference()
     {
         // Arrange

@@ -39,7 +39,6 @@ public sealed partial class MainWindow
         if (!conditions.NameIncludesPathForSmoke || !conditions.Form.NameIncludesPath)
             throw new InvalidOperationException("The name does not apply to the path by default.");
         conditions.VerifyNumberInputsForSmoke();
-        conditions.VerifySizeKindForSmoke();
         // A range of "the last days" follows the clock when the tab is shown again.
         conditions.AgeRangeForSmoke();
         SearchPanel.Activate();

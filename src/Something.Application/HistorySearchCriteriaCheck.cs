@@ -98,9 +98,6 @@ public sealed record SearchAttributePart(
 public sealed record SearchSizePart(SearchSizeKind Kind, UInt128? Minimum, UInt128? Maximum)
     : SearchSummaryPart;
 
-/// <summary>Shown only when the sizes are not the default allocated ones.</summary>
-public sealed record SearchSizeKindPart(SearchSizeKind Kind) : SearchSummaryPart;
-
 public sealed record SearchDeltaPart(BigInteger? Minimum, BigInteger? Maximum) : SearchSummaryPart;
 
 public sealed record SearchDeltaPercentPart(double? Minimum, double? Maximum) : SearchSummaryPart;
@@ -155,8 +152,6 @@ public static class HistorySearchSummary
         )
             if (requirement != AttributeRequirement.Any)
                 parts.Add(new SearchAttributePart(kind, requirement));
-        if (criteria.SizeKind != SearchSizeKind.Allocated)
-            parts.Add(new SearchSizeKindPart(criteria.SizeKind));
         if (criteria.MinimumSize is not null || criteria.MaximumSize is not null)
             parts.Add(
                 new SearchSizePart(criteria.SizeKind, criteria.MinimumSize, criteria.MaximumSize)

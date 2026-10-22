@@ -59,7 +59,6 @@ internal static class SearchSummaryText
                     ? Strings.Get("Search_AttributeSet")
                     : Strings.Get("Search_AttributeClear")
             ),
-            SearchSizeKindPart => Strings.Get("Summary_SizeKindLogical"),
             SearchSizePart size => (size.Minimum, size.Maximum) switch
             {
                 ({ } low, { } high) => Strings.Format(

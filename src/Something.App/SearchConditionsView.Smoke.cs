@@ -1,5 +1,4 @@
 using Microsoft.UI.Xaml;
-using Something.Application.Search;
 
 namespace Something.App;
 
@@ -50,22 +49,5 @@ public sealed partial class SearchConditionsView
         MaxSizeBox.Value = double.NaN;
         if (Form.MinimumSize.Length != 0 || Form.MaximumSize.Length != 0)
             throw new InvalidOperationException("An empty number was not passed on as empty.");
-    }
-
-    // The kind of size is a condition of the search: allocated unless chosen, and clearing the
-    // conditions returns to it.
-    internal void VerifySizeKindForSmoke()
-    {
-        if (Form.SizeKind != SearchSizeKind.Allocated || SizeKindBox.Items.Count != 2)
-            throw new InvalidOperationException("The kind of size does not start as allocated.");
-        SizeKindBox.SelectedIndex = 1;
-        if (
-            Form.SizeKind != SearchSizeKind.Logical
-            || Current.Criteria?.SizeKind != SearchSizeKind.Logical
-        )
-            throw new InvalidOperationException("The kind of size did not reach the criteria.");
-        SizeKindBox.SelectedIndex = 0;
-        if (Form.SizeKind != SearchSizeKind.Allocated)
-            throw new InvalidOperationException("The kind of size did not return to allocated.");
     }
 }

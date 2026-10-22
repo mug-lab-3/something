@@ -25,8 +25,7 @@ public sealed class HistorySearchTests
         bool Directory = false,
         uint? Attributes = 0,
         (ulong Parent, string Name)? Link = null,
-        bool NamedStream = false,
-        long? Allocated = null
+        bool NamedStream = false
     );
 
     [Fact]
@@ -381,43 +380,6 @@ public sealed class HistorySearchTests
         Assert.Equal(["b.GZ"], underWork.Entries(Ref(21)).Select(e => e.Name));
         Assert.Equal(1, shallow.MatchedFiles);
         Assert.Null(shallow.Folder(Ref(21)));
-    }
-
-    [Fact]
-    public void TheKindOfSizeDecidesWhatAFileWithoutDataOnDiskIsWorth()
-    {
-        // Arrange: a cloud-only file (5000 bytes long, nothing allocated) and a stored one appear
-        using var fixture = new Fixture();
-        fixture.Save(Now.AddDays(-2), [new(20, "Cloud", Directory: true)]);
-        fixture.Save(
-            Now.AddDays(-1),
-            [
-                new(20, "Cloud", Directory: true),
-                new(30, "online.docx", 20, 5000, Allocated: 0),
-                new(31, "stored.docx", 20, 700),
-            ]
-        );
-
-        // Act
-        var allocated = Search(fixture, Everything with { MinimumDelta = 1 });
-        var logical = Search(
-            fixture,
-            Everything with
-            {
-                MinimumDelta = 1,
-                SizeKind = SearchSizeKind.Logical,
-            }
-        );
-
-        // Assert: nothing is allocated for the online file, so it does not count as a change
-        Assert.Equal(["stored.docx"], allocated.Entries(Ref(20)).Select(e => e.Name));
-        Assert.Equal(
-            ["online.docx", "stored.docx"],
-            logical.Entries(Ref(20)).Select(e => e.Name).Order()
-        );
-        Assert.Equal(5000, logical.Entries(Ref(20)).Single(e => e.Name == "online.docx").Delta);
-        Assert.Equal(5700, logical.Folder(Ref(20))!.Delta);
-        Assert.Equal(700, allocated.Folder(Ref(20))!.Delta);
     }
 
     [Fact]
@@ -877,7 +839,6 @@ public sealed class HistorySearchTests
                 new SearchRangePart(first.CompletedUtc, last.CompletedUtc, 2),
                 new SearchExtensionsPart(["log"]),
                 new SearchAttributePart(SearchAttributeKind.Hidden, AttributeRequirement.Clear),
-                new SearchSizeKindPart(SearchSizeKind.Logical),
                 new SearchSizePart(SearchSizeKind.Logical, 1, null),
                 new SearchDeltaPart(1, null),
             ],
@@ -968,7 +929,7 @@ public sealed class HistorySearchTests
                         ? []
                         :
                         [
-                            new("", node.Size!.Value, node.Allocated ?? node.Size.Value),
+                            new("", node.Size!.Value, node.Size.Value),
                             .. node.NamedStream
                                 ? [new StreamCapacity("Zone.Identifier", 26, 26)]
                                 : Array.Empty<StreamCapacity>(),
