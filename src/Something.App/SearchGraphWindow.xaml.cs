@@ -154,7 +154,7 @@ public sealed partial class SearchGraphWindow : Window
                 CustomSeparators = [.. scale.Ticks().Select(tick => (double)tick)],
                 Labeler = value =>
                     ((double)value / (double)scale.Unit).ToString(
-                        "0.###",
+                        $"F{scale.Decimals}",
                         CultureInfo.CurrentCulture
                     ),
                 LabelsPaint = text,

@@ -17,15 +17,25 @@ public sealed record SearchSizePoint(
     string? Path
 );
 
-/// <summary>The visible range of a size axis and where its ticks fall: multiples of
-/// <see cref="Step"/> from <see cref="Bottom"/> to <see cref="Top"/>, labeled in multiples of
-/// <see cref="Unit"/>.</summary>
-public readonly record struct SizeAxisScale(UInt128 Unit, UInt128 Bottom, UInt128 Step, UInt128 Top)
+/// <summary>The visible range of a size axis and where its ticks fall: the multiples of
+/// <see cref="Step"/> within <see cref="Bottom"/> to <see cref="Top"/>, labeled in multiples of
+/// <see cref="Unit"/> with <see cref="Decimals"/> decimals.</summary>
+public readonly record struct SizeAxisScale(
+    UInt128 Unit,
+    UInt128 Bottom,
+    UInt128 Step,
+    UInt128 Top,
+    int Decimals = 0
+)
 {
-    /// <summary>The tick values from <see cref="Bottom"/> to <see cref="Top"/>.</summary>
+    /// <summary>The tick values, from the first multiple of the step in the range.</summary>
     public IEnumerable<UInt128> Ticks()
     {
-        for (UInt128 tick = Bottom; ; tick += Step)
+        UInt128 remainder = Bottom % Step;
+        UInt128 gap = remainder == 0 ? 0 : Step - remainder;
+        if (gap > Top - Bottom)
+            yield break;
+        for (UInt128 tick = Bottom + gap; ; tick += Step)
         {
             yield return tick;
             if (Top - tick < Step)
@@ -93,12 +103,13 @@ public static class SearchSizeSeries
     }
 
     /// <summary>The visible range and ticks for sizes between <paramref name="lowest"/> and
-    /// <paramref name="highest"/>. The range is fitted to the sizes instead of starting at zero,
-    /// with some room around them, and is at least a tenth of the largest size wide so that sizes
-    /// which hardly differ do not look like a large change. The step is 1, 2 or 5 times a power of
-    /// ten of the unit (a binary unit chosen by the largest size), giving at most six steps. It
-    /// reaches zero by itself when the sizes are close to it. Sizes beyond any real volume (more
-    /// than 2^110 units of 1024) are capped at the largest value instead of overflowing.</summary>
+    /// <paramref name="highest"/>. The range is fitted to the sizes instead of starting at zero:
+    /// the sizes with a sixteenth of their spread on each side, so that they fill about nine
+    /// tenths of it. Sizes that do not differ at all get a range a thousandth of the largest wide,
+    /// around them. The ticks are multiples of 1, 2 or 5 times a power of ten of the unit (a
+    /// binary unit chosen by the largest size), the finest of which gives at most seven ticks in
+    /// the range. They are not the ends of the range. Sizes beyond any real volume (more than 2^110
+    /// units of 1024) are capped at the largest value instead of overflowing.</summary>
     public static SizeAxisScale ScaleFor(UInt128 lowest, UInt128 highest)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(lowest, highest);
@@ -107,25 +118,42 @@ public static class SearchSizeSeries
             unit <<= 10;
         BigInteger low = (BigInteger)lowest;
         BigInteger high = (BigInteger)highest;
-        // Sizes closer together than a tenth of the largest are spread evenly around their middle.
-        BigInteger minimum = high / 10;
+        BigInteger minimum = high / 1000;
         BigInteger widening = BigInteger.Max(minimum - (high - low), 0) / 2;
-        BigInteger margin = BigInteger.Max(high - low, minimum) / 8;
+        BigInteger margin = BigInteger.Max(high - low, minimum) / 16;
         BigInteger from = BigInteger.Max(low - widening - margin, 0);
         BigInteger to = high + widening + margin;
-        for (BigInteger magnitude = 1; ; magnitude *= 10)
+        if (to == from)
+            to += 1;
+        // Steps that are whole bytes first, so that ticks do not drift from their labels; a range
+        // narrower than any of them (a few bytes) takes the nearest step instead.
+        return FindStep(unit, from, to, wholeOnly: true)
+            ?? FindStep(unit, from, to, wholeOnly: false)
+            ?? throw new InvalidOperationException("No axis step fits the range.");
+    }
+
+    private static SizeAxisScale? FindStep(
+        UInt128 unit,
+        BigInteger from,
+        BigInteger to,
+        bool wholeOnly
+    )
+    {
+        int digits = 0;
+        for (BigInteger magnitude = 1; ; magnitude *= 10, digits++)
             foreach (int factor in new[] { 1, 2, 5 })
             {
-                // A step is a thousandth of the unit times the factor, and a whole number of bytes.
-                BigInteger step = (BigInteger)unit * factor * magnitude / 1000;
-                if (step == 0)
+                // A step is a millionth of the unit times the factor.
+                BigInteger scaled = (BigInteger)unit * factor * magnitude;
+                BigInteger step = scaled / 1_000_000;
+                if (step == 0 || (wholeOnly && step < 1000 && scaled % 1_000_000 != 0))
                     continue;
-                BigInteger bottom = from / step * step;
-                BigInteger top = (to + step - 1) / step * step;
-                if (top == bottom)
-                    top += step;
-                if ((top - bottom) / step <= 6)
-                    return new(unit, Clamp(bottom), Clamp(step), Clamp(top));
+                // Beyond the range no larger step has a tick in it either.
+                if (from > 0 && step > to)
+                    return null;
+                BigInteger ticks = to / step - (from + step - 1) / step + 1;
+                if (ticks >= 1 && ticks <= 7)
+                    return new(unit, Clamp(from), Clamp(step), Clamp(to), Math.Max(0, 6 - digits));
             }
     }
 
