@@ -25,7 +25,12 @@
         ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
       />
     </StackPanel>
-    <lvc:CartesianChart x:Name="Chart" Grid.Row="1" TooltipPosition="Top" />
+    <lvc:CartesianChart
+      x:Name="Chart"
+      Grid.Row="1"
+      TooltipPosition="Top"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    />
     <TextBlock
       x:Uid="Graph_GapNote"
       Grid.Row="2"
