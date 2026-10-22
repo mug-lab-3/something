@@ -6,7 +6,6 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.Painting.Effects;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using Something.Application;
 using Something.Application.Search;
@@ -38,9 +37,6 @@ public sealed partial class SearchGraphWindow : Window
         AppWindow.Resize(new SizeInt32(960, 600));
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
         Root.RequestedTheme = theme;
-        SizeKindButtons.Items.Add(Strings.Get("Search_SizeAllocated"));
-        SizeKindButtons.Items.Add(Strings.Get("Search_SizeLogical"));
-        SizeKindButtons.SelectedIndex = 0;
         ready = true;
         Root.ActualThemeChanged += (_, _) => Draw();
         Closed += (_, _) =>
@@ -50,11 +46,6 @@ public sealed partial class SearchGraphWindow : Window
         };
         Draw();
     }
-
-    private SearchSizeKind Kind =>
-        SizeKindButtons.SelectedIndex == 1 ? SearchSizeKind.Logical : SearchSizeKind.Allocated;
-
-    private void OnSizeKindChanged(object sender, SelectionChangedEventArgs args) => Draw();
 
     private void Draw()
     {
@@ -67,7 +58,7 @@ public sealed partial class SearchGraphWindow : Window
             1
         );
         var accent = dark ? new SKColor(96, 175, 240) : new SKColor(0, 90, 158);
-        var points = SearchSizeSeries.Build(result, series, Kind);
+        var points = SearchSizeSeries.Build(result, series, SearchSizeKind.Allocated);
         var known = points
             .Where(point => point.Bytes is not null)
             .Select(point => point.Bytes!.Value);

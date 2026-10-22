@@ -1673,9 +1673,6 @@
   <data name="Search_SizeHeader.Text" xml:space="preserve">
     <value>サイズ</value>
   </data>
-  <data name="Search_SizeKindBox.Header" xml:space="preserve">
-    <value>評価するサイズ</value>
-  </data>
   <data name="Search_MinSizeBox.Header" xml:space="preserve">
     <value>最小</value>
   </data>
@@ -1756,12 +1753,6 @@
   </data>
   <data name="Search_AttributeClear" xml:space="preserve">
     <value>なし</value>
-  </data>
-  <data name="Search_SizeAllocated" xml:space="preserve">
-    <value>割り当てサイズ</value>
-  </data>
-  <data name="Search_SizeLogical" xml:space="preserve">
-    <value>論理サイズ</value>
   </data>
   <data name="Search_UnitBytes" xml:space="preserve">
     <value>B</value>
@@ -1972,16 +1963,16 @@
     <value>名前付きストリーム</value>
   </data>
   <data name="Summary_SizeMin" xml:space="preserve">
-    <value>{0} ≥ {1}</value>
-    <comment>{0} = kind of size; {1} = minimum</comment>
+    <value>サイズ ≥ {0}</value>
+    <comment>{0} = minimum</comment>
   </data>
   <data name="Summary_SizeMax" xml:space="preserve">
-    <value>{0} ≤ {1}</value>
-    <comment>{0} = kind of size; {1} = maximum</comment>
+    <value>サイズ ≤ {0}</value>
+    <comment>{0} = maximum</comment>
   </data>
   <data name="Summary_SizeBetween" xml:space="preserve">
-    <value>{0}: {1} – {2}</value>
-    <comment>{0} = kind of size; {1} = minimum; {2} = maximum</comment>
+    <value>サイズ: {0} – {1}</value>
+    <comment>{0} = minimum; {1} = maximum</comment>
   </data>
   <data name="Summary_DeltaMin" xml:space="preserve">
     <value>増減 ≥ {0}</value>
@@ -2040,9 +2031,6 @@
   <data name="Graph_WindowTitle" xml:space="preserve">
     <value>{0} のサイズの推移</value>
     <comment>{0} = name of the item</comment>
-  </data>
-  <data name="Graph_SizeKindButtons.Header" xml:space="preserve">
-    <value>表示するサイズ</value>
   </data>
   <data name="Graph_GapNote.Text" xml:space="preserve">
     <value>破線は、その時点のスキャンで項目が見つからなかった、またはサイズが未解決だったことを示します。線はそこで途切れ、0 バイトとは見なしません。</value>

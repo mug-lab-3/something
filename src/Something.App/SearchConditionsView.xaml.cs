@@ -123,11 +123,6 @@ public sealed partial class SearchConditionsView : UserControl
                 (Strings.Get("Search_AttributeSet"), AttributeRequirement.Set),
                 (Strings.Get("Search_AttributeClear"), AttributeRequirement.Clear)
             );
-        Fill(
-            SizeKindBox,
-            (Strings.Get("Search_SizeAllocated"), SearchSizeKind.Allocated),
-            (Strings.Get("Search_SizeLogical"), SearchSizeKind.Logical)
-        );
         foreach (var box in new[] { SizeUnitBox, DeltaUnitBox, SwingUnitBox })
             Fill(
                 box,
@@ -190,7 +185,6 @@ public sealed partial class SearchConditionsView : UserControl
         Choose(CompressedBox, Form.Compressed);
         Choose(SparseBox, Form.Sparse);
         Choose(StreamsBox, Form.NamedStreams);
-        Choose(SizeKindBox, Form.SizeKind);
         MinSizeBox.Text = Form.MinimumSize;
         MaxSizeBox.Text = Form.MaximumSize;
         Choose(SizeUnitBox, Form.SizeUnit);
@@ -222,7 +216,6 @@ public sealed partial class SearchConditionsView : UserControl
         Form.Compressed = Chosen<AttributeRequirement>(CompressedBox);
         Form.Sparse = Chosen<AttributeRequirement>(SparseBox);
         Form.NamedStreams = Chosen<AttributeRequirement>(StreamsBox);
-        Form.SizeKind = Chosen<SearchSizeKind>(SizeKindBox);
         Form.MinimumSize = MinSizeBox.Text;
         Form.MaximumSize = MaxSizeBox.Text;
         Form.SizeUnit = Chosen<SearchSizeUnit>(SizeUnitBox);

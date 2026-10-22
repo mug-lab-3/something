@@ -21,8 +21,6 @@ public sealed partial class SearchGraphWindow
         int gaps = line.Values!.Count(point => point.Value is null);
         if (Chart.Sections.Count() != gaps)
             throw new InvalidOperationException("A missing size is not marked.");
-        SizeKindButtons.SelectedIndex = 1;
-        SizeKindButtons.SelectedIndex = 0;
     }
 
     internal Microsoft.UI.Xaml.FrameworkElement ContentForSmoke => Root;

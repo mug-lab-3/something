@@ -24,12 +24,6 @@
         TextTrimming="CharacterEllipsis"
         ToolTipService.ToolTip="{Binding Text, ElementName=PathText}"
       />
-      <RadioButtons
-        x:Name="SizeKindButtons"
-        x:Uid="Graph_SizeKindButtons"
-        MaxColumns="2"
-        SelectionChanged="OnSizeKindChanged"
-      />
     </StackPanel>
     <lvc:CartesianChart x:Name="Chart" Grid.Row="1" TooltipPosition="Top" />
     <TextBlock

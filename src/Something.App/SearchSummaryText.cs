@@ -54,20 +54,11 @@ internal static class SearchSummaryText
             {
                 ({ } low, { } high) => Strings.Format(
                     "Summary_SizeBetween",
-                    SizeKind(size.Kind),
                     DisplayText.Bytes(low),
                     DisplayText.Bytes(high)
                 ),
-                ({ } low, null) => Strings.Format(
-                    "Summary_SizeMin",
-                    SizeKind(size.Kind),
-                    DisplayText.Bytes(low)
-                ),
-                (null, { } high) => Strings.Format(
-                    "Summary_SizeMax",
-                    SizeKind(size.Kind),
-                    DisplayText.Bytes(high)
-                ),
+                ({ } low, null) => Strings.Format("Summary_SizeMin", DisplayText.Bytes(low)),
+                (null, { } high) => Strings.Format("Summary_SizeMax", DisplayText.Bytes(high)),
                 _ => "",
             },
             SearchDeltaPart delta => (delta.Minimum, delta.Maximum) switch
@@ -130,11 +121,6 @@ internal static class SearchSummaryText
             SearchAttributeKind.Sparse => Strings.Get("Summary_AttributeSparse"),
             _ => Strings.Get("Summary_AttributeNamedStreams"),
         };
-
-    private static string SizeKind(SearchSizeKind kind) =>
-        kind == SearchSizeKind.Logical
-            ? Strings.Get("Search_SizeLogical")
-            : Strings.Get("Search_SizeAllocated");
 
     private static string Percent(double value) =>
         value.ToString("0.##", CultureInfo.CurrentCulture);

@@ -351,7 +351,6 @@ public sealed class SearchConditionsFormTests
         form.Target = SearchTarget.Files;
         form.Hidden = AttributeRequirement.Clear;
         form.NamedStreams = AttributeRequirement.Set;
-        form.SizeKind = SearchSizeKind.Logical;
         form.Trend = SizeTrend.Decreasing;
         form.Presence = SearchPresence.Disappeared;
         form.NameMode = NameMatchMode.Wildcard;
@@ -364,7 +363,7 @@ public sealed class SearchConditionsFormTests
         Assert.Equal(SearchTarget.Files, criteria.Target);
         Assert.Equal(AttributeRequirement.Clear, criteria.Attributes.Hidden);
         Assert.Equal(AttributeRequirement.Set, criteria.Attributes.NamedStreams);
-        Assert.Equal(SearchSizeKind.Logical, criteria.SizeKind);
+        Assert.Equal(SearchSizeKind.Allocated, criteria.SizeKind);
         Assert.Equal(SizeTrend.Decreasing, criteria.Trend);
         Assert.Equal(SearchPresence.Disappeared, criteria.Presence);
         Assert.Equal((NameMatchMode.Wildcard, "*.tmp"), (criteria.NameMode, criteria.NamePattern));
