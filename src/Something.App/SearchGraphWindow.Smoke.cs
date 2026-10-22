@@ -11,6 +11,8 @@ public sealed partial class SearchGraphWindow
         var line =
             Chart.Series.OfType<LineSeries<DateTimePoint>>().SingleOrDefault()
             ?? throw new InvalidOperationException("The graph has no line.");
+        if (Chart.AnimationsSpeed != TimeSpan.Zero || Chart.EasingFunction is not null)
+            throw new InvalidOperationException("The graph animates, so it trails a resize.");
         int points = line.Values?.Count ?? 0;
         if (points != scans)
             throw new InvalidOperationException(

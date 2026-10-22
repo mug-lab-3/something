@@ -37,6 +37,10 @@ public sealed partial class SearchGraphWindow : Window
         AppWindow.Resize(new SizeInt32(960, 600));
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Something.ico"));
         Root.RequestedTheme = theme;
+        // The chart eases its marks into place by default, which makes it trail behind the
+        // window while it is resized.
+        Chart.AnimationsSpeed = TimeSpan.Zero;
+        Chart.EasingFunction = null;
         ready = true;
         Root.ActualThemeChanged += (_, _) => Draw();
         Closed += (_, _) =>
