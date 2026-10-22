@@ -42,11 +42,18 @@ public sealed record SearchItem(
 
     public bool InFirstScan => FirstObserved == 0;
 
-    /// <summary>Size at the last observation minus size at the first scan of the range.</summary>
+    /// <summary>True when the item was not in the first scan of the range but came later.</summary>
+    public bool AppearedInRange => !InFirstScan;
+
+    /// <summary>Size at the last observation minus size at the first scan of the range. An item
+    /// that came later was not in the first scan, which lists every item it could read, so it
+    /// is counted from zero: its change is its whole size. Null when a size needed is unresolved.</summary>
     public BigInteger? Delta =>
-        InFirstScan && FirstSize is { } first && Size is { } last
-            ? (BigInteger)last - (BigInteger)first
-            : null;
+        Size is not { } last ? null
+        : InFirstScan
+            ? FirstSize is { } first ? (BigInteger)last - (BigInteger)first
+                : null
+        : (BigInteger)last;
 }
 
 /// <summary>A size observation of one item in one scan of a search.</summary>

@@ -473,7 +473,8 @@ internal sealed class HistorySearchEngine(
             );
         if (criteria.MinimumDelta is not null || criteria.MaximumDelta is not null)
             parts.Add(
-                $"(D OR (F=0 AND (F0 IS NULL OR SzL IS NULL OR ({Lower("SzL-F0", criteria.MinimumDelta)} AND {Upper("SzL-F0", criteria.MaximumDelta)}))))"
+                $"(D OR (F=0 AND (F0 IS NULL OR SzL IS NULL OR ({Lower("SzL-F0", criteria.MinimumDelta)} AND {Upper("SzL-F0", criteria.MaximumDelta)})))"
+                    + $" OR (F>0 AND (SzL IS NULL OR ({Lower("SzL", criteria.MinimumDelta)} AND {Upper("SzL", criteria.MaximumDelta)}))))"
             );
         if (criteria.MinimumDeltaPercent is not null || criteria.MaximumDeltaPercent is not null)
         {

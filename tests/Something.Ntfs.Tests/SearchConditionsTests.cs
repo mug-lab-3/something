@@ -296,13 +296,35 @@ public sealed class SearchConditionsTests
         Assert.True(verdict.Matches);
     }
 
+    [Fact]
+    public void AnItemThatCameLaterHasItsWholeSizeAsChangeButNoRate()
+    {
+        // Arrange
+        var item = Item(first: 1, firstSize: null, size: 150);
+        var rate = Everything with { MinimumDeltaPercent = 0 };
+
+        // Act
+        var verdict = Evaluate(rate, item);
+
+        // Assert: a change from nothing has no rate
+        Assert.Equal(150, item.Delta);
+        Assert.True(item.AppearedInRange);
+        Assert.False(verdict.Matches);
+    }
+
     [Theory]
     [InlineData(0, 100, 150, -100, 100, true, false)]
     [InlineData(0, 150, 100, -50, -50, true, false)]
     [InlineData(0, 150, 100, -49, null, false, false)]
-    [InlineData(1, null, 150, 0, null, false, false)]
     [InlineData(0, 100, null, 0, null, true, true)]
-    public void DeltaNeedsTheFirstScanOfTheRange(
+    // Not in the first scan: counted from zero, so the change is the whole size.
+    [InlineData(1, null, 150, 150, 150, true, false)]
+    [InlineData(1, null, 150, 151, null, false, false)]
+    [InlineData(1, null, 150, 0, 149, false, false)]
+    [InlineData(1, null, 0, 0, 0, true, false)]
+    // ...unless that size is unresolved: then nothing is known about the change.
+    [InlineData(1, null, null, 1, null, true, true)]
+    public void DeltaCountsAnItemThatCameLaterFromZero(
         int first,
         int? firstSize,
         int? size,

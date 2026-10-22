@@ -163,8 +163,7 @@ public sealed class SearchConditions(HistorySearchCriteria criteria, int scanCou
         }
         if (Criteria.MinimumDelta is not null || Criteria.MaximumDelta is not null)
         {
-            if (!item.InFirstScan)
-                return SearchVerdict.Fail;
+            // An item that came later is counted from zero; an unresolved size leaves it open.
             if (item.Delta is not { } delta)
                 uncertain = true;
             else if (delta < Criteria.MinimumDelta || delta > Criteria.MaximumDelta)

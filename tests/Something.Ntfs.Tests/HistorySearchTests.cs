@@ -383,6 +383,41 @@ public sealed class HistorySearchTests
     }
 
     [Fact]
+    public void AnItemThatCameLaterIsCountedFromZeroInFilesAndFolders()
+    {
+        // Arrange: a folder with a file at the start, a new file and a new folder with a file later
+        using var fixture = new Fixture();
+        fixture.Save(
+            Now.AddDays(-2),
+            [new(20, "Pics", Directory: true), new(30, "old.png", 20, 100)]
+        );
+        fixture.Save(
+            Now.AddDays(-1),
+            [
+                new(20, "Pics", Directory: true),
+                new(21, "New", 20, Directory: true),
+                new(30, "old.png", 20, 100),
+                new(31, "new.png", 20, 40),
+                new(32, "inner.png", 21, 60),
+            ]
+        );
+
+        // Act: everything that grew by at least 1 byte
+        var result = Search(fixture, Everything with { MinimumDelta = 1 });
+
+        // Assert: the new file and folder count from zero; the old file did not change
+        var names = result.Entries(Ref(20)).Select(e => e.Name).Order().ToArray();
+        Assert.Equal(["New", "new.png"], names);
+        Assert.Equal(
+            40UL,
+            (ulong)result.Entries(Ref(20)).Single(e => e.Name == "new.png").Delta!.Value
+        );
+        Assert.Equal(60UL, (ulong)result.Folder(Ref(21))!.Delta!.Value);
+        Assert.Equal(["inner.png"], result.Entries(Ref(21)).Select(e => e.Name));
+        Assert.Equal(100UL, (ulong)result.Folder(Ref(20))!.Delta!.Value);
+    }
+
+    [Fact]
     public void ANameOnThePathSelectsEverythingUnderAMatchingFolder()
     {
         // Arrange
